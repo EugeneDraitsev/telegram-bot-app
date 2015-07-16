@@ -1,7 +1,8 @@
 var https = require('https');
-var config = require('../config/config.js');
 var querystring = require('querystring');
 var request = require('request');
+
+var botToken = process.env.TOKEN || "your token here";
 
 var telegram = {
 
