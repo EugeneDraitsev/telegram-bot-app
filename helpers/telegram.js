@@ -19,7 +19,7 @@ var telegram = {
         var telegramRequestOptions = {
             host: 'api.telegram.org',
             port: 443,
-            path: '/bot' + config.telegramToken + '/sendMessage',
+            path: '/bot' + botToken + '/sendMessage',
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -60,7 +60,7 @@ var telegram = {
         };
 
         request.post({
-            url: 'https://api.telegram.org/bot' + config.telegramToken + '/sendPhoto',
+            url: 'https://api.telegram.org/bot' + botToken + '/sendPhoto',
             formData: formData
         }, function optionalCallback(err, httpResponse, body) {
             console.log('Telegram Server responded with: ', body);
