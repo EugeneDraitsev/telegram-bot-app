@@ -7,42 +7,53 @@ var https = require('https'),
 var telegram = {
     sendMessage: function (chat_id, text, reply_to_message_id) {
 
-        // Send the chat id, message to reply to, and the message to send
-        var telegramRequestData = querystring.stringify({
+        var formData = {
             chat_id: chat_id,
-            text: text,
-            reply_to_message_id: reply_to_message_id
-        });
-
-        // Define the POST request
-        var telegramRequestOptions = {
-            host: 'api.telegram.org',
-            port: 443,
-            path: '/bot' + botToken + '/sendMessage',
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': telegramRequestData.length
-            }
+            reply_to_message_id: reply_to_message_id,
+            text: text
         };
 
-        // Execute the request
-        var telegramRequest = https.request(telegramRequestOptions, function (telegramResponse) {
-            telegramResponse.setEncoding('utf8');
-
-            // Read the response (not used right now, but you can log this to see what's happening)
-            var output = '';
-            telegramResponse.on('data', function (chunk) {
-                output += chunk;
-            });
-
+        request.post({
+            url: 'https://api.telegram.org/bot' + botToken + '/sendMessage',
+            formData: formData
         });
 
-        // Send the data
-        telegramRequest.write(telegramRequestData);
-
-        // Done
-        telegramRequest.end();
+        //// Send the chat id, message to reply to, and the message to send
+        //var telegramRequestData = querystring.stringify({
+        //    chat_id: chat_id,
+        //    text: text,
+        //    reply_to_message_id: reply_to_message_id
+        //});
+        //
+        //// Define the POST request
+        //var telegramRequestOptions = {
+        //    host: 'api.telegram.org',
+        //    port: 443,
+        //    path: '/bot' + botToken + '/sendMessage',
+        //    method: 'POST',
+        //    headers: {
+        //        'Content-Type': 'application/x-www-form-urlencoded',
+        //        'Content-Length': telegramRequestData.length
+        //    }
+        //};
+        //
+        //// Execute the request
+        //var telegramRequest = https.request(telegramRequestOptions, function (telegramResponse) {
+        //    telegramResponse.setEncoding('utf8');
+        //
+        //    // Read the response (not used right now, but you can log this to see what's happening)
+        //    var output = '';
+        //    telegramResponse.on('data', function (chunk) {
+        //        output += chunk;
+        //    });
+        //
+        //});
+        //
+        //// Send the data
+        //telegramRequest.write(telegramRequestData);
+        //
+        //// Done
+        //telegramRequest.end();
     },
 
     sendPhoto: function (chat_id, photo, reply_to_message_id, picUrl) {
