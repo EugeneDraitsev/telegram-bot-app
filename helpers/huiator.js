@@ -1,7 +1,7 @@
 'use strict';
+var len = 3;
 
 var huiator = {
-    len: 3,
     huify: function (text) {
         var pattword = /[А-Я0-9]+/ig;
         text = text.replace(pattword, huiator.huifyWord);
