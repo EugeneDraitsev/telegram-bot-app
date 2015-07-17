@@ -1,6 +1,7 @@
 var express = require('express');
 var telegram = require('../helpers/telegram.js');
 var google = require('../helpers/google.js');
+var huiator = require('../helpers/huiator.js');
 var _ = require('underscore');
 var router = express.Router();
 
@@ -30,6 +31,12 @@ router.post('/', function(req, res, next) {
                 telegram.sendMessage(chat_id, message, reply_to_message_id);
             }
         });
+    }
+
+    if (telegramMessage.lastIndexOf('/h', 0) === 0) {
+        var text = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+            huext = huiator(text);
+        telegram.sendMessage(chat_id, huext, reply_to_message_id);
     }
 
     // Send response to Telegram, always OK
