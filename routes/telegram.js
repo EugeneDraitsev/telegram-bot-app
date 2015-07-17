@@ -5,7 +5,7 @@ var huiator = require('../helpers/huiator.js');
 var _ = require('underscore');
 var router = express.Router();
 
-router.post('/', function(req, res, next) {
+router.post('/', function (req, res, next) {
     if (!req.body.message.text) {
         res.statusCode = 200;
         res.end();
@@ -16,7 +16,6 @@ router.post('/', function(req, res, next) {
         telegramMessage = telegramUpdate.message.text,
         chat_id = telegramUpdate.message.chat.id,
         reply_to_message_id = telegramUpdate.message.message_id;
-
 
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
@@ -36,7 +35,7 @@ router.post('/', function(req, res, next) {
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
         var text = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
             huext = huiator(text);
-        if (text.equals(huext)) {
+        if (text === huext) {
             telegram.sendMessage(chat_id, "https://www.youtube.com/watch?v=q5bc4nmDNio", reply_to_message_id)
         } else {
             telegram.sendMessage(chat_id, huext, reply_to_message_id);
