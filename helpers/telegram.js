@@ -1,12 +1,11 @@
-var https = require('https');
-var querystring = require('querystring');
-var request = require('request');
-
-var botToken = process.env.TOKEN || "your token here";
+'use strict';
+var https = require('https'),
+    querystring = require('querystring'),
+    request = require('request'),
+    botToken = process.env.TOKEN || "your_token_here";
 
 var telegram = {
-
-    sendMessage: function(chat_id, text, reply_to_message_id) {
+    sendMessage: function (chat_id, text, reply_to_message_id) {
 
         // Send the chat id, message to reply to, and the message to send
         var telegramRequestData = querystring.stringify({
@@ -28,12 +27,12 @@ var telegram = {
         };
 
         // Execute the request
-        var telegramRequest = https.request(telegramRequestOptions, function(telegramResponse) {
+        var telegramRequest = https.request(telegramRequestOptions, function (telegramResponse) {
             telegramResponse.setEncoding('utf8');
 
             // Read the response (not used right now, but you can log this to see what's happening)
             var output = '';
-            telegramResponse.on('data', function(chunk) {
+            telegramResponse.on('data', function (chunk) {
                 output += chunk;
             });
 
@@ -45,16 +44,14 @@ var telegram = {
         // Done
         telegramRequest.end();
 
-    },
 
-    sendPhoto: function(chat_id, photo, reply_to_message_id, contentType, picUrl) {
         var formData = {
             chat_id: chat_id,
             reply_to_message_id: reply_to_message_id,
-            photo: {
+            text: {
                 value: photo,
                 options: {
-                    contentType: contentType
+                    contentType: 'image/jpeg'
                 }
             }
         };
@@ -63,14 +60,34 @@ var telegram = {
             url: 'https://api.telegram.org/bot' + botToken + '/sendPhoto',
             formData: formData
         }, function optionalCallback(err, httpResponse, body) {
-            console.log('Telegram Server responded with: ', body);
-            console.dir(body);
+            if (body.indexOf('\"ok\":true') < 0) {
+                telegram.sendMessage(chat_id, 'I can\'t load this pic to telegram: ' + picUrl, reply_to_message_id)
+            }
+        });
+
+    },
+
+    sendPhoto: function (chat_id, photo, reply_to_message_id, picUrl) {
+        var formData = {
+            chat_id: chat_id,
+            reply_to_message_id: reply_to_message_id,
+            photo: {
+                value: photo,
+                options: {
+                    contentType: 'image/jpeg'
+                }
+            }
+        };
+
+        request.post({
+            url: 'https://api.telegram.org/bot' + botToken + '/sendPhoto',
+            formData: formData
+        }, function optionalCallback(err, httpResponse, body) {
             if (body.indexOf('\"ok\":true') < 0) {
                 telegram.sendMessage(chat_id, 'I can\'t load this pic to telegram: ' + picUrl, reply_to_message_id)
             }
         });
     }
-
 };
 
 module.exports = telegram;

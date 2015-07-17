@@ -1,13 +1,13 @@
-var express = require('express');
-var telegram = require('../helpers/telegram.js');
-var google = require('../helpers/google.js');
-var huiator = require('../helpers/huiator.js');
-var _ = require('underscore');
-var router = express.Router();
+'use strict';
+var express = require('express'),
+    telegram = require('../helpers/telegram.js'),
+    google = require('../helpers/google.js'),
+    huiator = require('../helpers/huiator.js'),
+    router = express.Router();
 
-router.post('/', function (req, res, next) {
-    if (!req.body.message.text) {
-        res.statusCode = 200;
+router.post('/', function (req, res) {
+    if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
+        res.statusCode = 501; //not implemented
         res.end();
         return;
     }
@@ -19,12 +19,11 @@ router.post('/', function (req, res, next) {
 
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
-        //var query = telegramMessage.replace('/g', '');
         var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
 
-        google.search(query, function imageCallback(message, isPhoto, contentType, url) {
+        google.search(query, function imageCallback(message, isPhoto, tabUrl) {
             if (isPhoto) {
-                telegram.sendPhoto(chat_id, message, reply_to_message_id, contentType, url);
+                telegram.sendPhoto(chat_id, message, reply_to_message_id, tabUrl);
             }
             else {
                 telegram.sendMessage(chat_id, message, reply_to_message_id);
@@ -34,7 +33,7 @@ router.post('/', function (req, res, next) {
 
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
         var text = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
-            huext = huiator(text);
+            huext = huiator.huify(text);
         if (text === huext) {
             telegram.sendMessage(chat_id, "https://www.youtube.com/watch?v=q5bc4nmDNio", reply_to_message_id)
         } else {
@@ -42,7 +41,6 @@ router.post('/', function (req, res, next) {
         }
     }
 
-    // Send response to Telegram, always OK
     res.statusCode = 200;
     res.end();
 });
