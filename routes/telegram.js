@@ -36,7 +36,11 @@ router.post('/', function(req, res, next) {
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
         var text = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
             huext = huiator(text);
-        telegram.sendMessage(chat_id, huext, reply_to_message_id);
+        if (text.equals(huext)) {
+            telegram.sendMessage(chat_id, "https://www.youtube.com/watch?v=q5bc4nmDNio", reply_to_message_id)
+        } else {
+            telegram.sendMessage(chat_id, huext, reply_to_message_id);
+        }
     }
 
     // Send response to Telegram, always OK
