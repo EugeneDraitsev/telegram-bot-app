@@ -35,4 +35,3 @@ var huiator = {
     }
 };
 module.exports = huiator;
-

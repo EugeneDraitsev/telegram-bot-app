@@ -1,29 +1,13 @@
 'use strict';
 var express = require('express'),
-    fs = require('fs'),
+    imageService = require('../helpers/image.js'),
     router = express.Router();
 
 router.get('/', function (req, res) {
-
-    //if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
-    //    res.statusCode = 501; //not implemented
-    //    res.end();
-    //    return;
-    //}
-    var stream = fs.createReadStream('../public/favicon.png');
-
-    stream.on('end', function () {
-        console.dir(arguments);
+    imageService.getImage(function (image) {
+        res.writeHead(200, {'Content-Type': 'image/png'});
+        res.end(image);
     });
-
-    stream.on('data', function () {
-        console.dir(arguments);
-    });
-
-    stream.pipe(res);
-
-    res.statusCode = 200;
-    res.end(stream);
 });
 
 module.exports = router;

@@ -1,7 +1,5 @@
 'use strict';
-var https = require('https'),
-    querystring = require('querystring'),
-    request = require('request'),
+var request = require('request'),
     botToken = process.env.TOKEN || "your_token_here";
 
 var telegram = {

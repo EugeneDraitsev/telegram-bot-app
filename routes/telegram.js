@@ -3,12 +3,13 @@ var express = require('express'),
     telegram = require('../helpers/telegram.js'),
     google = require('../helpers/google.js'),
     huiator = require('../helpers/huiator.js'),
+    imageService = require('../helpers/image.js'),
     router = express.Router();
 
 router.post('/', function (req, res) {
     if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
         res.statusCode = 501; //not implemented
-        res.end();
+        res.end(null);
         return;
     }
 
@@ -41,8 +42,14 @@ router.post('/', function (req, res) {
         }
     }
 
+    if (telegramMessage.lastIndexOf('/c', 0) === 0) {
+        imageService.getImage(function (image) {
+            telegram.sendPhoto(chat_id, image, reply_to_message_id);
+        });
+    }
+
     res.statusCode = 200;
-    res.end();
+    res.end(null);
 });
 
 module.exports = router;
