@@ -23,7 +23,8 @@ var telegram = {
             photo: {
                 value: photo,
                 options: {
-                    contentType: 'image/jpeg'
+                    contentType: 'image/png',
+                    filename: 'image.png'
                 }
             }
         };
@@ -31,7 +32,7 @@ var telegram = {
         request.post({
             url: 'https://api.telegram.org/bot' + botToken + '/sendPhoto',
             formData: formData
-        }, function optionalCallback(err, httpResponse, body) {
+        }, function (err, httpResponse, body) {
             if (body.indexOf('\"ok\":true') < 0) {
                 telegram.sendMessage(chat_id, 'I can\'t load this pic to telegram: ' + picUrl, reply_to_message_id)
             }

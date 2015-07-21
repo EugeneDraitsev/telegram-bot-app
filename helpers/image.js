@@ -3,11 +3,10 @@ var PNGImage = require('pngjs-image');
 
 var imageService = {
     getImage: function (callback) {
-        var image = PNGImage.createImage(400, 400), stream;
+        var image = PNGImage.createImage(400, 400);
 
         image.toBlob(function (err, image) {
-            stream = image;
-            callback(stream);
+            callback(image);
         });
     }
 };
