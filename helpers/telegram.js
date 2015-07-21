@@ -33,7 +33,7 @@ var telegram = {
             url: 'https://api.telegram.org/bot' + botToken + '/sendPhoto',
             formData: formData
         }, function (err, httpResponse, body) {
-            if (!body && body.indexOf('\"ok\":true') < 0) {
+            if (!body || body.indexOf('\"ok\":true') < 0) {
                 telegram.sendMessage(chat_id, 'I can\'t load this pic to telegram: ' + picUrl, reply_to_message_id)
             }
         });
