@@ -8,7 +8,7 @@ var express = require('express'),
 
 router.post('/', function (req, res) {
     if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
-        res.statusCode = 501; //not implemented
+        res.statusCode = 200;
         res.end(null);
         return;
     }
