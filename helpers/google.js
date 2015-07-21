@@ -1,6 +1,5 @@
 'use strict';
 var http = require('http'),
-    querystring = require('querystring'),
     request = require('request');
 
 var google = {

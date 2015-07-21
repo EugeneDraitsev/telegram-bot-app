@@ -5,6 +5,7 @@ var express = require('express'),
     logger = require('morgan'),
     cookieParser = require('cookie-parser'),
     bodyParser = require('body-parser'),
+    stats = require('./routes/stats'),
     telegram = require('./routes/telegram');
 
 var app = express();
@@ -22,6 +23,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/telegram', telegram);
+app.use('/stats', stats);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
