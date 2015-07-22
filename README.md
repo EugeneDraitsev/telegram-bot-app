@@ -1,8 +1,6 @@
 Bot for telegram, who can get images from google search
 
-Io.js 2.4.0 
-
-Express 4.2
+Io.js 2.4.0 / Express 4.2
 
 Please, use [io.js ](https://iojs.org/en/index.html) to lauch this app. 
 
