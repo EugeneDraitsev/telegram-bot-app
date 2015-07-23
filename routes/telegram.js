@@ -3,14 +3,11 @@ var express = require('express'),
     telegram = require('../helpers/telegram.js'),
     google = require('../helpers/google.js'),
     huiator = require('../helpers/huiator.js'),
-<<<<<<< Updated upstream
     imageService = require('../helpers/image.js'),
     router = express.Router(),
-    yasno = require('../helpers/yasno.js');
-=======
+    yasno = require('../helpers/yasno.js'),
     translation = require('../helpers/translation.js'),
     router = express.Router();
->>>>>>> Stashed changes
 
 router.post('/', function (req, res) {
     if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
