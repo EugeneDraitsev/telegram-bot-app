@@ -3,9 +3,14 @@ var express = require('express'),
     telegram = require('../helpers/telegram.js'),
     google = require('../helpers/google.js'),
     huiator = require('../helpers/huiator.js'),
+<<<<<<< Updated upstream
     imageService = require('../helpers/image.js'),
     router = express.Router(),
     yasno = require('../helpers/yasno.js');
+=======
+    translation = require('../helpers/translation.js'),
+    router = express.Router();
+>>>>>>> Stashed changes
 
 router.post('/', function (req, res) {
     if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
@@ -54,6 +59,17 @@ router.post('/', function (req, res) {
     if (telegramMessage.lastIndexOf('/c', 0) === 0) {
         imageService.getImage(function (image) {
             telegram.sendPhoto(chat_id, image, reply_to_message_id);
+    }
+
+    if (telegramMessage.lastIndexOf('/t') === 0) {
+        var text = telegramMessage.replace(telegramMessage.split(' ')[0], '');
+
+        translation.translateEngRu(text, function(message, translatedText) {
+            if (message) {
+                telegram.sendMessage(chat_id, message, reply_to_message_id);
+            } else {
+                telegram.sendMessage(chat_id, translatedText, reply_to_message_id);
+            }
         });
     }
 
