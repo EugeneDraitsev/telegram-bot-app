@@ -4,8 +4,9 @@ var express = require('express'),
     google = require('../helpers/google.js'),
     huiator = require('../helpers/huiator.js'),
     imageService = require('../helpers/image.js'),
-    router = express.Router(),
-    yasno = require('../helpers/yasno.js');
+    yasno = require('../helpers/yasno.js'),
+    translation = require('../helpers/translation.js'),
+    router = express.Router();
 
 router.post('/', function (req, res) {
     if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
@@ -54,6 +55,18 @@ router.post('/', function (req, res) {
     if (telegramMessage.lastIndexOf('/c', 0) === 0) {
         imageService.getImage(function (image) {
             telegram.sendPhoto(chat_id, image, reply_to_message_id);
+        });
+    }
+
+    if (telegramMessage.lastIndexOf('/t') === 0) {
+        var textTranslation = telegramMessage.replace(telegramMessage.split(' ')[0], '');
+
+        translation.translateEngRu(textTranslation, function (message, translatedText) {
+            if (message) {
+                telegram.sendMessage(chat_id, message, reply_to_message_id);
+            } else {
+                telegram.sendMessage(chat_id, translatedText, reply_to_message_id);
+            }
         });
     }
 
