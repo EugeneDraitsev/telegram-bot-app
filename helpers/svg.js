@@ -6,7 +6,6 @@ var d3 = require('d3'),
 
 var svgService = {
     getSampleSVG: function () {
-
         var pad = {t: 10, r: 10, b: 50, l: 40},
             width = 800 - pad.l - pad.r,
             height = 500 - pad.t - pad.b,
@@ -25,7 +24,6 @@ var svgService = {
 
         var vis = d3.select(document.body).html('').append('svg')
             .attr('xmlns', 'http://www.w3.org/2000/svg')
-            //.attr('xmlns:xlink', 'http://www.w3.org/1999/xlink')
             .attr('width', width + pad.l + pad.r)
             .attr('height', height + pad.t + pad.b)
             .append('g')

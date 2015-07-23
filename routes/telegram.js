@@ -35,19 +35,18 @@ router.post('/', function (req, res) {
 
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
         var textHuyator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
-            huext = huiator.huify(text);
+            huext = huiator.huify(textHuyator);
         if (textHuyator === huext) {
             telegram.sendMessage(chat_id, "https://www.youtube.com/watch?v=q5bc4nmDNio", reply_to_message_id)
         } else {
             telegram.sendMessage(chat_id, huext, reply_to_message_id);
         }
     }
+
     if (telegramMessage.lastIndexOf('/y', 0) === 0) {
         var textYasnoficator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
-            yaext = yasno.yasnyfy(text);
-        if (textYasnoficator === yaext) {
-            telegram.sendMessage(chat_id, ">2015 /n>yasno", reply_to_message_id)
-        } else {
+            yaext = yasno.yasnyfy(textYasnoficator);
+        if (textYasnoficator !== yaext) {
             telegram.sendMessage(chat_id, yaext, reply_to_message_id);
         }
     }
