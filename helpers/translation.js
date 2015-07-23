@@ -3,7 +3,7 @@ var request = require('request'),
     translationToken = process.env.TRANSLATION_APP_TOKEN || 'set_your_token';
 
 var translation = {
-    translate: function (textToTranslate, callback, lang) {
+    translateEngRu: function (textToTranslate, callback, lang) {
         var options = {
             url: "https://translate.yandex.net/api/v1.5/tr.json/translate",
             qs: {
