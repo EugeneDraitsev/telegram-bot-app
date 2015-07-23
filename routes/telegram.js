@@ -4,7 +4,8 @@ var express = require('express'),
     google = require('../helpers/google.js'),
     huiator = require('../helpers/huiator.js'),
     imageService = require('../helpers/image.js'),
-    router = express.Router();
+    router = express.Router(),
+    yasno = require('../helpers/yasno.js');
 
 router.post('/', function (req, res) {
     if (!req.body || !req.body.message || !req.body.message.chat || !req.body.message.message_id || !req.body.message.text) {
@@ -33,12 +34,21 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
-        var text = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+        var textHuyator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
             huext = huiator.huify(text);
-        if (text === huext) {
+        if (textHuyator === huext) {
             telegram.sendMessage(chat_id, "https://www.youtube.com/watch?v=q5bc4nmDNio", reply_to_message_id)
         } else {
             telegram.sendMessage(chat_id, huext, reply_to_message_id);
+        }
+    }
+    if (telegramMessage.lastIndexOf('/y', 0) === 0) {
+        var textYasnoficator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+            yaext = yasno.yasnyfy(text);
+        if (textYasnoficator === yaext) {
+            telegram.sendMessage(chat_id, ">2015 /n>yasno", reply_to_message_id)
+        } else {
+            telegram.sendMessage(chat_id, yaext, reply_to_message_id);
         }
     }
 
