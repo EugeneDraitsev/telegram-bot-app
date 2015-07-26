@@ -23,6 +23,10 @@ var google = {
         request
             .get(url)
             .on('response', function (response) {
+                if (!response.headers || !response.headers['content-type']) {
+                    callback('can\'t load image');
+                    return;
+                }
                 if (response.headers['content-type'].split('/')[0] !== 'image') {
                     if (!tbUrl) {
                         callback('can\'t load even preview');
