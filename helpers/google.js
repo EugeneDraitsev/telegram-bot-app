@@ -16,6 +16,8 @@ var google = {
                 else {
                     callback('Google can\'t find it for you');
                 }
+            }).on('error', function (e) {
+                console.log('ERROR getting search result from google:' + e);
             });
     },
 
@@ -36,6 +38,8 @@ var google = {
                     return;
                 }
                 callback(response, true, url);
+            }).on('error', function (e) {
+                console.log('ERROR uploading pic from server:' + e);
             });
     }
 };

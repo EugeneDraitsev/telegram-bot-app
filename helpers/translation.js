@@ -18,8 +18,9 @@ var translation = {
                 callback("Error from translation service");
             }
             callback("", JSON.parse(body).text[0]);
+        }).on('error', function (e) {
+            console.log('ERROR translator service:' + e);
         });
-
     }
 };
 

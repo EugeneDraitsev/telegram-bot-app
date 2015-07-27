@@ -13,6 +13,8 @@ var telegram = {
         request.post({
             url: 'https://api.telegram.org/bot' + botToken + '/sendMessage',
             formData: formData
+        }).on('error', function (e) {
+            console.log('ERROR send message:' + e);
         });
     },
 
@@ -36,6 +38,8 @@ var telegram = {
             if (!body || body.indexOf('\"ok\":true') < 0) {
                 telegram.sendMessage(chat_id, 'I can\'t load this pic to telegram: ' + picUrl, reply_to_message_id)
             }
+        }).on('error', function (e) {
+            console.log('ERROR posting image:' + e);
         });
     }
 };
