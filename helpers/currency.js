@@ -1,5 +1,6 @@
 "use strict";
-var request = require('request');
+var request = require('request'),
+    _ = require('underscore');
 
 var currency = {
     getCurrency: function (callback) {
@@ -11,8 +12,12 @@ var currency = {
                 console.log(err);
                 return false;
             }
-            currency.usd = (+(JSON.parse(body).usd.current).toFixed(2));
-            currency.eur = (+(JSON.parse(body).eur.current).toFixed(2));
+
+            _.mapObject(JSON.parse(body), function (val, key) {
+                if (_.has(val, 'current')) {
+                    currency[key] = val['current'];
+                }
+            });
             callback(currency);
         }).on('error', function (e) {
             console.log('ERROR getting currency from meduza:' + e);

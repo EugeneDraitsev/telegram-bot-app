@@ -6,6 +6,7 @@ var express = require('express'),
     yasno = require('../helpers/yasno.js'),
     translation = require('../helpers/translation.js'),
     currency = require('../helpers/currency.js'),
+    _ = require('underscore'),
     router = express.Router();
 
 router.post('/', function (req, res) {
@@ -55,11 +56,13 @@ router.post('/', function (req, res) {
     if (telegramMessage.lastIndexOf('/c', 0) === 0) {
         currency.getCurrency(function (result) {
             var message = "Курсы валют:\n";
-            message += "USD: " + result.usd + "\n";
-            message += "EUR: " + result.eur + "\n";
+            _.mapObject(result, function (val, key) {
+                message += key.toUpperCase() + ': ' + val;
+            });
             telegram.sendMessage(chat_id, message, "");
         })
-    };
+    }
+    ;
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
         var textTranslation = telegramMessage.replace(telegramMessage.split(' ')[0], '');
