@@ -5,8 +5,10 @@ var express = require('express'),
     logger = require('morgan'),
     cookieParser = require('cookie-parser'),
     bodyParser = require('body-parser'),
+    schedule = require("node-schedule"),
     stats = require('./routes/stats'),
-    telegram = require('./routes/telegram');
+    telegram = require('./routes/telegram'),
+    currency = require('./helpers/currency.js');
 
 var app = express();
 
@@ -58,5 +60,15 @@ app.use(function (err, req, res) {
     });
 });
 
+schedule.scheduleJob({minute: 0}, function() {
+    var result = currency.getCurrency(),
+        message = "Курсы валют:\n",
+        cur;
+
+    for (cur in result) {
+        message += cur.toUpperCase() + ": " + result[cur] + "\n";
+    }
+    telegram.sendMessage(chat_id, message);
+});
 
 module.exports = app;
