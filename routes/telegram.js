@@ -57,7 +57,7 @@ router.post('/', function (req, res) {
         currency.getCurrency(function (result) {
             var message = "Курсы валют:\n";
             _.mapObject(result, function (val, key) {
-                message += key.toUpperCase() + ': ' + val;
+                message += key.toUpperCase() + ': ' + val + '\n';
             });
             telegram.sendMessage(chat_id, message, "");
         })

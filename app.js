@@ -65,7 +65,7 @@ schedule.scheduleJob({minute: 0}, function () {
     currency.getScheduledCurrency(function (result) {
         var message = "Курсы валют:\n";
         _.mapObject(result, function (val, key) {
-            message += key.toUpperCase() + ': ' + val;
+            message += key.toUpperCase() + ': ' + val + '\n';
         });
         telegramHelper.sendMessage(-22982336, message, "");
     })
