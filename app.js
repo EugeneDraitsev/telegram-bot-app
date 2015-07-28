@@ -9,6 +9,7 @@ var express = require('express'),
     stats = require('./routes/stats'),
     telegram = require('./routes/telegram'),
     telegramHelper = require('./helpers/telegram'),
+    _ = require('underscore'),
     currency = require('./helpers/currency.js');
 
 var app = express();
