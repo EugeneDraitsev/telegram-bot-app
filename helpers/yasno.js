@@ -2,7 +2,7 @@
 
 var yasno = {
     yasnyfy: function (text) {
-        var year = Date.now().getYear() + 1900;
+        var year = new Date().getFullYear();
         var yasnenko = "\nЯсно";
         if (text.length === 0) {
             text = ("\n>" + year + yasnenko);
