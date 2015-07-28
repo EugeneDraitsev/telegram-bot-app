@@ -66,8 +66,7 @@ schedule.scheduleJob({minute: 0}, function () {
         var message = "Курсы валют:\n";
         message += "USD: " + result.usd + "\n";
         message += "EUR: " + result.eur + "\n";
-        //telegramHelper.sendMessage(-22982336, message, "");
-        console.log('test ' + Date.now());
+        telegramHelper.sendMessage(-22982336, message, "");
     })
 });
 
