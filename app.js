@@ -8,6 +8,7 @@ var express = require('express'),
     schedule = require("node-schedule"),
     stats = require('./routes/stats'),
     telegram = require('./routes/telegram'),
+    telegramHelper = require('./helpers/telegram'),
     currency = require('./helpers/currency.js');
 
 var app = express();
@@ -60,15 +61,16 @@ app.use(function (err, req, res) {
     });
 });
 
-schedule.scheduleJob({minute: 0}, function() {
+schedule.scheduleJob({minute: 0}, function () {
     var result = currency.getCurrency(),
-        message = "ΠΡƒΡ€ΡΡ‹ Π²Π°Π»ΡΡ‚:\n",
-        cur;
+        message = "Κσπρϋ βΰλώς:\n";
 
-    for (cur in result) {
+    result.forEach(function (cur) {
         message += cur.toUpperCase() + ": " + result[cur] + "\n";
-    }
-    telegram.sendMessage(chat_id, message);
+    });
+
+    console.log('test');
+    //telegramHelper.sendMessage(-22982336, message);
 });
 
 module.exports = app;

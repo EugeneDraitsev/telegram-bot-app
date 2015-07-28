@@ -3,9 +3,9 @@ var express = require('express'),
     telegram = require('../helpers/telegram.js'),
     google = require('../helpers/google.js'),
     huiator = require('../helpers/huiator.js'),
-    imageService = require('../helpers/image.js'),
     yasno = require('../helpers/yasno.js'),
     translation = require('../helpers/translation.js'),
+    currency = require('../helpers/currency.js'),
     router = express.Router();
 
 router.post('/', function (req, res) {
@@ -53,9 +53,14 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/c', 0) === 0) {
-        imageService.getImage(function (image) {
-            telegram.sendPhoto(chat_id, image, reply_to_message_id);
+        var result = currency.getCurrency(),
+            message = "Курсы валют:\n";
+
+        result.forEach(function (cur) {
+            message += cur.toUpperCase() + ": " + result[cur] + "\n";
         });
+
+        telegram.sendMessage(chat_id, message);
     }
 
     if (telegramMessage.lastIndexOf('/t') === 0) {

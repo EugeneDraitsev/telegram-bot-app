@@ -6,7 +6,7 @@ var currency = {
         var url = "https://meduza.io/api/v3/stock/all";
 
         if (validate(new Date())) {
-            request.post(url, function(err, response, body) {
+            request.post(url, function (err, response, body) {
                 var currency = {};
 
                 if (err) {
@@ -16,19 +16,19 @@ var currency = {
                     currency.eur = (+(JSON.parse(body).eur.current).toFixed(2));
                     callback(currency);
                 }
+            }).on('error', function (e) {
+                console.log('ERROR getting currency from meduza:' + e);
             });
         }
-    };
+    }
 };
 
 function validate(currentTime) {
     var hoursToCheck = [7, 9, 11, 13, 15, 17];
 
-    if (hoursToCheck.indexOf(currentTime.getHours()) !== -1
-        && currentTime.getDay() < 6) {          //check if day isn't a weekend
-        return true;
-    }
-    return false;
+    return !!(hoursToCheck.indexOf(currentTime.getHours() !== -1)
+    && currentTime.getDay() < 6);
+
 }
 
 module.exports = currency;

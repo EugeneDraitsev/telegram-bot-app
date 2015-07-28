@@ -40,6 +40,7 @@ var google = {
                 callback(response, true, url);
             }).on('error', function (e) {
                 console.log('ERROR uploading pic from server:' + e);
+                google.getImage(tbUrl, callback);
             });
     }
 };
