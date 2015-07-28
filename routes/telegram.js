@@ -54,13 +54,13 @@ router.post('/', function (req, res) {
 
     if (telegramMessage.lastIndexOf('/c', 0) === 0) {
         var result = currency.getCurrency(),
-            message = "Κσπρϋ βΰλώς:\n";
+            message = "ΠΡƒΡ€ΡΡ‹ Π²Π°Π»ΡΡ‚:\n";
 
-        result.forEach(function (cur) {
-            message += cur.toUpperCase() + ": " + result[cur] + "\n";
-        });
+        //result.forEach(function (cur) {
+        //    message += cur.toUpperCase() + ": " + result[cur] + "\n";
+        //});
 
-        telegram.sendMessage(chat_id, message);
+        telegram.sendMessage(chat_id, message, "");
     }
 
     if (telegramMessage.lastIndexOf('/t') === 0) {

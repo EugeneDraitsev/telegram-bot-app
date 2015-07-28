@@ -63,7 +63,7 @@ app.use(function (err, req, res) {
 
 schedule.scheduleJob({minute: 0}, function () {
     var result = currency.getCurrency(),
-        message = "Κσπρϋ βΰλώς:\n";
+        message = "ΠΡƒΡ€ΡΡ‹ Π²Π°Π»ΡΡ‚:\n";
 
     result.forEach(function (cur) {
         message += cur.toUpperCase() + ": " + result[cur] + "\n";
