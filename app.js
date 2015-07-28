@@ -62,15 +62,13 @@ app.use(function (err, req, res) {
 });
 
 schedule.scheduleJob({minute: 0}, function () {
-    var result = currency.getCurrency(),
-        message = "Курсы валют:\n";
-
-    result.forEach(function (cur) {
-        message += cur.toUpperCase() + ": " + result[cur] + "\n";
-    });
-
-    console.log('test');
-    //telegramHelper.sendMessage(-22982336, message);
+    currency.getCurrency(function (result) {
+        var message = "Курсы валют:\n";
+        message += "USD: " + result.usd + "\n";
+        message += "EUR: " + result.eur + "\n";
+        //telegramHelper.sendMessage(-22982336, message, "");
+        console.log('test');
+    })
 });
 
 module.exports = app;

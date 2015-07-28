@@ -53,15 +53,13 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/c', 0) === 0) {
-        var result = currency.getCurrency(),
-            message = "Курсы валют:\n";
-
-        //result.forEach(function (cur) {
-        //    message += cur.toUpperCase() + ": " + result[cur] + "\n";
-        //});
-
-        telegram.sendMessage(chat_id, message, "");
-    }
+        currency.getCurrency(function (result) {
+            var message = "Курсы валют:\n";
+            message += "USD: " + result.usd + "\n";
+            message += "EUR: " + result.eur + "\n";
+            telegram.sendMessage(chat_id, message, "");
+        })
+    };
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
         var textTranslation = telegramMessage.replace(telegramMessage.split(' ')[0], '');
