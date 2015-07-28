@@ -2,10 +2,10 @@
 var request = require('request');
 
 var currency = {
-    getCurrency: function (callback) {
+    getCurrency: function () {
         var url = "https://meduza.io/api/v3/stock/all";
 
-        if (validate(new Date())) {
+        //if (validate(new Date())) {
             request.post(url, function (err, response, body) {
                 var currency = {};
 
@@ -14,12 +14,11 @@ var currency = {
                 } else {
                     currency.usd = (+(JSON.parse(body).usd.current).toFixed(2));
                     currency.eur = (+(JSON.parse(body).eur.current).toFixed(2));
-                    callback(currency);
                 }
             }).on('error', function (e) {
                 console.log('ERROR getting currency from meduza:' + e);
             });
-        }
+        //}
     }
 };
 
