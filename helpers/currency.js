@@ -15,7 +15,7 @@ var currency = {
 
             _.mapObject(JSON.parse(body), function (val, key) {
                 if (_.has(val, 'current')) {
-                    currency[key] = val['current'];
+                    currency[key] = val['current'].toFixed(2);
                 }
             });
             callback(currency);
