@@ -1,6 +1,8 @@
 "use strict";
 var request = require('request'),
     _ = require('underscore');
+    
+var HOURS_TO_CHECK = [7, 9, 11, 13, 15, 17];
 
 var currency = {
     getCurrency: function (callback) {
@@ -30,11 +32,8 @@ var currency = {
     }
 };
 
-function validate(currentTime) {
-    var hoursToCheck = [7, 9, 11, 13, 15, 17];
-
-    return !!(hoursToCheck.indexOf(currentTime.getHours() !== -1)
-    && currentTime.getDay() < 6);
+function validate(time) {
+    return _.contains(HOURS_TO_CHECK, time.getHours()) && time.getDay() < 6;
 }
 
 module.exports = currency;
