@@ -33,8 +33,7 @@ var currency = {
 };
 
 function validate(currentTime) {
-    return Boolean(_.contains(HOURS_TO_CHECK, currentTime.getHours())
-    && (currentTime.getDay() < 6));
+    return _.contains(HOURS_TO_CHECK, currentTime.getHours() && currentTime.getDay() < 6);
 }
 
 module.exports = currency;
