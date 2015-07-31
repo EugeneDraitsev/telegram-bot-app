@@ -7,7 +7,7 @@ var google = {
             .get("http://ajax.googleapis.com/ajax/services/search/images?v=1.0&as_filetype=jpg%20png&rsz=8&q=" + encodeURI(query),
             function (err, httpResponse, body) {
                 var responseData = JSON.parse(body).responseData;
-                if (responseData.results.length > 0) {
+                if (responseData.results && responseData.results.length > 0) {
                     var index = Math.floor(Math.random() * responseData.results.length),
                         imageUrl = responseData.results[index].unescapedUrl,
                         tbUrl = responseData.results[index].tbUrl;
