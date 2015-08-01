@@ -1,8 +1,9 @@
 "use strict";
 var request = require('request'),
+    moment = require('moment-timezone'),
     _ = require('underscore');
     
-var HOURS_TO_CHECK = [7, 9, 11, 13, 15, 17];
+var HOURS_TO_CHECK = [10, 12, 14, 16, 18, 20];
 
 var currency = {
     getCurrency: function (callback) {
@@ -26,14 +27,14 @@ var currency = {
         });
     },
     getScheduledCurrency: function (callback) {
-        if (validate(new Date())) {
+        if (validate(moment().tz('Europe/Minsk'))) {
             currency.getCurrency(callback);
         }
     }
 };
 
 function validate(time) {
-    return _.contains(HOURS_TO_CHECK, time.getHours()) && time.getDay() < 6;
+    return _.contains(HOURS_TO_CHECK, time.format("H")) && time.format("d") < 6;
 }
 
 module.exports = currency;
