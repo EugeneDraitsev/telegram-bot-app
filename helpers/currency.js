@@ -2,7 +2,7 @@
 var request = require('request'),
     moment = require('moment-timezone'),
     _ = require('underscore');
-    
+
 var HOURS_TO_CHECK = [10, 12, 14, 16, 18, 20];
 
 var currency = {
@@ -34,7 +34,7 @@ var currency = {
 };
 
 function validate(time) {
-    return _.contains(HOURS_TO_CHECK, time.format("H")) && time.format("d") < 6;
+    return _.contains(HOURS_TO_CHECK, Number(time.format("H"))) && time.format("d") < 6;
 }
 
 module.exports = currency;
