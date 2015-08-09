@@ -37,4 +37,5 @@ var statistic = {
 function splitString(stringToSplit, separator) {
     return stringToSplit.split(separator)
 }
+
 module.exports = statistic;

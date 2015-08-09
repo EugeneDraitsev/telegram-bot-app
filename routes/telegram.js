@@ -22,6 +22,8 @@ router.post('/', function (req, res) {
         chat_id = telegramUpdate.message.chat.id,
         reply_to_message_id = telegramUpdate.message.message_id;
 
+    statistic.takeMsg(telegramMessage);
+
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
 
@@ -75,14 +77,10 @@ router.post('/', function (req, res) {
         });
     }
 
-    //Skaj's statistic function
-    statistic.takeMsg(telegramMessage);
-
     if (telegramMessage.lastIndexOf('/s') === 0) {
         var message = statistic.allTimeStats(statistic.getContainer());
         telegram.sendMessage(chat_id, message, reply_to_message_id);
     }
-    //end statistics
 
     res.statusCode = 200;
     res.end(null);
