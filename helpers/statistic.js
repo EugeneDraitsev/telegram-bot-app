@@ -12,7 +12,7 @@ var statistic = {
         //TODO remove min size of statistics
         if (keys.length > 10) {
             for (var i = 0; i < 10; i++) {
-                text += keys[i] + ':' + mainContainer[keys[i]] + '\n'
+                text += keys[i] + ' : ' + mainContainer[keys[i]] + '\n'
             }
         } else {
             text = 'Мало слов для выборки';
