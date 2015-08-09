@@ -6,8 +6,7 @@ var express = require('express'),
     yasno = require('../helpers/yasno.js'),
     translation = require('../helpers/translation.js'),
     currency = require('../helpers/currency.js'),
-    statistic = require('../statistic/statistic'),
-    container = require('../statistic/container'),
+    statistic = require('../helpers/statistic'),
     _ = require('underscore'),
     router = express.Router();
 
@@ -76,11 +75,11 @@ router.post('/', function (req, res) {
         });
     }
 
-    //skajs statistic function
-    container.takeMsg(telegramMessage);
+    //Skaj's statistic function
+    statistic.takeMsg(telegramMessage);
 
     if (telegramMessage.lastIndexOf('/s') === 0) {
-        var message = statistic.allTimeStats(container.getContainer());
+        var message = statistic.allTimeStats(statistic.getContainer());
         telegram.sendMessage(chat_id, message, reply_to_message_id);
     }
     //end statistics
