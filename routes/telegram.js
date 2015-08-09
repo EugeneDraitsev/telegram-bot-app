@@ -78,7 +78,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/s') === 0) {
-        var message = statistic.allTimeStats(statistic.getContainer());
+        var message = statistic.allTimeStats();
         telegram.sendMessage(chat_id, message, reply_to_message_id);
     }
 

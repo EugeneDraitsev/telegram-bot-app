@@ -1,36 +1,35 @@
 'use strict';
 
-var separator = /[\s.,]/,
+var separator = /[\s.,?!]/,
     mainContainer = {};
 
 
 var statistic = {
-    allTimeStats: function (container) {
+    allTimeStats: function () {
         var text = 'Most popular words:\n',
-            keys = Object.keys(container);
+            keys = Object.keys(mainContainer);
 
         keys.sort(compareCount);
-
-        for (var i = 0; i < 10; i++) {
-            text += keys[i] + ':' + container[keys[i]] + '\n'
+        if (keys.length > 10) {
+            for (var i = 0; i < 10; i++) {
+                text += keys[i] + ':' + mainContainer[keys[i]] + '\n'
+            }
+        } else {
+            text = 'Мало слов для выборки';
         }
 
         function compareCount(a, b) {
-            return container[b] - container[a];
+            return mainContainer[b] - mainContainer[a];
         }
+
         return text;
     },
     takeMsg: function (msg) {
-        var tempArr = splitString(msg, separator);
-
-        tempArr.forEach(function (word) {
+        splitString(msg, separator).forEach(function (word) {
             if (word.length > 2) {
                 mainContainer[word] = word in mainContainer ? mainContainer[word] + 1 : 1;
             }
         });
-    },
-    getContainer: function () {
-        return mainContainer;
     }
 };
 
