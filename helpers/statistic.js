@@ -3,13 +3,13 @@
 var separator = /[\s.,?!]/,
     mainContainer = {};
 
-
 var statistic = {
     allTimeStats: function () {
         var text = 'Most popular words:\n',
             keys = Object.keys(mainContainer);
 
         keys.sort(compareCount);
+        //TODO remove min size of statistics
         if (keys.length > 10) {
             for (var i = 0; i < 10; i++) {
                 text += keys[i] + ':' + mainContainer[keys[i]] + '\n'
