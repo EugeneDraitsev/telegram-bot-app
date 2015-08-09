@@ -6,6 +6,8 @@ var express = require('express'),
     yasno = require('../helpers/yasno.js'),
     translation = require('../helpers/translation.js'),
     currency = require('../helpers/currency.js'),
+    statistic = require('../statistic/statistic'),
+    container = require('../statistic/container'),
     _ = require('underscore'),
     router = express.Router();
 
@@ -20,7 +22,6 @@ router.post('/', function (req, res) {
         telegramMessage = telegramUpdate.message.text,
         chat_id = telegramUpdate.message.chat.id,
         reply_to_message_id = telegramUpdate.message.message_id;
-
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
@@ -62,7 +63,6 @@ router.post('/', function (req, res) {
             telegram.sendMessage(chat_id, message, "");
         })
     }
-    ;
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
         var textTranslation = telegramMessage.replace(telegramMessage.split(' ')[0], '');
@@ -75,6 +75,15 @@ router.post('/', function (req, res) {
             }
         });
     }
+
+    //skajs statistic function
+    container.takeMsg(telegramMessage);
+
+    if (telegramMessage.lastIndexOf('/s') === 0) {
+        var message = statistic.allTimeStats(container.getContainer());
+        telegram.sendMessage(chat_id, message, reply_to_message_id);
+    }
+    //end statistics
 
     res.statusCode = 200;
     res.end(null);
