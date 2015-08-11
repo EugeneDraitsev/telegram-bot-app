@@ -6,6 +6,7 @@ var express = require('express'),
     yasno = require('../helpers/yasno.js'),
     translation = require('../helpers/translation.js'),
     currency = require('../helpers/currency.js'),
+    statistic = require('../helpers/statistic'),
     _ = require('underscore'),
     router = express.Router();
 
@@ -21,6 +22,7 @@ router.post('/', function (req, res) {
         chat_id = telegramUpdate.message.chat.id,
         reply_to_message_id = telegramUpdate.message.message_id;
 
+    statistic.takeMsg(telegramMessage);
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
@@ -62,7 +64,6 @@ router.post('/', function (req, res) {
             telegram.sendMessage(chat_id, message, "");
         })
     }
-    ;
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
         var textTranslation = telegramMessage.replace(telegramMessage.split(' ')[0], '');
@@ -74,6 +75,10 @@ router.post('/', function (req, res) {
                 telegram.sendMessage(chat_id, translatedText, reply_to_message_id);
             }
         });
+    }
+
+    if (telegramMessage.lastIndexOf('/s') === 0) {
+        telegram.sendMessage(chat_id, statistic.allTimeStats(), reply_to_message_id);
     }
 
     res.statusCode = 200;
