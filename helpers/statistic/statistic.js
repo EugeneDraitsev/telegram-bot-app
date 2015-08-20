@@ -32,7 +32,7 @@ function takeMsg(msg) {
 }
 
 function takeUserInfo(user_info) {
-    if (user_info.id in usersContainerDay[user_info.id]) {
+    if (user_info.id in usersContainerDay) {
         usersContainerDay[user_info.id].msgCount += 1;
     } else {
         usersContainerDay[user_info.id] = {
