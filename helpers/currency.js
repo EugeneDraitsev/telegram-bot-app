@@ -3,7 +3,8 @@ var request = require('request'),
     moment = require('moment-timezone'),
     _ = require('underscore');
 
-var HOURS_TO_CHECK = [10, 12, 14, 16, 18, 20];
+var HOURS_TO_CHECK = [];
+var i;
 
 var currency = {
     getCurrency: function (callback) {
@@ -32,6 +33,10 @@ var currency = {
         }
     }
 };
+
+for (i = 10; i <= 20; i++) {
+    HOURS_TO_CHECK.push(i);
+}
 
 function validate(time) {
     return _.contains(HOURS_TO_CHECK, Number(time.format("H"))) && time.isoWeekday() < 6;
