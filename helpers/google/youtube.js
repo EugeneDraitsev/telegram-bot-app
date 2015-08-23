@@ -6,6 +6,7 @@ var YouTube = require('youtube-node'),
     prefix = 'https://youtu.be/';
 
 youTube.setKey(process.env.YOUTUBE_TOKEN || "paste_your_token_here");
+youTube.addParam('type', 'video');
 
 var youTubeService = {
     /**
