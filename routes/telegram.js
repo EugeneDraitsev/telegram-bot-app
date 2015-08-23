@@ -1,12 +1,13 @@
 'use strict';
 var express = require('express'),
     telegram = require('../helpers/telegram.js'),
-    google = require('../helpers/google.js'),
+    google = require('../helpers/google/search.js'),
     huiator = require('../helpers/huiator.js'),
     yasno = require('../helpers/yasno.js'),
     translation = require('../helpers/translation.js'),
     currency = require('../helpers/currency.js'),
     statistic = require('../helpers/statistic/statistic'),
+    youtube = require('../helpers/google/youtube'),
     _ = require('underscore'),
     router = express.Router();
 
@@ -85,6 +86,18 @@ router.post('/', function (req, res) {
 
     if (telegramMessage.lastIndexOf('/u') === 0) {
         telegram.sendMessage(chat_id, statistic.getUsersDayStatistic(), '');
+    }
+
+    if (telegramMessage.lastIndexOf('/v', 0) === 0) {
+        var youtubeQuery = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim();
+
+        youtube.search(youtubeQuery)
+            .then(function (response) {
+                telegram.sendMessage(chat_id, response, reply_to_message_id);
+            })
+            .catch(function (err) {
+                console.log(err);
+            });
     }
 
     res.statusCode = 200;
