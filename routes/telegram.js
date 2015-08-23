@@ -30,12 +30,12 @@ router.post('/', function (req, res) {
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
 
-        google.search(query, function imageCallback(message, isPhoto, tabUrl) {
-            if (isPhoto) {
-                telegram.sendPhoto(chat_id, message, reply_to_message_id, tabUrl);
+        google.search(query, function imageCallback(error, photo, tabUrl) {
+            if (error) {
+                telegram.sendMessage(chat_id, error, reply_to_message_id);
             }
             else {
-                telegram.sendMessage(chat_id, message, reply_to_message_id);
+                telegram.sendPhoto(chat_id, photo, reply_to_message_id, tabUrl);
             }
         });
     }

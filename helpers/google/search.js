@@ -1,5 +1,6 @@
 'use strict';
-var request = require('request');
+var request = require('request'),
+    _ = require('underscore');
 
 var google = {
     search: function (query, callback) {
@@ -8,9 +9,9 @@ var google = {
             function (err, httpResponse, body) {
                 var responseData = JSON.parse(body).responseData;
                 if (responseData.results && responseData.results.length > 0) {
-                    var index = Math.floor(Math.random() * responseData.results.length),
-                        imageUrl = responseData.results[index].unescapedUrl,
-                        tbUrl = responseData.results[index].tbUrl;
+                    var image = _.sample(responseData.results),
+                        imageUrl = image.unescapedUrl,
+                        tbUrl = image.tbUrl;
                     google.getImage(imageUrl, callback, tbUrl);
                 }
                 else {
@@ -37,7 +38,7 @@ var google = {
                     google.getImage(tbUrl, callback);
                     return;
                 }
-                callback(response, true, url);
+                callback(false, response, url);
             }).on('error', function (e) {
                 console.log('ERROR uploading pic from server:' + e);
                 google.getImage(tbUrl, callback);
