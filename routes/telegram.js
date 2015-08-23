@@ -1,11 +1,11 @@
 'use strict';
 var express = require('express'),
-    telegram = require('../helpers/telegram.js'),
+    telegram = require('../helpers/telegram/telegram.js'),
     google = require('../helpers/google/search.js'),
-    huiator = require('../helpers/huiator.js'),
-    yasno = require('../helpers/yasno.js'),
-    translation = require('../helpers/translation.js'),
-    currency = require('../helpers/currency.js'),
+    huiator = require('../helpers/text/huiator.js'),
+    yasno = require('../helpers/text/yasno.js'),
+    translation = require('../helpers/yandex/translation.js'),
+    currency = require('../helpers/currency/currency.js'),
     statistic = require('../helpers/statistic/statistic'),
     youtube = require('../helpers/google/youtube'),
     _ = require('underscore'),
@@ -66,6 +66,39 @@ router.post('/', function (req, res) {
             });
             telegram.sendMessage(chat_id, message, "");
         })
+    }
+
+    if (telegramMessage.lastIndexOf('/f', 0) === 0) {
+        var fType = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+            type = 0;
+
+        switch (fType) {
+            case 'd' :
+                type = 0;
+                break;
+            case '2d':
+                type = 1;
+                break;
+            case 'w':
+                type = 2;
+                break;
+            case 'm':
+                type = 3;
+                break;
+            case 'y':
+                type = 4;
+                break;
+            default:
+                type = 0;
+        }
+
+        currency.getCurrencyGraph(function (error, image) {
+            if (error) {
+                telegram.sendMessage(chat_id, error, reply_to_message_id);
+            } else {
+                telegram.sendPhoto(chat_id, image, reply_to_message_id);
+            }
+        }, type)
     }
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
