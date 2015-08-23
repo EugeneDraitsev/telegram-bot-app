@@ -5,7 +5,7 @@ var YouTube = require('youtube-node'),
     _ = require('underscore'),
     prefix = 'https://youtu.be/';
 
-var EMPTY_RESULTS_MESSAGE = 'Нет видосов пидор.';
+var EMPTY_RESULTS_MESSAGE = 'No results for: “$1”';
 
 youTube.setKey(process.env.YOUTUBE_TOKEN || "paste_your_token_here");
 youTube.addParam('type', 'video');
@@ -26,7 +26,7 @@ var youTubeService = {
                     var items = result.items,
                         responseItem = _.sample(items);
                     if(_.isEmpty(items)) {
-                        resolve(EMPTY_RESULTS_MESSAGE);
+                        resolve(EMPTY_RESULTS_MESSAGE.replace('$1', query));
                         return;
                     }
                     resolve(prefix + responseItem.id.videoId);
