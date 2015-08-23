@@ -1,5 +1,6 @@
 'use strict';
 var _ = require('underscore'),
+    request = require('request'),
     imageService = require('../image/png');
 
 var google = {
