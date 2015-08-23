@@ -1,7 +1,6 @@
 'use strict';
-var request = require('request'),
-    _ = require('underscore'),
-    imageService = request('../image/png');
+var _ = require('underscore'),
+    imageService = require('../image/png');
 
 var google = {
     searchImage: function (query, callback) {
