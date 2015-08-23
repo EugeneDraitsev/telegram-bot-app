@@ -35,8 +35,9 @@ var currency = {
     },
 
     getCurrencyGraph: function (callback, type) {
-        image.getImage('http://j1.forexpf.ru/delta/prochart?type=USDRUB&amount=500&chart_height=600&chart_width=1200&grtype=2&tictype=' + type, function (error, image) {
-            callback(error, image);
+        var url = 'http://j1.forexpf.ru/delta/prochart?type=USDRUB&amount=500&chart_height=600&chart_width=1200&grtype=2&tictype=' + type;
+        image.getImage(url, function (error, image) {
+            callback(error, image, url);
         });
     }
 };

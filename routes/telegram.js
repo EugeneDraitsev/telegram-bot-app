@@ -92,11 +92,11 @@ router.post('/', function (req, res) {
                 type = 0;
         }
 
-        currency.getCurrencyGraph(function (error, image) {
+        currency.getCurrencyGraph(function (error, image, tbUrl) {
             if (error) {
                 telegram.sendMessage(chat_id, error, reply_to_message_id);
             } else {
-                telegram.sendPhoto(chat_id, image, reply_to_message_id);
+                telegram.sendPhoto(chat_id, image, reply_to_message_id, tbUrl);
             }
         }, type)
     }
@@ -138,7 +138,7 @@ router.post('/', function (req, res) {
 });
 
 function parseQuery(query) {
-    return query.replace(/\/\S+\s*/g).trim();
+    return query.replace(/\/\S+\s*/g, '').trim();
 }
 
 module.exports = router;
