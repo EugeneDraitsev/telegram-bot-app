@@ -1,13 +1,13 @@
 'use strict';
 var express = require('express'),
-    telegram = require('../helpers/telegram.js'),
-    google = require('../helpers/google/search.js'),
-    huiator = require('../helpers/huiator.js'),
-    yasno = require('../helpers/yasno.js'),
-    translation = require('../helpers/translation.js'),
-    currency = require('../helpers/currency.js'),
-    statistic = require('../helpers/statistic/statistic'),
-    youtube = require('../helpers/google/youtube'),
+    telegram = require('../core/telegram/telegram.js'),
+    google = require('../core/google/search.js'),
+    huiator = require('../core/text/huiator.js'),
+    yasno = require('../core/text/yasno.js'),
+    translation = require('../core/yandex/translation.js'),
+    currency = require('../core/currency/currency.js'),
+    statistic = require('../core/statistic/statistic'),
+    youtube = require('../core/google/youtube'),
     _ = require('underscore'),
     router = express.Router();
 
@@ -28,7 +28,7 @@ router.post('/', function (req, res) {
     statistic.takeUserInfo(user_info);
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
-        var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
+        var query = parseQuery(telegramMessage);
 
         google.searchImage(query, function imageCallback(error, photo, tabUrl) {
             if (error) {
@@ -41,7 +41,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
-        var textHuyator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+        var textHuyator = parseQuery(telegramMessage),
             huext = huiator.huify(textHuyator);
         if (textHuyator === huext) {
             telegram.sendMessage(chat_id, "https://www.youtube.com/watch?v=q5bc4nmDNio", reply_to_message_id)
@@ -51,7 +51,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/y', 0) === 0) {
-        var textYasnoficator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+        var textYasnoficator = parseQuery(telegramMessage),
             yaext = yasno.yasnyfy(textYasnoficator);
         if (textYasnoficator !== yaext) {
             telegram.sendMessage(chat_id, yaext, reply_to_message_id);
@@ -68,8 +68,41 @@ router.post('/', function (req, res) {
         })
     }
 
+    if (telegramMessage.lastIndexOf('/f', 0) === 0) {
+        var fType = parseQuery(telegramMessage),
+            type = 0;
+
+        switch (fType) {
+            case 'd' :
+                type = 0;
+                break;
+            case '2d':
+                type = 1;
+                break;
+            case 'w':
+                type = 2;
+                break;
+            case 'm':
+                type = 3;
+                break;
+            case 'y':
+                type = 4;
+                break;
+            default:
+                type = 0;
+        }
+
+        currency.getCurrencyGraph(function (error, image) {
+            if (error) {
+                telegram.sendMessage(chat_id, error, reply_to_message_id);
+            } else {
+                telegram.sendPhoto(chat_id, image, reply_to_message_id);
+            }
+        }, type)
+    }
+
     if (telegramMessage.lastIndexOf('/t') === 0) {
-        var textTranslation = telegramMessage.replace(telegramMessage.split(' ')[0], '');
+        var textTranslation = parseQuery(telegramMessage);
 
         translation.translateEngRu(textTranslation, function (message, translatedText) {
             if (message) {
@@ -89,7 +122,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/v', 0) === 0) {
-        var youtubeQuery = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim();
+        var youtubeQuery = parseQuery(telegramMessage);
 
         youtube.search(youtubeQuery)
             .then(function (response) {
@@ -103,5 +136,9 @@ router.post('/', function (req, res) {
     res.statusCode = 200;
     res.end(null);
 });
+
+function parseQuery(query) {
+    return query.replace(/\/\S+\s*/g).trim();
+}
 
 module.exports = router;

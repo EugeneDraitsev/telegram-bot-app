@@ -1,11 +1,11 @@
 'use strict';
 var express = require('express'),
-    imageService = require('../helpers/image.js'),
-    svgService = require('../helpers/svg.js'),
+    imageService = require('../core/image/png.js'),
+    svgService = require('../core/image/svg.js'),
     router = express.Router();
 
 router.get('/', function (req, res) {
-    imageService.getImage(function (image) {
+    imageService.getTestImage(function (image) {
         res.writeHead(200, {'Content-Type': 'image/png'});
         res.end(image);
     });
