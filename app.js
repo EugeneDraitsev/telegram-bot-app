@@ -8,9 +8,9 @@ var express = require('express'),
     schedule = require("node-schedule"),
     stats = require('./routes/stats'),
     telegram = require('./routes/telegram'),
-    telegramHelper = require('./helpers/telegram/telegram'),
+    telegramHelper = require('./core/telegram/telegram'),
     _ = require('underscore'),
-    currency = require('./helpers/currency/currency.js');
+    currency = require('./core/currency/currency.js');
 
 var app = express();
 

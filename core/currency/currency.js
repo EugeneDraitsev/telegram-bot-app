@@ -46,6 +46,3 @@ function validate(time) {
 }
 
 module.exports = currency;
-
-
-currency.getCurrencyGraph();

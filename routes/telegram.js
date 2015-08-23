@@ -1,13 +1,13 @@
 'use strict';
 var express = require('express'),
-    telegram = require('../helpers/telegram/telegram.js'),
-    google = require('../helpers/google/search.js'),
-    huiator = require('../helpers/text/huiator.js'),
-    yasno = require('../helpers/text/yasno.js'),
-    translation = require('../helpers/yandex/translation.js'),
-    currency = require('../helpers/currency/currency.js'),
-    statistic = require('../helpers/statistic/statistic'),
-    youtube = require('../helpers/google/youtube'),
+    telegram = require('../core/telegram/telegram.js'),
+    google = require('../core/google/search.js'),
+    huiator = require('../core/text/huiator.js'),
+    yasno = require('../core/text/yasno.js'),
+    translation = require('../core/yandex/translation.js'),
+    currency = require('../core/currency/currency.js'),
+    statistic = require('../core/statistic/statistic'),
+    youtube = require('../core/google/youtube'),
     _ = require('underscore'),
     router = express.Router();
 

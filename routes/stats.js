@@ -1,7 +1,7 @@
 'use strict';
 var express = require('express'),
-    imageService = require('../helpers/image/png.js'),
-    svgService = require('../helpers/image/svg.js'),
+    imageService = require('../core/image/png.js'),
+    svgService = require('../core/image/svg.js'),
     router = express.Router();
 
 router.get('/', function (req, res) {
