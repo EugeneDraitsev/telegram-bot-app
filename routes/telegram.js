@@ -30,7 +30,7 @@ router.post('/', function (req, res) {
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
 
-        google.search(query, function imageCallback(error, photo, tabUrl) {
+        google.searchImage(query, function imageCallback(error, photo, tabUrl) {
             if (error) {
                 telegram.sendMessage(chat_id, error, reply_to_message_id);
             }

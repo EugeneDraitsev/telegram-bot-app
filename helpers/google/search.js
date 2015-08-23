@@ -3,7 +3,7 @@ var request = require('request'),
     _ = require('underscore');
 
 var google = {
-    search: function (query, callback) {
+    searchImage: function (query, callback) {
         request
             .get("http://ajax.googleapis.com/ajax/services/search/images?v=1.0&as_filetype=jpg%20png&rsz=8&q=" + encodeURI(query),
             function (err, httpResponse, body) {
