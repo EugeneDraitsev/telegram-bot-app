@@ -28,7 +28,7 @@ router.post('/', function (req, res) {
     statistic.takeUserInfo(user_info);
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
-        var query = telegramMessage.replace(telegramMessage.split(' ')[0], '');
+        var query = parseQuery(telegramMessage);
 
         google.searchImage(query, function imageCallback(error, photo, tabUrl) {
             if (error) {
@@ -41,7 +41,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
-        var textHuyator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+        var textHuyator = parseQuery(telegramMessage),
             huext = huiator.huify(textHuyator);
         if (textHuyator === huext) {
             telegram.sendMessage(chat_id, "https://www.youtube.com/watch?v=q5bc4nmDNio", reply_to_message_id)
@@ -51,7 +51,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/y', 0) === 0) {
-        var textYasnoficator = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+        var textYasnoficator = parseQuery(telegramMessage),
             yaext = yasno.yasnyfy(textYasnoficator);
         if (textYasnoficator !== yaext) {
             telegram.sendMessage(chat_id, yaext, reply_to_message_id);
@@ -69,7 +69,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/f', 0) === 0) {
-        var fType = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim(),
+        var fType = parseQuery(telegramMessage),
             type = 0;
 
         switch (fType) {
@@ -102,7 +102,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
-        var textTranslation = telegramMessage.replace(telegramMessage.split(' ')[0], '');
+        var textTranslation = parseQuery(telegramMessage);
 
         translation.translateEngRu(textTranslation, function (message, translatedText) {
             if (message) {
@@ -122,7 +122,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/v', 0) === 0) {
-        var youtubeQuery = telegramMessage.replace(telegramMessage.split(' ')[0], '').trim();
+        var youtubeQuery = parseQuery(telegramMessage);
 
         youtube.search(youtubeQuery)
             .then(function (response) {
@@ -136,5 +136,9 @@ router.post('/', function (req, res) {
     res.statusCode = 200;
     res.end(null);
 });
+
+function parseQuery(query) {
+    return query.replace(/\/\S+\s*/g).trim();
+}
 
 module.exports = router;
