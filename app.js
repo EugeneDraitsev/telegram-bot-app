@@ -62,7 +62,7 @@ app.use(function (err, req, res) {
     });
 });
 
-schedule.scheduleJob({minute: 0}, _.throttle(function () {
+var postCurrency = _.throttle(function () {
     currency.getScheduledCurrency(function (result) {
         var message = "Курсы валют:\n";
         _.mapObject(result, function (val, key) {
@@ -70,6 +70,8 @@ schedule.scheduleJob({minute: 0}, _.throttle(function () {
         });
         telegramHelper.sendMessage(-22982336, message, "");
     })
-}), 10000);
+}, 10000);
+
+schedule.scheduleJob({minute: 0}, postCurrency);
 
 module.exports = app;
