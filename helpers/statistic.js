@@ -15,7 +15,7 @@ var statistic = {
                 text += keys[i] + ' : ' + mainContainer[keys[i]] + '\n'
             }
         } else {
-            text = 'Мало слов для выборки';
+            text = 'РЎР»РёС€РєРѕРј РјР°Р»Рѕ СЃР»РѕРІ РґР»СЏ СЃС‚Р°С‚РёСЃС‚РёРєРё';
         }
 
         function compareCount(a, b) {
