@@ -49,18 +49,17 @@ function clearUsersDayStatistic() {
 function getUsersDayStatistic() {
     var msgAmount = 0,
         msg = 'Users statistic:\n';
-
     if (usersContainerDay) {
         for (var a in usersContainerDay) {
-            msgAmount += a.msgCount
+            msgAmount += usersContainerDay[a].msgCount
         }
         for (var b in usersContainerDay) {
-            msg += b.username + ' : ' + b.msgCount + ' (' + 100 * Math.floor(b.msgCount / msgAmount) + '%)' + '\n'
+            msg += usersContainerDay[b].username + ': ' + usersContainerDay[b].msgCount +
+            ' (' +  Math.floor(100 * usersContainerDay[b].msgCount / msgAmount) + '%)' + '\n'
         }
     } else {
         msg = 'Sorry, some problem';
     }
-
     return msg;
 }
 
