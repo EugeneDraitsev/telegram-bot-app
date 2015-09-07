@@ -71,13 +71,13 @@ function getUsersDayStatistic(chat_id) {
         result.sort(function(a,b){
             return b.msgCount - a.msgCount;
         });
-        for (var b in usersContainerDay[chat_id]) {
+        for (var j = 0; j < result.length ; j ++) {
             row = '';
-            for (var i = usersContainerDay[chat_id][b].username.length; i < maxLength; i++) {
+            for (var i = result[j].username.length; i < maxLength; i++) {
                 row += '_';
             }
-            msg += row + usersContainerDay[chat_id][b].username + ': ' + usersContainerDay[chat_id][b].msgCount +
-            ' (' +   Math.floor(10000 * usersContainerDay[chat_id][b].msgCount / msgAmount)/100 + '%)' + '\n'
+            msg += row + result[j].username + ': ' + result[j].msgCount +
+            ' (' +   Math.floor(10000 * result[j].msgCount / msgAmount)/100 + '%)' + '\n'
         }
     } else {
         msg = 'Sorry, some problem';
