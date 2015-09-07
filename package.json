@@ -14,13 +14,14 @@
     "form-data": "^1.0.0-rc1",
     "jade": "~1.9.2",
     "jsdom": "^5.6.1",
+    "moment": "^2.10.6",
+    "moment-timezone": "~0.4.0",
     "morgan": "~1.5.3",
     "node-schedule": "^0.2.9",
     "pngjs-image": "^0.11.6",
     "request": "^2.58.0",
     "serve-favicon": "~2.2.1",
     "striptags": "^2.0.2",
-    "underscore": "^1.8.3",
-    "moment-timezone": "~0.4.0"
+    "underscore": "^1.8.3"
   }
 }
