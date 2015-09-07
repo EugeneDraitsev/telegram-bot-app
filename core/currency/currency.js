@@ -1,9 +1,10 @@
 "use strict";
 var request = require('request'),
     moment = require('moment-timezone'),
+    image = require('../image/png'),
     _ = require('underscore');
 
-var HOURS_TO_CHECK = [10, 12, 14, 16, 18, 20];
+var HOURS_TO_CHECK = _.range(10, 21);
 
 var currency = {
     getCurrency: function (callback) {
@@ -26,10 +27,18 @@ var currency = {
             console.log('ERROR getting currency from meduza:' + e);
         });
     },
+
     getScheduledCurrency: function (callback) {
         if (validate(moment().tz('Europe/Minsk'))) {
             currency.getCurrency(callback);
         }
+    },
+
+    getCurrencyGraph: function (callback, type) {
+        var url = 'http://j1.forexpf.ru/delta/prochart?type=USDRUB&amount=500&chart_height=600&chart_width=1200&grtype=2&tictype=' + type;
+        image.getImage(url, function (error, image) {
+            callback(error, image, url);
+        });
     }
 };
 

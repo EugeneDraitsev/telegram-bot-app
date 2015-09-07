@@ -1,0 +1,97 @@
+'use strict';
+
+var moment = require('moment'),
+    separator = /[\s.,?!]/,
+    mainContainer = {},
+    usersContainerDay = {},
+    startTime = moment().format('MMMM Do YYYY, h:mm:ss a');
+
+var statistic = {
+    allTimeStats: allTimeStats,
+    takeMsg: takeMsg,
+    takeUserInfo: takeUserInfo,
+    clearUsersDayStatistic: clearUsersDayStatistic,
+    getUsersDayStatistic: getUsersDayStatistic
+};
+
+function allTimeStats() {
+    var text = 'Most popular words:\n',
+        keys = Object.keys(mainContainer),
+        amount = keys.length > 10 ? 10 : keys.length;
+    keys.sort(compareCount);
+    for (var i = 0; i < amount; i++) {
+        text += keys[i] + ' : ' + mainContainer[keys[i]] + '\n'
+    }
+    return text;
+}
+
+function takeMsg(msg) {
+    splitString(msg, separator).forEach(function (word) {
+        if (word.length > 2) {
+            mainContainer[word] = word in mainContainer ? mainContainer[word] + 1 : 1;
+        }
+    });
+}
+
+function takeUserInfo(user_info, chat_id) {
+    if (!(chat_id in usersContainerDay)) {
+        usersContainerDay[chat_id] = {};
+    }
+
+    if (user_info.id in usersContainerDay[chat_id]) {
+        usersContainerDay[chat_id][user_info.id].msgCount += 1;
+    } else {
+        usersContainerDay[chat_id][user_info.id] = {
+            username: user_info.username,
+            msgCount: 1
+        }
+    }
+}
+
+function clearUsersDayStatistic() {
+    usersContainerDay = {};
+}
+
+function getUsersDayStatistic(chat_id) {
+    var msgAmount = 0,
+        maxLength = 0,
+        msg = 'Users messages statistic from ' + startTime + ':\n',
+        row = '',
+        result = [];
+    if (usersContainerDay && usersContainerDay[chat_id]) {
+        for (var a in usersContainerDay[chat_id]) {
+            msgAmount += usersContainerDay[chat_id][a].msgCount;
+            maxLength = maxLength < usersContainerDay[chat_id][a].username.length ?
+                usersContainerDay[chat_id][a].username.length : maxLength;
+            result.push({
+                username: usersContainerDay[chat_id][a].username,
+                msgCount: usersContainerDay[chat_id][a].msgCount
+            })
+        }
+        result.sort(function(a,b){
+            return b.msgCount - a.msgCount;
+        });
+        for (var b in usersContainerDay[chat_id]) {
+            row = '';
+            for (var i = usersContainerDay[chat_id][b].username.length; i < maxLength; i++) {
+                row += '_';
+            }
+            msg += row + usersContainerDay[chat_id][b].username + ': ' + usersContainerDay[chat_id][b].msgCount +
+            ' (' +   Math.floor(10000 * usersContainerDay[chat_id][b].msgCount / msgAmount)/100 + '%)' + '\n'
+        }
+    } else {
+        msg = 'Sorry, some problem';
+    }
+    return msg;
+}
+
+function compareCount(a, b) {
+    return mainContainer[b] - mainContainer[a];
+}
+
+function splitString(stringToSplit, separator) {
+    return stringToSplit.split(separator)
+}
+
+module.exports = statistic;
+
