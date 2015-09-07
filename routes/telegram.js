@@ -25,7 +25,7 @@ router.post('/', function (req, res) {
         user_info = telegramUpdate.message.from;
 
     statistic.takeMsg(telegramMessage);
-    statistic.takeUserInfo(user_info);
+    statistic.takeUserInfo(user_info,chat_id);
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = parseQuery(telegramMessage);
@@ -118,7 +118,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/u') === 0) {
-        telegram.sendMessage(chat_id, statistic.getUsersDayStatistic(), '');
+        telegram.sendMessage(chat_id, statistic.getUsersDayStatistic(chat_id), '');
     }
 
     if (telegramMessage.lastIndexOf('/v', 0) === 0) {

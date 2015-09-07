@@ -1,8 +1,10 @@
 'use strict';
 
-var separator = /[\s.,?!]/,
+var moment = require('moment'),
+    separator = /[\s.,?!]/,
     mainContainer = {},
-    usersContainerDay = {};
+    usersContainerDay = {},
+    startTime = moment().format('MMMM Do YYYY, h:mm:ss a');
 
 var statistic = {
     allTimeStats: allTimeStats,
@@ -31,11 +33,15 @@ function takeMsg(msg) {
     });
 }
 
-function takeUserInfo(user_info) {
-    if (user_info.id in usersContainerDay) {
-        usersContainerDay[user_info.id].msgCount += 1;
+function takeUserInfo(user_info, chat_id) {
+    if (!(chat_id in usersContainerDay)) {
+        usersContainerDay[chat_id] = {};
+    }
+
+    if (user_info.id in usersContainerDay[chat_id]) {
+        usersContainerDay[chat_id][user_info.id].msgCount += 1;
     } else {
-        usersContainerDay[user_info.id] = {
+        usersContainerDay[chat_id][user_info.id] = {
             username: user_info.username,
             msgCount: 1
         }
@@ -46,16 +52,32 @@ function clearUsersDayStatistic() {
     usersContainerDay = {};
 }
 
-function getUsersDayStatistic() {
+function getUsersDayStatistic(chat_id) {
     var msgAmount = 0,
-        msg = 'Users statistic:\n';
-    if (usersContainerDay) {
-        for (var a in usersContainerDay) {
-            msgAmount += usersContainerDay[a].msgCount
+        maxLength = 0,
+        msg = 'Users messages statistic from ' + startTime + ':\n',
+        row = '',
+        result = [];
+    if (usersContainerDay && usersContainerDay[chat_id]) {
+        for (var a in usersContainerDay[chat_id]) {
+            msgAmount += usersContainerDay[chat_id][a].msgCount;
+            maxLength = maxLength < usersContainerDay[chat_id][a].username.length ?
+                usersContainerDay[chat_id][a].username.length : maxLength;
+            result.push({
+                username: usersContainerDay[chat_id][a].username,
+                msgCount: usersContainerDay[chat_id][a].msgCount
+            })
         }
-        for (var b in usersContainerDay) {
-            msg += usersContainerDay[b].username + ': ' + usersContainerDay[b].msgCount +
-            ' (' +  Math.floor(100 * usersContainerDay[b].msgCount / msgAmount) + '%)' + '\n'
+        result.sort(function(a,b){
+            return b.msgCount - a.msgCount;
+        });
+        for (var b in usersContainerDay[chat_id]) {
+            row = '';
+            for (var i = usersContainerDay[chat_id][b].username.length; i < maxLength; i++) {
+                row += '_';
+            }
+            msg += row + usersContainerDay[chat_id][b].username + ': ' + usersContainerDay[chat_id][b].msgCount +
+            ' (' +   Math.floor(10000 * usersContainerDay[chat_id][b].msgCount / msgAmount)/100 + '%)' + '\n'
         }
     } else {
         msg = 'Sorry, some problem';
