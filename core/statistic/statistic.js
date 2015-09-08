@@ -70,7 +70,7 @@ function getUsersDayStatistic(chat_id) {
         for (var j = 0; j < result.length ; j ++) {
             msg += result[j].msgCount
                 + ' (' + Math.floor(10000 * result[j].msgCount / msgAmount)/100
-                + '%) - ' + result[j].username;
+                + '%) - ' + result[j].username + '\n';
         }
     } else {
         msg = 'Sorry, some problem';
