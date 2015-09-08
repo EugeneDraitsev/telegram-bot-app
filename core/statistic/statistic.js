@@ -4,7 +4,7 @@ var moment = require('moment'),
     separator = /[\s.,?!]/,
     mainContainer = {},
     usersContainerDay = {},
-    startTime = moment().format('MMMM Do YYYY, h:mm:ss a');
+    startTime = moment().add(3, 'h').format('lll');
 
 var statistic = {
     allTimeStats: allTimeStats,
@@ -54,7 +54,7 @@ function clearUsersDayStatistic() {
 
 function getUsersDayStatistic(chat_id) {
     var msgAmount = 0,
-        msg = 'Users messages statistic\nfrom ' + startTime + '\nto ' + moment().format('MMMM Do YYYY, h:mm:ss a') + ':\n ',
+        msg = 'Users messages statistic\nfrom ' + startTime + '\nto ' + moment().add(3, 'h').format('lll') + ':\n',
         result = [];
     if (usersContainerDay && usersContainerDay[chat_id]) {
         for (var a in usersContainerDay[chat_id]) {
