@@ -54,15 +54,11 @@ function clearUsersDayStatistic() {
 
 function getUsersDayStatistic(chat_id) {
     var msgAmount = 0,
-        maxLength = 0,
-        msg = 'Users messages statistic from ' + startTime + ':\n',
-        row = '',
+        msg = 'Users messages statistic\nfrom ' + startTime + '\nto ' + moment().format('MMMM Do YYYY, h:mm:ss a') + ':\n ',
         result = [];
     if (usersContainerDay && usersContainerDay[chat_id]) {
         for (var a in usersContainerDay[chat_id]) {
             msgAmount += usersContainerDay[chat_id][a].msgCount;
-            maxLength = maxLength < usersContainerDay[chat_id][a].username.length ?
-                usersContainerDay[chat_id][a].username.length : maxLength;
             result.push({
                 username: usersContainerDay[chat_id][a].username,
                 msgCount: usersContainerDay[chat_id][a].msgCount
@@ -72,12 +68,9 @@ function getUsersDayStatistic(chat_id) {
             return b.msgCount - a.msgCount;
         });
         for (var j = 0; j < result.length ; j ++) {
-            row = '';
-            for (var i = result[j].username.length; i < maxLength; i++) {
-                row += '_';
-            }
-            msg += row + result[j].username + ': ' + result[j].msgCount +
-            ' (' +   Math.floor(10000 * result[j].msgCount / msgAmount)/100 + '%)' + '\n'
+            msg += result[j].msgCount
+                + ' (' + Math.floor(10000 * result[j].msgCount / msgAmount)/100
+                + '%) - ' + result[j].username;
         }
     } else {
         msg = 'Sorry, some problem';
