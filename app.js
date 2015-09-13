@@ -10,7 +10,8 @@ var express = require('express'),
     telegram = require('./routes/telegram'),
     telegramHelper = require('./core/telegram/telegram'),
     _ = require('underscore'),
-    currency = require('./core/currency/currency.js');
+    currency = require('./core/currency/currency.js'),
+    db = require('./core/db/mongoose'); //start db
 
 var app = express();
 
