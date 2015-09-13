@@ -1,18 +1,63 @@
 'use strict';
 
 var moment = require('moment'),
+    _ = require('underscore'),
+    ChatStatistic = require('../models/chat-statistic'),
     separator = /[\s.,?!]/,
+//TODO rework old stat system / rename variables
     mainContainer = {},
     usersContainerDay = {},
+    dbStatistic = [],
     startTime = moment().add(3, 'h').format('lll');
 
+ChatStatistic.find(function (err, msg) {
+    if (err) {
+        console.log('Stat find error: ' + err);
+        return;
+    }
+    dbStatistic = msg;
+});
+
 var statistic = {
+    //TODO reduce api size
     allTimeStats: allTimeStats,
-    takeMsg: takeMsg,
-    takeUserInfo: takeUserInfo,
+    updateStatistic: updateStatistic,
     clearUsersDayStatistic: clearUsersDayStatistic,
-    getUsersDayStatistic: getUsersDayStatistic
+    getUsersContainerDay: getUsersContainerDay,
+    getUsersDayStatistic: getUsersDayStatistic,
+    getChatStatistic: getChatStatistic
 };
+
+function updateStatistic(msg, user_info, chat_id) {
+    //old statistic
+    takeMsg(msg);
+    takeUserInfo(user_info, chat_id);
+
+    //mongo stat
+    var chatStatistic = _.find(dbStatistic, function (chatStat) {
+        return chatStat.chat_id === chat_id;
+    });
+
+    if (!chatStatistic) {
+        chatStatistic = ({chat_id: chat_id, users: []});
+        dbStatistic.push(chatStatistic);
+    }
+
+    var userStatistic = _.find(chatStatistic.users, function (userStat) {
+        return userStat.id === user_info.id;
+    });
+
+    if (!userStatistic) {
+        userStatistic = {
+            id: user_info.id,
+            username: user_info.username || user_info.first_name || user_info.last_name || user_info.id,
+            msgCount: 1
+        };
+        chatStatistic.users.push(userStatistic);
+    } else {
+        userStatistic.msgCount++;
+    }
+}
 
 function allTimeStats() {
     var text = 'Most popular words:\n',
@@ -64,18 +109,22 @@ function getUsersDayStatistic(chat_id) {
                 msgCount: usersContainerDay[chat_id][a].msgCount
             })
         }
-        result.sort(function(a,b){
+        result.sort(function (a, b) {
             return b.msgCount - a.msgCount;
         });
-        for (var j = 0; j < result.length ; j ++) {
+        for (var j = 0; j < result.length; j++) {
             msg += result[j].msgCount
-                + ' (' + Math.floor(10000 * result[j].msgCount / msgAmount)/100
+                + ' (' + Math.floor(10000 * result[j].msgCount / msgAmount) / 100
                 + '%) - ' + result[j].username + '\n';
         }
     } else {
         msg = 'Sorry, some problem';
     }
     return msg;
+}
+
+function getUsersContainerDay() {
+    return usersContainerDay;
 }
 
 function compareCount(a, b) {
@@ -86,5 +135,16 @@ function splitString(stringToSplit, separator) {
     return stringToSplit.split(separator)
 }
 
+function getChatStatistic(chat_id) {
+    var chatStatistic = _.find(dbStatistic, function (chatStat) {
+        return chatStat.chat_id === chat_id;
+    });
+
+    if (!chatStatistic) {
+        return 'Can\'t find statistic for this chat';
+    }
+
+    return chatStatistic;
+}
 module.exports = statistic;
 

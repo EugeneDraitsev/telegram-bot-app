@@ -7,6 +7,7 @@ var express = require('express'),
     translation = require('../core/yandex/translation.js'),
     currency = require('../core/currency/currency.js'),
     statistic = require('../core/statistic/statistic'),
+    ChatStatistic = require('../core/models/chat-statistic'),
     youtube = require('../core/google/youtube'),
     _ = require('underscore'),
     router = express.Router();
@@ -24,8 +25,7 @@ router.post('/', function (req, res) {
         reply_to_message_id = telegramUpdate.message.message_id,
         user_info = telegramUpdate.message.from;
 
-    statistic.takeMsg(telegramMessage);
-    statistic.takeUserInfo(user_info,chat_id);
+    statistic.updateStatistic(telegramMessage, user_info, chat_id);
 
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = parseQuery(telegramMessage);
@@ -68,38 +68,39 @@ router.post('/', function (req, res) {
         })
     }
 
-    if (telegramMessage.lastIndexOf('/f', 0) === 0) {
-        var fType = parseQuery(telegramMessage),
-            type = 0;
-
-        switch (fType) {
-            case 'd' :
-                type = 0;
-                break;
-            case '2d':
-                type = 1;
-                break;
-            case 'w':
-                type = 2;
-                break;
-            case 'm':
-                type = 3;
-                break;
-            case 'y':
-                type = 4;
-                break;
-            default:
-                type = 0;
-        }
-
-        currency.getCurrencyGraph(function (error, image, tbUrl) {
-            if (error) {
-                telegram.sendMessage(chat_id, error, reply_to_message_id);
-            } else {
-                telegram.sendPhoto(chat_id, image, reply_to_message_id, tbUrl);
-            }
-        }, type)
-    }
+    //temporary disabled
+    //if (telegramMessage.lastIndexOf('/f', 0) === 0) {
+    //    var fType = parseQuery(telegramMessage),
+    //        type = 0;
+    //
+    //    switch (fType) {
+    //        case 'd' :
+    //            type = 0;
+    //            break;
+    //        case '2d':
+    //            type = 1;
+    //            break;
+    //        case 'w':
+    //            type = 2;
+    //            break;
+    //        case 'm':
+    //            type = 3;
+    //            break;
+    //        case 'y':
+    //            type = 4;
+    //            break;
+    //        default:
+    //            type = 0;
+    //    }
+    //
+    //    currency.getCurrencyGraph(function (error, image, tbUrl) {
+    //        if (error) {
+    //            telegram.sendMessage(chat_id, error, reply_to_message_id);
+    //        } else {
+    //            telegram.sendPhoto(chat_id, image, reply_to_message_id, tbUrl);
+    //        }
+    //    }, type)
+    //}
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
         var textTranslation = parseQuery(telegramMessage);
@@ -119,6 +120,35 @@ router.post('/', function (req, res) {
 
     if (telegramMessage.lastIndexOf('/u') === 0) {
         telegram.sendMessage(chat_id, statistic.getUsersDayStatistic(chat_id), '');
+    }
+
+    if (telegramMessage.lastIndexOf('/z') === 0) {
+        var chatStatistic = statistic.getChatStatistic(chat_id), message = 'User Statistic.';
+
+        ChatStatistic.update({chat_id: chat_id}, {
+            chat_id: chat_id,
+            users: chatStatistic.users
+        }, {upsert: true}, function (err) {
+            if (err) {
+                console.log('stat update error: ' + err);
+            }
+        });
+
+        chatStatistic.users.sort(function (a, b) {
+            return b.msgCount - a.msgCount;
+        });
+
+        var messagesCount = chatStatistic.users.reduce(function (a, b) {
+            return a + b.msgCount;
+        }, 0);
+
+        message += '\nAll messages: ' + messagesCount;
+
+        chatStatistic.users.forEach(function (a) {
+            message += '\n' + a.msgCount + ' (' + (a.msgCount / messagesCount * 100).toFixed(2) + '%) - ' + a.username;
+        }, 0);
+
+        telegram.sendMessage(chat_id, message, '');
     }
 
     if (telegramMessage.lastIndexOf('/v', 0) === 0) {
