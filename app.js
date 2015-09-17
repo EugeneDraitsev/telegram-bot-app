@@ -10,10 +10,13 @@ var express = require('express'),
     telegram = require('./routes/telegram'),
     telegramHelper = require('./core/telegram/telegram'),
     _ = require('underscore'),
+    statistic = require('./core/statistic/statistic'),
+    ChatStatistic = require('./core/models/chat-statistic'),
     currency = require('./core/currency/currency.js'),
     db = require('./core/db/mongoose'); //start db
 
-var app = express();
+var app = express(),
+    chat_id = process.env.CHAT_ID || 'your_chat_id';
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -69,10 +72,26 @@ var postCurrency = _.throttle(function () {
         _.mapObject(result, function (val, key) {
             message += key.toUpperCase() + ': ' + val + '\n';
         });
-        telegramHelper.sendMessage(-22982336, message, "");
+        telegramHelper.sendMessage(chat_id, message, "");
     })
 }, 10000);
 
+var saveStats = _.throttle(function () {
+    var chatStatistic = statistic.getChatStatistic(chat_id);
+
+    ChatStatistic.update({chat_id: chat_id}, {
+        chat_id: chat_id,
+        users: chatStatistic.users
+    }, {upsert: true}, function (err, msg) {
+        if (err) {
+            console.log('stat update error: ' + err);
+        } else {
+            console.log('stat updated: ' + msg);
+        }
+    });
+}, 10000);
+
 schedule.scheduleJob({minute: 0}, postCurrency);
+schedule.scheduleJob({minute: 0}, saveStats);
 
 module.exports = app;
