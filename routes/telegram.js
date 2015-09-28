@@ -4,6 +4,7 @@ var express = require('express'),
     google = require('../core/google/search.js'),
     huiator = require('../core/text/huiator.js'),
     yasno = require('../core/text/yasno.js'),
+    magic8ball = require('../core/text/magic8ball'),
     translation = require('../core/yandex/translation.js'),
     currency = require('../core/currency/currency.js'),
     statistic = require('../core/statistic/statistic'),
@@ -149,6 +150,11 @@ router.post('/', function (req, res) {
         }, 0);
 
         telegram.sendMessage(chat_id, message, '');
+    }
+
+    if (telegramMessage.lastIndexOf('/8', 0) === 0) {
+        var msg = 'Надеюсь, ты правильно задал желание, сучка. Держи свой ответ:\n' + magic8ball.prediction();
+        telegram.sendMessage(chat_id, msg, reply_to_message_id);
     }
 
     if (telegramMessage.lastIndexOf('/v', 0) === 0) {
