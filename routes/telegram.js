@@ -153,7 +153,7 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/8', 0) === 0) {
-        var msg = 'Надеюсь, ты правильно задал желание, сучка. Держи свой ответ:\n' + magic8ball.prediction();
+        var msg = 'Надеюсь, ты правильно задал вопрос, сучка. Держи свой ответ:\n' + magic8ball.prediction();
         telegram.sendMessage(chat_id, msg, reply_to_message_id);
     }
 
