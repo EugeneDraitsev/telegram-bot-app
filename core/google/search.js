@@ -31,7 +31,3 @@ var google = {
     }
 };
 module.exports = google;
-
-
-google.searchImage('cat', function () {
-});
