@@ -1,5 +1,6 @@
 'use strict';
 var request = require("request"),
+    _ = require('underscore'),
     PAPICH_TITLES = [
         "НЫАААААААА",
         "Папаня подрубил",
@@ -21,7 +22,7 @@ var twitch = {
         });
     },
     randomPapichTitle: function () {
-        return PAPICH_TITLES[Math.floor(Math.random() * PAPICH_TITLES.length)];
+        return _.sample(PAPICH_TITLES);
     }
 };
 
