@@ -1,7 +1,6 @@
-"use strict"
+'use strict';
 var request = require("request"),
-    _ = require("underscore"),
-    PAPICH_TITLES: [
+    PAPICH_TITLES = [
         "НЫАААААААА",
         "Папаня подрубил",
         "ЛЕГКОСТЬ СОЛЯРЫ",
@@ -15,14 +14,15 @@ var twitch = {
         var papichURL = 'https://api.twitch.tv/kraken/streams?game=Dota+2&channel=evilarthas';
         request(papichURL, function (err, resp, body) {
             if (err || !body) {
-              console.log("Error trying to get PAPANYA");
-              return false;
+                console.log("Error trying to get PAPANYA");
+                return false;
             }
             callback(resp.body);
         });
     },
-    randomPapichTitle: function() {
+    randomPapichTitle: function () {
         return PAPICH_TITLES[Math.floor(Math.random() * PAPICH_TITLES.length)];
     }
-}
+};
 
+module.exports = twitch;
