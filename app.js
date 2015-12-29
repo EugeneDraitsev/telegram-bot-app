@@ -13,10 +13,13 @@ var express = require('express'),
     statistic = require('./core/statistic/statistic'),
     ChatStatistic = require('./core/models/chat-statistic'),
     currency = require('./core/currency/currency.js'),
+    twitch = require('./core/twitch/twitch.js'),
     db = require('./core/db/mongoose'); //start db
 
 var app = express(),
     chat_id = process.env.CHAT_ID || 'your_chat_id';
+
+var isPapichOnline = false;
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -91,7 +94,30 @@ var saveStats = _.throttle(function () {
     });
 }, 10000);
 
+var checkPapanya = _.throttle(function () {
+    twitch.checkPapanya(function (result) {
+        var papichStramURL = 'http://www.twitch.tv/evilarthas';
+
+        _.mapObject(JSON.parse(result), function (val, key) {
+            var title;
+
+            if (key === "streams") {
+                if (val.length) {
+                    if (!isPapichOnline) {
+                        isPapichOnline = true;
+                        title = twitch.randomPapichTitle();
+                        telegramHelper.sendMessage(chat_id, title + " " + papichStramURL, "");
+                    }
+                } else {
+                    isPapichOnline = false;
+                }
+            }
+        });
+    });
+}, 10000);
+
 schedule.scheduleJob({minute: 0}, postCurrency);
 schedule.scheduleJob({minute: 0}, saveStats);
+schedule.scheduleJob("* 0,10,20,30,40,50 * * * *", checkPapanya);
 
 module.exports = app;

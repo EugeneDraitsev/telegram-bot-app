@@ -4,26 +4,33 @@ var PNGImage = require('pngjs-image'),
 
 var imageService = {
     getImage: function (url, callback, tbUrl) {
-        request
-            .get(url)
-            .on('response', function (response) {
-                if (!response.headers || !response.headers['content-type']) {
-                    callback('can\'t load image');
-                    return;
-                }
-                if (response.headers['content-type'].split('/')[0] !== 'image') {
-                    if (!tbUrl) {
-                        callback('can\'t load even preview');
+        try {
+            request
+                .get(url)
+                .on('response', function (response) {
+                    if (!response.headers || !response.headers['content-type']) {
+                        callback('can\'t load image');
                         return;
                     }
-                    imageService.getImage(tbUrl, callback);
-                    return;
-                }
-                callback(false, response, url);
-            }).on('error', function (e) {
+                    if (response.headers['content-type'].split('/')[0] !== 'image') {
+                        if (!tbUrl) {
+                            callback('can\'t load even preview');
+                            return;
+                        }
+                        imageService.getImage(tbUrl, callback);
+                        return;
+                    }
+                    callback(false, response, url);
+                }).on('error', function (e) {
                 console.log('ERROR uploading pic from server:' + e);
                 imageService.getImage(tbUrl, callback);
             });
+        } catch (e) {
+            if (!tbUrl) {
+                callback('can\'t load image')
+            }
+            imageService.getImage(tbUrl, callback);
+        }
     },
 
     getTestImage: function (callback) {
