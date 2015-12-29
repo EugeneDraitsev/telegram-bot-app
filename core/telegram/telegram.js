@@ -41,6 +41,21 @@ var telegram = {
         }).on('error', function (e) {
             console.log('ERROR posting image:' + e);
         });
+    },
+
+    sendSticker: function (chat_id, sticker, reply_to_message_id) {
+        var formData = {
+            chat_id: chat_id,
+            reply_to_message_id: reply_to_message_id,
+            sticker: sticker
+        };
+
+        request.post({
+            url: 'https://api.telegram.org/bot' + botToken + '/sendSticker',
+            formData: formData
+        }).on('error', function (e) {
+            console.log('ERROR send sticker:' + e);
+        });
     }
 };
 
