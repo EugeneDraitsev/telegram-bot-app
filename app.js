@@ -9,7 +9,7 @@ var express = require('express'),
     stats = require('./routes/stats'),
     telegram = require('./routes/telegram'),
     telegramHelper = require('./core/telegram/telegram'),
-    _ = require('underscore'),
+    _ = require('lodash'),
     statistic = require('./core/statistic/statistic'),
     ChatStatistic = require('./core/models/chat-statistic'),
     currency = require('./core/currency/currency.js'),
@@ -70,9 +70,9 @@ app.use(function (err, req, res) {
 });
 
 var postCurrency = _.throttle(function () {
-    currency.getScheduledCurrency(function (result) {
+    currency.getScheduledCurrency().then(function (result) {
         var message = "Курсы валют:\n";
-        _.mapObject(result, function (val, key) {
+        _.mapKeys(result, function (val, key) {
             message += key.toUpperCase() + ': ' + val + '\n';
         });
         telegramHelper.sendMessage(chat_id, message, "");
@@ -95,10 +95,10 @@ var saveStats = _.throttle(function () {
 }, 10000);
 
 var checkPapanya = _.throttle(function () {
-    twitch.checkPapanya(function (result) {
+    twitch.checkPapanya().then(function (result) {
         var papichStramURL = 'http://www.twitch.tv/evilarthas';
 
-        _.mapObject(JSON.parse(result), function (val, key) {
+        _.mapKeys(JSON.parse(result), function (val, key) {
             var title;
 
             if (key === "streams") {

@@ -2,7 +2,7 @@
 
 var YouTube = require('youtube-node'),
     youTube = new YouTube(),
-    _ = require('underscore'),
+    _ = require('lodash'),
     prefix = 'https://youtu.be/';
 
 var EMPTY_RESULTS_MESSAGE = 'No results for: “$1”';

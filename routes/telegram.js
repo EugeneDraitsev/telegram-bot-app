@@ -10,7 +10,7 @@ var express = require('express'),
     statistic = require('../core/statistic/statistic'),
     ChatStatistic = require('../core/models/chat-statistic'),
     youtube = require('../core/google/youtube'),
-    _ = require('underscore'),
+    _ = require('lodash'),
     router = express.Router();
 
 router.post('/', function (req, res) {
@@ -31,14 +31,13 @@ router.post('/', function (req, res) {
     if (telegramMessage.lastIndexOf('/g', 0) === 0) {
         var query = parseQuery(telegramMessage);
 
-        google.searchImage(query, function imageCallback(error, photo, tabUrl) {
-            if (error) {
+        google.searchImage(query)
+            .then(function (response) {
+                telegram.sendPhoto(chat_id, response.image, reply_to_message_id, response.url);
+            })
+            .catch(function (error) {
                 telegram.sendMessage(chat_id, error, reply_to_message_id);
-            }
-            else {
-                telegram.sendPhoto(chat_id, photo, reply_to_message_id, tabUrl);
-            }
-        });
+            });
     }
 
     if (telegramMessage.lastIndexOf('/h', 0) === 0) {
@@ -60,59 +59,23 @@ router.post('/', function (req, res) {
     }
 
     if (telegramMessage.lastIndexOf('/c', 0) === 0) {
-        currency.getCurrency(function (result) {
-            var message = "Курсы валют:\n";
-            _.mapObject(result, function (val, key) {
-                message += key.toUpperCase() + ': ' + val + '\n';
+        currency.getCurrency()
+            .then(function (result) {
+                var message = "Курсы валют:\n";
+                _.mapKeys(result, function (val, key) {
+                    message += key.toUpperCase() + ': ' + val + '\n';
+                });
+                telegram.sendMessage(chat_id, message, "");
             });
-            telegram.sendMessage(chat_id, message, "");
-        })
     }
-
-    //temporary disabled
-    //if (telegramMessage.lastIndexOf('/f', 0) === 0) {
-    //    var fType = parseQuery(telegramMessage),
-    //        type = 0;
-    //
-    //    switch (fType) {
-    //        case 'd' :
-    //            type = 0;
-    //            break;
-    //        case '2d':
-    //            type = 1;
-    //            break;
-    //        case 'w':
-    //            type = 2;
-    //            break;
-    //        case 'm':
-    //            type = 3;
-    //            break;
-    //        case 'y':
-    //            type = 4;
-    //            break;
-    //        default:
-    //            type = 0;
-    //    }
-    //
-    //    currency.getCurrencyGraph(function (error, image, tbUrl) {
-    //        if (error) {
-    //            telegram.sendMessage(chat_id, error, reply_to_message_id);
-    //        } else {
-    //            telegram.sendPhoto(chat_id, image, reply_to_message_id, tbUrl);
-    //        }
-    //    }, type)
-    //}
 
     if (telegramMessage.lastIndexOf('/t') === 0) {
         var textTranslation = parseQuery(telegramMessage);
 
-        translation.translateEngRu(textTranslation, function (message, translatedText) {
-            if (message) {
-                telegram.sendMessage(chat_id, message, reply_to_message_id);
-            } else {
-                telegram.sendMessage(chat_id, translatedText, reply_to_message_id);
-            }
-        });
+        translation.translateEngRu(textTranslation)
+            .then(function (response) {
+                telegram.sendMessage(chat_id, response, reply_to_message_id);
+            });
     }
 
     if (telegramMessage.lastIndexOf('/s') === 0) {

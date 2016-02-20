@@ -1,7 +1,7 @@
 'use strict';
 
 var moment = require('moment'),
-    _ = require('underscore'),
+    _ = require('lodash'),
     ChatStatistic = require('../models/chat-statistic'),
     separator = /[\s.,?!]/,
 //TODO rework old stat system / rename variables

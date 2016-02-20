@@ -1,6 +1,7 @@
 'use strict';
 var request = require("request"),
-    _ = require('underscore'),
+    Q = require('q'),
+    _ = require('lodash'),
     PAPICH_TITLES = [
         "НЫАААААААА",
         "Папаня подрубил",
@@ -11,15 +12,19 @@ var request = require("request"),
     ];
 
 var twitch = {
-    checkPapanya: function (callback) {
-        var papichURL = 'https://api.twitch.tv/kraken/streams?game=Dota+2&channel=evilarthas';
+    checkPapanya: function () {
+        var papichURL = 'https://api.twitch.tv/kraken/streams?game=Dota+2&channel=evilarthas',
+            deferred = Q.defer();
+
         request(papichURL, function (err, resp, body) {
             if (err || !body) {
                 console.log("Error trying to get PAPANYA");
-                return false;
+                return deferred.reject();
             }
-            callback(resp.body);
+            deferred.resolve(resp.body);
         });
+
+        return deferred.promise;
     },
     randomPapichTitle: function () {
         return _.sample(PAPICH_TITLES);

@@ -1,6 +1,6 @@
 'use strict';
 
-var _ = require('underscore'),
+var _ = require('lodash'),
     magic8ball = {prediction: prediction},
     m8bStickersIds; //Collection of file_id's for stickers (https://telegram.me/addstickers/magicBall)
 

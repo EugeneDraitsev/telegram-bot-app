@@ -5,7 +5,7 @@ var express = require('express'),
     router = express.Router();
 
 router.get('/', function (req, res) {
-    imageService.getTestImage(function (image) {
+    imageService.getTestImage().then(function (image) {
         res.writeHead(200, {'Content-Type': 'image/png'});
         res.end(image);
     });
@@ -13,7 +13,7 @@ router.get('/', function (req, res) {
 
 router.get('/svg', function (req, res) {
     var svg = svgService.getSampleSVG();
-    res.writeHead(200, {'Content-Type': 'image/svg+xml'})
+    res.writeHead(200, {'Content-Type': 'image/svg+xml'});
     res.end(svg);
 });
 
