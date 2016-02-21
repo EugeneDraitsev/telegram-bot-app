@@ -40,7 +40,7 @@ var currency = {
 };
 
 function validate(time) {
-    return _.contains(HOURS_TO_CHECK, Number(time.format("H"))) && time.isoWeekday() < 6;
+    return ~HOURS_TO_CHECK.indexOf(Number(time.format("H"))) && time.isoWeekday() < 6;
 }
 
 module.exports = currency;
