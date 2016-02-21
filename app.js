@@ -70,13 +70,16 @@ app.use(function (err, req, res) {
 });
 
 var postCurrency = _.throttle(function () {
-    currency.getScheduledCurrency().then(function (result) {
-        var message = "Курсы валют:\n";
-        _.mapKeys(result, function (val, key) {
-            message += key.toUpperCase() + ': ' + val + '\n';
-        });
-        telegramHelper.sendMessage(chat_id, message, "");
-    })
+    var promise = currency.getScheduledCurrency();
+    if (promise) {
+        promise.then(function (result) {
+            var message = "Курсы валют:\n";
+            _.mapKeys(result, function (val, key) {
+                message += key.toUpperCase() + ': ' + val + '\n';
+            });
+            telegramHelper.sendMessage(chat_id, message, "");
+        })
+    }
 }, 10000);
 
 var saveStats = _.throttle(function () {
