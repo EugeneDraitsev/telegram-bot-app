@@ -25,7 +25,8 @@ var statistic = {
     clearUsersDayStatistic: clearUsersDayStatistic,
     getUsersContainerDay: getUsersContainerDay,
     getUsersDayStatistic: getUsersDayStatistic,
-    getChatStatistic: getChatStatistic
+    getChatStatistic: getChatStatistic,
+    getAllStatistic: getAllStatistic
 };
 
 function updateStatistic(msg, user_info, chat_id) {
@@ -147,5 +148,9 @@ function getChatStatistic(chat_id) {
 
     return chatStatistic;
 }
-module.exports = statistic;
 
+function getAllStatistic() {
+    return dbStatistic;
+}
+
+module.exports = statistic;

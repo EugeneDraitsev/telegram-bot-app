@@ -83,18 +83,14 @@ var postCurrency = _.throttle(function () {
 }, 10000);
 
 var saveStats = _.throttle(function () {
-    var chatStatistic = statistic.getChatStatistic(chat_id);
-
-    ChatStatistic.update({chat_id: chat_id}, {
-        chat_id: chat_id,
-        users: chatStatistic.users
-    }, {upsert: true}, function (err, msg) {
+    var statistics = statistic.getAllStatistic();
+    ChatStatistic.update(statistics, {upsert: true}, function (err, msg) {
         if (err) {
             console.log('stat update error: ' + err);
-        } else {
-            console.log('stat updated: ' + msg);
+            console.log('chat id: ' + chatStatistic.chat_id + ' time: ' + new Date());
         }
     });
+    console.log('stat updated: ' + new Date());
 }, 10000);
 
 var checkPapanya = _.throttle(function () {
@@ -119,8 +115,8 @@ var checkPapanya = _.throttle(function () {
     });
 }, 10000);
 
-schedule.scheduleJob({minute: 0}, postCurrency);
-schedule.scheduleJob("0,30 * * * * *", saveStats);
-schedule.scheduleJob("0,30 * * * * *", checkPapanya);
 
+schedule.scheduleJob({minute: 0}, postCurrency);
+schedule.scheduleJob("*/5 * * * *", saveStats);
+schedule.scheduleJob("0,30 * * * * *", checkPapanya);
 module.exports = app;
