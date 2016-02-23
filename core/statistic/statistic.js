@@ -56,6 +56,7 @@ function updateStatistic(msg, user_info, chat_id) {
         chatStatistic.users.push(userStatistic);
     } else {
         userStatistic.msgCount++;
+        userStatistic.username = user_info.username || user_info.first_name || user_info.last_name || user_info.id;
     }
 }
 

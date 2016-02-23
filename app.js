@@ -120,7 +120,7 @@ var checkPapanya = _.throttle(function () {
 }, 10000);
 
 schedule.scheduleJob({minute: 0}, postCurrency);
-schedule.scheduleJob({minute: 0}, saveStats);
+schedule.scheduleJob("0,30 * * * * *", saveStats);
 schedule.scheduleJob("0,30 * * * * *", checkPapanya);
 
 module.exports = app;
