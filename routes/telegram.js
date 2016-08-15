@@ -10,7 +10,7 @@ var express = require('express'),
     statistic = require('../core/statistic/statistic'),
     ChatStatistic = require('../core/models/chat-statistic'),
     youtube = require('../core/google/youtube'),
-    wiki = require('../core/wiki/wiki')
+    wiki = require('../core/wiki/wiki'),
     _ = require('lodash'),
     router = express.Router();
 
@@ -139,7 +139,7 @@ router.post('/', function (req, res) {
             .then(function (response) {
                 telegram.sendMessage(chat_id, response, reply_to_message_id)
             })
-            .catch(function (err)) {
+            .catch(function (err) {
                 console.log("Search couldn't be completed: " + err);
             });
     }
