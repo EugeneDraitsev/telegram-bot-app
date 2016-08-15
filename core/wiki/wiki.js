@@ -25,5 +25,7 @@ var wiki = {
             });
         });
     }
-}
+};
+
+module.exports = wiki;
 
