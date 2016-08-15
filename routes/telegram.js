@@ -140,7 +140,7 @@ router.post('/', function (req, res) {
                 telegram.sendMessage(chat_id, response, reply_to_message_id)
             })
             .catch(function (err)) {
-                console.log(err);
+                console.log("Search couldn't be completed: " + err);
             });
     }
 
