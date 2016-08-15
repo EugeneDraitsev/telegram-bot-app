@@ -15,8 +15,8 @@ var wiki = {
 
                 var response = JSON.parse(body);
                 var link = response[3];
-                if (link && link.length === 0) {
-                    link = 'Failed to find article for term: ' + response[0];
+                if (!link || link.length === 0) {
+                    link = 'Failed to find article for term: ' + searchTerm;
                 }
                 resolve(link);
             }).on('error', function (e) {
