@@ -19,6 +19,7 @@ var telegram = require('./core/telegram/telegram.js'),
     ChatStatistic = require('./core/models/chat-statistic'),
     youtube = require('./core/google/youtube'),
     wiki = require('./core/wiki/wiki'),
+    dice = require('../core/text/dice.js'),
     _ = require('lodash');
 
 exports.handler = (req, context, callback) => {
@@ -147,6 +148,13 @@ exports.handler = (req, context, callback) => {
             .catch(function (err) {
                 console.log("Search couldn't be completed: " + err);
             });
+    }
+    if (telegramMessage.lastIndexOf('/dice', 0) === 0) {
+        var diceMax= parseQuery(telegramMessage);
+        var dicer = dice.trowDice(parseInt(diceMax));
+        if (dicer) {
+            telegram.sendMessage(chat_id, dicer, reply_to_message_id);
+        }
     }
 };
 
