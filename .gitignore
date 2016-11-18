@@ -23,3 +23,5 @@ config.js
 .idea
 .git
 .c9
+
+*.iml
