@@ -12,6 +12,7 @@ var express = require('express'),
     youtube = require('../core/google/youtube'),
     wiki = require('../core/wiki/wiki'),
     _ = require('lodash'),
+    dice = require('../core/text/dice.js'),
     router = express.Router();
 
 router.post('/', function (req, res) {
@@ -142,6 +143,12 @@ router.post('/', function (req, res) {
             .catch(function (err) {
                 console.log("Search couldn't be completed: " + err);
             });
+    }
+    if (telegramMessage.lastIndexOf('/dice', 0) === 0) {
+        var dicer = dice.trowDice(textYasnoficator);
+        if (dicer) {
+            telegram.sendMessage(chat_id, dicer, reply_to_message_id);
+        }
     }
 
     res.statusCode = 200;
