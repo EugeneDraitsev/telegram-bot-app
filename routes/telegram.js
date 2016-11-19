@@ -145,7 +145,8 @@ router.post('/', function (req, res) {
             });
     }
     if (telegramMessage.lastIndexOf('/dice', 0) === 0) {
-        var dicer = dice.trowDice(parseQuery(telegramMessage));
+        var diceMax= parseQuery(telegramMessage);
+        var dicer = dice.trowDice(parseInt(diceMax));
         if (dicer) {
             telegram.sendMessage(chat_id, dicer, reply_to_message_id);
         }
