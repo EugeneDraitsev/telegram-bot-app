@@ -3,7 +3,7 @@ var request = require('request'),
     botToken = process.env.TOKEN || "your_token_here";
 
 var telegram = {
-    sendMessage: function (chat_id, text, reply_to_message_id) {
+    sendMessage: function (chat_id, text, reply_to_message_id, ) {
         var formData = {
             chat_id: chat_id,
             reply_to_message_id: reply_to_message_id,
