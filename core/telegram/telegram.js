@@ -7,9 +7,12 @@ var telegram = {
         var formData = {
             chat_id: chat_id,
             reply_to_message_id: reply_to_message_id,
-            parse_mode: parse_mode || null,
             text: text
         };
+
+        if (parse_mode) {
+            formData.parse_mode = parse_mode
+        }
 
         request.post({
             url: 'https://api.telegram.org/bot' + botToken + '/sendMessage',
