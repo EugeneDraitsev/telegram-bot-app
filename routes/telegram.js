@@ -148,7 +148,7 @@ router.post('/', function (req, res) {
         var diceMax= parseQuery(telegramMessage);
         var dicer = dice.trowDice(parseInt(diceMax));
         if (dicer) {
-            telegram.sendMessage(chat_id, dicer, reply_to_message_id);
+            telegram.sendMessage(chat_id, dicer, reply_to_message_id, 'Markdown');
         }
     }
 
