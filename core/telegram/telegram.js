@@ -1,5 +1,6 @@
 'use strict';
 var request = require('request'),
+    _ = require('lodash'),
     botToken = process.env.TOKEN || "your_token_here";
 
 var telegram = {
@@ -7,7 +8,7 @@ var telegram = {
         var formData = {
             chat_id: chat_id,
             reply_to_message_id: reply_to_message_id,
-            parse_mode: parse_mode,
+            parse_mode: _.get(parse_mode),
             text: text
         };
 
