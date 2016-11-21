@@ -22,10 +22,12 @@ const telegram = require('./core/telegram/telegram.js'),
     db = require('./core/db/mongoose'), //start db
     _ = require('lodash');
 
-function handler(req, context) {
+function handler(req, context, callback) {
     if (!req || !req.message || !req.message.chat || !req.message.message_id || !req.message.text) {
         return context.succeed("Hum. who are you?");
     }
+
+    console.log(req);
 
     var telegramUpdate = req,
         telegramMessage = telegramUpdate.message.text,
@@ -88,14 +90,6 @@ function handler(req, context) {
                 });
         }
 
-        if (telegramMessage.lastIndexOf('/s') === 0) {
-            telegram.sendMessage(chat_id, statistic.allTimeStats(), '');
-        }
-
-        if (telegramMessage.lastIndexOf('/u') === 0) {
-            telegram.sendMessage(chat_id, statistic.getUsersDayStatistic(chat_id), '');
-        }
-
         if (telegramMessage.lastIndexOf('/z') === 0) {
             statistic.getChatStatistic(chat_id).then(chatStatistic => {
                 let message = 'User Statistic.';
@@ -152,7 +146,10 @@ function handler(req, context) {
             }
         }
 
-        db.closeConnection(connection, () => context.done())
+        db.closeConnection(connection, () => {
+            context.done()
+            callback(null, "done");
+        })
     })
 }
 
