@@ -24,7 +24,15 @@ const telegram = require('./core/telegram/telegram.js'),
 
 function handler(req, context, callback) {
     if (!req || !req.message || !req.message.chat || !req.message.message_id || !req.message.text) {
-        return context.succeed("Hum. who are you?");
+        const response = {
+            statusCode: 200,
+            body: JSON.stringify({
+                message: 'not a telegram message',
+                input: req,
+            }),
+        };
+
+        return callback(null, response);
     }
 
     console.log(req);
@@ -147,8 +155,15 @@ function handler(req, context, callback) {
         }
 
         db.closeConnection(connection, () => {
-            context.done()
-            callback(null, "done");
+            const response = {
+                statusCode: 200,
+                body: JSON.stringify({
+                    message: 'Your function executed successfully!',
+                    input: req,
+                }),
+            };
+
+            return callback(null, response);
         })
     })
 }
