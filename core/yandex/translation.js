@@ -1,32 +1,20 @@
-"use strict";
-var request = require('request'),
-    Q = require('q'),
-    translationToken = process.env.TRANSLATION_APP_TOKEN || 'set_your_token';
+"use strict"
+const rp = require('request-promise')
+const helper = require('./../../utils')
+const key = process.env.TRANSLATION_APP_TOKEN || 'set_your_token'
 
-var translation = {
-    translateEngRu: function (textToTranslate, lang) {
-        var options = {
-                url: "https://translate.yandex.net/api/v1.5/tr.json/translate",
-                qs: {
-                    key: translationToken,
-                    lang: lang || "en-ru",
-                    text: textToTranslate
-                }
-            },
-            deferred = Q.defer();
+function translate(text) {
+  const lang = helper.hasRussiansLetters(text) ? 'ru-en' : 'en-ru'
+  const options = {
+    url: 'https://translate.yandex.net/api/v1.5/tr.json/translate',
+    qs: {key, lang, text}
+  }
 
-        request.post(options, function (err, response, body) {
-            var data = JSON.parse(body);
-            if (err || !data || !data.text || !data.text[0]) {
-                return deferred.resolve("Error from translation service");
-            }
-            deferred.resolve(data.text[0]);
-        }).on('error', function () {
-            deferred.resolve("Error from translation service");
-        });
+  return rp.post(options)
+    .then(response => {
+      return JSON.parse(response).text[0]
+    })
+    .catch(() => 'Error from translation service')
+}
 
-        return deferred.promise;
-    }
-};
-
-module.exports = translation;
+module.exports = {translate}

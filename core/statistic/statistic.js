@@ -56,5 +56,4 @@ function getUserName(user_info) {
   return user_info.username || user_info.first_name || user_info.last_name || user_info.id
 }
 
-
 module.exports = {getChatStatistic, updateStatistic}

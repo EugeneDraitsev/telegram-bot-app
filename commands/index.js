@@ -47,7 +47,7 @@ function processQuery(text, message_id, chat_id) {
     }
 
     case '/t': {
-      return translation.translateEngRu(query)
+      return translation.translate(query)
         .then(response => telegram.sendMessage(chat_id, response, message_id))
     }
 
@@ -81,7 +81,7 @@ function processQuery(text, message_id, chat_id) {
     }
 
     case '/dice' : {
-      return telegram.sendMessage(chat_id, dice.trowDice(parseInt(query)), message_id, 'Markdown')
+      return telegram.sendMessage(chat_id, dice.throwDice(parseInt(query)), message_id, 'Markdown')
     }
 
     default: {

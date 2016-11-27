@@ -23,7 +23,7 @@ function handler(req, context, callback) {
 
 function processRequest(req) {
   return new Promise(resolve => {
-    if (!req || !req.message || !req.message.chat || !req.message.message_id || !req.message.text) {
+    if (!req || !req.message || !req.message.chat || !req.message.text) {
       return resolve('not a telegram message')
     }
 
@@ -37,7 +37,7 @@ function processRequest(req) {
 
     return Promise.all([commands.processQuery(text, message_id, chat.id), updateMessageStat(from, chat.id)])
       .then(() => db.closeConnection().then(resolve).catch(resolve))
-      .catch(db.closeConnection().then(resolve).catch(resolve))
+      .catch(() => db.closeConnection().then(resolve).catch(resolve))
   })
 }
 

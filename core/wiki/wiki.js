@@ -1,9 +1,10 @@
 'use strict'
 const request = require('request')
 const rp = require('request-promise')
+const helper = require('./../../utils')
 
 function search(query) {
-  const lang = query.match(/^[А-Яа-яёЁ]+/) ? 'ru' : 'en'
+  const lang = helper.hasRussiansLetters(query) ? 'ru' : 'en'
   const baseUrl = `https://${lang}.wikipedia.org/w/api.php`
   const url = `${baseUrl}?action=opensearch&format=json&limit=1&namespace=0&search=${encodeURIComponent(query)}`
 
