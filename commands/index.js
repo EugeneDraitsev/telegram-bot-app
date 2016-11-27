@@ -37,12 +37,7 @@ function processQuery(text, message_id, chat_id) {
 
     case '/c': {
       return currency.getCurrency()
-        .then(result => {
-          const message = 'Курсы валют:\n' +
-            `${Object.keys(result).map(key => `${key.toUpperCase()}: ${result[key].toFixed(2)}`).join('\n')}`
-          return telegram.sendMessage(chat_id, message)
-        })
-        .catch(e => telegram.sendMessage(chat_id, e))
+        .then(result => telegram.sendMessage(chat_id, result))
     }
 
     case '/t': {
