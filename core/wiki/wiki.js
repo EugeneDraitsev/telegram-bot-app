@@ -1,36 +1,17 @@
-"use strict";
-var request = require('request');
+'use strict'
+const request = require('request')
+const rp = require('request-promise')
 
-var url = "https://en.wikipedia.org/w/api.php?action=opensearch&format=json&limit=1&namespace=0&search=";
+function search(query) {
+  const lang = query.match(/^[А-Яа-яёЁ]+/) ? 'ru' : 'en'
+  const baseUrl = `https://${lang}.wikipedia.org/w/api.php`
+  const url = `${baseUrl}?action=opensearch&format=json&limit=1&namespace=0&search=${encodeURIComponent(query)}`
 
-var wiki = {
-  search: function (searchTerm) {
-    return new Promise(function (resolve, reject) {
-      try {
-        var target = url + searchTerm;
-        request.get(target, function (err, response, body) {
-          if (err || !body) {
-            console.log(err);
-            reject(err);
-          }
+  return rp(url)
+    .then(response => {
+      const result = JSON.parse(response)[3][0]
+      return result ? result : `Failed to find article for term: ${query}`
+    })
+}
 
-          var response = JSON.parse(body);
-          var link = response[3];
-          if (!link || link.length === 0) {
-            link = 'Failed to find article for term: ' + searchTerm;
-          }
-          resolve(link);
-
-        }).on('error', function (e) {
-          console.log('ERR Failed to fetch date from wiki opensearch:' + e);
-          reject(e);
-        });
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-};
-
-module.exports = wiki;
-
+module.exports = {search};

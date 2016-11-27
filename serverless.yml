@@ -1,0 +1,32 @@
+service: telegram
+
+provider:
+  name: aws
+  stage: prod
+  region: eu-west-1
+  runtime: nodejs4.3
+
+package:
+  exclude:
+    - .idea/**
+    - .git/**
+
+functions:
+  telegram-bot:
+    handler: index.handler
+    events:
+      - http:
+          path: /
+          method: post
+      - http:
+          path: /
+          method: get
+      - schedule:
+                rate: rate(60 minutes)
+                enabled: true
+                input:
+                  update_id: 96498191,
+                  message:
+                      chat:
+                        id: 1305082,
+                        text: /c

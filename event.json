@@ -1,0 +1,21 @@
+{
+  "update_id": 96498191,
+  "message": {
+    "message_id": 323,
+    "from": {
+      "id": 1305082,
+      "first_name": "D",
+      "last_name": "Eugene",
+      "username": "drrrrrrrr"
+    },
+    "chat": {
+      "id": 1305082,
+      "first_name": "D",
+      "last_name": "Eugene",
+      "username": "drrrrrrrr",
+      "type": "private"
+    },
+    "date": 1480189433,
+    "text": "/c"
+  }
+}
