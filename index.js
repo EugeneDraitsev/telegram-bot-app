@@ -58,5 +58,4 @@ function loadConfig() {
   }
 }
 
-// handler(require('./event.json'), null, () => {})
 exports.handler = handler

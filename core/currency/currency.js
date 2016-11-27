@@ -2,6 +2,7 @@
 const rp = require('request-promise')
 const url = "https://meduza.io/api/v3/stock/all"
 const parseString = require('xml2js').parseString
+const _ = require('lodash')
 
 function getCurrency() {
   return Promise.all([getBelarusCurrency(), getRussianCurrency()]).then((result) => {
@@ -14,7 +15,7 @@ function getRussianCurrency() {
   return rp.post(url).then((response) => {
     const currency = JSON.parse(response)
     return 'Курсы медузы:\n' + Object.keys(currency)
-        .filter(currency => currencyCodes.includes(currency))
+        .filter(currency => _.includes(currencyCodes, currency))
         .reduce((message, key) => {
           return message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`)
         }, '')
@@ -27,7 +28,7 @@ function getBelarusCurrency() {
     return new Promise(resolve => {
       parseString(result, (err, result) => {
         const message = 'Курсы НБРБ:\n' + result.DailyExRates.Currency
-            .filter(currency => currencyCodes.includes(currency.CharCode[0]))
+            .filter(currency => _.includes(currencyCodes, currency.CharCode[0]))
             .reduce((message, currency) => {
               return message.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(2)}\n`)
             }, '')
