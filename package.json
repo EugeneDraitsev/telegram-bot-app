@@ -1,30 +1,17 @@
 {
   "name": "ChatBot",
-  "version": "0.4.0",
+  "version": "0.6.1",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
+    "invoke": "serverless invoke -f telegram-bot -p event.json",
+    "deploy": "serverless deploy --verbose",
+    "deploy-function": "serverless deploy function --function telegram-bot  --verbose"
   },
   "dependencies": {
-    "body-parser": "~1.12.4",
-    "cookie-parser": "~1.3.5",
-    "d3": "^3.5.6",
-    "debug": "~2.2.0",
-    "express": "~4.12.4",
-    "form-data": "^1.0.0-rc1",
-    "jade": "~1.9.2",
-    "jsdom": "^5.6.1",
     "lodash": "^4.5.0",
-    "moment": "^2.10.6",
-    "moment-timezone": "~0.4.0",
-    "mongoose": "^4.1.6",
-    "morgan": "~1.5.3",
-    "node-schedule": "^1.0.0",
-    "pngjs-image": "^0.11.6",
-    "q": "^1.4.1",
+    "mongoose": "^4.7.0",
     "request": "^2.58.0",
-    "serve-favicon": "~2.2.1",
-    "striptags": "^2.0.2",
-    "youtube-node": "^1.3.0"
+    "request-promise": "^4.1.1"
   }
 }

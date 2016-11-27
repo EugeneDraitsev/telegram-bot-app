@@ -1,45 +1,21 @@
-/**
- * Created by bdsm on 18.11.16.
- */
-'use strict';
+'use strict'
+const _ = require('lodash')
 
+function throwDice(number) {
+  return `\`\`\`\n  ___\n/     \\\n| ${getRandomDice(number)} |\n\\     /\n  ¯¯¯\`\`\``
+}
 
-var dice = {
-    trowDice: function (number) {
-        var diceString = "";
-        if ((!isNaN(+number)) && (+number)) {
-            if (number > 100) {
-                diceString = "```  ___\n/     \\\n| " + diceNumberLen(getRandomDice(100)) + " |\n\\     /\n  ¯¯¯```";
-            }
-            else {
-                diceString = "```  ___\n/     \\\n| " + diceNumberLen(getRandomDice(number)) + " |\n\\     /\n  ¯¯¯```";
-            }
-        }
-        else {
-            diceString = "```  ___\n/     \\\n| " + diceNumberLen(getRandomDice(6)) + " |\n\\     /\n  ¯¯¯```";
-        }
-        return diceString;
-    }
-};
-
-function getRandomDice(max) {
-    return Math.floor(Math.random() * max) + 1;
+function getRandomDice(number) {
+  const max = number ? number > 100 ? 100 : number : 6
+  return diceNumberLen(_.random(1, max))
 }
 
 function diceNumberLen(number) {
-    var numberString = String(number);
-    while (numberString.length < 3) {
-
-        numberString = "0" + numberString;
-    }
-    return numberString;
+  let numberString = String(number);
+  while (numberString.length < 3) {
+    numberString = "0" + numberString;
+  }
+  return numberString;
 }
 
-
-module.exports = dice;
-
-
-
-
-
-
+module.exports = {throwDice};

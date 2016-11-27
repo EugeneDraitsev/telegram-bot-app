@@ -1,66 +1,38 @@
-'use strict';
-var request = require('request'),
-    botToken = process.env.TOKEN || "your_token_here";
+'use strict'
+const rp = require('request-promise')
+const botToken = process.env.TOKEN || 'your_token_here'
 
-var telegram = {
-    sendMessage: function (chat_id, text, reply_to_message_id, parse_mode) {
-        var formData = {
-            chat_id: chat_id,
-            reply_to_message_id: reply_to_message_id,
-            text: text
-        };
+const telegram = {
+  sendMessage: function (chat_id, text, reply_to_message_id, parse_mode) {
+    //fucking slow aws. waiting for node 6.0
+    const formData = {chat_id, reply_to_message_id: reply_to_message_id || '', text, parse_mode: parse_mode || ''}
 
-        if (parse_mode) {
-            formData.parse_mode = parse_mode
+    return rp.post({url: `https://api.telegram.org/bot${botToken}/sendMessage`, formData})
+      .catch(err => console.log(`ERROR send message: ${err}`))
+  },
+
+  sendPhoto: function (chat_id, photo, reply_to_message_id, picUrl) {
+    const formData = {
+      chat_id,
+      reply_to_message_id: reply_to_message_id || '',
+      photo: {
+        value: photo,
+        options: {
+          contentType: 'image/png',
+          filename: 'image.png'
         }
+      }
+    };
 
-        request.post({
-            url: 'https://api.telegram.org/bot' + botToken + '/sendMessage',
-            formData: formData
-        }).on('error', function (e) {
-            console.log('ERROR send message:' + e);
-        });
-    },
+    return rp.post({url: `https://api.telegram.org/bot${botToken}/sendPhoto`, formData})
+      .catch(err => telegram.sendMessage(chat_id, `I can't load this pic to telegram: ${picUrl}`, reply_to_message_id))
+  },
 
-    sendPhoto: function (chat_id, photo, reply_to_message_id, picUrl) {
-        var formData = {
-            chat_id: chat_id,
-            reply_to_message_id: reply_to_message_id,
-            photo: {
-                value: photo,
-                options: {
-                    contentType: 'image/png',
-                    filename: 'image.png'
-                }
-            }
-        };
-
-        request.post({
-            url: 'https://api.telegram.org/bot' + botToken + '/sendPhoto',
-            formData: formData
-        }, function (err, httpResponse, body) {
-            if (!body || body.indexOf('\"ok\":true') < 0) {
-                telegram.sendMessage(chat_id, 'I can\'t load this pic to telegram: ' + picUrl, reply_to_message_id)
-            }
-        }).on('error', function (e) {
-            console.log('ERROR posting image:' + e);
-        });
-    },
-
-    sendSticker: function (chat_id, sticker, reply_to_message_id) {
-        var formData = {
-            chat_id: chat_id,
-            reply_to_message_id: reply_to_message_id,
-            sticker: sticker
-        };
-
-        request.post({
-            url: 'https://api.telegram.org/bot' + botToken + '/sendSticker',
-            formData: formData
-        }).on('error', function (e) {
-            console.log('ERROR send sticker:' + e);
-        });
-    }
-};
+  sendSticker: function (chat_id, sticker, reply_to_message_id) {
+    const formData = {chat_id, reply_to_message_id: reply_to_message_id || '', sticker}
+    return rp.post({url: `https://api.telegram.org/bot${botToken}/sendSticker`, formData})
+      .catch(err => console.log(`ERROR send sticker: ${err}`))
+  }
+}
 
 module.exports = telegram;

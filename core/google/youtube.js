@@ -1,40 +1,18 @@
 "use strict";
 
-var YouTube = require('youtube-node'),
-    youTube = new YouTube(),
-    _ = require('lodash'),
-    prefix = 'https://youtu.be/';
+const _ = require('lodash')
+const rp = require('request-promise')
+const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'
+const BASE_URL = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video'
+const RESULT_PREFIX = 'https://youtu.be/'
 
-var EMPTY_RESULTS_MESSAGE = 'No results for: “$1”';
+function search(query) {
+  return rp(`${BASE_URL}&key=${YOUTUBE_TOKEN}&q=${encodeURI(query)}&maxResults=${8}`)
+    .then(response => `${RESULT_PREFIX}${_.sample(JSON.parse(response).items.map(item => item.id.videoId))}`)
+    .catch((e) => {
+      console.log(e)
+      return `No results for: ${query}`
+    })
+}
 
-youTube.setKey(process.env.YOUTUBE_TOKEN || "paste_your_token_here");
-youTube.addParam('type', 'video');
-
-var youTubeService = {
-    /**
-     * Searches youtube for videos
-     * picks one of 10 results
-     * @param {String} query
-     * @returns {Promise}
-     */
-    search: function (query) {
-        var promise = new Promise(function (resolve, reject) {
-            youTube.search(query, 10, function (error, result) {
-                if (error) {
-                    reject(error);
-                } else {
-                    var items = result.items,
-                        responseItem = _.sample(items);
-                    if(_.isEmpty(items)) {
-                        resolve(EMPTY_RESULTS_MESSAGE.replace('$1', query));
-                        return;
-                    }
-                    resolve(prefix + responseItem.id.videoId);
-                }
-            });
-        });
-        return promise;
-    }
-};
-
-module.exports = youTubeService;
+module.exports = {search};

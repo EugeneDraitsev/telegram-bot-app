@@ -1,46 +1,19 @@
-"use strict";
-var request = require('request'),
-    moment = require('moment-timezone'),
-    image = require('../image/png'),
-    Q = require('q'),
-    _ = require('lodash');
+"use strict"
+const rp = require('request-promise')
+const url = "https://meduza.io/api/v3/stock/all"
 
-var HOURS_TO_CHECK = _.range(10, 21);
-
-var currency = {
-    getCurrency: function () {
-        var url = "https://meduza.io/api/v3/stock/all",
-            deferred = Q.defer();
-        request.post(url, function (err, response, body) {
-            var currency = {};
-
-            if (err || !body) {
-                console.log(err);
-                return deferred.resolve(err);
-            }
-
-            _.mapKeys(JSON.parse(body), function (val, key) {
-                if (val.current) {
-                    currency[key] = val['current'].toFixed(2);
-                }
-            });
-            deferred.resolve(currency);
-        }).on('error', function (e) {
-            console.log('ERROR getting currency from meduza:' + e);
-            deferred.resolve('ERROR getting currency from meduza:');
-        });
-        return deferred.promise;
-    },
-
-    getScheduledCurrency: function () {
-        if (validate(moment().tz('Europe/Minsk'))) {
-            return currency.getCurrency();
-        }
-    }
-};
-
-function validate(time) {
-    return ~HOURS_TO_CHECK.indexOf(Number(time.format("H"))) && time.isoWeekday() < 6;
+function getCurrency() {
+  return rp.post(url).then((response) => {
+    const currency = JSON.parse(response)
+    delete (currency.intouch)
+    return Object.keys(currency).reduce((obj, key) => {
+      return Object.assign(obj, {[key]: currency[key].current})
+    }, {})
+  }).catch(e => {
+    const message = `ERROR getting currency from meduza: ${e}`
+    console.log(message)
+    return message
+  })
 }
 
-module.exports = currency;
+module.exports = {getCurrency}
