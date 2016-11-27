@@ -1,13 +1,6 @@
 'use strict'
-try {
-  var config = require('./config')
-  for (var key in config) {
-    process.env[key] = config[key]
-  }
-} catch (err) {
-  // ignore
-}
 
+loadConfig()
 const db = require('./core/db/mongoose')
 const statistic = require('./core/statistic/statistic')
 const commands = require('./commands')
@@ -52,6 +45,17 @@ function sendResponse(message, input, callback) {
   }
 
   return callback(null, response)
+}
+
+function loadConfig() {
+  try {
+    const config = require('./config')
+    for (let key in config) {
+      process.env[key] = config[key]
+    }
+  } catch (err) {
+    // ignore
+  }
 }
 
 // handler(require('./event.json'), null, () => {})
