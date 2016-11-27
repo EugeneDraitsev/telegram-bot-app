@@ -14,7 +14,6 @@ const wiki = require('../core/wiki/wiki')
 const dice = require('../core/text/dice.js')
 const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice']
 
-
 function processQuery(text, message_id, chat_id) {
   const query = parseQuery(text)
 

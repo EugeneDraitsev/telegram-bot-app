@@ -11,7 +11,6 @@ function getCurrency() {
     }, {})
   }).catch(e => {
     const message = `ERROR getting currency from meduza: ${e}`
-    console.log(message)
     return message
   })
 }

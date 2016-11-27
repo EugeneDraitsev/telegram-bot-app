@@ -15,4 +15,4 @@ function search(query) {
     })
 }
 
-module.exports = {search};
+module.exports = {search}

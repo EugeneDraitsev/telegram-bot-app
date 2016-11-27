@@ -22,7 +22,7 @@ const telegram = {
           filename: 'image.png'
         }
       }
-    };
+    }
 
     return rp.post({url: `https://api.telegram.org/bot${botToken}/sendPhoto`, formData})
       .catch(err => telegram.sendMessage(chat_id, `I can't load this pic to telegram: ${picUrl}`, reply_to_message_id))
@@ -35,4 +35,4 @@ const telegram = {
   }
 }
 
-module.exports = telegram;
+module.exports = telegram

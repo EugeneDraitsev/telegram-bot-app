@@ -22,7 +22,7 @@ function searchImage(query) {
             .catch(() => reject(`Can't load image: ${imageUrl}`))
         }
         else {
-          reject(`Google can't find ${query} for you`);
+          reject(`Google can't find ${query} for you`)
         }
       })
       .catch(() => reject('ERROR getting search result from google'))
