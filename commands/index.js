@@ -12,7 +12,7 @@ const statistic = require('../core/statistic/statistic')
 const youtube = require('../core/google/youtube')
 const wiki = require('../core/wiki/wiki')
 const dice = require('../core/text/dice.js')
-const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice']
+const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all']
 
 function processQuery(text, message_id, chat_id) {
   const query = parseQuery(text)
@@ -76,6 +76,15 @@ function processQuery(text, message_id, chat_id) {
 
     case '/dice' : {
       return telegram.sendMessage(chat_id, dice.throwDice(parseInt(query)), message_id, 'Markdown')
+    }
+
+    case '/all' : {
+      return statistic.getChatStatistic(chat_id).then(result => {
+        const message = result.users.map(user =>
+        `@${user.username}`).join(' ').concat('\n') + query
+
+        return telegram.sendMessage(chat_id, message)
+      })
     }
 
     default: {
