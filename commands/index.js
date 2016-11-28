@@ -78,7 +78,7 @@ function processQuery(text, message_id, chat_id) {
     case '/all' : {
       return statistic.getChatStatistic(chat_id).then(result => {
         const message = result.users.map(user =>
-            `@${user.username}`).join(' ').concat('') + query
+            `@${user.username}`).join(' ').concat('\n') + query
         return telegram.sendMessage(chat_id, message)
       })
     }
