@@ -16,9 +16,8 @@ function getRussianCurrency() {
     const currency = JSON.parse(response)
     return 'Курсы медузы:\n' + Object.keys(currency)
         .filter(currency => _.includes(currencyCodes, currency))
-        .reduce((message, key) => {
-          return message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`)
-        }, '')
+        .reduce((message, key) =>
+          message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`), '')
   }).catch(() => 'error getting currency from meduza')
 }
 
@@ -29,9 +28,8 @@ function getBelarusCurrency() {
       parseString(result, (err, result) => {
         const message = 'Курсы НБРБ:\n' + result.DailyExRates.Currency
             .filter(currency => _.includes(currencyCodes, currency.CharCode[0]))
-            .reduce((message, currency) => {
-              return message.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(2)}\n`)
-            }, '')
+            .reduce((message, currency) =>
+              message.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(2)}\n`), '')
         resolve(message)
       })
     }).catch(() => 'error getting currency from nbrb')
