@@ -1,5 +1,6 @@
 'use strict'
 const mongoose = require('mongoose')
+mongoose.Promise = Promise
 const connectionString = process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost/mongo'
 const options = {server: {socketOptions: {keepAlive: 30000, connectTimeoutMS: 30000}}}
 

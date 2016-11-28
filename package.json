@@ -3,10 +3,11 @@
   "version": "0.6.1",
   "private": true,
   "scripts": {
-    "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "invoke": "serverless invoke -f telegram-bot -p event.json",
+    "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "deploy": "serverless deploy --verbose",
-    "deploy-function": "serverless deploy function --function telegram-bot  --verbose"
+    "deploy-function": "serverless deploy function --function telegram-bot  --verbose",
+    "logs": "serverless logs -f hello -t"
   },
   "dependencies": {
     "lodash": "^4.5.0",
