@@ -1,4 +1,4 @@
-"use strict"
+'use strict'
 
 const _ = require('lodash')
 const telegram = require('../core/telegram/telegram.js')
@@ -49,11 +49,8 @@ function processQuery(text, message_id, chat_id) {
       return statistic.getChatStatistic(chat_id).then(result => {
         const stats = _.orderBy(result.users, 'msgCount', 'desc')
         const messagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
-        const message = `User Statistic.\nAll messages: ${messagesCount}\n` +
-          `${stats.map(user =>
-            `${user.msgCount} (${(user.msgCount / messagesCount * 100).toFixed(2)}%) - ${user.username}`)
-            .join('\n')}`
-
+        const message = `User Statistic.\nAll messages: ${messagesCount}\n` + stats.map(user =>
+            `${user.msgCount} (${(user.msgCount / messagesCount * 100).toFixed(2)}%) - ${user.username}`).join('\n')
         return telegram.sendMessage(chat_id, message)
       })
     }
@@ -81,8 +78,7 @@ function processQuery(text, message_id, chat_id) {
     case '/all' : {
       return statistic.getChatStatistic(chat_id).then(result => {
         const message = result.users.map(user =>
-        `@${user.username}`).join(' ').concat('\n') + query
-
+            `@${user.username}`).join(' ').concat('') + query
         return telegram.sendMessage(chat_id, message)
       })
     }
