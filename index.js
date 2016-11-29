@@ -15,27 +15,24 @@ function handler(req, context, callback) {
 }
 
 function processRequest(req) {
-  return new Promise(resolve => {
-    if (!req || !req.message || !req.message.chat || !req.message.text) {
-      return resolve('not a telegram message')
-    }
+  if (!req || !req.message || !req.message.chat || !req.message.text) {
+    return Promise.resolve('not a telegram message')
+  }
 
-    //waiting for fucking slow aws (node 4.3 -> 6.0)
-    // const {message: {text, message_id, from, chat}} = req
-    const message = req.message
-    const text = message.text
-    const from = message.from
-    const chat = message.chat
-    const message_id = message.message_id
+  //waiting for fucking slow aws (node 4.3 -> 6.0)
+  // const {message: {text, message_id, from, chat}} = req
+  const message = req.message
+  const text = message.text
+  const from = message.from
+  const chat = message.chat
+  const message_id = message.message_id
 
-    return Promise.all([commands.processQuery(text, message_id, chat.id), updateMessageStat(from, chat.id)])
-      .then(() => db.closeConnection().then(resolve).catch(resolve))
-      .catch(() => db.closeConnection().then(resolve).catch(resolve))
-  })
+  return Promise.all([commands.processQuery(text, message_id, chat.id), updateMessageStat(from, chat.id)])
+    .then(db.closeConnection)
 }
 
 function updateMessageStat(user_info, chat_id) {
-  return db.openConnection().then(statistic.updateStatistic(user_info, chat_id))
+  return db.openConnection().then(() => statistic.updateStatistic(user_info, chat_id))
 }
 
 function sendResponse(message, input, callback) {
