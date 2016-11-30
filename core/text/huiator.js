@@ -1,9 +1,8 @@
 'use strict'
 
 const _ = require('lodash')
-const MIN_LENGTH = 3
 
-const huify = (text) => text.length < MIN_LENGTH ? text : text.replace(/[А-Я0-9]+/ig, huifyWord)
+const huify = (text) => text.replace(/[А-Я0-9]+/ig, huifyWord)
 
 function huifyWord(word) {
   const patterns = [/^[бвгджзйклмнпрстфхчцшщ]*[оеёэ]/, /^[бвгджзйклмнпрстфхчцшщ]*[ую]/, /^[бвгджзйклмнпрстфхчцшщ]*[ая]/,
@@ -19,6 +18,8 @@ function huifyWord(word) {
       return word.replace(mainPattern, 'хуя')
     case 3:
       return word.replace(mainPattern, 'хуи')
+    default:
+      return word
   }
 }
 
