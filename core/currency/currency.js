@@ -5,9 +5,11 @@ const parseString = require('xml2js').parseString
 const _ = require('lodash')
 
 function getCurrency() {
-  return Promise.all([getBelarusCurrency(), getRussianCurrency()]).then((result) => {
-    return `Курсы валют:\n\n${result.join('\n')}`
-  })
+  return Promise.all([getBelarusCurrency().catch(() => 'error getting currency from nbrb'),
+    getRussianCurrency().catch(() => 'error getting currency from meduza')])
+    .then((result) => {
+      return `Курсы валют:\n\n${result.join('\n')}`
+    })
 }
 
 function getRussianCurrency() {
@@ -18,12 +20,12 @@ function getRussianCurrency() {
         .filter(currency => _.includes(currencyCodes, currency))
         .reduce((message, key) =>
           message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`), '')
-  }).catch(() => 'error getting currency from meduza')
+  })
 }
 
 function getBelarusCurrency() {
   const currencyCodes = ['USD', 'EUR', 'RUB']
-  return rp.get('http://www.nbrb.by/Services/XmlExRates.aspx?ondate=').then((result) => {
+  return rp.get({url: 'http://www.nbrb.by/Services/XmlExRates.aspx?ondate=', timeout: 5000}).then((result) => {
     return new Promise(resolve => {
       parseString(result, (err, result) => {
         const message = 'Курсы НБРБ:\n' + result.DailyExRates.Currency
@@ -32,7 +34,7 @@ function getBelarusCurrency() {
               message.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(2)}\n`), '')
         resolve(message)
       })
-    }).catch(() => 'error getting currency from nbrb')
+    })
   })
 }
 
