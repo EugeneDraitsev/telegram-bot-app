@@ -28,12 +28,12 @@ function processRequest(req) {
   const message_id = message.message_id
 
   return Promise.all([commands.processQuery(text, message_id, chat.id).catch(() => {}),
-    updateMessageStat(from, chat.id)])
+    updateMessageStat(from, chat.id).catch(() => {})])
     .then(db.closeConnection)
 }
 
 function updateMessageStat(user_info, chat_id) {
-  return db.openConnection().then(() => statistic.updateStatistic(user_info, chat_id)).catch(() => {})
+  return db.openConnection().then(() => statistic.updateStatistic(user_info, chat_id))
 }
 
 function sendResponse(message, input, callback) {
