@@ -7,7 +7,7 @@ const huify = (text) => text.replace(/[А-Я0-9]+/ig, huifyWord)
 const consonants = ['бвгджзйклмнпрстфхчцшщ']
 const patterns = [new RegExp(`^[${consonants}]*[оеёэ]`), new RegExp(`^[${consonants}]*[ую]`),
   new RegExp(`^[${consonants}]*[ая]`), new RegExp(`^[${consonants}]*[иы]`)]
-const mainPattern = new RegExp(`^[${consonants}].*`)
+const mainPattern = new RegExp(`^[${consonants}].`)
 
 function huifyWord(word) {
   switch (_.findIndex(patterns, pattern => pattern.test(word))) {
