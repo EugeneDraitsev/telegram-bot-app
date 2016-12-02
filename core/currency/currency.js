@@ -29,7 +29,7 @@ function getBelarusCurrency() {
         const message = 'Курсы НБРБ:\n' + result.DailyExRates.Currency
             .filter(currency => _.includes(currencyCodes, currency.CharCode[0]))
             .reduce((message, currency) =>
-              message.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(2)}\n`), '')
+              message.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(4)}\n`), '')
         resolve(message)
       })
     }).catch(() => 'error getting currency from nbrb')

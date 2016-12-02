@@ -4,11 +4,12 @@ const _ = require('lodash')
 
 const huify = (text) => text.replace(/[А-Я0-9]+/ig, huifyWord)
 
-function huifyWord(word) {
-  const patterns = [/^[бвгджзйклмнпрстфхчцшщ]*[оеёэ]/, /^[бвгджзйклмнпрстфхчцшщ]*[ую]/, /^[бвгджзйклмнпрстфхчцшщ]*[ая]/,
-    /^[бвгджзйклмнпрстфхчцшщ]*[иы]/]
-  const mainPattern = /^[бвгджзйклмнпрстфхчцшщ]*./
+const consonants = ['бвгджзйклмнпрстфхчцшщ']
+const patterns = [new RegExp(`^[${consonants}]*[оеёэ]`), new RegExp(`^[${consonants}]*[ую]`),
+  new RegExp(`^[${consonants}]*[ая]`), new RegExp(`^[${consonants}]*[иы]`)]
+const mainPattern = new RegExp(`^[${consonants}].*`)
 
+function huifyWord(word) {
   switch (_.findIndex(patterns, pattern => pattern.test(word))) {
     case 0:
       return word.replace(mainPattern, 'хуе')
