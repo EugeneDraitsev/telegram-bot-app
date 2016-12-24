@@ -12,7 +12,8 @@ const statistic = require('../core/statistic/statistic')
 const youtube = require('../core/google/youtube')
 const wiki = require('../core/wiki/wiki')
 const dice = require('../core/text/dice.js')
-const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all']
+const horoscope = require('../core/horoscope/index.js')
+const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p']
 
 function processQuery(text, message_id, chat_id) {
   const query = parseQuery(text)
@@ -73,6 +74,11 @@ function processQuery(text, message_id, chat_id) {
 
     case '/dice' : {
       return telegram.sendMessage(chat_id, dice.throwDice(parseInt(query)), message_id, 'Markdown')
+    }
+
+    case '/p' : {
+      return horoscope.getHoroscope(query)
+        .then(result => telegram.sendMessage(chat_id, result, message_id))
     }
 
     case '/all' : {
