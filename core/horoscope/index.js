@@ -15,8 +15,8 @@ function getHoroscope(query) {
     return new Promise(resolve => {
       parseString(result, (err, result) => {
         const sign = getAstrologicalSigns(query)
-        const prediction = result.horo[sign][0]
-        resolve(sign ? `${query}\nВчера:${prediction.yesterday}\nСегодня:${prediction.today}\nЗавтра:${prediction.tomorrow}`:
+        const prediction = sign ? result.horo[sign][0] : ''
+        resolve(sign ? `${query}\nВчера:${prediction.yesterday}\nСегодня:${prediction.today}\nЗавтра:${prediction.tomorrow}` :
           'Нужен Ваш зодиакальный знак')
       })
     })
