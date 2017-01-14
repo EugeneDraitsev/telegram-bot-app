@@ -1,3 +1,4 @@
+'use strict'
 const _ = require('lodash')
 
 //Collection of file_id's for stickers (https://telegram.me/addstickers/magicBall)

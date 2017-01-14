@@ -1,3 +1,4 @@
+'use strict'
 loadConfig()
 const db = require('./core/db/mongoose')
 const statistic = require('./core/statistic/statistic')

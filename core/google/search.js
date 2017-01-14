@@ -1,3 +1,4 @@
+'use strict'
 const _ = require('lodash')
 const rp = require('request-promise')
 const imageService = require('../image/png')

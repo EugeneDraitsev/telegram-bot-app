@@ -1,3 +1,4 @@
+'use strict'
 const rp = require('request-promise')
 const helper = require('./../../utils')
 const key = process.env.TRANSLATION_APP_TOKEN || 'set_your_token'

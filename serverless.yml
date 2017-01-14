@@ -10,6 +10,7 @@ package:
   exclude:
     - .idea/**
     - .git/**
+    - node.exe
 
 functions:
   telegram-bot:

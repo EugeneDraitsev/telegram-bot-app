@@ -1,3 +1,4 @@
+'use strict'
 const rp = require('request-promise')
 const parseString = require('xml2js').parseString
 

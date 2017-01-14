@@ -1,3 +1,4 @@
+'use strict'
 const rp = require('request-promise')
 const botToken = process.env.TOKEN || 'your_token_here'
 const BASE_URL = `https://api.telegram.org/bot${botToken}`
