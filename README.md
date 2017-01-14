@@ -1,6 +1,7 @@
 Bot for telegram, who can get images from google search and some local stuffs
 Please, use NodeJS version above 4.3 to launch this app.
-Also you need install:
+Also you need install globally:
+
 [yarn](https://github.com/yarnpkg/yarn) 
 
 ```
@@ -9,7 +10,7 @@ Also you need install:
 
 ```
 
-[serverless ](https://serverless.com/) globally  
+[serverless ](https://serverless.com/)
 
 ```
 #!javascript
