@@ -1,5 +1,3 @@
-'use strict'
-
 loadConfig()
 const db = require('./core/db/mongoose')
 const statistic = require('./core/statistic/statistic')
@@ -7,7 +5,7 @@ const commands = require('./commands')
 
 function handler(req, context, callback) {
   req = req.body ? JSON.parse(req.body) : req
-  console.log(req)
+  console.log(req) // eslint-disable-line no-console
 
   processRequest(req)
     .then(message => sendResponse(message, req, callback))
@@ -56,4 +54,4 @@ function loadConfig() {
   }
 }
 
-exports.handler = handler
+exports.handler = handler // eslint-disable-line

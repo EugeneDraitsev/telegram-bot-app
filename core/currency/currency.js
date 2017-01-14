@@ -1,6 +1,5 @@
-'use strict'
 const rp = require('request-promise')
-const url = "https://meduza.io/api/v3/stock/all"
+const url = 'https://meduza.io/api/v3/stock/all'
 const parseString = require('xml2js').parseString
 const _ = require('lodash')
 

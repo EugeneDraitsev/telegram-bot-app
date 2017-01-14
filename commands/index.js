@@ -1,5 +1,3 @@
-'use strict'
-
 const _ = require('lodash')
 const telegram = require('../core/telegram/telegram.js')
 const google = require('../core/google/search.js')
@@ -63,13 +61,11 @@ function processQuery(text, message_id, chat_id) {
     case '/v' : {
       return youtube.search(query)
         .then(response => telegram.sendMessage(chat_id, response, message_id))
-        .catch(console.log)
     }
 
     case '/w' : {
       return wiki.search(query)
         .then(response => telegram.sendMessage(chat_id, response, message_id))
-        .catch(console.log)
     }
 
     case '/dice' : {

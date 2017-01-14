@@ -1,0 +1,22 @@
+{
+  "env": {
+    "node": true,
+    "es6": true,
+    "jest": true
+  },
+  "plugins": ["node", "jest"],
+  "extends": "eslint:recommended",
+  "rules": {
+    "indent": [
+      "error", 2, {
+        "SwitchCase": 1
+      }
+    ],
+    "node/exports-style": ["error", "module.exports"],
+    "linebreak-style": ["error", "windows"],
+    "quotes": ["error", "single"],
+    "semi": ["error", "never"],
+    "jest/no-exclusive-tests": 2,
+    "jest/no-identical-title": 2
+  }
+}

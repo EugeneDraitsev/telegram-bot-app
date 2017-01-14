@@ -1,4 +1,3 @@
-"use strict"
 const _ = require('lodash')
 const rp = require('request-promise')
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'

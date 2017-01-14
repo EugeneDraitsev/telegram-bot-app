@@ -1,19 +1,36 @@
 {
   "name": "ChatBot",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "private": true,
   "scripts": {
+    "eslint": "eslint . --ext .js ",
+    "test": "jest",
+    "pre-commit": "npm run eslint && npm run test",
     "invoke": "serverless invoke -f telegram-bot -p event.json",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
-  "deploy": "serverless deploy --verbose",
-  "deploy-function": "serverless deploy function --function telegram-bot  --verbose",
-  "logs": "serverless logs -f telegram-bot -t"
-},
+    "deploy": "serverless deploy --verbose",
+    "deploy-function": "serverless deploy function --function telegram-bot  --verbose",
+    "logs": "serverless logs -f telegram-bot -t"
+  },
   "dependencies": {
     "lodash": "^4.5.0",
     "mongoose": "^4.7.0",
     "request": "^2.58.0",
     "request-promise": "^4.1.1",
     "xml2js": "^0.4.17"
+  },
+  "devDependencies": {
+    "eslint": "^3.13.1",
+    "eslint-plugin-jest": "^1.0.2",
+    "eslint-plugin-node": "^3.0.5",
+    "jest-cli": "^18.1.0",
+    "pre-commit": "^1.2.2"
+  },
+  "pre-commit": [
+    "eslint",
+    "test"
+  ],
+  "jest": {
+    "testEnvironment": "node"
   }
 }

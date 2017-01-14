@@ -1,5 +1,3 @@
-'use strict'
-
 const _ = require('lodash')
 const huify = (text) => text.replace(/[А-Я0-9]+/ig, huifyWord)
 const consonants = ['бвгджзйклмнпрстфхчцшщ']

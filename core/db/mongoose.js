@@ -1,4 +1,4 @@
-'use strict'
+/* eslint-disable no-console */
 const mongoose = require('mongoose')
 mongoose.Promise = Promise
 const connectionString = process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost/mongo'
@@ -11,7 +11,7 @@ function openConnection() {
         console.log('Connection Error:', err.message)
         return reject(err)
       }
-      console.log("Connected to DB!")
+      console.log('Connected to DB!')
       return resolve(connection)
     })
   })
@@ -24,7 +24,7 @@ function closeConnection() {
         console.log('Disconnection Error:', err.message)
         return reject(err)
       }
-      console.log("Disconnected from DB!")
+      console.log('Disconnected from DB!')
       return resolve()
     })
   })

@@ -1,4 +1,3 @@
-'use strict'
 const rp = require('request-promise')
 const botToken = process.env.TOKEN || 'your_token_here'
 const BASE_URL = `https://api.telegram.org/bot${botToken}`
@@ -8,7 +7,6 @@ function sendMessage(chat_id, text, reply_to_message_id, parse_mode) {
   const formData = {chat_id, reply_to_message_id: reply_to_message_id || '', text, parse_mode: parse_mode || ''}
 
   return rp.post({url: `${BASE_URL}/sendMessage`, formData})
-    .catch(err => console.log(`ERROR send message: ${err}`))
 }
 
 function sendPhoto(chat_id, photo, reply_to_message_id, picUrl) {
@@ -25,13 +23,12 @@ function sendPhoto(chat_id, photo, reply_to_message_id, picUrl) {
   }
 
   return rp.post({url: `${BASE_URL}/sendPhoto`, formData})
-    .catch(err => telegram.sendMessage(chat_id, `I can't load this pic to telegram: ${picUrl}`, reply_to_message_id))
+    .catch(() => sendMessage(chat_id, `I can't load this pic to telegram: ${picUrl}`, reply_to_message_id))
 }
 
 function sendSticker(chat_id, sticker, reply_to_message_id) {
   const formData = {chat_id, reply_to_message_id: reply_to_message_id || '', sticker}
   return rp.post({url: `${BASE_URL}/sendSticker`, formData})
-    .catch(err => console.log(`ERROR send sticker: ${err}`))
 }
 
 module.exports = {sendMessage, sendPhoto, sendSticker}
