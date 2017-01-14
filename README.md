@@ -1,6 +1,6 @@
 Bot for telegram, who can get images from google search and some local stuffs
 Please, use NodeJS version above 4.3 to launch this app.
-Also you need install globally:
+Also you can install globally (if something going wrong while deploy):
 
 [yarn](https://github.com/yarnpkg/yarn) 
 
