@@ -27,7 +27,7 @@
     "eslint-plugin-node": "^3.0.5",
     "jest-cli": "^18.1.0",
     "pre-commit": "^1.2.2",
-    "serverless": "^1.5.0",
+    "serverless": "^1.9.0",
     "yarn": "^0.18.1"
   },
   "pre-commit": [

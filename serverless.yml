@@ -11,6 +11,7 @@ package:
     - .idea/**
     - .git/**
     - node.exe
+    - yarn.lock
 
 functions:
   telegram-bot:
