@@ -12,7 +12,8 @@ const youtube = require('../core/google/youtube')
 const wiki = require('../core/wiki/wiki')
 const dice = require('../core/text/dice.js')
 const horoscope = require('../core/horoscope/index.js')
-const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p']
+const weather = require('../core/weather/index.js')
+const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s']
 
 function processQuery(text, message_id, chat_id) {
   const query = parseQuery(text)
@@ -75,6 +76,10 @@ function processQuery(text, message_id, chat_id) {
 
     case '/p' : {
       return horoscope.getHoroscope(query)
+        .then(result => telegram.sendMessage(chat_id, result, message_id))
+    }
+    case '/s' : {
+      return weather.getWeather(query)
         .then(result => telegram.sendMessage(chat_id, result, message_id))
     }
 
