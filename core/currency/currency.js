@@ -1,6 +1,5 @@
 'use strict'
 const rp = require('request-promise')
-const url = 'https://meduza.io/api/v3/stock/all'
 const parseString = require('xml2js').parseString
 const _ = require('lodash')
 
@@ -14,7 +13,8 @@ function getCurrency() {
 
 function getRussianCurrency() {
   const currencyCodes = ['usd', 'eur', 'brent']
-  return rp.post(url).then((response) => {
+  const url = 'https://meduza.io/api/v3/stock/all'
+  return rp.get({url, timeout: 10000}).then((response) => {
     const currency = JSON.parse(response)
     return 'Курсы медузы:\n' + Object.keys(currency)
         .filter(currency => _.includes(currencyCodes, currency))
@@ -25,7 +25,8 @@ function getRussianCurrency() {
 
 function getBelarusCurrency() {
   const currencyCodes = ['USD', 'EUR', 'RUB']
-  return rp.get({url: 'http://www.nbrb.by/Services/XmlExRates.aspx?ondate=', timeout: 5000}).then((result) => {
+  const url = 'http://www.nbrb.by/Services/XmlExRates.aspx?ondate='
+  return rp.get({url, timeout: 10000}).then((result) => {
     return new Promise(resolve => {
       parseString(result, (err, result) => {
         const message = 'Курсы НБРБ:\n' + result.DailyExRates.Currency

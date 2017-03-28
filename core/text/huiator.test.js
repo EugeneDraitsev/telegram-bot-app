@@ -1,5 +1,5 @@
 'use strict'
-var huiator = require('./huiator.js')
+const huiator = require('./huiator.js')
 
 describe('huiator must works as designed', () => {
   test('huiator must properly huify russian words', () => {

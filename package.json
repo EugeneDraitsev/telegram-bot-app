@@ -28,7 +28,7 @@
     "jest-cli": "^18.1.0",
     "pre-commit": "^1.2.2",
     "serverless": "^1.9.0",
-    "yarn": "^0.18.1"
+    "yarn": "^0.21.3"
   },
   "pre-commit": [
     "eslint",
