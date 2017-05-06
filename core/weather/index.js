@@ -47,7 +47,13 @@ function getWeather(location){
       const nowIcon = icon(infoNow.weather[0].icon), dayIcon = icon(infoForecast.list[0].weather[0].icon)
       const nextDayIcon = icon(infoForecast.list[1].weather[0].icon), nextNextDayIcon = icon(infoForecast.list[2].weather[0].icon)
       const flag = getFlag(country)
-      return `Город: ${city} регион: ${flag} ${country}\nНаправление ветра: ${dir}, скорость: ${wind}м/с\nТемпература: ${temp}°C, влажность: ${humidity}%\n${nowDescription} ${nowIcon}\nСегодня: ${dayTempHigh}°C/${dayTempLow}°C, ${dayDescription} ${dayIcon}\nЗавтра: ${nextDayTempHigh}°C/${nextDayTempLow}°C, ${nextDayDescription} ${nextDayIcon}\nЗавтра: ${nextNextDayTempHigh}°C/${nextNextDayTempLow}°C, ${nextNextDayDescription} ${nextNextDayIcon}`
+      return `Город: ${city} регион: ${flag} ${country}\
+              \nНаправление ветра: ${dir}, скорость: ${wind}м/с\
+              \nТемпература: ${temp}°C, влажность: ${humidity}%\
+              \n${nowDescription} ${nowIcon}\
+              \nСегодня: ${dayTempHigh}°C/${dayTempLow}°C, ${dayDescription} ${dayIcon}\
+              \nЗавтра: ${nextDayTempHigh}°C/${nextDayTempLow}°C, ${nextDayDescription} ${nextDayIcon}\
+              \nПослезавтра: ${nextNextDayTempHigh}°C/${nextNextDayTempLow}°C, ${nextNextDayDescription} ${nextNextDayIcon}`
     })
     .catch(() => {
       return 'Неверно выбран населенный пункт'
