@@ -1,4 +1,3 @@
-'use strict'
 const _ = require('lodash')
 const telegram = require('../core/telegram/telegram.js')
 const google = require('../core/google/search.js')

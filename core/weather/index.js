@@ -1,5 +1,3 @@
-'use strict'
-
 const rp = require('request-promise')
 const _ = require('lodash')
 const weatherToken = process.env.OPENWEATHERMAP_TOKEN || 'set_your_token'

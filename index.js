@@ -1,4 +1,3 @@
-'use strict'
 loadConfig()
 const db = require('./core/db/mongoose')
 const statistic = require('./core/statistic/statistic')
@@ -18,13 +17,7 @@ function processRequest(req) {
     return Promise.resolve('not a telegram message')
   }
 
-  //waiting for fucking slow aws (node 4.3 -> 6.0)
-  // const {message: {text, message_id, from, chat}} = req
-  const message = req.message
-  const text = message.text
-  const from = message.from
-  const chat = message.chat
-  const message_id = message.message_id
+  const {message: {text, message_id, from, chat}} = req
 
   return Promise.all([commands.processQuery(text, message_id, chat.id).catch(() => {}),
     updateMessageStat(from, chat.id).catch(() => {})])

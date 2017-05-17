@@ -1,4 +1,3 @@
-'use strict'
 const _ = require('lodash')
 const ChatStatistic = require('../models/chat-statistic')
 

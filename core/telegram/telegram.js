@@ -1,11 +1,9 @@
-'use strict'
 const rp = require('request-promise')
 const botToken = process.env.TOKEN || 'your_token_here'
 const BASE_URL = `https://api.telegram.org/bot${botToken}`
 
-function sendMessage(chat_id, text, reply_to_message_id, parse_mode) {
-  //fucking slow aws. waiting for node 6.0
-  const formData = {chat_id, reply_to_message_id: reply_to_message_id || '', text, parse_mode: parse_mode || ''}
+function sendMessage(chat_id, text, reply_to_message_id = '', parse_mode = '') {
+  const formData = {chat_id, reply_to_message_id, text, parse_mode}
 
   return rp.post({url: `${BASE_URL}/sendMessage`, formData})
 }

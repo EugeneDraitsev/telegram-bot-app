@@ -1,4 +1,3 @@
-'use strict'
 const huiator = require('./huiator.js')
 
 describe('huiator must works as designed', () => {

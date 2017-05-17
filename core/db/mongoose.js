@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-'use strict'
 const mongoose = require('mongoose')
 mongoose.Promise = Promise
 const connectionString = process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost/mongo'
