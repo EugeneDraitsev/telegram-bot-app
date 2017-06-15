@@ -43,7 +43,9 @@ function getBelarusCurrency() {
 }
 
 function getCryptoCurrency() {
-  const url = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,XRP&tsyms=USD'
+  const currencyCodes = ['BTC', 'ETH', 'XRP']
+  const toCurrencyCodes = ['USD']
+  const url = `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${currencyCodes}&tsyms=${toCurrencyCodes}`
   return rp.get({url, timeout: 10000}).then((response) => {
     const currency = JSON.parse(response)
     return 'Курсы криптовалют:\n' +
