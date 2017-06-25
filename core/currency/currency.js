@@ -50,8 +50,7 @@ function getCryptoCurrency() {
     const currency = JSON.parse(response)
     return 'Курсы криптовалют:\n' +
       Object.keys(currency)
-        .reduce((message, key) =>
-          message.concat(`${key}: ${currency[key].USD}\n`), '')
+        .reduce((message, key) => message.concat(`${key}: ${currency[key].USD}\n`), '')
   })
 }
 

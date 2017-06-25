@@ -79,7 +79,7 @@ function processQuery(text, message_id, chat_id) {
     }
     case '/s' : {
       return weather.getWeather(query)
-        .then(result => telegram.sendMessage(chat_id, result, message_id))
+        .then(result => telegram.sendMessage(chat_id, result, message_id, 'Markdown'))
     }
 
     case '/all' : {
