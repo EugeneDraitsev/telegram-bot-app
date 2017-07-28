@@ -4,12 +4,11 @@
   "scripts": {
     "eslint": "eslint core commands utils",
     "test": "jest",
-    "serverless": "serverless",
     "pre-commit": "npm run eslint && npm run test",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
-    "logs": "serverless logs -f telegram-bot -t",
-    "deploy-function": "serverless deploy function --function telegram-bot  --verbose",
-    "invoke": "serverless invoke -f telegram-bot -p event.json"
+    "logs": "sls logs -f telegram-bot -t",
+    "deploy-function": "sls deploy function --function telegram-bot  --verbose",
+    "invoke": "sls invoke -f telegram-bot -p event.json"
   },
   "dependencies": {
     "lodash": "^4.5.0",

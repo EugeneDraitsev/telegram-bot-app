@@ -4,7 +4,7 @@ provider:
   name: aws
   stage: prod
   region: eu-west-1
-  runtime: nodejs:6
+  runtime: nodejs6.10
 
 package:
   exclude:
