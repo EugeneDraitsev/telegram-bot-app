@@ -1,4 +1,5 @@
 loadConfig()
+const _ = require('lodash')
 const db = require('./core/db/mongoose')
 const statistic = require('./core/statistic/statistic')
 const commands = require('./commands')
@@ -17,9 +18,10 @@ function processRequest(req) {
     return Promise.resolve('not a telegram message')
   }
 
-  const {message: {text, message_id, from, chat}} = req
+  const {message: {message_id, from, chat, text, reply_to_message}} = req
+  const replyText = _.get(reply_to_message, 'text')
 
-  return Promise.all([commands.processQuery(text, message_id, chat.id).catch(() => {}),
+  return Promise.all([commands.processQuery(text, message_id, chat.id, replyText).catch(() => {}),
     updateMessageStat(from, chat.id).catch(() => {})])
     .then(db.closeConnection)
 }

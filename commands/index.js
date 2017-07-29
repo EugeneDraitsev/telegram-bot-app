@@ -12,10 +12,11 @@ const wiki = require('../core/wiki/wiki')
 const dice = require('../core/text/dice.js')
 const horoscope = require('../core/horoscope/index.js')
 const weather = require('../core/weather/index.js')
-const COMMANDS = ['/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s']
+const puntoSwitcher = require('../core/text/punto-switcher.js')
+const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s']
 
-function processQuery(text, message_id, chat_id) {
-  const query = parseQuery(text)
+function processQuery(text, message_id, chat_id, replyText) {
+  const query = replyText || parseQuery(text)
 
   switch (findCommand(text)) {
     case '/g' : {
@@ -50,7 +51,7 @@ function processQuery(text, message_id, chat_id) {
         const stats = _.orderBy(result.users, 'msgCount', 'desc')
         const messagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
         const message = `User Statistic.\nAll messages: ${messagesCount}\n` + stats.map(user =>
-            `${user.msgCount} (${(user.msgCount / messagesCount * 100).toFixed(2)}%) - ${user.username}`).join('\n')
+          `${user.msgCount} (${(user.msgCount / messagesCount * 100).toFixed(2)}%) - ${user.username}`).join('\n')
         return telegram.sendMessage(chat_id, message)
       })
     }
@@ -85,9 +86,13 @@ function processQuery(text, message_id, chat_id) {
     case '/all' : {
       return statistic.getChatStatistic(chat_id).then(result => {
         const message = result.users.map(user =>
-            `@${user.username}`).join(' ').concat('\n') + query
+          `@${user.username}`).join(' ').concat('\n') + query
         return telegram.sendMessage(chat_id, message)
       })
+    }
+
+    case '/ps' : {
+      return telegram.sendMessage(chat_id, puntoSwitcher(query), message_id)
     }
 
     default: {
