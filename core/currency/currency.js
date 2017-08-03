@@ -29,7 +29,8 @@ function getRussianCurrency() {
 function getBelarusCurrency() {
   const currencyCodes = ['USD', 'EUR', 'RUB']
   const url = 'http://www.nbrb.by/Services/XmlExRates.aspx?ondate='
-  return rp.get({url, timeout: 10000}).then((result) => {
+  //temporary increased
+  return rp.get({url, timeout: 15000}).then((result) => {
     return new Promise(resolve => {
       parseString(result, (err, result) => {
         const message = 'Курсы НБРБ:\n' + result.DailyExRates.Currency

@@ -14,7 +14,10 @@
       "username": "drrrrrrrr",
       "type": "private"
     },
+    "reply_to_message": {
+      "text": "123123"
+    },
     "date": 1480189433,
-    "text": "/s"
+    "text": "/t"
   }
 }

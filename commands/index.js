@@ -16,7 +16,7 @@ const puntoSwitcher = require('../core/text/punto-switcher.js')
 const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s']
 
 function processQuery(text, message_id, chat_id, replyText) {
-  const query = replyText || parseQuery(text)
+  const query = parseQuery(text) || replyText
 
   switch (findCommand(text)) {
     case '/g' : {
