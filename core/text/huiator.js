@@ -1,5 +1,5 @@
 const _ = require('lodash')
-const huify = (text) => text.replace(/[А-Я0-9]+/ig, huifyWord)
+const huify = (text) => text && text.replace ? text.replace(/[А-Я0-9]+/ig, huifyWord) : text
 const consonants = ['бвгджзйклмнпрстфхчцшщ']
 
 const patterns = [new RegExp(`^[${consonants}]*[оеёэ]`, 'i'), new RegExp(`^[${consonants}]*[ую]`, 'i'),
