@@ -1,22 +1,23 @@
 {
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module"
+  },
   "env": {
     "node": true,
-    "es6": true,
     "jest": true
   },
-  "plugins": ["node", "jest"],
-  "extends": "eslint:recommended",
+  "extends": [
+    "eslint:recommended",
+    "airbnb-base"
+  ],
   "rules": {
-    "indent": [
-      "error", 2, {
-        "SwitchCase": 1
-      }
-    ],
-    "node/exports-style": ["error", "module.exports"],
-    "linebreak-style": ["error", "windows"],
-    "quotes": ["error", "single"],
-    "semi": ["error", "never"],
-    "jest/no-exclusive-tests": 2,
-    "jest/no-identical-title": 2
+    "linebreak-style": "off",
+    "camelcase": "off",
+    "no-plusplus": "off",
+    "semi": [
+      "error",
+      "never"
+    ]
   }
 }

@@ -1,10 +1,11 @@
 {
   "name": "ChatBot",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "scripts": {
-    "eslint": "eslint core commands utils",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "jest",
-    "pre-commit": "npm run eslint && npm run test",
+    "pre-commit": "yarn eslint && yarn test",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "logs": "sls logs -f telegram-bot -t",
     "deploy-function": "sls deploy function --function telegram-bot  --verbose",
@@ -20,12 +21,13 @@
   "devDependencies": {
     "eslint": "^3.19.0",
     "eslint-plugin-jest": "^1.0.2",
-    "eslint-plugin-node": "^3.0.5",
+    "eslint-config-airbnb-base": "^11.2.0",
+    "eslint-plugin-import": "^2.2.0",
     "jest-cli": "^18.1.0",
     "pre-commit": "^1.2.2"
   },
   "pre-commit": [
-    "eslint",
+    "lint",
     "test"
   ],
   "jest": {
