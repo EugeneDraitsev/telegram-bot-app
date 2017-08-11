@@ -1,6 +1,6 @@
 const _ = require('lodash')
 
-function getRandomDice(number = 6) {
+function getRandomDice(number) {
   const max = number > 100 ? 100 : number
   return _.padStart(_.random(1, max), 3, '0')
 }

@@ -80,7 +80,7 @@ function processQuery(text, message_id, chat_id, replyText) {
       }
 
       case '/dice' : {
-        return telegram.sendMessage(chat_id, dice.throwDice(parseInt(query, 10)), message_id, 'Markdown')
+        return telegram.sendMessage(chat_id, dice.throwDice(parseInt(query, 10) || 6), message_id, 'Markdown')
       }
 
       case '/p' : {
