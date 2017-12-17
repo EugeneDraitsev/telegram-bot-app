@@ -1,6 +1,6 @@
 const rp = require('request-promise')
 const parseString = require('xml2js').parseString
-const _ = require('lodash')
+const { round, includes } = require('lodash')
 
 
 function getRussianCurrency() {
@@ -9,7 +9,7 @@ function getRussianCurrency() {
   return rp.get({ url, timeout: 10000 }).then((response) => {
     const currency = JSON.parse(response)
     return `Курсы медузы:\n${Object.keys(currency)
-      .filter(curr => _.includes(currencyCodes, curr))
+      .filter(curr => includes(currencyCodes, curr))
       .reduce((message, key) =>
         message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`), '')}`
   })
@@ -22,7 +22,7 @@ function getBelarusCurrency() {
   return rp.get({ url, timeout: 15000 }).then(responce => new Promise((resolve) => {
     parseString(responce, (err, result) => {
       const message = `Курсы НБРБ:\n${result.DailyExRates.Currency
-        .filter(currency => _.includes(currencyCodes, currency.CharCode[0]))
+        .filter(currency => includes(currencyCodes, currency.CharCode[0]))
         .reduce((acc, currency) =>
           acc.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(4)}\n`), '')}`
       resolve(message)
@@ -31,14 +31,17 @@ function getBelarusCurrency() {
 }
 
 function getCryptoCurrency() {
-  const currencyCodes = ['BTC', 'ETH', 'XRP']
-  const toCurrencyCodes = ['USD']
-  const url = `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${currencyCodes}&tsyms=${toCurrencyCodes}`
+  const url = 'https://poloniex.com/public?command=returnTicker'
   return rp.get({ url, timeout: 10000 }).then((response) => {
     const currency = JSON.parse(response)
+    const filteredCurrency = {
+      BTC: `${round(currency.USDT_BTC.highestBid)} / ${round(currency.USDT_BTC.lowestAsk)}`,
+      ETH: `${round(currency.USDT_ETH.highestBid, 2)} / ${round(currency.USDT_ETH.lowestAsk, 2)}`,
+      XRP: `${round(currency.USDT_XRP.highestBid, 4)} / ${round(currency.USDT_XRP.lowestAsk, 4)}`,
+    }
     return `Курсы криптовалют:\n${
-      Object.keys(currency)
-        .reduce((message, key) => message.concat(`${key}: ${currency[key].USD}\n`), '')}`
+      Object.keys(filteredCurrency)
+        .reduce((message, key) => message.concat(`${key}: ${filteredCurrency[key]}\n`), '')}`
   })
 }
 
@@ -46,7 +49,7 @@ function getCurrency() {
   const promises = [
     getBelarusCurrency().catch(() => 'error getting currency from nbrb'),
     getRussianCurrency().catch(() => 'error getting currency from meduza'),
-    getCryptoCurrency().catch(() => 'error getting currency from cryptocompare'),
+    getCryptoCurrency().catch(() => 'error getting currency from poloniex'),
   ]
   return Promise.all(promises)
     .then(result => `Курсы валют:\n\n${result.join('\n')}`)
