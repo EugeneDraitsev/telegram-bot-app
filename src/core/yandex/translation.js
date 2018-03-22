@@ -4,7 +4,7 @@ const helper = require('./../../utils')
 const key = process.env.TRANSLATION_APP_TOKEN || 'set_your_token'
 
 function translate(text) {
-  const lang = helper.hasRussiansLetters(text) ? 'ru-en' : 'en-ru'
+  const lang = helper.hasRussiansLetters(text) ? 'ru-en' : 'ru'
   const options = {
     url: 'https://translate.yandex.net/api/v1.5/tr.json/translate',
     qs: { key, lang, text },
