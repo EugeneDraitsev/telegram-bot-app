@@ -4,6 +4,8 @@ pipelines:
   branches:
     master:
       - step:
+          caches:
+            - node
           script:
             - yarn
             - yarn lint:fix
