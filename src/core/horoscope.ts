@@ -40,7 +40,7 @@ export const getHoroscope = async (query: string) => {
   const urlTomorrow = `https://horoscopes.rambler.ru/api/front/v1/horoscope/tomorrow/${sign}/`
 
   if (!sign) {
-    return '\`\`\`Нужен Ваш зодиакальный знак\`\`\`'
+    return '`Нужен Ваш зодиакальный знак`'
   }
 
   const [today, tomorrow] = await Promise.all([

@@ -7,5 +7,11 @@ pipelines:
           - yarn
           - yarn lint:fix
           - yarn test
-          - yarn deploy-function
+
+   branches:
+      master:
+        - step:
+            script:
+              - yarn deploy-function
+
 
