@@ -85,7 +85,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
 
       case '/p' : {
         return getHoroscope(query)
-          .then(result => sendMessage(chat_id, result, message_id))
+          .then(result => sendMessage(chat_id, result, message_id, 'Markdown'))
           .catch(() => sendMessage(chat_id, 'Request error :C', message_id))
       }
       case '/s' : {
