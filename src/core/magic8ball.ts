@@ -1,7 +1,7 @@
-const _ = require('lodash')
+import { sample } from 'lodash'
 
 // Collection of file_id's for stickers (https://telegram.me/addstickers/magicBall)
-const prediction = () => _.sample([
+export const getPrediction = () => sample([
   'BQADAgADYgADt7A3BoDZ58u5GNyPAg',
   'BQADAgADZAADt7A3BhljKKZjgGXtAg',
   'BQADAgADZgADt7A3Bs9cj69gGlocAg',
@@ -23,5 +23,3 @@ const prediction = () => _.sample([
   'BQADAgADhgADt7A3BoV9ejE-Lw4gAg',
   'BQADAgADiAADt7A3Bi3iPt8F9H3aAg',
 ])
-
-module.exports = { prediction }

@@ -2,8 +2,8 @@
 .DS_Store
 profile
 
-# xcode noise
-build/*
+build
+.build
 *.mode1
 *.mode1v3
 *.mode2v3
@@ -19,10 +19,15 @@ CVS
 
 # node
 node_modules
-config.js
 .idea
 .git
 .c9
 
 *.iml
 .serverless
+.webpack
+yarn-error.log
+
+config.*
+config.js
+config.ts

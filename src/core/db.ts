@@ -1,13 +1,12 @@
-/* eslint-disable no-console */
-const mongoose = require('mongoose')
+/* tslint:disable:no-console */
+import * as mongoose from 'mongoose'
 
-mongoose.Promise = Promise
 const connectionString = process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost/mongo'
-const options = { server: { socketOptions: { keepAlive: 30000, connectTimeoutMS: 30000 } } }
+const options = { keepAlive: 30000, connectTimeoutMS: 30000 }
 
-function openConnection() {
+export function openConnection() {
   return new Promise((resolve, reject) => {
-    const connection = mongoose.connect(connectionString, options, (err) => {
+    const connection: any = mongoose.connect(connectionString, options, (err) => {
       if (err) {
         console.log('Connection Error:', err.message)
         return reject(err)
@@ -18,7 +17,7 @@ function openConnection() {
   })
 }
 
-function closeConnection() {
+export function closeConnection() {
   return new Promise((resolve, reject) => {
     mongoose.connection.close((err) => {
       if (err) {
@@ -30,5 +29,3 @@ function closeConnection() {
     })
   })
 }
-
-module.exports = { closeConnection, openConnection }

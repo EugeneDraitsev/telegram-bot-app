@@ -1,11 +1,12 @@
-image: drai/serverless-awscli
+image: node:9.11
 
 pipelines:
   default:
     - step:
         script:
           - yarn
+          - yarn global add serverless
           - yarn lint:fix
           - yarn test
-          - yarn install --production
+          - yarn install
           - yarn deploy-function

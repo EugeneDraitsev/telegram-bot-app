@@ -1,4 +1,5 @@
-const helper = require('../../utils')
+/* tslint:disable: object-literal-sort-keys */
+import { hasRussiansLetters } from '../../utils'
 
 const enRu = {
   Q: 'Й',
@@ -63,16 +64,18 @@ const enRu = {
   '&': '?',
 }
 
-const ruEn = Object.keys(enRu).reduce((obj, key) => {
-  // eslint-disable-next-line no-param-reassign
-  obj[enRu[key]] = key
-  return obj
-}, {})
+const ruEn = Object.keys(enRu).reduce(
+  (obj, key) => {
+    // eslint-disable-next-line no-param-reassign
+    obj[enRu[key]] = key
+    return obj
+  },
+  {},
+)
 
-module.exports = (text) => {
-  const charsToSwitch = helper.hasRussiansLetters(text) ? ruEn : enRu
+export const puntoSwitcher = (text: string) => {
+  const charsToSwitch = hasRussiansLetters(text) ? ruEn : enRu
   if (text.split) {
-    // eslint-disable-next-line no-confusing-arrow
     return text.split('').map(char => charsToSwitch[char] ? charsToSwitch[char] : char).join('')
   }
   return text

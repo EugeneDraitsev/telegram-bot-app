@@ -1,0 +1,28 @@
+{
+  "extends": [
+    "tslint:recommended",
+    "tslint-config-airbnb"
+  ],
+  "linterOptions": {
+    "exclude": [
+      "node_modules/**/*.**"
+    ]
+  },
+  "rules": {
+    "semicolon": [
+      true,
+      "never"
+    ],
+    "max-line-length": [
+      true,
+      120
+    ],
+    "linebreak-style": [
+      true,
+      "LF"
+    ],
+    "array-type": false,
+    "import-name": false,
+    "variable-name": false
+  }
+}

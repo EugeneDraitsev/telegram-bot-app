@@ -3,9 +3,7 @@ const YEARS = {
   2018: '20!8',
 }
 
-const yasnyfy = (text) => {
+export const yasnyfy = (text: string) => {
   const year = YEARS[new Date().getFullYear()]
   return `\n>${year}${text ? `\n>${text}` : ''}\nЯсно`
 }
-
-module.exports = { yasnyfy }

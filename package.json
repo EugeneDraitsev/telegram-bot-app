@@ -1,37 +1,62 @@
 {
   "name": "ChatBot",
-  "version": "0.8.0",
+  "version": "0.9.0",
+  "repository": {
+    "type": "git",
+    "url": "https://bitbucket.org/drai/telegram-bot-app"
+  },
+  "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "scripts": {
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "test": "jest",
-    "pre-commit": "yarn eslint && yarn test",
+    "start": "sls offline start",
+    "lint": "tslint src/**/*.ts src/**/*.tsx",
+    "lint:fix": "tslint src/**/*.ts src/**/*.tsx --fix",
+    "test": "jest --verbose",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "logs": "sls logs -f telegram-bot -t",
     "deploy-function": "sls deploy function --function telegram-bot  --verbose",
     "invoke": "sls invoke -f telegram-bot -p event.json"
   },
   "dependencies": {
+    "form-data": "^2.3.2",
     "lodash": "^4.5.0",
-    "mongoose": "^4.7.0",
-    "request": "^2.58.0",
-    "request-promise": "^4.1.1",
+    "mongoose": "^5.1.0",
+    "node-fetch": "^2.1.2",
+    "url": "^0.11.0",
     "xml2js": "^0.4.17"
   },
   "devDependencies": {
-    "eslint": "^3.19.0",
-    "eslint-plugin-jest": "^1.0.2",
-    "eslint-config-airbnb-base": "^11.2.0",
-    "eslint-plugin-import": "^2.2.0",
-    "jest-cli": "^18.1.0",
-    "pre-commit": "^1.2.2"
+    "@types/aws-lambda": "^8.10.3",
+    "@types/form-data": "^2.2.1",
+    "@types/jest": "^22.2.3",
+    "@types/lodash": "^4.14.108",
+    "@types/mongoose": "^5.0.13",
+    "@types/node-fetch": "^1.6.9",
+    "@types/xml2js": "^0.4.2",
+    "jest": "^22.4.3",
+    "serverless": "^1.27.2",
+    "serverless-offline": "^3.21.1",
+    "serverless-webpack": "^5.1.5",
+    "ts-jest": "^22.4.6",
+    "ts-loader": "^4.3.0",
+    "tslint": "^5.10.0",
+    "tslint-config-airbnb": "^5.8.0",
+    "typescript": "^2.8.3",
+    "webpack": "^4.8.3"
   },
-  "pre-commit": [
-    "lint",
-    "test"
-  ],
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
   },
   "license": "MIT"
 }
