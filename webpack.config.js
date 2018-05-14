@@ -4,6 +4,7 @@ const slsw = require('serverless-webpack')
 module.exports = {
   entry: slsw.lib.entries,
   mode: 'development',
+  target: 'node',
   resolve: {
     extensions: [
       '.js',
@@ -17,7 +18,6 @@ module.exports = {
     path: path.join(__dirname, '.webpack'),
     filename: '[name].js',
   },
-  target: 'node',
   module: {
     rules: [
       {

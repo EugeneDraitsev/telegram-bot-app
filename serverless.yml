@@ -5,6 +5,14 @@ provider:
   stage: prod
   region: eu-central-1
   runtime: nodejs8.10
+  environment:
+      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
+      GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN}
+      MONGO_CONNECTION_STRING: ${env:MONGO_CONNECTION_STRING}
+      OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN}
+      TOKEN: ${env:TOKEN}
+      TRANSLATION_APP_TOKEN: ${env:TRANSLATION_APP_TOKEN}
+      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
 
 package:
   exclude:
