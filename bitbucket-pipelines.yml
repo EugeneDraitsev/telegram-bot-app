@@ -5,8 +5,6 @@ pipelines:
     - step:
         script:
           - yarn
-          - yarn global add serverless
           - yarn lint:fix
           - yarn test
-          - yarn install
           - yarn deploy-function
