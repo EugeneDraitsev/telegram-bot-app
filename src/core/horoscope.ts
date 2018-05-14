@@ -36,13 +36,17 @@ function getAstrologicalSigns(query: string) {
 
 export const getHoroscope = async (query: string) => {
   const sign = getAstrologicalSigns(query)
-  const url = `https://horoscopes.rambler.ru/api/front/v1/horoscope/today/${sign}/`
+  const urlToday = `https://horoscopes.rambler.ru/api/front/v1/horoscope/today/${sign}/`
+  const urlTomorrow = `https://horoscopes.rambler.ru/api/front/v1/horoscope/tomorrow/${sign}/`
 
   if (!sign) {
     return 'Нужен Ваш зодиакальный знак'
   }
 
-  const { text } = await fetch(url, { timeout: 10000 }).then(x => x.json())
+  const [today, tomorrow] = await Promise.all([
+    fetch(urlToday, { timeout: 10000 }).then(x => x.json()),
+    fetch(urlTomorrow, { timeout: 10000 }).then(x => x.json()),
+  ])
 
-  return text
+  return `Сегодня:\n${today.text}\n\nЗавтра: \n${tomorrow.text}`
 }
