@@ -1,7 +1,7 @@
 image: node:9.11
 
 pipelines:
-  master:
+  default:
     - step:
         script:
           - yarn
