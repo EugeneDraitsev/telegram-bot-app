@@ -1,13 +1,6 @@
 image: node:9.11
 
 pipelines:
-  default:
-    - step:
-        script:
-          - yarn
-          - yarn lint:fix
-          - yarn test
-
   master:
     - step:
         script:
@@ -15,3 +8,11 @@ pipelines:
           - yarn lint:fix
           - yarn test
           - yarn deploy-function
+
+  default:
+    - step:
+        script:
+          - yarn
+          - yarn lint:fix
+          - yarn test
+
