@@ -30,7 +30,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
     switch (findCommand(text)) {
       case '/g' : {
         return searchImage(query)
-          .then(response => sendPhoto(chat_id, response.image,  response.url, message_id))
+          .then(response => sendPhoto(chat_id, response.image, response.url, message_id))
           .catch(error => sendMessage(chat_id, error, message_id))
       }
 
@@ -86,6 +86,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       case '/p' : {
         return getHoroscope(query)
           .then(result => sendMessage(chat_id, result, message_id))
+          .catch(() => sendMessage(chat_id, 'Request error :C', message_id))
       }
       case '/s' : {
         return getWeather(query || 'Минск')
