@@ -30,7 +30,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
     switch (findCommand(text)) {
       case '/g' : {
         return searchImage(query)
-          .then(response => sendPhoto(chat_id, response.image, message_id, response.url))
+          .then(response => sendPhoto(chat_id, response.image,  response.url, message_id))
           .catch(error => sendMessage(chat_id, error, message_id))
       }
 
