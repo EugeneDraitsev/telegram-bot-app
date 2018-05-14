@@ -9,10 +9,3 @@ pipelines:
           - yarn test
           - yarn deploy-function
 
-  default:
-    - step:
-        script:
-          - yarn
-          - yarn lint:fix
-          - yarn test
-
