@@ -48,5 +48,5 @@ export const getHoroscope = async (query: string) => {
     fetch(urlTomorrow, { timeout: 10000 }).then(x => x.json()),
   ])
 
-  return `Сегодня:\n${today.text}\n\nЗавтра: \n${tomorrow.text}`
+  return `\`\`\`Сегодня:\n${today.text}\n\nЗавтра: \n${tomorrow.text}\'\'\''
 }
