@@ -14,6 +14,6 @@ export function translate(text: string) {
 
   return fetch('https://translate.yandex.net/api/v1.5/tr.json/translate', { body, method: 'POST' } as any)
     .then(x => x.json())
-    .then(response => first(response.text))
+    .then(response => first(response.text) as string)
     .catch(() => 'Error from translation service')
 }
