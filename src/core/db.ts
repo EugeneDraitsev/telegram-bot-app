@@ -17,15 +17,9 @@ export function openConnection() {
   })
 }
 
-export function closeConnection() {
-  return new Promise((resolve, reject) => {
-    mongoose.connection.close((err) => {
-      if (err) {
-        console.log('Disconnection Error:', err.message)
-        return reject(err)
-      }
-      console.log('Disconnected from DB!')
-      return resolve()
-    })
+export const closeConnection = () => mongoose.connection.close()
+  .then(() => console.log('Disconnected from DB!'))
+  .catch((err) => {
+    console.log('Disconnection Error:', err.message)
+    return Promise.reject(err)
   })
-}
