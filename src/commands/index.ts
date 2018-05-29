@@ -22,7 +22,7 @@ import {
 const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s']
 
 const parseQuery = (query: string) => query.replace(/\/\S+\s*/g, '').trim()
-const findCommand = (text: string) => COMMANDS.filter(command => !text.lastIndexOf(command))[0]
+const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/,'') === command)
 
 export function processQuery(text: string, message_id: string, chat_id: string, replyText: string) {
   const query = parseQuery(text) || replyText

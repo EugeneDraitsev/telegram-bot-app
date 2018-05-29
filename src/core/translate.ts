@@ -1,6 +1,6 @@
+import { first } from 'lodash'
 import fetch from 'node-fetch'
 import { URLSearchParams } from 'url'
-import { first } from 'lodash'
 import { hasRussiansLetters } from '../utils/'
 
 const key = process.env.TRANSLATION_APP_TOKEN || 'set_your_token'
