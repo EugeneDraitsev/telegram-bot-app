@@ -21,6 +21,7 @@ export function sendPhoto(chat_id: string | number, photo: Buffer, picUrl: strin
   body.append('reply_to_message_id', reply_to_message_id)
 
   return fetch(`${BASE_URL}/sendPhoto`, { body, method: 'POST' })
+    .then(res => res.status > 200 ? Promise.reject(res) : Promise.resolve(res))
     .catch(() => sendMessage(chat_id, `I can't load this pic to telegram: ${picUrl}`, reply_to_message_id))
 }
 
