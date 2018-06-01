@@ -7,12 +7,12 @@ const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 const isResponseImage = (headers: Headers) => headers.get('content-type')!.split('/')[0] === 'image'
 
 function getImage(url: string, tbUrl: string) {
-  return fetch(url)
+  return fetch(url, { timeout: 10000 })
     .then(response => isResponseImage(response.headers) ? Promise.resolve(response) : Promise.reject(null))
     .then(res => res.buffer())
     .catch(() => {
       if (tbUrl) {
-        return fetch(tbUrl)
+        return fetch(tbUrl, { timeout: 10000 })
           .then(res => isResponseImage(res.headers) ? Promise.resolve(res) : Promise.reject(null))
           .then(res => res.buffer())
       }
@@ -24,7 +24,7 @@ export const searchImage = (query: string) => {
   const url = 'https://www.googleapis.com/customsearch/v1?searchType=image&imgSize=xlarge&alt=json&num=10&start=1' +
     `&key=${googleSearchToken}&cx=${cxToken}&q=${encodeURI(query)}`
 
-  return fetch(url)
+  return fetch(url, { timeout: 10000 })
     .then(r => r.json())
     .then((responseData) => {
       if (get(responseData, 'items.length') > 0) {
