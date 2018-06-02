@@ -2,6 +2,10 @@ import '../load-config.js'
 
 import { Handler } from 'aws-lambda'
 import { get, noop } from 'lodash'
+
+// tslint:disable-next-line
+const AWSXRay = require('aws-xray-sdk')
+
 import { processQuery } from './commands/'
 import { closeConnection, openConnection, updateStatistic } from './core'
 
@@ -10,18 +14,30 @@ function updateMessageStat(user_info: any, chat_id: any) {
 }
 
 function processRequest(req: any) {
-  if (!req || !req.message || !req.message.chat || !req.message.text) {
-    return Promise.resolve('not a telegram message')
-  }
+  return new Promise((resolve, reject) => {
+    const segment = new AWSXRay.Segment('telegram-bot')
+    const namespace = AWSXRay.getNamespace()
+    namespace.run(() => {
+      AWSXRay.setSegment(segment)
+      AWSXRay.captureAsyncFunc('processRequest', (subsegment: any) => {
+        if (!req || !req.message || !req.message.chat || !req.message.text) {
+          return Promise.resolve('not a telegram message')
+        }
 
-  const { message: { message_id, from, chat, text, reply_to_message } } = req
-  const replyText = get(reply_to_message, 'text')
+        const { message: { message_id, from, chat, text, reply_to_message } } = req
+        const replyText = get(reply_to_message, 'text')
 
-  return Promise.all([
-    processQuery(text, message_id, chat.id, replyText).catch(noop),
-    updateMessageStat(from, chat.id).catch(noop),
-  ])
-    .then(closeConnection)
+        return Promise.all([
+          processQuery(text, message_id, chat.id, replyText).catch(noop),
+          updateMessageStat(from, chat.id).catch(noop),
+        ])
+          .then(closeConnection)
+          .then((res: any) => resolve(res))
+          .catch(reject)
+          .finally(() => subsegment.close())
+      })
+    })
+  })
 }
 
 export const handler: Handler = async (event: any) => {
