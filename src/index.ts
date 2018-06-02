@@ -58,7 +58,6 @@ function processRequest(req: any) {
     .then(closeConnection)
 }
 
-
 export const handler: Handler = async (event: any) => {
   const body = event.body ? JSON.parse(event.body) : event
   console.log(body) // tslint:disable-line:no-console
