@@ -1,13 +1,28 @@
 import '../load-config.js'
 
 import { Handler } from 'aws-lambda'
-import { get, noop } from 'lodash'
+import { get } from 'lodash'
+
+const AWSXRay = require('aws-xray-sdk') // tslint:disable-line
+AWSXRay.enableManualMode()
+
+export let segment: any
+export let segments: any = {
+  dbSegment: null,
+  querySegment: null,
+}
 
 import { processQuery } from './commands/'
 import { closeConnection, openConnection, updateStatistic } from './core'
 
 function updateMessageStat(user_info: any, chat_id: any) {
-  return openConnection().then(() => updateStatistic(user_info, chat_id))
+  segments.dbSegment = new AWSXRay.Segment('mongo-query', segment.trace_id, segment.id)
+  return openConnection()
+    .then(() => updateStatistic(user_info, chat_id))
+    .catch((err) => {
+      console.log(err) // tslint:disable-line
+      segments.dbSegment.addError(new Error(err))
+    })
 }
 
 function processRequest(req: any) {
@@ -16,18 +31,18 @@ function processRequest(req: any) {
   }
 
   const { message: { message_id, from, chat, text, reply_to_message } } = req
-  const replyText = get(reply_to_message, 'text')
+  const replyText = get(reply_to_message, 'text', '')
 
   return Promise.all([
-    processQuery(text, message_id, chat.id, replyText).catch(noop),
-    updateMessageStat(from, chat.id).catch(noop),
+    processQuery(text, message_id, chat.id, replyText).then(() => segments.querySegment.close()),
+    updateMessageStat(from, chat.id).then(() => segments.dbSegment.close()),
   ])
     .then(closeConnection)
 }
 
 export const handler: Handler = async (event: any) => {
   const body = event.body ? JSON.parse(event.body) : event
-  console.log(body) // tslint:disable-line:no-console
+  segment = new AWSXRay.Segment('telegram-bot')
 
   try {
     const message = await processRequest(body)
@@ -37,11 +52,18 @@ export const handler: Handler = async (event: any) => {
     }
 
   } catch (e) {
-    // tslint:disable-next-line
-    console.log(e)
+    console.log(e) // tslint:disable-line
+    segment.addError(e)
     return {
       body: JSON.stringify({ body, message: 'something going wrong :c' }),
       statusCode: 200,
     }
+  } finally {
+    const { dbSegment, querySegment } = segments
+    if (dbSegment.fault || querySegment.fault) {
+      console.log(body) // tslint:disable-line
+      segment.addFaultFlag()
+    }
+    segment.close()
   }
 }

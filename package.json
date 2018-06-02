@@ -17,6 +17,7 @@
     "invoke": "sls invoke -f telegram-bot -p event.json"
   },
   "dependencies": {
+    "aws-xray-sdk": "^1.2.0",
     "form-data": "^2.3.2",
     "lodash": "^4.5.0",
     "mongoose": "^5.1.0",

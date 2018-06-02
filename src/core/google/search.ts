@@ -1,6 +1,8 @@
 import { get, sample } from 'lodash'
 import fetch from 'node-fetch'
 
+import { segments } from '../../'
+
 const googleSearchToken = process.env.GOOGLE_SEARCH_TOKEN || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
@@ -34,10 +36,16 @@ export const searchImage = (query: string) => {
 
         return getImage(imageUrl, tbUrl)
           .then(res => ({ image: res, url: imageUrl }))
-          .catch(() => Promise.reject(`Can't load image: ${imageUrl}`))
+          .catch((err) => {
+            segments.querySegment.addError(err)
+            return Promise.reject(`Can't load image: ${imageUrl}`)
+          })
       }
 
       return Promise.reject(`Google can't find ${query} for you`)
     })
-    .catch(e => Promise.reject(typeof e === 'string' ? e : 'Error getting search result from google.'))
+    .catch((e) => {
+      segments.querySegment.addError(e)
+      return Promise.reject(typeof e === 'string' ? e : 'Error getting search result from google.')
+    })
 }

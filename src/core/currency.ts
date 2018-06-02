@@ -2,6 +2,8 @@ import { includes, round } from 'lodash'
 import fetch from 'node-fetch'
 import { parseString } from 'xml2js'
 
+import { segments } from '../'
+
 interface INbrbResponse {
   DailyExRates: {
     Currency: {
@@ -54,12 +56,18 @@ const getCryptoCurrency = async () => {
       .reduce((message, key) => message.concat(`${key}: ${filteredCurrency[key]}\n`), '')}`
 }
 
+const getError = (err: Error, from: string) => {
+  segments.querySegment.addError(err)
+  return `error getting currency from ${from}`
+}
+
 export const getCurrency = () => {
   const promises = [
-    getBelarusCurrency().catch(() => 'error getting currency from nbrb'),
-    getRussianCurrency().catch(() => 'error getting currency from meduza'),
-    getCryptoCurrency().catch(() => 'error getting currency from poloniex'),
+    getBelarusCurrency().catch(err => getError(err, 'nbrb')),
+    getRussianCurrency().catch(err => getError(err, 'meduza')),
+    getCryptoCurrency().catch(err => getError(err, 'poloniex')),
   ]
+
   return Promise.all(promises)
     .then(result => `Курсы валют:\n\n${result.join('\n')}`)
 }

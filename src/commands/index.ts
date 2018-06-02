@@ -1,4 +1,9 @@
 import { orderBy } from 'lodash'
+
+// tslint:disable-next-line
+const AWSXRay = require('aws-xray-sdk')
+
+import { segment, segments } from '../'
 import {
   getChatStatistic,
   getCurrency,
@@ -22,13 +27,16 @@ import {
 const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s']
 
 const parseQuery = (query: string) => query.replace(/\/\S+\s*/g, '').trim()
-export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/,'') === command
-      || text.replace(/@.*/,'') === command)
+export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/, '') === command
+  || text.replace(/@.*/, '') === command)
 
 export function processQuery(text: string, message_id: string, chat_id: string, replyText: string) {
   const query = parseQuery(text) || replyText
+  const command = findCommand(text)
+  segments.querySegment = new AWSXRay.Segment(command || 'no-command', segment.trace_id, segment.id)
+
   try {
-    switch (findCommand(text)) {
+    switch (command) {
       case '/g' : {
         return searchImage(query)
           .then(response => sendPhoto(chat_id, response.image, response.url, message_id))
@@ -87,7 +95,10 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       case '/p' : {
         return getHoroscope(query)
           .then(result => sendMessage(chat_id, result, message_id, 'Markdown'))
-          .catch(() => sendMessage(chat_id, 'Request error :C', message_id))
+          .catch((e) => {
+            segments.querySegment.addError(e)
+            return sendMessage(chat_id, 'Request error :C', message_id)
+          })
       }
       case '/s' : {
         return getWeather(query || 'Минск')

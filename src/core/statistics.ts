@@ -1,5 +1,7 @@
-import { find, noop } from 'lodash'
+import { find } from 'lodash'
 import ChatStatistic from '../models/chat-statistic'
+
+import { segments } from '../'
 
 interface IUserInfo {
   username?: string
@@ -46,6 +48,6 @@ export const updateStatistic = (userInfo: IUserInfo, chat_id: string) => {
     return ChatStatistic
       .update({ chat_id }, { chat_id, users: statistic.users }, { upsert: true })
       .exec()
-      .catch(noop)
+      .catch(e => segments.querySegment.addError(e))
   })
 }

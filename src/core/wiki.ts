@@ -1,4 +1,5 @@
 import fetch from 'node-fetch'
+import { segments } from '../'
 import { hasRussiansLetters } from '../utils/'
 
 export function searchWiki(query: string) {
@@ -11,5 +12,9 @@ export function searchWiki(query: string) {
     .then((response) => {
       const result = response[3][0]
       return result || `Failed to find article for term: ${query}`
+    })
+    .catch((e) => {
+      segments.querySegment.addError(e)
+      return 'Wiki error'
     })
 }
