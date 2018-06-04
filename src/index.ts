@@ -63,6 +63,7 @@ export const handler: Handler = async (event: any) => {
     if (dbSegment.fault || querySegment.fault) {
       console.log(body) // tslint:disable-line
       segment.addFaultFlag()
+      segment.addAttribute('body', body)
     }
     segment.close()
   }
