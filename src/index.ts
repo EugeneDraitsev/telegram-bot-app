@@ -8,6 +8,7 @@ AWSXRay.enableManualMode()
 
 export let segment: any
 export let segments: any = {
+  commandSegment: null,
   dbSegment: null,
   querySegment: null,
 }
@@ -16,7 +17,7 @@ import { processQuery } from './commands/'
 import { closeConnection, openConnection, updateStatistic } from './core'
 
 function updateMessageStat(user_info: any, chat_id: any) {
-  segments.dbSegment = new AWSXRay.Segment('mongo-query', segment.trace_id, segment.id)
+  segments.dbSegment = new AWSXRay.Segment('mongo-record', segment.trace_id, segment.id)
   return openConnection()
     .then(() => updateStatistic(user_info, chat_id))
     .catch((err) => {
@@ -32,9 +33,13 @@ function processRequest(req: any) {
 
   const { message: { message_id, from, chat, text, reply_to_message } } = req
   const replyText = get(reply_to_message, 'text', '')
+  segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
 
   return Promise.all([
-    processQuery(text, message_id, chat.id, replyText).then(() => segments.querySegment.close()),
+    processQuery(text, message_id, chat.id, replyText).then(() => {
+      segments.querySegment.close()
+      segments.commandSegment.close()
+    }),
     updateMessageStat(from, chat.id).then(() => segments.dbSegment.close()),
   ])
     .then(closeConnection)

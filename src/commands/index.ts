@@ -3,7 +3,7 @@ import { orderBy } from 'lodash'
 // tslint:disable-next-line
 const AWSXRay = require('aws-xray-sdk')
 
-import { segment, segments } from '../'
+import { segments } from '../'
 import {
   getChatStatistic,
   getCurrency,
@@ -33,7 +33,8 @@ export const findCommand = (text: string) => COMMANDS.find(command => text.repla
 export function processQuery(text: string, message_id: string, chat_id: string, replyText: string) {
   const query = parseQuery(text) || replyText
   const command = findCommand(text)
-  segments.querySegment = new AWSXRay.Segment(command || 'no-command', segment.trace_id, segment.id)
+  const { commandSegment } = segments
+  segments.querySegment = new AWSXRay.Segment(command || 'no-command', commandSegment.trace_id, commandSegment.id)
 
   try {
     switch (command) {
