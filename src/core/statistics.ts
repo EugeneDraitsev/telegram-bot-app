@@ -48,6 +48,6 @@ export const updateStatistic = (userInfo: IUserInfo, chat_id: string) => {
     return ChatStatistic
       .update({ chat_id }, { chat_id, users: statistic.users }, { upsert: true })
       .exec()
-      .catch(e => segments.querySegment.addError(e))
+      .catch(e => segments.dbSegment.addError(e))
   })
 }

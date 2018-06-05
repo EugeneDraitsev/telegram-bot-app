@@ -10,7 +10,6 @@ export let segment: any
 export let segments: any = {
   commandSegment: null,
   dbSegment: null,
-  querySegment: null,
 }
 
 import { processQuery } from './commands/'
@@ -22,6 +21,7 @@ function updateMessageStat(user_info: any, chat_id: any) {
     .then(() => updateStatistic(user_info, chat_id))
     .catch((err) => {
       console.log(err) // tslint:disable-line
+      segments.dbSegment.addAttribute('user_info', user_info)
       segments.dbSegment.addError(new Error(err))
     })
 }
@@ -64,8 +64,8 @@ export const handler: Handler = async (event: any) => {
       statusCode: 200,
     }
   } finally {
-    const { dbSegment, querySegment } = segments
-    if (dbSegment.fault || querySegment.fault) {
+    const { dbSegment, commandSegment } = segments
+    if (dbSegment.fault || commandSegment.fault) {
       console.log(body) // tslint:disable-line
       segment.addFaultFlag()
       segment.addAttribute('body', body)
