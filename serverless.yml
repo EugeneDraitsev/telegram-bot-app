@@ -4,8 +4,8 @@ provider:
   name: aws
   stage: prod
   region: eu-central-1
-  memorySize: 128
-  timeout: 15
+  memorySize: 512
+  timeout: 30
   runtime: nodejs8.10
   environment:
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
