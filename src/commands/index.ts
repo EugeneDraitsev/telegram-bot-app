@@ -1,17 +1,15 @@
-import { orderBy } from 'lodash'
-
 // tslint:disable-next-line
 const AWSXRay = require('aws-xray-sdk')
 
 import { segments } from '../'
 import {
-  getChatStatistic,
   getCurrency,
+  getFormattedChatStatistic,
   getHoroscope,
   getPrediction,
+  getUsersList,
   getWeather,
   huify,
-  IChatStat,
   puntoSwitcher,
   searchImage,
   searchWiki,
@@ -66,13 +64,8 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       }
 
       case '/z': {
-        return getChatStatistic(chat_id).then((result: IChatStat) => {
-          const stats = orderBy(result.users, 'msgCount', 'desc')
-          const messagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
-          const message = `User Statistic.\nAll messages: ${messagesCount}\n${stats.map(user =>
-            `${user.msgCount} (${((user.msgCount / messagesCount) * 100).toFixed(2)}%) - ${user.username}`).join('\n')}`
-          return sendMessage(chat_id, message)
-        })
+        return getFormattedChatStatistic(chat_id)
+          .then(message => sendMessage(chat_id, message, message_id))
       }
 
       case '/8': {
@@ -96,10 +89,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       case '/p' : {
         return getHoroscope(query)
           .then(result => sendMessage(chat_id, result, message_id, 'Markdown'))
-          .catch((e) => {
-            segments.querySegment.addError(e)
-            return sendMessage(chat_id, 'Request error :C', message_id)
-          })
+          .catch(error => sendMessage(chat_id, error, message_id))
       }
       case '/s' : {
         return getWeather(query || 'Минск')
@@ -107,11 +97,8 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       }
 
       case '/all' : {
-        return getChatStatistic(chat_id).then((result: IChatStat) => {
-          const message = result.users.map(user =>
-            `@${user.username}`).join(' ').concat('\n') + query
-          return sendMessage(chat_id, message)
-        })
+        return getUsersList(chat_id, query)
+          .then(response => sendMessage(chat_id, response, message_id))
       }
 
       case '/ps' : {
@@ -119,7 +106,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       }
 
       default: {
-        return Promise.resolve()
+        return Promise.resolve() as any
       }
     }
   } catch (e) {

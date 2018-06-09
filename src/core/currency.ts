@@ -4,6 +4,8 @@ import { parseString } from 'xml2js'
 
 import { segments } from '../'
 
+const timeout = 15000
+
 interface INbrbResponse {
   DailyExRates: {
     Currency: {
@@ -16,7 +18,7 @@ interface INbrbResponse {
 const getRussianCurrency = async () => {
   const currencyCodes = ['usd', 'eur', 'brent']
   const url = 'https://meduza.io/api/v3/stock/all'
-  const response = await fetch(url, { timeout: 10000 })
+  const response = await fetch(url, { timeout })
   const currency = await response.json()
 
   return `Курсы медузы:\n${Object.keys(currency)
@@ -30,7 +32,7 @@ const getBelarusCurrency = async () => {
   const currencyCodes = ['USD', 'EUR', 'RUB']
   const url = 'http://www.nbrb.by/Services/XmlExRates.aspx?ondate='
 
-  const response = await fetch(url, { timeout: 10000 })
+  const response = await fetch(url, { timeout })
   const xml = await response.text()
   const result = await new Promise((resolve, reject) =>
     parseString(xml, (err, res: INbrbResponse) => err ? reject(err) : resolve(res))) as INbrbResponse
@@ -44,7 +46,7 @@ const getBelarusCurrency = async () => {
 
 const getCryptoCurrency = async () => {
   const url = 'https://poloniex.com/public?command=returnTicker'
-  const response = await fetch(url, { timeout: 10000 })
+  const response = await fetch(url, { timeout })
   const currency = await response.json()
   const filteredCurrency = {
     BTC: `${round(currency.USDT_BTC.highestBid)} / ${round(currency.USDT_BTC.lowestAsk)}`,
