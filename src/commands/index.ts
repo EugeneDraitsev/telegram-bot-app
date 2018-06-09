@@ -111,6 +111,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
     }
   } catch (e) {
     console.log(e) // tslint:disable-line
+    segments.querySegment.addError(e)
     return Promise.resolve()
   }
 }

@@ -10,6 +10,7 @@ export let segment: any
 export let segments: any = {
   commandSegment: null,
   dbSegment: null,
+  querySegment: null,
 }
 
 import { processQuery } from './commands/'
@@ -66,9 +67,8 @@ export const handler: Handler = async (event: any) => {
   } finally {
     const { dbSegment, commandSegment } = segments
     if (dbSegment.fault || commandSegment.fault) {
-      console.log(body) // tslint:disable-line
       segment.addFaultFlag()
-      segment.addAttribute('body', body)
+      segment.addMetadata('body', body)
     }
     segment.close()
   }

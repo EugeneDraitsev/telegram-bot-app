@@ -9,7 +9,7 @@ const botToken = process.env.TOKEN || 'your_token_here'
 const BASE_URL = `https://api.telegram.org/bot${botToken}`
 
 const openSegment = (name: string) => {
-  const { trace_id, id } = segments.commandSegment
+  const { trace_id, id } = segments.querySegment
   return new AWSXRay.Segment(name, trace_id, id)
 }
 
@@ -26,7 +26,7 @@ export function sendMessage(chat_id: string | number, text: string, reply_to_mes
       segment.addError(e)
       segments.commandSegment.addError(e)
     })
-    .finally(() => segment.close())
+    .then(() => segment.close())
 }
 
 export function sendPhoto(chat_id: string | number, photo: Buffer, picUrl: string, reply_to_message_id = '') {
@@ -43,7 +43,7 @@ export function sendPhoto(chat_id: string | number, photo: Buffer, picUrl: strin
       segment.addError(e)
       segments.commandSegment.addError(e)
     })
-    .finally(() => segment.close())
+    .then(() => segment.close())
 }
 
 export function sendSticker(chat_id: string, sticker: string, reply_to_message_id = '') {
@@ -57,5 +57,5 @@ export function sendSticker(chat_id: string, sticker: string, reply_to_message_i
       segment.addError(e)
       segments.commandSegment.addError(e)
     })
-    .finally(() => segment.close())
+    .then(() => segment.close())
 }
