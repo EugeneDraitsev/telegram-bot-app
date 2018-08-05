@@ -1,5 +1,4 @@
-// tslint:disable-next-line
-const AWSXRay = require('aws-xray-sdk')
+import * as AWSXRay from 'aws-xray-sdk'
 
 import { segments } from '../'
 import {
@@ -9,11 +8,13 @@ import {
   getPrediction,
   getUsersList,
   getWeather,
+  getXRayStats,
   huify,
   puntoSwitcher,
   searchImage,
   searchWiki,
   searchYoutube,
+  sendDocument,
   sendMessage,
   sendPhoto,
   sendSticker,
@@ -22,7 +23,7 @@ import {
   yasnyfy,
 } from '../core'
 
-const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s']
+const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s', '/x']
 
 const parseQuery = (query: string) => query.replace(/\/\S+\s*/g, '').trim()
 export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/, '') === command
@@ -38,7 +39,12 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
     switch (command) {
       case '/g' : {
         return searchImage(query)
-          .then(response => sendPhoto(chat_id, response.image, response.url, message_id))
+          .then(response => sendPhoto({
+            chat_id,
+            photo: response.image,
+            picUrl: response.url,
+            reply_to_message_id: message_id,
+          }))
           .catch(error => sendMessage(chat_id, error, message_id))
       }
 
@@ -103,6 +109,18 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
 
       case '/ps' : {
         return sendMessage(chat_id, puntoSwitcher(query), message_id)
+      }
+
+      case '/x': {
+        return getXRayStats()
+          .then(response => sendDocument({
+            chat_id,
+            caption: `Browser version available <a href="${response.url}">here</a>`,
+            parse_mode: 'HTML',
+            document: response.image,
+            reply_to_message_id: message_id,
+          }))
+          .catch(error => sendMessage(chat_id, error, message_id))
       }
 
       default: {

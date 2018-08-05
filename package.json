@@ -13,10 +13,11 @@
     "test": "jest --verbose",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "logs": "sls logs -f telegram-bot -t",
-    "deploy-function": "sls deploy function --function telegram-bot  --verbose",
+    "deploy-function": "sls deploy function --function telegram-bot --verbose",
     "invoke": "sls invoke -f telegram-bot -p event.json"
   },
   "dependencies": {
+    "aws-sdk": "^2.285.1",
     "aws-xray-sdk": "^1.2.0",
     "form-data": "^2.3.2",
     "lodash": "^4.5.0",
@@ -34,14 +35,14 @@
     "@types/node-fetch": "^1.6.9",
     "@types/xml2js": "^0.4.2",
     "jest": "^22.4.3",
-    "serverless": "^1.27.2",
+    "serverless": "^1.29.2",
     "serverless-offline": "^3.21.1",
     "serverless-webpack": "^5.1.5",
     "ts-jest": "^22.4.6",
     "ts-loader": "^4.3.0",
     "tslint": "^5.10.0",
     "tslint-config-airbnb": "^5.8.0",
-    "typescript": "^2.8.3",
+    "typescript": "^2.9.2",
     "webpack": "^4.8.3"
   },
   "jest": {

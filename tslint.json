@@ -21,6 +21,7 @@
       true,
       "LF"
     ],
+    "object-literal-sort-keys": false,
     "array-type": false,
     "import-name": false,
     "variable-name": false

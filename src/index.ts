@@ -1,9 +1,9 @@
 import '../load-config.js'
 
 import { Handler } from 'aws-lambda'
+import * as AWSXRay from 'aws-xray-sdk'
 import { get } from 'lodash'
 
-const AWSXRay = require('aws-xray-sdk') // tslint:disable-line
 AWSXRay.enableManualMode()
 
 export let segment: any
