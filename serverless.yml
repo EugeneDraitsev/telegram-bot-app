@@ -20,11 +20,8 @@ provider:
       Action:
         - "xray:PutTraceSegments"
         - "xray:PutTelemetryRecords"
-      Resource:
-        - "*"
-
-    - Effect: "Allow"
-      Action:
+        - "lambda:InvokeFunction"
+        - "lambda:InvokeAsync"
         - "logs:*"
       Resource:
         - "*"
