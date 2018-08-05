@@ -10,8 +10,6 @@ export const getXRayStats = async () => {
   }
   const result = await lambda.invoke(options).promise()
   const image = Buffer.from(JSON.parse(result.Payload as any).body, 'base64')
-  console.log(result) // tslint:disable-line
-  console.log(image) // tslint:disable-line
 
   return { url, image }
 }
