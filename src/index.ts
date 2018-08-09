@@ -33,7 +33,6 @@ function processRequest(req: any) {
   }
 
   const { message: { message_id, from, chat, text, reply_to_message } } = req
-  console.log(from) // tslint:disable-line
   const replyText = get(reply_to_message, 'text', '')
   segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
 
