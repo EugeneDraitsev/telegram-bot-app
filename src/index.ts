@@ -4,7 +4,7 @@ import { Handler } from 'aws-lambda'
 import * as AWSXRay from 'aws-xray-sdk'
 import { get } from 'lodash'
 
-export const segment: any = AWSXRay.getSegment()
+export const segment: any = process.env.IS_LOCAL ? new AWSXRay.Segment('') : AWSXRay.getSegment()
 export const segments: any = {
   commandSegment: null,
   dbSegment: null,

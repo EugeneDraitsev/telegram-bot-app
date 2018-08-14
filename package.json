@@ -10,7 +10,7 @@
     "start": "cross-env IS_LOCAL=true sls offline start",
     "lint": "tslint src/**/*.ts src/**/*.tsx",
     "lint:fix": "tslint src/**/*.ts src/**/*.tsx --fix",
-    "test": "jest --verbose",
+    "test": "cross-env IS_LOCAL=true jest --verbose",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "logs": "sls logs -f telegram-bot -t",
     "deploy-function": "sls deploy function --function telegram-bot --verbose",
