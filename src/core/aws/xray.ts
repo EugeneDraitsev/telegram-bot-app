@@ -1,6 +1,11 @@
-import { Lambda } from 'aws-sdk'
+import * as AWS from 'aws-sdk'
+import * as AWSXRay from 'aws-xray-sdk'
 
-const lambda = new Lambda({ apiVersion: '2015-03-31', region: 'eu-central-1' })
+const lambdaOptions = { apiVersion: '2015-03-31', region: 'eu-central-1' }
+const lambda = process.env.IS_LOCAL ?
+  new AWS.Lambda(lambdaOptions) :
+  AWSXRay.captureAWSClient(new AWS.Lambda(lambdaOptions))
+
 const url = 'https://epy9udvh20.execute-api.eu-central-1.amazonaws.com/prod/'
 
 export const getXRayStats = async () => {

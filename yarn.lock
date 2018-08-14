@@ -561,6 +561,10 @@ atob@^2.1.1:
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/atob/-/atob-2.1.1.tgz#ae2d5a729477f289d60dd7f96a6314a22dd6c22a"
 
+atomic-batcher@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/atomic-batcher/-/atomic-batcher-1.0.2.tgz#d16901d10ccec59516c197b9ccd8930689b813b4"
+
 aws-sdk@^2.228.0:
   version "2.238.1"
   resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.238.1.tgz#a35fdec122ed915da490840e8828336da5be4e7f"
@@ -576,9 +580,9 @@ aws-sdk@^2.228.0:
     xml2js "0.4.17"
     xmlbuilder "4.2.1"
 
-aws-sdk@^2.285.1:
-  version "2.285.1"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.285.1.tgz#548dc7ed09d597b27659289155e1c3897cc59ece"
+aws-sdk@^2.292.0:
+  version "2.292.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.292.0.tgz#c41ab7e85ea25c7b2300604ab950a5aadab702ab"
   dependencies:
     buffer "4.9.1"
     events "1.1.1"
@@ -594,37 +598,38 @@ aws-sign2@~0.7.0:
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/aws-sign2/-/aws-sign2-0.7.0.tgz#b46e890934a9591f2d2f6f86d7e6a9f1b3fe76a8"
 
-aws-xray-sdk-core@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-1.2.0.tgz#28c6e5397fd5c0fa66365d5bd6f58b9d551d4e22"
+aws-xray-sdk-core@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-1.3.0.tgz#84e0e5e96fde0f7d753d420913f93e1d7d637ff9"
   dependencies:
+    atomic-batcher "^1.0.2"
     continuation-local-storage "^3.2.0"
-    moment "^2.15.2"
+    date-fns "^1.29.0"
+    lodash "^4.17.10"
     pkginfo "^0.4.0"
     semver "^5.3.0"
-    underscore "^1.8.3"
     winston "^2.2.0"
 
-aws-xray-sdk-express@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-express/-/aws-xray-sdk-express-1.2.0.tgz#8bf3529089ddb47b2736314576970d4c689f3f31"
+aws-xray-sdk-express@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-express/-/aws-xray-sdk-express-1.3.0.tgz#4459089883ac4292d4a26442216c65bb27b7a5e3"
 
-aws-xray-sdk-mysql@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-mysql/-/aws-xray-sdk-mysql-1.2.0.tgz#9f89b5c9137abadcab9f69a27cc455c7fe4fdcbd"
+aws-xray-sdk-mysql@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-mysql/-/aws-xray-sdk-mysql-1.3.0.tgz#d08e1e6fbf11e6b2a4009bff3da9841bda801444"
 
-aws-xray-sdk-postgres@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-postgres/-/aws-xray-sdk-postgres-1.2.0.tgz#6b8342764359e823eaf5be5acefbab63ffc37c7e"
+aws-xray-sdk-postgres@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-postgres/-/aws-xray-sdk-postgres-1.3.0.tgz#e3afd2a8fa3946ec46dd474696d45b5d87bfa043"
 
-aws-xray-sdk@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk/-/aws-xray-sdk-1.2.0.tgz#ffe16a7eac8287635fa1ce40c36137276ebaf42a"
+aws-xray-sdk@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk/-/aws-xray-sdk-1.3.0.tgz#b711ca535b28b29b612430beb4eb30a0ec9bed74"
   dependencies:
-    aws-xray-sdk-core "^1.2.0"
-    aws-xray-sdk-express "^1.2.0"
-    aws-xray-sdk-mysql "^1.2.0"
-    aws-xray-sdk-postgres "^1.2.0"
+    aws-xray-sdk-core "^1.3.0"
+    aws-xray-sdk-express "^1.3.0"
+    aws-xray-sdk-mysql "^1.3.0"
+    aws-xray-sdk-postgres "^1.3.0"
     pkginfo "^0.4.0"
 
 aws4@^1.6.0:
@@ -1697,11 +1702,28 @@ create-hmac@^1.1.0, create-hmac@^1.1.2, create-hmac@^1.1.4:
     safe-buffer "^5.0.1"
     sha.js "^2.4.8"
 
+cross-env@^5.2.0:
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/cross-env/-/cross-env-5.2.0.tgz#6ecd4c015d5773e614039ee529076669b9d126f2"
+  dependencies:
+    cross-spawn "^6.0.5"
+    is-windows "^1.0.0"
+
 cross-spawn@^5.0.1:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-5.0.1.tgz#a3bbb302db2297cbea3c04edf36941f4613aa399"
   dependencies:
     lru-cache "^4.0.1"
+    shebang-command "^1.2.0"
+    which "^1.2.9"
+
+cross-spawn@^6.0.5:
+  version "6.0.5"
+  resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-6.0.5.tgz#4a5ec7c64dfae22c3a14124dbacdee846d80cbc4"
+  dependencies:
+    nice-try "^1.0.4"
+    path-key "^2.0.1"
+    semver "^5.5.0"
     shebang-command "^1.2.0"
     which "^1.2.9"
 
@@ -1766,6 +1788,10 @@ data-urls@^1.0.0:
     abab "^1.0.4"
     whatwg-mimetype "^2.0.0"
     whatwg-url "^6.4.0"
+
+date-fns@^1.29.0:
+  version "1.29.0"
+  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-1.29.0.tgz#12e609cdcb935127311d04d33334e2960a2a54e6"
 
 date-now@^0.1.4:
   version "0.1.4"
@@ -3322,7 +3348,7 @@ is-utf8@^0.2.0:
   version "0.2.1"
   resolved "https://registry.yarnpkg.com/is-utf8/-/is-utf8-0.2.1.tgz#4b0da1442104d1b336340e80797e865cf39f7d72"
 
-is-windows@^1.0.2:
+is-windows@^1.0.0, is-windows@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/is-windows/-/is-windows-1.0.2.tgz#d1850eb9791ecd18e6182ce12a30f396634bb19d"
 
@@ -4356,10 +4382,6 @@ moment@2.x.x, moment@^2.13.0:
   version "2.22.1"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.22.1.tgz#529a2e9bf973f259c9643d237fda84de3a26e8ad"
 
-moment@^2.15.2:
-  version "2.22.2"
-  resolved "https://registry.yarnpkg.com/moment/-/moment-2.22.2.tgz#3c257f9839fc0e93ff53149632239eb90783ff66"
-
 mongodb-core@3.0.8:
   version "3.0.8"
   resolved "https://registry.yarnpkg.com/mongodb-core/-/mongodb-core-3.0.8.tgz#8d401f4eab6056c0d874a3d5844a4844f761d4d7"
@@ -4477,6 +4499,10 @@ negotiator@0.6.1:
 neo-async@^2.5.0:
   version "2.5.1"
   resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.5.1.tgz#acb909e327b1e87ec9ef15f41b8a269512ad41ee"
+
+nice-try@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/nice-try/-/nice-try-1.0.4.tgz#d93962f6c52f2c1558c0fbda6d512819f1efe1c4"
 
 nigel@2.x.x:
   version "2.0.2"
@@ -4854,7 +4880,7 @@ path-is-inside@^1.0.1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/path-is-inside/-/path-is-inside-1.0.2.tgz#365417dede44430d1c11af61027facf074bdfc53"
 
-path-key@^2.0.0:
+path-key@^2.0.0, path-key@^2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/path-key/-/path-key-2.0.1.tgz#411cadb574c5a140d3a4b1910d40d80cc9f40b40"
 
@@ -5514,6 +5540,10 @@ serverless-offline@^3.21.1:
     lodash "^4.17.4"
     uuid "^3.2.1"
     velocityjs "^0.9.3"
+
+serverless-plugin-tracing@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/serverless-plugin-tracing/-/serverless-plugin-tracing-2.0.0.tgz#df6b8b3166ac9bb70a37c7fc875014b2369158f6"
 
 serverless-webpack@^5.1.5:
   version "5.1.5"
@@ -6358,10 +6388,6 @@ unbzip2-stream@^1.0.9:
   dependencies:
     buffer "^3.0.1"
     through "^2.3.6"
-
-underscore@^1.8.3:
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/underscore/-/underscore-1.9.1.tgz#06dce34a0e68a7babc29b365b8e74b8925203961"
 
 union-value@^1.0.0:
   version "1.0.0"

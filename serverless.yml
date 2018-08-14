@@ -7,52 +7,55 @@ provider:
   memorySize: 512
   timeout: 30
   runtime: nodejs8.10
+  tracing: true
   environment:
-      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-      GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN}
-      MONGO_CONNECTION_STRING: ${env:MONGO_CONNECTION_STRING}
-      OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN}
-      TOKEN: ${env:TOKEN}
-      TRANSLATION_APP_TOKEN: ${env:TRANSLATION_APP_TOKEN}
-      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
+    GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
+    GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN}
+    MONGO_CONNECTION_STRING: ${env:MONGO_CONNECTION_STRING}
+    OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN}
+    TOKEN: ${env:TOKEN}
+    TRANSLATION_APP_TOKEN: ${env:TRANSLATION_APP_TOKEN}
+    YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
+    IS_LOCAL: ${env:IS_LOCAL}
   iamRoleStatements:
-    - Effect: "Allow"
-      Action:
-        - "xray:PutTraceSegments"
-        - "xray:PutTelemetryRecords"
-        - "lambda:InvokeFunction"
-        - "lambda:InvokeAsync"
-        - "logs:*"
-      Resource:
-        - "*"
+  - Effect: "Allow"
+    Action:
+    - "xray:PutTraceSegments"
+    - "xray:PutTelemetryRecords"
+    - "lambda:InvokeFunction"
+    - "lambda:InvokeAsync"
+    - "logs:*"
+    Resource:
+    - "*"
 
 package:
   exclude:
-    - node_modules/**/*
-    - .idea/**
-    - .git/**
-    - node.exe
-    - yarn.lock
+  - node_modules/**/*
+  - .idea/**
+  - .git/**
+  - node.exe
+  - yarn.lock
 
 functions:
   telegram-bot:
     handler: src/index.handler
     events:
-      - http:
-          path: /
-          method: post
-      - http:
-          path: /
-          method: get
-      - schedule:
-          rate: cron(0 7,9,11,13,15,17 ? * MON-FRI *)
-          enabled: true
-          input:
-            message:
-                text: /c
-                chat:
-                  id: -1001111472139.0
+    - http:
+        path: /
+        method: post
+    - http:
+        path: /
+        method: get
+    - schedule:
+        rate: cron(0 7,9,11,13,15,17 ? * MON-FRI *)
+        enabled: true
+        input:
+          message:
+            text: /c
+            chat:
+              id: -1001111472139.0
 
 plugins:
-  - serverless-webpack
-  - serverless-offline
+- serverless-webpack
+- serverless-offline
+- serverless-plugin-tracing

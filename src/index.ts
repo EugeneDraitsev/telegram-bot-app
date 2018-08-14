@@ -4,10 +4,8 @@ import { Handler } from 'aws-lambda'
 import * as AWSXRay from 'aws-xray-sdk'
 import { get } from 'lodash'
 
-AWSXRay.enableManualMode()
-
-export let segment: any
-export let segments: any = {
+export const segment: any = AWSXRay.getSegment()
+export const segments: any = {
   commandSegment: null,
   dbSegment: null,
   querySegment: null,
@@ -48,7 +46,6 @@ function processRequest(req: any) {
 
 export const handler: Handler = async (event: any) => {
   const body = event.body ? JSON.parse(event.body) : event
-  segment = new AWSXRay.Segment('telegram-bot')
 
   try {
     const message = await processRequest(body)
@@ -70,6 +67,5 @@ export const handler: Handler = async (event: any) => {
       segment.addFaultFlag()
       segment.addMetadata('body', body)
     }
-    segment.close()
   }
 }
