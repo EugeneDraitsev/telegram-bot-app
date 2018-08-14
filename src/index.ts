@@ -4,7 +4,7 @@ import { Handler } from 'aws-lambda'
 import * as AWSXRay from 'aws-xray-sdk'
 import { get } from 'lodash'
 
-export const segment: any = process.env.IS_LOCAL ? new AWSXRay.Segment('') : AWSXRay.getSegment()
+export let segment: any
 export const segments: any = {
   commandSegment: null,
   dbSegment: null,
@@ -26,6 +26,7 @@ function updateMessageStat(user_info: any, chat_id: any) {
 }
 
 function processRequest(req: any) {
+  segment = process.env.IS_LOCAL ? new AWSXRay.Segment('') : AWSXRay.getSegment()
   if (!req || !req.message || !req.message.chat || !req.message.text) {
     return Promise.resolve('not a telegram message')
   }
