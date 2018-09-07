@@ -1,4 +1,4 @@
-import { get, sample } from 'lodash'
+import { every, filter, get, includes, sample } from 'lodash'
 import fetch from 'node-fetch'
 
 import { segments } from '../../'
@@ -7,6 +7,7 @@ const googleSearchToken = process.env.GOOGLE_SEARCH_TOKEN || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
 const isResponseImage = (headers: Headers) => headers.get('content-type')!.split('/')[0] === 'image'
+const filterMimeTypes = (item: any) => every(['ico', 'svg'], x => !includes(item.mime, x))
 
 function getImage(url: string, tbUrl: string) {
   return fetch(url, { timeout: 10000 })
@@ -23,14 +24,14 @@ function getImage(url: string, tbUrl: string) {
 }
 
 export const searchImage = (query: string) => {
-  const url = 'https://www.googleapis.com/customsearch/v1?searchType=image&imgSize=xlarge&alt=json&num=10&start=1' +
+  const url = 'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
     `&key=${googleSearchToken}&cx=${cxToken}&q=${encodeURI(query)}`
 
   return fetch(url, { timeout: 10000 })
     .then(r => r.json())
     .then((responseData) => {
       if (get(responseData, 'items.length') > 0) {
-        const image = sample(responseData.items)
+        const image = sample(filter(responseData.items, filterMimeTypes))
         const imageUrl = image.link
         const tbUrl = image.image.thumbnailLink
 

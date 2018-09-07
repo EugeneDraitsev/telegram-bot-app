@@ -1,5 +1,3 @@
-import '../load-config.js'
-
 import { Handler } from 'aws-lambda'
 import * as AWSXRay from 'aws-xray-sdk'
 import { get } from 'lodash'
@@ -10,6 +8,8 @@ export const segments: any = {
   dbSegment: null,
   querySegment: null,
 }
+
+AWSXRay.enableManualMode()
 
 import { processQuery } from './commands/'
 import { closeConnection, openConnection, updateStatistic } from './core'
@@ -26,7 +26,6 @@ function updateMessageStat(user_info: any, chat_id: any) {
 }
 
 function processRequest(req: any) {
-  segment = process.env.IS_LOCAL ? new AWSXRay.Segment('') : AWSXRay.getSegment()
   if (!req || !req.message || !req.message.chat || !req.message.text) {
     return Promise.resolve('not a telegram message')
   }
@@ -47,6 +46,7 @@ function processRequest(req: any) {
 
 export const handler: Handler = async (event: any) => {
   const body = event.body ? JSON.parse(event.body) : event
+  segment = new AWSXRay.Segment('telegram-bot')
 
   try {
     const message = await processRequest(body)
@@ -64,9 +64,10 @@ export const handler: Handler = async (event: any) => {
     }
   } finally {
     const { dbSegment, commandSegment } = segments
-    if (dbSegment.fault || commandSegment.fault) {
+    if (dbSegment && dbSegment.fault || commandSegment && commandSegment.fault) {
       segment.addFaultFlag()
       segment.addMetadata('body', body)
     }
+    segment.close()
   }
 }

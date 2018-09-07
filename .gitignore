@@ -29,5 +29,5 @@ node_modules
 yarn-error.log
 
 config.*
-config.js
+config.json
 config.ts

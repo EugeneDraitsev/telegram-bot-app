@@ -7,15 +7,15 @@ provider:
   memorySize: 512
   timeout: 30
   runtime: nodejs8.10
-  tracing: true
+  tracing: false
   environment:
-    GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-    GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN}
-    MONGO_CONNECTION_STRING: ${env:MONGO_CONNECTION_STRING}
-    OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN}
-    TOKEN: ${env:TOKEN}
-    TRANSLATION_APP_TOKEN: ${env:TRANSLATION_APP_TOKEN}
-    YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
+    GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN, file(./config.json):GOOGLE_CX_TOKEN}
+    GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN, file(./config.json):GOOGLE_SEARCH_TOKEN}
+    MONGO_CONNECTION_STRING: ${env:MONGO_CONNECTION_STRING, file(./config.json):MONGO_CONNECTION_STRING}
+    OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN, file(./config.json):OPENWEATHERMAP_TOKEN}
+    TOKEN: ${env:TOKEN, file(./config.json):TOKEN}
+    TRANSLATION_APP_TOKEN: ${env:TRANSLATION_APP_TOKEN, file(./config.json):TRANSLATION_APP_TOKEN}
+    YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN, file(./config.json):YOUTUBE_TOKEN}
     IS_LOCAL: ${env:IS_LOCAL}
   iamRoleStatements:
   - Effect: "Allow"
