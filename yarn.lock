@@ -580,9 +580,9 @@ aws-sdk@^2.228.0:
     xml2js "0.4.17"
     xmlbuilder "4.2.1"
 
-aws-sdk@^2.292.0:
-  version "2.292.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.292.0.tgz#c41ab7e85ea25c7b2300604ab950a5aadab702ab"
+aws-sdk@^2.304.0, aws-sdk@^2.311.0:
+  version "2.311.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.311.0.tgz#03b0f26f8394352f855ac011f62027b6a9faee5f"
   dependencies:
     buffer "4.9.1"
     events "1.1.1"
@@ -598,38 +598,39 @@ aws-sign2@~0.7.0:
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/aws-sign2/-/aws-sign2-0.7.0.tgz#b46e890934a9591f2d2f6f86d7e6a9f1b3fe76a8"
 
-aws-xray-sdk-core@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-1.3.0.tgz#84e0e5e96fde0f7d753d420913f93e1d7d637ff9"
+aws-xray-sdk-core@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-2.0.0.tgz#f3c04ef640b3aa7666ac4ef9c61deb64ea34911d"
   dependencies:
     atomic-batcher "^1.0.2"
+    aws-sdk "^2.304.0"
     continuation-local-storage "^3.2.0"
     date-fns "^1.29.0"
     lodash "^4.17.10"
     pkginfo "^0.4.0"
     semver "^5.3.0"
-    winston "^2.2.0"
+    winston "^2.4.4"
 
-aws-xray-sdk-express@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-express/-/aws-xray-sdk-express-1.3.0.tgz#4459089883ac4292d4a26442216c65bb27b7a5e3"
+aws-xray-sdk-express@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-express/-/aws-xray-sdk-express-2.0.0.tgz#83b45b4e9c061bd2b57efabf8e18a2d458b9d09b"
 
-aws-xray-sdk-mysql@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-mysql/-/aws-xray-sdk-mysql-1.3.0.tgz#d08e1e6fbf11e6b2a4009bff3da9841bda801444"
+aws-xray-sdk-mysql@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-mysql/-/aws-xray-sdk-mysql-2.0.0.tgz#ef8967355adb20c74f0adc00f32f0dafb4b7fd92"
 
-aws-xray-sdk-postgres@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-postgres/-/aws-xray-sdk-postgres-1.3.0.tgz#e3afd2a8fa3946ec46dd474696d45b5d87bfa043"
+aws-xray-sdk-postgres@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-postgres/-/aws-xray-sdk-postgres-2.0.0.tgz#9e730bca9572abea460dc7790870edfe4c4238de"
 
-aws-xray-sdk@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk/-/aws-xray-sdk-1.3.0.tgz#b711ca535b28b29b612430beb4eb30a0ec9bed74"
+aws-xray-sdk@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk/-/aws-xray-sdk-2.0.0.tgz#8c5241ede4ce833dde69b5b004577f361fa4d985"
   dependencies:
-    aws-xray-sdk-core "^1.3.0"
-    aws-xray-sdk-express "^1.3.0"
-    aws-xray-sdk-mysql "^1.3.0"
-    aws-xray-sdk-postgres "^1.3.0"
+    aws-xray-sdk-core "^2.0.0"
+    aws-xray-sdk-express "^2.0.0"
+    aws-xray-sdk-mysql "^2.0.0"
+    aws-xray-sdk-postgres "^2.0.0"
     pkginfo "^0.4.0"
 
 aws4@^1.6.0:
@@ -6715,9 +6716,9 @@ window-size@0.1.0:
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/window-size/-/window-size-0.1.0.tgz#5438cd2ea93b202efa3a19fe8887aee7c94f9c9d"
 
-winston@^2.2.0:
-  version "2.4.2"
-  resolved "https://registry.yarnpkg.com/winston/-/winston-2.4.2.tgz#3ca01f763116fc48db61053b7544e750431f8db0"
+winston@^2.4.4:
+  version "2.4.4"
+  resolved "https://registry.yarnpkg.com/winston/-/winston-2.4.4.tgz#a01e4d1d0a103cf4eada6fc1f886b3110d71c34b"
   dependencies:
     async "~1.0.0"
     colors "1.0.x"

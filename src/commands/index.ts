@@ -112,7 +112,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       }
 
       case '/x': {
-        return getXRayStats()
+        return getXRayStats(segments.querySegment)
           .then(response => sendDocument({
             chat_id,
             caption: `Browser version available <a href="${response.url}">here</a>`,
