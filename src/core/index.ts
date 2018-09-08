@@ -1,6 +1,5 @@
 export * from './google'
 export * from './currency'
-export * from './db'
 export * from './horoscope'
 export * from './statistics'
 export * from './magic8ball'

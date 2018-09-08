@@ -3,7 +3,7 @@ import * as AWSXRay from 'aws-xray-sdk'
 import { segments } from '../'
 import {
   getCurrency,
-  getFormattedChatStatistic,
+  getFormattedChatStatistics,
   getHoroscope,
   getPrediction,
   getUsersList,
@@ -70,7 +70,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       }
 
       case '/z': {
-        return getFormattedChatStatistic(chat_id)
+        return getFormattedChatStatistics(chat_id, segments.querySegment)
           .then(message => sendMessage(chat_id, message, message_id))
       }
 
@@ -103,7 +103,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
       }
 
       case '/all' : {
-        return getUsersList(chat_id, query)
+        return getUsersList(chat_id, query, segments.querySegment)
           .then(response => sendMessage(chat_id, response, message_id))
       }
 
@@ -131,5 +131,7 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
     console.log(e) // tslint:disable-line
     segments.querySegment.addError(e)
     return Promise.resolve()
+  } finally {
+    segments.querySegment.close()
   }
 }

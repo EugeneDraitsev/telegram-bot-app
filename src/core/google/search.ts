@@ -1,5 +1,5 @@
 import { every, filter, get, includes, sample } from 'lodash'
-import fetch from 'node-fetch'
+import fetch, { Headers } from 'node-fetch'
 
 import { segments } from '../../'
 

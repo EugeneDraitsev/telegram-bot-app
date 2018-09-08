@@ -32,9 +32,9 @@
     reflect-metadata "^0.1.12"
     tslib "^1.8.1"
 
-"@serverless/platform-sdk@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@serverless/platform-sdk/-/platform-sdk-0.2.0.tgz#4394afb221b215e27b0f5c4ef713f93ec88cb2d5"
+"@serverless/platform-sdk@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@serverless/platform-sdk/-/platform-sdk-0.2.1.tgz#1c6a804f489dcb85e2af641c9ed7c85cc202dc8b"
   dependencies:
     babel-polyfill "^6.26.0"
     body-parser "^1.18.3"
@@ -101,6 +101,12 @@
 "@types/node@*":
   version "10.0.8"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-10.0.8.tgz#37b4d91d4e958e4c2ba0be2b86e7ed4ff19b0858"
+
+"@types/uuid@^3.4.4":
+  version "3.4.4"
+  resolved "https://registry.yarnpkg.com/@types/uuid/-/uuid-3.4.4.tgz#7af69360fa65ef0decb41fd150bf4ca5c0cefdf5"
+  dependencies:
+    "@types/node" "*"
 
 "@types/xml2js@^0.4.2":
   version "0.4.2"
@@ -529,12 +535,6 @@ async-listener@^0.6.0:
     semver "^5.3.0"
     shimmer "^1.1.0"
 
-async@2.1.4, async@^2.1.4:
-  version "2.1.4"
-  resolved "https://registry.yarnpkg.com/async/-/async-2.1.4.tgz#2d2160c7788032e4dd6cbe2502f1f9a2c8f6cde4"
-  dependencies:
-    lodash "^4.14.0"
-
 async@^1.4.0, async@^1.5.2:
   version "1.5.2"
   resolved "https://registry.yarnpkg.com/async/-/async-1.5.2.tgz#ec6a61ae56480c0c3cb241c95618e20892f9672a"
@@ -542,6 +542,12 @@ async@^1.4.0, async@^1.5.2:
 async@^2.0.0:
   version "2.6.0"
   resolved "https://registry.yarnpkg.com/async/-/async-2.6.0.tgz#61a29abb6fcc026fea77e56d1c6ec53a795951f4"
+  dependencies:
+    lodash "^4.14.0"
+
+async@^2.1.4:
+  version "2.1.4"
+  resolved "https://registry.yarnpkg.com/async/-/async-2.1.4.tgz#2d2160c7788032e4dd6cbe2502f1f9a2c8f6cde4"
   dependencies:
     lodash "^4.14.0"
 
@@ -976,10 +982,6 @@ bl@^1.0.0:
     readable-stream "^2.3.5"
     safe-buffer "^5.1.1"
 
-bluebird@3.5.0:
-  version "3.5.0"
-  resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.5.0.tgz#791420d7f551eea2897453a8a77653f96606d67c"
-
 bluebird@^3.5.0, bluebird@^3.5.1:
   version "3.5.1"
   resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.5.1.tgz#d9551f9de98f1fcda1e683d17ee91a0602ee2eb9"
@@ -1156,10 +1158,6 @@ bser@^2.0.0:
   resolved "https://registry.yarnpkg.com/bser/-/bser-2.0.0.tgz#9ac78d3ed5d915804fd87acb158bc797147a1719"
   dependencies:
     node-int64 "^0.4.0"
-
-bson@~1.0.4, bson@~1.0.5:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/bson/-/bson-1.0.6.tgz#444db59ddd4c24f0cb063aabdc5c8c7b0ceca912"
 
 buffer-alloc-unsafe@^0.1.0:
   version "0.1.1"
@@ -3938,10 +3936,6 @@ jwt-decode@^2.2.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/jwt-decode/-/jwt-decode-2.2.0.tgz#7d86bd56679f58ce6a84704a657dd392bba81a79"
 
-kareem@2.0.7:
-  version "2.0.7"
-  resolved "https://registry.yarnpkg.com/kareem/-/kareem-2.0.7.tgz#8d260366a4df4236ceccec318fcf10c17c5beb22"
-
 kilt@2.x.x:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/kilt/-/kilt-2.0.2.tgz#04d7183c298a1232efddf7ddca5959a8f6301e20"
@@ -4053,10 +4047,6 @@ locate-path@^2.0.0:
 lodash.difference@^4.5.0:
   version "4.5.0"
   resolved "https://registry.yarnpkg.com/lodash.difference/-/lodash.difference-4.5.0.tgz#9ccb4e505d486b91651345772885a2df27fd017c"
-
-lodash.get@4.4.2:
-  version "4.4.2"
-  resolved "https://registry.yarnpkg.com/lodash.get/-/lodash.get-4.4.2.tgz#2d177f652fa31e939b4438d5341499dfa3825e99"
 
 lodash.includes@^4.3.0:
   version "4.3.0"
@@ -4383,39 +4373,6 @@ moment@2.x.x, moment@^2.13.0:
   version "2.22.1"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.22.1.tgz#529a2e9bf973f259c9643d237fda84de3a26e8ad"
 
-mongodb-core@3.0.8:
-  version "3.0.8"
-  resolved "https://registry.yarnpkg.com/mongodb-core/-/mongodb-core-3.0.8.tgz#8d401f4eab6056c0d874a3d5844a4844f761d4d7"
-  dependencies:
-    bson "~1.0.4"
-    require_optional "^1.0.1"
-
-mongodb@3.0.8:
-  version "3.0.8"
-  resolved "https://registry.yarnpkg.com/mongodb/-/mongodb-3.0.8.tgz#2c1daecac9a0ec2de2f2aea4dc97d76ae70f8951"
-  dependencies:
-    mongodb-core "3.0.8"
-
-mongoose-legacy-pluralize@1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/mongoose-legacy-pluralize/-/mongoose-legacy-pluralize-1.0.2.tgz#3ba9f91fa507b5186d399fb40854bff18fb563e4"
-
-mongoose@^5.1.0:
-  version "5.1.0"
-  resolved "https://registry.yarnpkg.com/mongoose/-/mongoose-5.1.0.tgz#5002b9e4af8ea3f131b443756a01c979d22decb3"
-  dependencies:
-    async "2.1.4"
-    bson "~1.0.5"
-    kareem "2.0.7"
-    lodash.get "4.4.2"
-    mongodb "3.0.8"
-    mongoose-legacy-pluralize "1.0.2"
-    mpath "0.4.1"
-    mquery "3.0.0"
-    ms "2.0.0"
-    regexp-clone "0.0.1"
-    sliced "1.0.1"
-
 move-concurrently@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/move-concurrently/-/move-concurrently-1.0.1.tgz#be2c005fda32e0b29af1f05d7c4b33214c701f92"
@@ -4426,19 +4383,6 @@ move-concurrently@^1.0.1:
     mkdirp "^0.5.1"
     rimraf "^2.5.4"
     run-queue "^1.0.3"
-
-mpath@0.4.1:
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/mpath/-/mpath-0.4.1.tgz#ed10388430380bf7bbb5be1391e5d6969cb08e89"
-
-mquery@3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/mquery/-/mquery-3.0.0.tgz#e5f387dbabc0b9b69859e550e810faabe0ceabb0"
-  dependencies:
-    bluebird "3.5.0"
-    debug "2.6.9"
-    regexp-clone "0.0.1"
-    sliced "0.0.5"
 
 ms@0.7.2:
   version "0.7.2"
@@ -5244,10 +5188,6 @@ regex-not@^1.0.0, regex-not@^1.0.2:
     extend-shallow "^3.0.2"
     safe-regex "^1.1.0"
 
-regexp-clone@0.0.1:
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/regexp-clone/-/regexp-clone-0.0.1.tgz#a7c2e09891fdbf38fbb10d376fb73003e68ac589"
-
 registry-auth-token@^3.0.1:
   version "3.3.2"
   resolved "https://registry.yarnpkg.com/registry-auth-token/-/registry-auth-token-3.3.2.tgz#851fd49038eecb586911115af845260eec983f20"
@@ -5332,22 +5272,11 @@ require-main-filename@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/require-main-filename/-/require-main-filename-1.0.1.tgz#97f717b69d48784f5f526a6c5aa8ffdda055a4d1"
 
-require_optional@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/require_optional/-/require_optional-1.0.1.tgz#4cf35a4247f64ca3df8c2ef208cc494b1ca8fc2e"
-  dependencies:
-    resolve-from "^2.0.0"
-    semver "^5.1.0"
-
 resolve-cwd@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/resolve-cwd/-/resolve-cwd-2.0.0.tgz#00a9f7387556e27038eae232caa372a6a59b665a"
   dependencies:
     resolve-from "^3.0.0"
-
-resolve-from@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/resolve-from/-/resolve-from-2.0.0.tgz#9480ab20e94ffa1d9e80a804c7ea147611966b57"
 
 resolve-from@^3.0.0:
   version "3.0.0"
@@ -5559,11 +5488,11 @@ serverless-webpack@^5.1.5:
     semver "^5.5.0"
     ts-node "^3.2.0"
 
-serverless@^1.29.2:
-  version "1.29.2"
-  resolved "https://registry.yarnpkg.com/serverless/-/serverless-1.29.2.tgz#6dbc6d471bddb300b63c193d7f27a2a331af4445"
+serverless@^1.30.3:
+  version "1.30.3"
+  resolved "https://registry.yarnpkg.com/serverless/-/serverless-1.30.3.tgz#b7aa1a7898385bec9b98c0ec0650b7c63ee22fdf"
   dependencies:
-    "@serverless/platform-sdk" "^0.2.0"
+    "@serverless/platform-sdk" "^0.2.1"
     archiver "^1.1.0"
     async "^1.5.2"
     aws-sdk "^2.228.0"
@@ -5686,14 +5615,6 @@ signal-exit@^3.0.0, signal-exit@^3.0.2:
 slash@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/slash/-/slash-1.0.0.tgz#c41f2f6c39fc16d1cd17ad4b5d896114ae470d55"
-
-sliced@0.0.5:
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/sliced/-/sliced-0.0.5.tgz#5edc044ca4eb6f7816d50ba2fc63e25d8fe4707f"
-
-sliced@1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/sliced/-/sliced-1.0.1.tgz#0b3a662b5d04c3177b1926bea82b03f837a2ef41"
 
 snapdragon-node@^2.0.1:
   version "2.1.1"
@@ -6346,9 +6267,9 @@ typedarray@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
 
-typescript@^2.9.2:
-  version "2.9.2"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-2.9.2.tgz#1cbf61d05d6b96269244eb6a3bce4bd914e0f00c"
+typescript@^3.0.3:
+  version "3.0.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.0.3.tgz#4853b3e275ecdaa27f78fda46dc273a7eb7fc1c8"
 
 uglify-es@^3.3.4:
   version "3.3.9"
@@ -6537,6 +6458,10 @@ uuid@^2.0.2:
 uuid@^3.1.0, uuid@^3.2.1:
   version "3.2.1"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.2.1.tgz#12c528bb9d58d0b9265d9a2f6f0fe8be17ff1f14"
+
+uuid@^3.3.2:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.3.2.tgz#1b4af4955eb3077c501c23872fc6513811587131"
 
 v8flags@^3.0.0:
   version "3.1.0"

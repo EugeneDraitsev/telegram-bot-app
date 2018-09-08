@@ -5,43 +5,48 @@ import { get } from 'lodash'
 export let segment: any
 export const segments: any = {
   commandSegment: null,
-  dbSegment: null,
+  statsSegment: null,
   querySegment: null,
 }
 
 AWSXRay.enableManualMode()
 
 import { processQuery } from './commands/'
-import { closeConnection, openConnection, updateStatistic } from './core'
+import { updateStatistics } from './core/'
 
-function updateMessageStat(user_info: any, chat_id: any) {
-  segments.dbSegment = new AWSXRay.Segment('mongo-record', segment.trace_id, segment.id)
-  return openConnection()
-    .then(() => updateStatistic(user_info, chat_id))
-    .catch((err) => {
-      console.log(err) // tslint:disable-line
-      segments.dbSegment.addAttribute('user_info', user_info)
-      segments.dbSegment.addError(new Error(err))
-    })
+const updateMessageStat = async (user_info: any, chat_id: any) => {
+  segments.statsSegment = new AWSXRay.Segment('update-stats', segment.trace_id, segment.id)
+
+  try {
+    await updateStatistics(user_info, chat_id, segments.statsSegment)
+  } catch (e) {
+    console.log(e) // tslint:disable-line
+    segments.statsSegment.addError(e)
+  } finally {
+    segments.statsSegment.close()
+  }
 }
 
-function processRequest(req: any) {
-  if (!req || !req.message || !req.message.chat || !req.message.text) {
-    return Promise.resolve('not a telegram message')
+const processRequest = async (req: any) => {
+  try {
+    if (!req || !req.message || !req.message.chat || !req.message.text) {
+      return 'not a telegram message'
+    }
+
+    const { message: { message_id, from, chat, text, reply_to_message } } = req
+    const replyText = get(reply_to_message, 'text', '')
+
+    segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
+    await Promise.all([processQuery(text, message_id, chat.id, replyText), updateMessageStat(from, chat.id)])
+
+    return 'done'
+  } catch (e) {
+    console.log(e) // tslint:disable-line
+    segments.commandSegment.addError(e)
+    return 'done with errors'
+  } finally {
+    segments.commandSegment.close()
   }
-
-  const { message: { message_id, from, chat, text, reply_to_message } } = req
-  const replyText = get(reply_to_message, 'text', '')
-  segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
-
-  return Promise.all([
-    processQuery(text, message_id, chat.id, replyText).then(() => {
-      segments.querySegment.close()
-      segments.commandSegment.close()
-    }),
-    updateMessageStat(from, chat.id).then(() => segments.dbSegment.close()),
-  ])
-    .then(closeConnection)
 }
 
 export const handler: Handler = async (event: any) => {
@@ -63,8 +68,8 @@ export const handler: Handler = async (event: any) => {
       statusCode: 200,
     }
   } finally {
-    const { dbSegment, commandSegment } = segments
-    if (dbSegment && dbSegment.fault || commandSegment && commandSegment.fault) {
+    const { statsSegment, commandSegment } = segments
+    if (statsSegment && statsSegment.fault || commandSegment && commandSegment.fault) {
       segment.addFaultFlag()
       segment.addMetadata('body', body)
     }
