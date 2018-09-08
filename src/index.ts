@@ -12,13 +12,15 @@ export const segments: any = {
 AWSXRay.enableManualMode()
 
 import { processQuery } from './commands/'
-import { updateStatistics } from './core/'
+import { saveEvent, updateStatistics } from './core/'
 
-const updateMessageStat = async (user_info: any, chat_id: any) => {
-  segments.statsSegment = new AWSXRay.Segment('update-stats', segment.trace_id, segment.id)
-
+const updateMessageStat = async (user_info: any, chat_id: any, date: number) => {
   try {
-    await updateStatistics(user_info, chat_id, segments.statsSegment)
+    segments.statsSegment = new AWSXRay.Segment('update-stats', segment.trace_id, segment.id)
+    await Promise.all([
+      updateStatistics(user_info, chat_id, segments.statsSegment),
+      saveEvent(user_info, chat_id, date, segments.statsSegment),
+    ])
   } catch (e) {
     console.log(e) // tslint:disable-line
     segments.statsSegment.addError(e)
@@ -33,11 +35,11 @@ const processRequest = async (req: any) => {
       return 'not a telegram message'
     }
 
-    const { message: { message_id, from, chat, text, reply_to_message } } = req
+    const { message: { date, message_id, from, chat, text, reply_to_message } } = req
     const replyText = get(reply_to_message, 'text', '')
 
     segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
-    await Promise.all([processQuery(text, message_id, chat.id, replyText), updateMessageStat(from, chat.id)])
+    await Promise.all([processQuery(text, message_id, chat.id, replyText), updateMessageStat(from, chat.id, date)])
 
     return 'done'
   } catch (e) {

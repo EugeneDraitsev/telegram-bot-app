@@ -1,6 +1,6 @@
 import { find, orderBy } from 'lodash'
-import { segments } from '../'
-import { dedent, dynamoPutItem, dynamoQuery } from '../utils'
+import { segments } from '../../..'
+import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
 
 interface IUserInfo {
   username?: string
@@ -17,6 +17,17 @@ interface IUserStat {
 
 const getUserName = (userInfo: IUserInfo) =>
   userInfo.username || userInfo.first_name || userInfo.last_name || String(userInfo.id)
+
+export const getUsersList = async (chat_id: string, query: string, XRaySegment: any) => {
+  try {
+    const result = await getChatStatistic(chat_id, XRaySegment)
+    return result.users.map((user: IUserStat) =>
+      `@${user.username}`).join(' ').concat('\n') + query
+  } catch (e) {
+    segments.querySegment.addError(e)
+    return 'Error while fetching users'
+  }
+}
 
 const getChatStatistic = async (chat_id: string, XRaySegment: any) => {
   const params = {
@@ -75,15 +86,4 @@ export const updateStatistics = async (userInfo: IUserInfo, chat_id: string, XRa
   }
 
   return dynamoPutItem(params)
-}
-
-export const getUsersList = async (chat_id: string, query: string, XRaySegment: any) => {
-  try {
-    const result = await getChatStatistic(chat_id, XRaySegment)
-    return result.users.map((user: IUserStat) =>
-      `@${user.username}`).join(' ').concat('\n') + query
-  } catch (e) {
-    segments.querySegment.addError(e)
-    return 'Error while fetching users'
-  }
 }

@@ -1,4 +1,4 @@
-image: node:9.11
+image: node:latest
 
 pipelines:
   branches:
