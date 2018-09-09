@@ -1,22 +1,7 @@
 import { find, orderBy } from 'lodash'
 import { segments } from '../../..'
 import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
-
-interface IUserInfo {
-  username?: string
-  first_name?: string
-  last_name?: string
-  id: number
-}
-
-interface IUserStat {
-  id: number
-  msgCount: number
-  username: string
-}
-
-const getUserName = (userInfo: IUserInfo) =>
-  userInfo.username || userInfo.first_name || userInfo.last_name || String(userInfo.id)
+import { getUserName, IUserInfo, IUserStat } from './'
 
 export const getUsersList = async (chat_id: string, query: string, XRaySegment: any) => {
   try {

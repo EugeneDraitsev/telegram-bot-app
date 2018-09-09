@@ -92,12 +92,12 @@ resources:
       Properties:
         TableName: chat-events
         AttributeDefinitions:
-        - AttributeName: id
+        - AttributeName: chatId
           AttributeType: S
         - AttributeName: date
-          AttributeType: S
+          AttributeType: N
         KeySchema:
-        - AttributeName: id
+        - AttributeName: chatId
           KeyType: HASH
         - AttributeName: date
           KeyType: RANGE

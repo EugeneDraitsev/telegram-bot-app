@@ -1,12 +1,15 @@
-import * as uuidv4 from 'uuid/v4'
-import { dynamoPutItem } from '../../../utils'
+import { random } from 'lodash'
 
-export const saveEvent = async (userInfo: any, chat_id: string, date: number, XRaySegment: any) => {
+import { dynamoPutItem } from '../../../utils'
+import { getUserName, IUserInfo } from './'
+
+export const saveEvent = async (userInfo: IUserInfo, chat_id: string, date: number, XRaySegment: any) => {
   const event = {
-    id: uuidv4(),
-    date: new Date(date).toISOString(),
+    // trying to avoid lost messages
+    date: date * 1000 + random(-500, 500),
     chatId: String(chat_id),
     userId: String(userInfo.id),
+    name: getUserName(userInfo),
   }
 
   const params = {
