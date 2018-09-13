@@ -1,19 +1,9 @@
-import { includes, round } from 'lodash'
+import { chunk, includes, map, round } from 'lodash'
 import fetch from 'node-fetch'
-import { parseString } from 'xml2js'
 
 import { segments } from '../'
 
 const timeout = 15000
-
-interface INbrbResponse {
-  DailyExRates: {
-    Currency: {
-      CharCode: string,
-      Rate: string,
-    } [],
-  }
-}
 
 const getRussianCurrency = async () => {
   const currencyCodes = ['usd', 'eur', 'brent']
@@ -28,20 +18,18 @@ const getRussianCurrency = async () => {
       '')}`
 }
 
-const getBelarusCurrency = async () => {
-  const currencyCodes = ['USD', 'EUR', 'RUB']
-  const url = 'http://www.nbrb.by/Services/XmlExRates.aspx?ondate='
+const getFreeCurrencyData = async () => {
+  const currencyPairs = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK']
+  const url = 'https://free.currencyconverterapi.com/api/v6/convert?compact=y&q='
 
-  const response = await fetch(url, { timeout })
-  const xml = await response.text()
-  const result = await new Promise((resolve, reject) =>
-    parseString(xml, (err, res: INbrbResponse) => err ? reject(err) : resolve(res))) as INbrbResponse
+  const promises = chunk(currencyPairs, 2).map(x => x.join(','))
+  const results = await Promise.all(promises.map(async x => await fetch(`${url}${x}`)))
+  const jsons = await Promise.all(results.map(x => x.json()))
+  const data = jsons.reduce((a, b) => ({ ...a, ...b }))
 
-  return `Курсы НБРБ:\n${result.DailyExRates.Currency
-    .filter(currency => includes(currencyCodes, currency.CharCode[0]))
-    .reduce(
-      (acc, currency) => acc.concat(`${currency.CharCode[0]}: ${Number(currency.Rate).toFixed(4)}\n`), '',
-    )}`
+  return `Курсы FCC:
+${map(data, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')}
+`
 }
 
 const getCryptoCurrency = async () => {
@@ -65,11 +53,11 @@ const getError = (err: Error, from: string) => {
 
 export const getCurrency = () => {
   const promises = [
-    getBelarusCurrency().catch(err => getError(err, 'nbrb')),
+    getFreeCurrencyData().catch(err => getError(err, 'nbrb')),
     getRussianCurrency().catch(err => getError(err, 'meduza')),
     getCryptoCurrency().catch(err => getError(err, 'poloniex')),
   ]
 
   return Promise.all(promises)
-    .then(result => `Курсы валют:\n\n${result.join('\n')}`)
+    .then(result => `${result.join('\n')}`)
 }

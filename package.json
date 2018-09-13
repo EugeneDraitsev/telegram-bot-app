@@ -22,8 +22,7 @@
     "form-data": "^2.3.2",
     "lodash": "^4.5.0",
     "node-fetch": "^2.1.2",
-    "url": "^0.11.0",
-    "xml2js": "^0.4.17"
+    "url": "^0.11.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.3",
