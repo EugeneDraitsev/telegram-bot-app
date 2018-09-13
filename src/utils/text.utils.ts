@@ -27,4 +27,8 @@ export const dedent = (callSite: any, ...args: any[]): string => {
   return format(output)
 }
 
-export const normalize = (str: string) => str.replace(/\s\s+/g, ' ').replace('\n', ' ').trim()
+export const normalize = (str: string) => str
+  .replace(/<(.|\n)*?>/g, '')
+  .replace(/\s\s+/g, ' ')
+  .replace('\n', ' ')
+  .trim()

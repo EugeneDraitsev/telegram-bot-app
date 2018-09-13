@@ -42,7 +42,7 @@ export function sendMessage(chat_id: string | number, text: string, reply_to_mes
       segment.addError(e)
       segments.commandSegment.addError(e)
     })
-    .then(() => segment.close())
+    .then(() => segment.commandSegment.close())
 }
 
 export function sendPhoto(options: ISendPhotoParams) {
@@ -74,7 +74,7 @@ export function sendPhoto(options: ISendPhotoParams) {
       segment.addError(e)
       segments.commandSegment.addError(e)
     })
-    .then(() => segment.close())
+    .then(() => segment.commandSegment.close())
 }
 
 export function sendDocument(options: ISendDocumentParams) {
@@ -116,7 +116,7 @@ export function sendDocument(options: ISendDocumentParams) {
       segment.addError(e)
       segments.commandSegment.addError(e)
     })
-    .then(() => segment.close())
+    .then(() => segment.commandSegment.close())
 }
 
 export function sendSticker(chat_id: string, sticker: string, reply_to_message_id = '') {
@@ -130,5 +130,5 @@ export function sendSticker(chat_id: string, sticker: string, reply_to_message_i
       segment.addError(e)
       segments.commandSegment.addError(e)
     })
-    .then(() => segment.close())
+    .then(() => segment.commandSegment.close())
 }
