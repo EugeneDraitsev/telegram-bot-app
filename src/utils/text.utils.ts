@@ -7,7 +7,7 @@ export const dedent = (callSite: any, ...args: any[]): string => {
       if (size < 0) {
         size = m1.replace(/\t/g, '    ').length
       }
-      return '\n' + m1.slice(Math.min(m1.length, size))
+      return `\n${m1.slice(Math.min(m1.length, size))}`
     })
   }
 
