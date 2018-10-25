@@ -47,7 +47,9 @@ const processRequest = async (req: any) => {
     segments.commandSegment.addError(e)
     return 'done with errors'
   } finally {
-    segments.commandSegment.close()
+    if (segments.commandSegment) {
+      segments.commandSegment.close()
+    }
   }
 }
 
