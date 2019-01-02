@@ -3,7 +3,7 @@ const YEARS = {
   2018: '20!8',
 }
 
-export const yasnyfy = (text: string) => {
-  const year = YEARS[new Date().getFullYear()]
-  return `\n>${year}${text ? `\n>${text}` : ''}\nЯсно`
+export const yasnyfy = (text: string, year: string) => {
+  const formattedYear = YEARS[year] || year.replace('0', 'k')
+  return `\n>${formattedYear}${text ? `\n>${text}` : ''}\nЯсно`
 }

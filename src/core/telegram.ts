@@ -1,5 +1,8 @@
 import * as FormData from 'form-data'
+import * as fs from 'fs'
 import fetch from 'node-fetch'
+// @ts-ignore
+import * as remont from '../remont.mp4'
 
 const AWSXRay = require('aws-xray-sdk') // tslint:disable-line
 
@@ -126,6 +129,22 @@ export function sendSticker(chat_id: string, sticker: string, reply_to_message_i
   body.append('sticker', sticker)
   body.append('reply_to_message_id', reply_to_message_id)
   return fetch(`${BASE_URL}/sendSticker`, { body, method: 'POST' })
+    .catch((e) => {
+      segment.addError(e)
+      segments.commandSegment.addError(e)
+    })
+    .then(() => segments.commandSegment.close())
+}
+
+export function sendVideo(chat_id: string, reply_to_message_id = '') {
+  const segment = openSegment('tg-send-video')
+  const body = new FormData()
+  const test = fs.readFileSync(remont)
+  body.append('chat_id', chat_id)
+  body.append('caption', '@perturbator_soznaniya как ремонт?')
+  body.append('video', test, { contentType: 'video/mp4', filename: 'video.mp4' })
+  body.append('reply_to_message_id', reply_to_message_id)
+  return fetch(`${BASE_URL}/sendVideo`, { body, method: 'POST' })
     .catch((e) => {
       segment.addError(e)
       segments.commandSegment.addError(e)

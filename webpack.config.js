@@ -33,6 +33,18 @@ module.exports = {
         test: /\.mjs$/,
         use: []
       },
+      {
+        test: /\.(mp4)$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              // outputPath: 'videos',
+              name: '[path][name].[ext]'
+            }
+          }
+        ]
+      }
     ],
   },
 }

@@ -18,18 +18,20 @@ import {
   sendMessage,
   sendPhoto,
   sendSticker,
+  sendVideo,
   throwDice,
   translate,
   yasnyfy,
 } from '../core'
 
-const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/s', '/x']
+// tslint:disable-next-line:max-line-length
+const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/f', '/s', '/x', '/remont']
 
 const parseQuery = (query: string) => query.replace(/\/\S+\s*/g, '').trim()
 export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/, '') === command
   || text.replace(/@.*/, '') === command)
 
-export function processQuery(text: string, message_id: string, chat_id: string, replyText: string) {
+export async function processQuery(text: string, message_id: string, chat_id: string, replyText: string) {
   const query = parseQuery(text) || replyText
   const command = findCommand(text)
   const { commandSegment } = segments
@@ -47,70 +49,60 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
           }))
           .catch(error => sendMessage(chat_id, error, message_id))
       }
-
       case '/h': {
         const huext = huify(query)
         return query === huext ?
           sendMessage(chat_id, 'https://www.youtube.com/watch?v=q5bc4nmDNio', message_id) :
           sendMessage(chat_id, huext, message_id)
       }
-
       case '/y': {
-        return sendMessage(chat_id, yasnyfy(query), message_id)
+        return sendMessage(chat_id, yasnyfy(query, String(new Date().getFullYear())), message_id)
       }
-
       case '/c': {
         return getCurrency()
           .then(result => sendMessage(chat_id, result))
       }
-
       case '/t': {
         return translate(query)
           .then(response => sendMessage(chat_id, response, message_id))
       }
-
       case '/z': {
         return getFormattedChatStatistics(chat_id, segments.querySegment)
           .then(message => sendMessage(chat_id, message, message_id))
       }
-
       case '/8': {
         return sendSticker(chat_id, String(getPrediction()), message_id)
       }
-
       case '/v' : {
         return searchYoutube(query)
           .then(response => sendMessage(chat_id, response, message_id))
       }
-
       case '/w' : {
         return searchWiki(query)
           .then(response => sendMessage(chat_id, response, message_id))
       }
-
       case '/dice' : {
         return sendMessage(chat_id, throwDice(parseInt(query, 10) || 6), message_id, 'Markdown')
       }
-
       case '/p' : {
         return getHoroscope(query)
           .then(result => sendMessage(chat_id, result, message_id, 'HTML'))
           .catch(error => sendMessage(chat_id, error, message_id))
       }
-      case '/s' : {
+      case '/f' : {
         return getWeather(query || 'Минск')
           .then(result => sendMessage(chat_id, result, message_id, 'Markdown'))
       }
-
       case '/all' : {
         return getUsersList(chat_id, query, segments.querySegment)
           .then(response => sendMessage(chat_id, response, message_id))
       }
-
       case '/ps' : {
         return sendMessage(chat_id, puntoSwitcher(query), message_id)
       }
-
+      case '/remont' : {
+        return sendVideo(chat_id, message_id)
+      }
       case '/x': {
         return getXRayStats(segments.querySegment)
           .then(response => sendDocument({
@@ -122,9 +114,8 @@ export function processQuery(text: string, message_id: string, chat_id: string, 
           }))
           .catch(error => sendMessage(chat_id, error, message_id))
       }
-
       default: {
-        return Promise.resolve() as any
+        return null
       }
     }
   } catch (e) {
