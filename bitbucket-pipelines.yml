@@ -1,4 +1,4 @@
-image: node:10.15.0
+image: node:latest
 
 pipelines:
   branches:
@@ -7,7 +7,7 @@ pipelines:
           caches:
             - node
           script:
-            - yarn
+            - yarn --ignore-engines
             - yarn lint:fix
             - yarn test
             - yarn deploy-function
