@@ -36,7 +36,7 @@ export async function processQuery(text: string, message_id: string, chat_id: st
   const query = parseQuery(text) || reply_to_message.text
   const command = findCommand(text)
   const { commandSegment } = segments
-  const replyId = reply_to_message.message_id || message_id
+  const replyId = text ? message_id : reply_to_message.message_id || message_id
   segments.querySegment = new AWSXRay.Segment(command || 'no-command', commandSegment.trace_id, commandSegment.id)
 
   try {
