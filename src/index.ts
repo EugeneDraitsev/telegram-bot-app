@@ -1,6 +1,5 @@
 import { Handler } from 'aws-lambda'
 import * as AWSXRay from 'aws-xray-sdk'
-import { get } from 'lodash'
 
 export let segment: any
 export const segments: any = {
@@ -36,10 +35,12 @@ const processRequest = async (req: any) => {
     }
 
     const { message: { date, message_id, from, chat, text, reply_to_message } } = req
-    const replyText = get(reply_to_message, 'text', '')
 
     segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
-    await Promise.all([processQuery(text, message_id, chat.id, replyText), updateMessageStat(from, chat.id, date)])
+    await Promise.all([
+      processQuery(text, message_id, chat.id, reply_to_message || {}),
+      updateMessageStat(from, chat.id, date)],
+    )
 
     return 'done'
   } catch (e) {
