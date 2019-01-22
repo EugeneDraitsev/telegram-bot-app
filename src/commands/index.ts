@@ -19,13 +19,14 @@ import {
   sendPhoto,
   sendSticker,
   sendVideo,
+  shrugyfy,
   throwDice,
   translate,
   yasnyfy,
 } from '../core'
 
 // tslint:disable-next-line:max-line-length
-const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/f', '/s', '/x', '/remont']
+const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/f', '/s', '/x', '/remont', '/shrug']
 
 const parseQuery = (query: string) => query.replace(/\/\S+\s*/g, '').trim()
 export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/, '') === command
@@ -113,6 +114,9 @@ export async function processQuery(text: string, message_id: string, chat_id: st
             reply_to_message_id: message_id,
           }))
           .catch(error => sendMessage(chat_id, error, message_id))
+      }
+      case '/shrug' : {
+        return sendMessage(chat_id, shrugyfy(), message_id)
       }
       default: {
         return null
