@@ -116,7 +116,7 @@ export async function processQuery(text: string, message_id: string, chat_id: st
           .catch(error => sendMessage(chat_id, error, message_id))
       }
       case '/shrug' : {
-        return sendMessage(chat_id, shrugyfy(), message_id)
+        return sendMessage(chat_id, shrugyfy(), message_id, 'Markdown')
       }
       default: {
         return null
