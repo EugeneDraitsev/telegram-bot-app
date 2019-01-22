@@ -33,10 +33,11 @@ export const findCommand = (text: string) => COMMANDS.find(command => text.repla
   || text.replace(/@.*/, '') === command)
 
 export async function processQuery(text: string, message_id: string, chat_id: string, reply_to_message: any) {
-  const query = parseQuery(text) || reply_to_message.text
+  const parsedText = parseQuery(text)
+  const query = parsedText || parseQuery(reply_to_message.text)
   const command = findCommand(text)
   const { commandSegment } = segments
-  const replyId = text ? message_id : reply_to_message.message_id || message_id
+  const replyId = parsedText ? message_id : reply_to_message.message_id || message_id
   segments.querySegment = new AWSXRay.Segment(command || 'no-command', commandSegment.trace_id, commandSegment.id)
 
   try {
