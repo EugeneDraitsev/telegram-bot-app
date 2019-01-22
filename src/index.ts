@@ -39,8 +39,8 @@ const processRequest = async (req: any) => {
     segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
     await Promise.all([
       processQuery(text, message_id, chat.id, reply_to_message || {}),
-      updateMessageStat(from, chat.id, date)],
-    )
+      updateMessageStat(from, chat.id, date),
+    ])
 
     return 'done'
   } catch (e) {
@@ -64,7 +64,6 @@ export const handler: Handler = async (event: any) => {
       body: JSON.stringify({ body, message }),
       statusCode: 200,
     }
-
   } catch (e) {
     console.log(e) // tslint:disable-line
     segment.addError(e)
