@@ -28,7 +28,7 @@ import {
 // tslint:disable-next-line:max-line-length
 const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/f', '/s', '/x', '/remont', '/shrug']
 
-const parseQuery = (query: string) => query.replace(/\/\S+\s*/g, '').trim()
+const parseQuery = (query: string = '') => query.replace(/\/\S+\s*/g, '').trim()
 export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/, '') === command
   || text.replace(/@.*/, '') === command)
 
