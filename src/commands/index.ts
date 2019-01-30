@@ -11,6 +11,7 @@ import {
   getXRayStats,
   huify,
   puntoSwitcher,
+  sayThanksForYaLink,
   searchImage,
   searchWiki,
   searchYoutube,
@@ -31,6 +32,7 @@ const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '
 export const parseQuery = (query: string = '') => query.replace(/\/\S+\s*/g, '').trim()
 export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/, '') === command
   || text.replace(/@.*/, '') === command)
+export const isYaMusicLink = (text: string) => text.includes('://music.yandex.')
 
 export async function processQuery(text: string, message_id: string, chat_id: string, reply_to_message: any) {
   const parsedText = parseQuery(text)
@@ -39,6 +41,8 @@ export async function processQuery(text: string, message_id: string, chat_id: st
   const { commandSegment } = segments
   const replyId = parsedText ? message_id : reply_to_message.message_id || message_id
   segments.querySegment = new AWSXRay.Segment(command || 'no-command', commandSegment.trace_id, commandSegment.id)
+
+  if (isYaMusicLink(text)) sendMessage(chat_id, sayThanksForYaLink(), replyId)
 
   try {
     switch (command) {
