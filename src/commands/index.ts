@@ -1,4 +1,5 @@
 import * as AWSXRay from 'aws-xray-sdk'
+import { random } from 'lodash'
 
 import { segments } from '../'
 import {
@@ -42,7 +43,7 @@ export async function processQuery(text: string, message_id: string, chat_id: st
   const replyId = parsedText ? message_id : reply_to_message.message_id || message_id
   segments.querySegment = new AWSXRay.Segment(command || 'no-command', commandSegment.trace_id, commandSegment.id)
 
-  if (isYaMusicLink(text)) {
+  if (isYaMusicLink(text) && random(0, 100) > 85) {
     sendMessage(chat_id, sayThanksForYaLink(), replyId)
   }
 
