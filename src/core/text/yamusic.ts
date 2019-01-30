@@ -1,3 +1,4 @@
+import { sample } from 'lodash'
 
 const APPRECIATION = [
   'Спасибо, слушай это говно сам))))))00',
@@ -6,5 +7,5 @@ const APPRECIATION = [
 ]
 
 export const sayThanksForYaLink = () => {
-  return APPRECIATION[Math.floor(Math.random() * APPRECIATION.length)]
+  return String(sample(APPRECIATION))
 }

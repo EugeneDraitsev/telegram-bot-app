@@ -42,7 +42,9 @@ export async function processQuery(text: string, message_id: string, chat_id: st
   const replyId = parsedText ? message_id : reply_to_message.message_id || message_id
   segments.querySegment = new AWSXRay.Segment(command || 'no-command', commandSegment.trace_id, commandSegment.id)
 
-  if (isYaMusicLink(text)) sendMessage(chat_id, sayThanksForYaLink(), replyId)
+  if (isYaMusicLink(text)) {
+    sendMessage(chat_id, sayThanksForYaLink(), replyId)
+  }
 
   try {
     switch (command) {
