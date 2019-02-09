@@ -753,10 +753,10 @@ aws-sign2@~0.7.0:
   resolved "https://registry.yarnpkg.com/aws-sign2/-/aws-sign2-0.7.0.tgz#b46e890934a9591f2d2f6f86d7e6a9f1b3fe76a8"
   integrity sha1-tG6JCTSpWR8tL2+G1+ap8bP+dqg=
 
-aws-xray-sdk-core@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-2.1.0.tgz#abca5035bf66f828a9080f5171d24133cc65ba6d"
-  integrity sha512-pYXphQS20uyMqaaK4qqTn9A2Ym1TCcApcHdp0+5RN7et1tkzKcokc+n91l/4OCf73+6+5lzD/bcuAabyE/knWQ==
+aws-xray-sdk-core@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-2.2.0.tgz#d852cff226e24ec2795b81e413cf888b89828404"
+  integrity sha512-Qi3BNjoaZgmQLluRQxY9EnHZPVyPvWvcR3HzVA4+dE9Uu8iWPWKkQ0e6XwA6EkFCO4OQMZmnVl+3yUkZ8aHGQQ==
   dependencies:
     atomic-batcher "^1.0.2"
     aws-sdk "^2.304.0"
@@ -767,30 +767,30 @@ aws-xray-sdk-core@^2.1.0:
     semver "^5.3.0"
     winston "^2.4.4"
 
-aws-xray-sdk-express@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-express/-/aws-xray-sdk-express-2.1.0.tgz#c35bd9f83110d241fa49b409842c235b3819f133"
-  integrity sha512-cOyJP4uvWi8WhsE1pU1BAfTkoSYJIlKlkgdaIfiyBbfchzLrZYizyF0Ljbq0m+IeEbXjCLI7fldMiJkLVIFodw==
+aws-xray-sdk-express@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-express/-/aws-xray-sdk-express-2.2.0.tgz#561ddd72c2d42ee75d2f972b47841b65828bfe74"
+  integrity sha512-tjzehB0Vf1+jx5Q9Pm2AFm/C3tCN3byaWmOKr//AGejupisTOVj9OrMoJraBc79UmLKVrO29p+6fL4eRKBcNjw==
 
-aws-xray-sdk-mysql@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-mysql/-/aws-xray-sdk-mysql-2.1.0.tgz#d2376bb59ed7d9bfa5d2d6a29e4f9fe0b0060251"
-  integrity sha512-7g8bKHNb6QzeJIDmMIE916CnaB0V7aiyxC2WANWvGJZ8k09q7tVKATHZLbx+H5VrUKA41Lyi0v6yXQ3HluRBqw==
+aws-xray-sdk-mysql@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-mysql/-/aws-xray-sdk-mysql-2.2.0.tgz#2714eae792f9d0ae9cb25264e0859a608eec1140"
+  integrity sha512-Htgkt1lEdXplljoM3HqJ+SUwpE27Uf/Sx7/ZUjSKbv12BAhScxtJbjf9+dqS0KCSBjtBB5Af6lNPE78gtUfOaQ==
 
-aws-xray-sdk-postgres@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk-postgres/-/aws-xray-sdk-postgres-2.1.0.tgz#226c5350f34354dbff1ae7a03519d0ae08d5e10f"
-  integrity sha512-3IcN8YF74BMAJH2+2GOLWEDyZcRQdon3vaM2fJze/Jtur2is6r6gOnEgBh+aypeG5qRlBXbFFw+vJhD8L/9rMQ==
+aws-xray-sdk-postgres@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk-postgres/-/aws-xray-sdk-postgres-2.2.0.tgz#81e8e7748436e8adb0498a93860024531f1ce6b3"
+  integrity sha512-MMOnbGcCeb5LKhYULf0EdNtdOnbu0phIvAikUY2b0WSQA2WziZUD0Ez9r98tQ2OFXqQEzOUYiO48EUz629gNJA==
 
-aws-xray-sdk@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/aws-xray-sdk/-/aws-xray-sdk-2.1.0.tgz#996a6fd375392d4f0923901919b126bf10a679fa"
-  integrity sha512-T5Hapt9iz95zoyMGHwxre1Fgv+xsHSs2zfVSdGwEAXR2P3W/d5+OffWAuaLlLsiGgQlO+LUJ6GQKyzNc/gvzkA==
+aws-xray-sdk@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/aws-xray-sdk/-/aws-xray-sdk-2.2.0.tgz#c030956df03ef40fa0cef03642324d0e49403110"
+  integrity sha512-SrRKOmv86kNe0wEn1z4hHXisAMnUXv6d8e8xWVPBwqemr0uNw5Z5jkZZmxRvhrmI/ViUe23YjToBxeo1XnjjZw==
   dependencies:
-    aws-xray-sdk-core "^2.1.0"
-    aws-xray-sdk-express "^2.1.0"
-    aws-xray-sdk-mysql "^2.1.0"
-    aws-xray-sdk-postgres "^2.1.0"
+    aws-xray-sdk-core "^2.2.0"
+    aws-xray-sdk-express "^2.2.0"
+    aws-xray-sdk-mysql "^2.2.0"
+    aws-xray-sdk-postgres "^2.2.0"
     pkginfo "^0.4.0"
 
 aws4@^1.8.0:
