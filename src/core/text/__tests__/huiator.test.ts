@@ -12,4 +12,9 @@ describe('huiator must works as designed', () => {
     expect(huify('test')).toEqual('test')
     expect(huify('ккккккккккккккккккк')).toEqual('ккккккккккккккккккк')
   })
+  test('huiator must save Capitalization letters', () => {
+    expect(huify('Журавлева')).toEqual('Хуюравлева')
+    expect(huify('Кабанова')).toEqual('Хуябанова')
+    expect(huify('СлОжнЫйКейс')).toEqual('ХуЕжнЫйКейс')
+  })
 })
