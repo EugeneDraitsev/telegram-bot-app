@@ -13,6 +13,7 @@ provider:
     GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN, file(./config.json):GOOGLE_SEARCH_TOKEN}
     OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN, file(./config.json):OPENWEATHERMAP_TOKEN}
     TOKEN: ${env:TOKEN, file(./config.json):TOKEN}
+    FCC_API_KEY: ${env:FCC_API_KEY, file(./config.json):FCC_API_KEY}
     TRANSLATION_APP_TOKEN: ${env:TRANSLATION_APP_TOKEN, file(./config.json):TRANSLATION_APP_TOKEN}
     YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN, file(./config.json):YOUTUBE_TOKEN}
     IS_LOCAL: ${env:IS_LOCAL}

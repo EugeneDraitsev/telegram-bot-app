@@ -3,6 +3,8 @@ import fetch from 'node-fetch'
 
 import { segments } from '../'
 
+const apiKey = process.env.FCC_API_KEY || 'set_your_token'
+
 const timeout = 15000
 
 const getRussianCurrency = async () => {
@@ -20,7 +22,7 @@ const getRussianCurrency = async () => {
 
 const getFreeCurrencyData = async () => {
   const currencyPairs = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK']
-  const url = 'https://free.currencyconverterapi.com/api/v6/convert?compact=y&q='
+  const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${apiKey}&q=`
 
   const promises = chunk(currencyPairs, 2).map(x => x.join(','))
   const results = await Promise.all(promises.map(async x => await fetch(`${url}${x}`)))
@@ -53,7 +55,7 @@ const getError = (err: Error, from: string) => {
 
 export const getCurrency = () => {
   const promises = [
-    getFreeCurrencyData().catch(err => getError(err, 'nbrb')),
+    getFreeCurrencyData().catch(err => getError(err, 'FFC')),
     getRussianCurrency().catch(err => getError(err, 'meduza')),
     getCryptoCurrency().catch(err => getError(err, 'poloniex')),
   ]
