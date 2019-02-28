@@ -1,4 +1,4 @@
-import { chunk, includes, map, round } from 'lodash'
+import { includes, map, round } from 'lodash'
 import fetch from 'node-fetch'
 
 import { segments } from '../'
@@ -21,16 +21,13 @@ const getRussianCurrency = async () => {
 }
 
 const getFreeCurrencyData = async () => {
-  const currencyPairs = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK']
-  const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${apiKey}&q=`
+  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK'].join(',')
+  const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${apiKey}&q=${currencies}`
 
-  const promises = chunk(currencyPairs, 2).map(x => x.join(','))
-  const results = await Promise.all(promises.map(async x => await fetch(`${url}${x}`)))
-  const jsons = await Promise.all(results.map(x => x.json()))
-  const data = jsons.reduce((a, b) => ({ ...a, ...b }))
+  const result = await fetch(url).then(x => x.json())
 
   return `Курсы FCC:
-${map(data, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')}
+${map(result, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')}
 `
 }
 
