@@ -24,7 +24,7 @@ const getFreeCurrencyData = async () => {
   const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK'].join(',')
   const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${apiKey}&q=${currencies}`
 
-  const result = await fetch(url).then(x => x.json())
+  const result = await fetch(url, { timeout }).then(x => x.json())
 
   return `Курсы FCC:
 ${map(result, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')}
