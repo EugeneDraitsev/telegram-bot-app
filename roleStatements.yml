@@ -1,0 +1,20 @@
+- Effect: Allow
+  Action:
+    - xray:PutTraceSegments
+    - xray:PutTelemetryRecords
+    - lambda:InvokeFunction
+    - lambda:InvokeAsync
+    - logs:*
+  Resource:
+    - '*'
+- Effect: Allow
+  Action:
+    - dynamodb:Query
+    - dynamodb:Scan
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+  Resource:
+    - arn:aws:dynamodb:*:*:table/chat-statistics
+    - arn:aws:dynamodb:*:*:table/chat-events

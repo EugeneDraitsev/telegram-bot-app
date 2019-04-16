@@ -1,7 +1,7 @@
 import { includes, map, round } from 'lodash'
 import fetch from 'node-fetch'
 
-import { segments } from '../'
+import { segments } from '..'
 
 const apiKey = process.env.FCC_API_KEY || 'set_your_token'
 
@@ -17,7 +17,8 @@ const getRussianCurrency = async () => {
     .filter(curr => includes(currencyCodes, curr))
     .reduce(
       (message, key) => message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`),
-      '')}`
+      '',
+    )}`
 }
 
 const getFreeCurrencyData = async () => {
@@ -47,7 +48,7 @@ const getCryptoCurrency = async () => {
 
 const getError = (err: Error, from: string) => {
   segments.querySegment.addError(err)
-  return `error getting currency from ${from}`
+  return `Can't fetch currency from ${from}`
 }
 
 export const getCurrency = () => {

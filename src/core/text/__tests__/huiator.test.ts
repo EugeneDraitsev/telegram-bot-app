@@ -1,4 +1,4 @@
-import { huify } from '../'
+import { huify } from '..'
 
 describe('huiator must works as designed', () => {
   test('huiator must properly huify russian words (length > 2)', () => {

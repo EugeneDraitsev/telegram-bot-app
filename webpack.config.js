@@ -3,16 +3,9 @@ const slsw = require('serverless-webpack')
 
 module.exports = {
   entry: slsw.lib.entries,
-  mode: 'development',
+  mode: slsw.lib.webpack.IS_LOCAL ? 'development' : 'production',
   target: 'node',
-  resolve: {
-    extensions: [
-      '.js',
-      '.json',
-      '.ts',
-      '.tsx',
-    ],
-  },
+  devtool: 'source-map',
   output: {
     libraryTarget: 'commonjs',
     path: path.join(__dirname, '.webpack'),
@@ -24,14 +17,14 @@ module.exports = {
         test: /\.ts(x?)$/,
         use: [
           {
-            loader: 'ts-loader',
+            loader: 'babel-loader',
           },
         ],
       },
       {
         type: 'javascript/auto',
         test: /\.mjs$/,
-        use: []
+        use: [],
       },
       {
         test: /\.(mp4)$/,
@@ -39,12 +32,14 @@ module.exports = {
           {
             loader: 'file-loader',
             options: {
-              // outputPath: 'videos',
-              name: '[path][name].[ext]'
-            }
-          }
-        ]
-      }
+              name: '[path][name].[ext]',
+            },
+          },
+        ],
+      },
     ],
+  },
+  resolve: {
+    extensions: ['.tsx', '.ts', '.js', '.jsx'],
   },
 }

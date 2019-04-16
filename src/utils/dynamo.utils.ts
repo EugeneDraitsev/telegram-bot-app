@@ -1,9 +1,9 @@
-import { DynamoDB } from 'aws-sdk'
-import { AWSError } from 'aws-sdk/lib/error'
+import { DynamoDB, AWSError } from 'aws-sdk'
 import { captureAWSClient } from 'aws-xray-sdk'
 
 const documentClient = new DynamoDB.DocumentClient({
-  apiVersion: '2012-08-10', region: process.env.region,
+  apiVersion: '2012-08-10',
+  region: process.env.region,
   service: new DynamoDB({ apiVersion: '2012-08-10', region: process.env.region }),
 })
 

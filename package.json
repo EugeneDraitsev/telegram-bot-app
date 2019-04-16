@@ -6,11 +6,12 @@
     "url": "https://bitbucket.org/drai/telegram-bot-app"
   },
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
+  "license": "MIT",
   "scripts": {
     "start": "cross-env IS_LOCAL=true sls offline start",
-    "lint": "tslint src/**/*.ts src/**/*.tsx",
-    "lint:fix": "tslint src/**/*.ts src/**/*.tsx --fix",
-    "type-check": "tsc --noEmit",
+    "lint": "eslint \"src/**\"",
+    "lint:fix": "eslint \"src/**\" --fix",
+    "tsc": "tsc --noEmit",
     "test": "cross-env IS_LOCAL=true jest --verbose",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "logs": "sls logs -f telegram-bot -t",
@@ -18,43 +19,49 @@
     "invoke": "sls invoke -f telegram-bot -p event.json"
   },
   "dependencies": {
-    "aws-sdk": "^2.348.0",
+    "aws-sdk": "^2.437.0",
     "aws-xray-sdk": "^2.2.0",
     "form-data": "^2.3.3",
     "fs-extra": "^7.0.1",
     "lodash": "^4.17.11",
-    "luxon": "^1.12.0",
+    "luxon": "^1.12.1",
     "node-fetch": "^2.2.0",
     "url": "^0.11.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.15",
+    "@babel/core": "7.4.3",
+    "@babel/preset-env": "7.4.3",
+    "@babel/preset-typescript": "^7.3.3",
     "@types/form-data": "^2.2.1",
-    "@types/fs-extra": "^5.0.4",
-    "@types/jest": "^23.3.9",
-    "@types/lodash": "^4.14.117",
-    "@types/luxon": "^1.11.1",
-    "@types/node-fetch": "^2.1.2",
-    "@types/xml2js": "^0.4.3",
+    "@types/fs-extra": "^5.0.5",
+    "@types/jest": "^24.0.11",
+    "@types/lodash": "^4.14.123",
+    "@types/luxon": "^1.12.0",
+    "@types/node-fetch": "^2.3.2",
+    "@types/xml2js": "^0.4.4",
+    "@typescript-eslint/eslint-plugin": "^1.6.0",
+    "@typescript-eslint/parser": "^1.6.0",
+    "babel-jest": "^24.7.1",
+    "babel-loader": "^8.0.5",
     "cross-env": "^5.2.0",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-jest": "^22.4.1",
     "file-loader": "^3.0.1",
-    "jest": "^23.6.0",
-    "serverless": "^1.32.0",
-    "serverless-offline": "^3.31.0",
-    "serverless-plugin-tracing": "^2.0.0",
+    "jest": "^24.7.1",
+    "serverless": "^1.40.0",
+    "serverless-offline": "^4.9.4",
     "serverless-webpack": "^5.2.0",
-    "ts-jest": "^23.10.4",
-    "ts-loader": "^5.3.0",
-    "tslint": "^5.11.0",
-    "tslint-config-airbnb": "^5.11.0",
-    "typescript": "^3.1.6",
-    "webpack": "^4.24.0"
+    "typescript": "^3.4.3",
+    "webpack": "^4.30.0"
   },
   "jest": {
     "testEnvironment": "node",
     "transform": {
-      "^.+\\.tsx?$": "ts-jest"
+      "^.+\\.tsx?$": "babel-jest"
     },
+    "testPathIgnorePatterns": ["<rootDir>/dist/", "<rootDir>/.webpack", "<rootDir>/node_modules/"],
     "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
     "moduleNameMapper": {
       "\\.mp4$": "<rootDir>/src/__mocks__/fileMock.js"
@@ -67,6 +74,5 @@
       "json",
       "node"
     ]
-  },
-  "license": "MIT"
+  }
 }

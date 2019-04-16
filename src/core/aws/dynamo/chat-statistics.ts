@@ -1,18 +1,7 @@
 import { find, orderBy } from 'lodash'
 import { segments } from '../../..'
 import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
-import { getUserName, IUserInfo, IUserStat } from './'
-
-export const getUsersList = async (chat_id: string, query: string, XRaySegment: any) => {
-  try {
-    const result = await getChatStatistic(chat_id, XRaySegment)
-    return result.users.map((user: IUserStat) =>
-      `@${user.username}`).join(' ').concat('\n') + query
-  } catch (e) {
-    segments.querySegment.addError(e)
-    return 'Error while fetching users'
-  }
-}
+import { getUserName, IUserInfo, IUserStat } from '.'
 
 const getChatStatistic = async (chat_id: string, XRaySegment: any) => {
   const params = {
@@ -29,6 +18,17 @@ const getChatStatistic = async (chat_id: string, XRaySegment: any) => {
   return result.Items[0]
 }
 
+export const getUsersList = async (chat_id: string, query: string, XRaySegment: any) => {
+  try {
+    const result = await getChatStatistic(chat_id, XRaySegment)
+    return result.users.map((user: IUserStat) =>
+      `@${user.username}`).join(' ').concat('\n') + query
+  } catch (e) {
+    segments.querySegment.addError(e)
+    return 'Error while fetching users'
+  }
+}
+
 export const getFormattedChatStatistics = async (chat_id: string, XRaySegment: any) => {
   try {
     const result = await getChatStatistic(chat_id, XRaySegment)
@@ -39,9 +39,8 @@ export const getFormattedChatStatistics = async (chat_id: string, XRaySegment: a
     return dedent`Users Statistic:
             All messages: ${messagesCount}
             ${formattedUsers.join('\n')}`
-
   } catch (e) {
-    console.log(e) // tslint:disable-line
+    console.log(e) // eslint-disable-line no-console
     segments.querySegment.addError(e)
     return 'Error while fetching statistic'
   }
@@ -57,7 +56,7 @@ export const updateStatistics = async (userInfo: IUserInfo, chat_id: string, XRa
     userStatistic = { id: userInfo.id, msgCount: 1, username: getUserName(userInfo) }
     statistics.users.push(userStatistic)
   } else {
-    userStatistic.msgCount = userStatistic.msgCount + 1
+    userStatistic.msgCount += 1
     userStatistic.username = getUserName(userInfo)
   }
 

@@ -1,7 +1,7 @@
 import { random } from 'lodash'
 
 import { dynamoPutItem } from '../../../utils'
-import { IUserInfo } from './'
+import { IUserInfo } from '.'
 
 export const saveEvent = async (userInfo: IUserInfo, chat_id: string, date: number, XRaySegment: any) => {
   const event = {

@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 
-import { yasnyfy } from '../'
+import { yasnyfy } from '..'
 
 describe('yasnyfy should works as designed', () => {
   const { month, day } = DateTime.local().setZone('Europe/Minsk').toObject()

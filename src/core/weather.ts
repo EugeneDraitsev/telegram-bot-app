@@ -1,4 +1,4 @@
-/* tslint:disable: max-line-length */
+/* eslint-disable max-len */
 import { get } from 'lodash'
 import fetch from 'node-fetch'
 import { segments } from '../index'
@@ -38,9 +38,9 @@ export function getWeather(location: string) {
   ])
     .then(([infoForecast, infoNow]) => {
       const city = infoForecast.city.name
-      const country = infoForecast.city.country
-      const temp = infoNow.main.temp
-      const humidity = infoNow.main.humidity
+      const { country } = infoForecast.city
+      const { temp } = infoNow.main
+      const { humidity } = infoNow.main
       const wind = infoNow.wind.speed
       const dir = windDirection(infoNow.wind.deg)
       const dayTempHigh = infoForecast.list[0].temp.max

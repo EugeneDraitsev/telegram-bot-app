@@ -1,7 +1,10 @@
-import { Handler } from 'aws-lambda'
 import * as AWSXRay from 'aws-xray-sdk'
+import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
 
-export let segment: any
+import { processQuery } from './commands'
+import { saveEvent, updateStatistics } from './core'
+
+export let segment: any // eslint-disable-line import/no-mutable-exports
 export const segments: any = {
   commandSegment: null,
   statsSegment: null,
@@ -9,9 +12,6 @@ export const segments: any = {
 }
 
 AWSXRay.enableManualMode()
-
-import { processQuery } from './commands/'
-import { saveEvent, updateStatistics } from './core/'
 
 const updateMessageStat = async (user_info: any, chat_id: any, date: number) => {
   try {
@@ -21,7 +21,7 @@ const updateMessageStat = async (user_info: any, chat_id: any, date: number) => 
       saveEvent(user_info, chat_id, date, segments.statsSegment),
     ])
   } catch (e) {
-    console.log(e) // tslint:disable-line
+    console.log(e) // eslint-disable-line no-console
     segments.statsSegment.addError(e)
   } finally {
     segments.statsSegment.close()
@@ -37,6 +37,7 @@ const processRequest = async (req: any) => {
     const { message: { date, message_id, from, chat, text, reply_to_message } } = req
 
     segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
+
     await Promise.all([
       processQuery(text, message_id, chat.id, reply_to_message || {}),
       updateMessageStat(from, chat.id, date),
@@ -44,7 +45,7 @@ const processRequest = async (req: any) => {
 
     return 'done'
   } catch (e) {
-    console.log(e) // tslint:disable-line
+    console.log(e) // eslint-disable-line no-console
     segments.commandSegment.addError(e)
     return 'done with errors'
   } finally {
@@ -54,7 +55,7 @@ const processRequest = async (req: any) => {
   }
 }
 
-export const handler: Handler = async (event: any) => {
+export const handler = async (event: any) => {
   const body = event.body ? JSON.parse(event.body) : event
   segment = new AWSXRay.Segment('telegram-bot')
 
@@ -65,7 +66,7 @@ export const handler: Handler = async (event: any) => {
       statusCode: 200,
     }
   } catch (e) {
-    console.log(e) // tslint:disable-line
+    console.log(e) // eslint-disable-line no-console
     segment.addError(e)
     return {
       body: JSON.stringify({ body, message: 'something going wrong :c' }),
@@ -73,10 +74,12 @@ export const handler: Handler = async (event: any) => {
     }
   } finally {
     const { statsSegment, commandSegment } = segments
-    if (statsSegment && statsSegment.fault || commandSegment && commandSegment.fault) {
+    if ((statsSegment && statsSegment.fault) || (commandSegment && commandSegment.fault)) {
       segment.addFaultFlag()
       segment.addMetadata('body', body)
     }
-    segment.close()
+    if (segment && segment.close) {
+      segment.close()
+    }
   }
 }

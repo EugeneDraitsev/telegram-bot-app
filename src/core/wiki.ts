@@ -1,6 +1,6 @@
 import fetch from 'node-fetch'
-import { segments } from '../'
-import { hasRussiansLetters } from '../utils/'
+import { segments } from '..'
+import { hasRussiansLetters } from '../utils'
 
 export function searchWiki(query: string) {
   const lang = hasRussiansLetters(query) ? 'ru' : 'en'

@@ -1,7 +1,7 @@
 import * as AWSXRay from 'aws-xray-sdk'
 import { random } from 'lodash'
 
-import { segments } from '../'
+import { segments } from '..'
 import {
   getCurrency,
   getFormattedChatStatistics,
@@ -27,12 +27,15 @@ import {
   yasnyfy,
 } from '../core'
 
-// tslint:disable-next-line:max-line-length
-const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v', '/w', '/dice', '/all', '/p', '/f', '/s', '/x', '/remont', '/shrug']
+const COMMANDS = ['/ps', '/g', '/h', '/y', '/c', '/t', '/z', '/8', '/v',
+  '/w', '/dice', '/all', '/p', '/f', '/s', '/x', '/remont', '/shrug']
 
-export const parseQuery = (query: string = '') => query.replace(/\/\S+\s*/g, '').trim()
+export const parseQuery = (query: string = '') =>
+  query.replace(/\/\S+\s*/g, '').trim()
+
 export const findCommand = (text: string) => COMMANDS.find(command => text.replace(/ .*/, '') === command
   || text.replace(/@.*/, '') === command)
+
 export const isYaMusicLink = (text: string) => text.includes('://music.yandex.')
 
 export async function processQuery(text: string, message_id: string, chat_id: string, reply_to_message: any) {
@@ -49,82 +52,80 @@ export async function processQuery(text: string, message_id: string, chat_id: st
 
   try {
     switch (command) {
-      case '/g' : {
-        return searchImage(query)
-          .then(response => sendPhoto({
-            chat_id,
-            photo: response.image,
-            picUrl: response.url,
-            reply_to_message_id: replyId,
-          }))
-          .catch(error => sendMessage(chat_id, error, replyId))
+      case '/g': {
+        try {
+          const response = await searchImage(query)
+          return sendPhoto({ chat_id, photo: response.image, picUrl: response.url, reply_to_message_id: replyId })
+        } catch (e) {
+          return sendMessage(chat_id, e.message, replyId)
+        }
       }
       case '/h': {
         const huext = huify(query)
-        return query === huext ?
-          sendMessage(chat_id, 'https://www.youtube.com/watch?v=q5bc4nmDNio', replyId) :
-          sendMessage(chat_id, huext, replyId)
+        const result = query === huext ? 'https://www.youtube.com/watch?v=q5bc4nmDNio' : huext
+        return sendMessage(chat_id, result, replyId)
       }
       case '/y': {
-        return sendMessage(chat_id, yasnyfy(query, String(new Date().getFullYear())), replyId)
+        const yasno = yasnyfy(query, String(new Date().getFullYear()))
+        return sendMessage(chat_id, yasno, replyId)
       }
       case '/c': {
-        return getCurrency()
-          .then(result => sendMessage(chat_id, result))
+        const currency = await getCurrency()
+        return sendMessage(chat_id, currency)
       }
       case '/t': {
-        return translate(query)
-          .then(response => sendMessage(chat_id, response, replyId))
+        const translated = await translate(query)
+        return sendMessage(chat_id, translated, replyId)
       }
       case '/z': {
-        return getFormattedChatStatistics(chat_id, segments.querySegment)
-          .then(message => sendMessage(chat_id, message))
+        const stats = await getFormattedChatStatistics(chat_id, segments.querySegment)
+        return sendMessage(chat_id, stats)
       }
       case '/8': {
-        return sendSticker(chat_id, String(getPrediction()), replyId)
+        return sendSticker(chat_id, getPrediction()!, replyId)
       }
-      case '/v' : {
-        return searchYoutube(query)
-          .then(response => sendMessage(chat_id, response, replyId))
+      case '/v': {
+        const link = await searchYoutube(query)
+        return sendMessage(chat_id, link, replyId)
       }
-      case '/w' : {
-        return searchWiki(query)
-          .then(response => sendMessage(chat_id, response, replyId))
+      case '/w': {
+        const link = await searchWiki(query)
+        return sendMessage(chat_id, link, replyId)
       }
-      case '/dice' : {
-        return sendMessage(chat_id, throwDice(parseInt(query, 10) || 6), message_id, 'Markdown')
+      case '/dice': {
+        const dice = throwDice(parseInt(query, 10) || 6)
+        return sendMessage(chat_id, dice, message_id, 'Markdown')
       }
-      case '/p' : {
-        return getHoroscope(query)
-          .then(result => sendMessage(chat_id, result, replyId, 'HTML'))
-          .catch(error => sendMessage(chat_id, error, replyId))
+      case '/p': {
+        const prediction = await getHoroscope(query)
+        return sendMessage(chat_id, prediction, replyId, 'HTML')
       }
-      case '/f' : {
-        return getWeather(query || 'Минск')
-          .then(result => sendMessage(chat_id, result, replyId, 'Markdown'))
+      case '/f': {
+        const weather = await getWeather(query || 'Минск')
+        return sendMessage(chat_id, weather, message_id, 'Markdown')
       }
-      case '/all' : {
-        return getUsersList(chat_id, query, segments.querySegment)
-          .then(response => sendMessage(chat_id, response, replyId))
+      case '/all': {
+        const users = await getUsersList(chat_id, query, segments.querySegment)
+        return sendMessage(chat_id, users, replyId)
       }
-      case '/ps' : {
+      case '/ps': {
         return sendMessage(chat_id, puntoSwitcher(query), replyId)
       }
-      case '/remont' : {
+      case '/remont': {
         return sendVideo(chat_id, replyId)
       }
       case '/x': {
         return getXRayStats(segments.querySegment)
-          .then(response => sendDocument({
+          .then(xRayStats => sendDocument({
             chat_id,
-            caption: `Browser version available <a href="${response.url}">here</a>`,
+            caption: `Browser version available <a href="${xRayStats.url}">here</a>`,
             parse_mode: 'HTML',
-            document: response.image,
+            document: xRayStats.image,
             reply_to_message_id: message_id,
           }))
           .catch(error => sendMessage(chat_id, error))
       }
-      case '/shrug' : {
+      case '/shrug': {
         return sendMessage(chat_id, shrugyfy(), replyId, 'Markdown')
       }
       default: {
@@ -132,7 +133,7 @@ export async function processQuery(text: string, message_id: string, chat_id: st
       }
     }
   } catch (e) {
-    console.log(e) // tslint:disable-line
+    console.log(e) // eslint-disable-line no-console
     segments.querySegment.addError(e)
     return Promise.resolve()
   } finally {

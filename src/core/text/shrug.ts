@@ -1,4 +1,2 @@
 
-export const shrugyfy = () => {
-  return '\`¯\\_(ツ)_/¯\`'
-}
+export const shrugyfy = () => '`¯\\_(ツ)_/¯`'

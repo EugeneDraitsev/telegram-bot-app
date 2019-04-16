@@ -6,13 +6,12 @@ const patterns = [new RegExp(`^[${consonants}]*[оеёэ]`, 'i'), new RegExp(`^[
 const mainPattern = new RegExp(`^[${consonants}]*.`, 'i')
 
 const capitalize = (capitalization: boolean[], word: string) =>
-  map(word, (letter, index) => capitalization[index] ? letter.toUpperCase() : letter.toLowerCase()).join('')
+  map(word, (letter, index) => (capitalization[index] ? letter.toUpperCase() : letter.toLowerCase())).join('')
 
 function huifyWord(word: string) {
   if (word.length > 2) {
     const capitalization = map(word, letter => letter === letter.toUpperCase())
     switch (findIndex(patterns, pattern => pattern.test(word))) {
-
       case 0:
         return capitalize(capitalization, word.replace(mainPattern, 'хуе'))
       case 1:
@@ -28,4 +27,4 @@ function huifyWord(word: string) {
   return word
 }
 
-export const huify = (text: string) => text && text.replace ? text.replace(/[А-Я0-9]+/ig, huifyWord) : text
+export const huify = (text: string) => (text && text.replace ? text.replace(/[А-Я0-9]+/ig, huifyWord) : text)

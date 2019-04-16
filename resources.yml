@@ -1,0 +1,54 @@
+Resources:
+  ChatStatisticsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: chat-statistics
+      AttributeDefinitions:
+        - AttributeName: chatId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: chatId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  ChatEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: chat-events
+      AttributeDefinitions:
+        - AttributeName: chatId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: N
+      KeySchema:
+        - AttributeName: chatId
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  DynamoDBIamPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn:
+      - ChatStatisticsTable
+      - ChatEventsTable
+    Properties:
+      PolicyName: lambda-dynamodb
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+            Resource:
+              - arn:aws:dynamodb:*:*:table/chat-statistics
+              - arn:aws:dynamodb:*:*:table/chat-events
+      Roles:
+        - Ref: IamRoleLambdaExecution

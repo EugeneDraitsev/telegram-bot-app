@@ -6,6 +6,4 @@ const APPRECIATION = [
   'А вот это заебись!...а не, тоже говно.',
 ]
 
-export const sayThanksForYaLink = () => {
-  return String(sample(APPRECIATION))
-}
+export const sayThanksForYaLink = () => String(sample(APPRECIATION))
