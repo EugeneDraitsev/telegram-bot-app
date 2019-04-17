@@ -10,21 +10,25 @@ const isResponseImage = (headers: Headers) => headers.get('content-type')!.split
 const filterMimeTypes = (item: any) => every(['ico', 'svg'], x => !includes(item.mime, x))
 
 const getImage = async (url: string, tbUrl: string) => {
-  const imageResponse = await fetch(url, { timeout: 10000 })
+  try {
+    const imageResponse = await fetch(url, { timeout: 10000 })
 
-  if (isResponseImage(imageResponse.headers)) {
-    return imageResponse.buffer()
-  }
-
-  if (tbUrl) {
-    const tabImageResponse = await fetch(url, { timeout: 10000 })
-
-    if (isResponseImage(tabImageResponse.headers)) {
-      return tabImageResponse.buffer()
+    if (isResponseImage(imageResponse.headers)) {
+      return imageResponse.buffer()
     }
-  }
 
-  throw new Error(`Can't load image: ${url} (preview: ${tbUrl})`)
+    if (tbUrl) {
+      const tabImageResponse = await fetch(url, { timeout: 10000 })
+
+      if (isResponseImage(tabImageResponse.headers)) {
+        return tabImageResponse.buffer()
+      }
+    }
+    throw new Error()
+  } catch (e) {
+    console.log(e) // eslint-disable-line no-console
+    throw new Error(`Can't load image: ${url} (preview: ${tbUrl})`)
+  }
 }
 
 export const searchImage = async (query: string) => {
