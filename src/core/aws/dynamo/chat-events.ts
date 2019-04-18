@@ -1,7 +1,17 @@
 import { random } from 'lodash'
 
-import { dynamoPutItem } from '../../../utils'
+import { dynamoPutItem, invokeLambda } from '../../../utils'
 import { IUserInfo } from '.'
+
+const getBroadcastParams = (chatId: string) => ({
+  FunctionName: 'telegram-websockets-prod-broadcastStats',
+  Payload: JSON.stringify({
+    queryStringParameters: {
+      chatId,
+      endpoint: '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod',
+    },
+  }),
+})
 
 export const saveEvent =
   async (userInfo: IUserInfo, chat_id: string, date: number, command: string, XRaySegment: any) => {
@@ -22,5 +32,5 @@ export const saveEvent =
       (params as any).XRaySegment = XRaySegment
     }
 
-    return dynamoPutItem(params)
+    return Promise.all([dynamoPutItem(params), invokeLambda(getBroadcastParams(chat_id))])
   }
