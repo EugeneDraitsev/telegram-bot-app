@@ -3,7 +3,7 @@ import fetch from 'node-fetch'
 import { URLSearchParams } from 'url'
 import { hasRussiansLetters } from '../utils'
 
-import { segments } from '..'
+import { segments } from '../handler'
 
 const key = process.env.TRANSLATION_APP_TOKEN || 'set_your_token'
 

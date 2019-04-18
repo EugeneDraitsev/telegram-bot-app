@@ -1,5 +1,5 @@
 import { find, orderBy } from 'lodash'
-import { segments } from '../../..'
+import { segments } from '../../../handler'
 import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
 import { getUserName, IUserInfo, IUserStat } from '.'
 

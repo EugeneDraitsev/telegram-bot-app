@@ -1,7 +1,7 @@
 import * as AWSXRay from 'aws-xray-sdk'
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
 
-import { processQuery } from './commands'
+import { processQuery, findCommand } from './commands'
 import { saveEvent, updateStatistics } from './core'
 
 export let segment: any // eslint-disable-line import/no-mutable-exports
@@ -13,12 +13,12 @@ export const segments: any = {
 
 AWSXRay.enableManualMode()
 
-const updateMessageStat = async (user_info: any, chat_id: any, date: number) => {
+const updateMessageStat = async (user_info: any, chat_id: any, command: string, date: number) => {
   try {
     segments.statsSegment = new AWSXRay.Segment('update-stats', segment.trace_id, segment.id)
     await Promise.all([
       updateStatistics(user_info, chat_id, segments.statsSegment),
-      saveEvent(user_info, chat_id, date, segments.statsSegment),
+      saveEvent(user_info, chat_id, date, command, segments.statsSegment),
     ])
   } catch (e) {
     console.log(e) // eslint-disable-line no-console
@@ -35,12 +35,13 @@ const processRequest = async (req: any) => {
     }
 
     const { message: { date, message_id, from, chat, text, reply_to_message } } = req
+    const command = findCommand(text)
 
     segments.commandSegment = new AWSXRay.Segment('process-query', segment.trace_id, segment.id)
 
     await Promise.all([
       processQuery(text, message_id, chat.id, reply_to_message || {}),
-      updateMessageStat(from, chat.id, date),
+      updateMessageStat(from, chat.id, command!, date),
     ])
 
     return 'done'
@@ -55,7 +56,7 @@ const processRequest = async (req: any) => {
   }
 }
 
-export const handler = async (event: any) => {
+export default async (event: any) => {
   const body = event.body ? JSON.parse(event.body) : event
   segment = new AWSXRay.Segment('telegram-bot')
 

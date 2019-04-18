@@ -15,14 +15,12 @@
     "test": "cross-env IS_LOCAL=true jest --verbose",
     "invoke-local": "serverless invoke local -f telegram-bot -p event.json",
     "logs": "sls logs -f telegram-bot -t",
-    "deploy-function": "sls deploy function --function telegram-bot --verbose",
-    "invoke": "sls invoke -f telegram-bot -p event.json"
+    "deploy-function": "sls deploy function --function telegram-bot --verbose"
   },
   "dependencies": {
     "aws-sdk": "^2.437.0",
     "aws-xray-sdk": "^2.2.0",
     "form-data": "^2.3.3",
-    "fs-extra": "^7.0.1",
     "lodash": "^4.17.11",
     "luxon": "^1.12.1",
     "node-fetch": "^2.2.0",
@@ -33,7 +31,6 @@
     "@babel/preset-env": "7.4.3",
     "@babel/preset-typescript": "^7.3.3",
     "@types/form-data": "^2.2.1",
-    "@types/fs-extra": "^5.0.5",
     "@types/jest": "^24.0.11",
     "@types/lodash": "^4.14.123",
     "@types/luxon": "^1.12.0",

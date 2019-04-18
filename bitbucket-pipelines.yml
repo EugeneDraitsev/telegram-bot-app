@@ -7,7 +7,7 @@ pipelines:
           caches:
             - node
           script:
-            - yarn --ignore-engines
+            - yarn
             - yarn lint:fix
             - yarn test
             - yarn deploy-function

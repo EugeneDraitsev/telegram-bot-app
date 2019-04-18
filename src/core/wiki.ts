@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import { segments } from '..'
+import { segments } from '../handler'
 import { hasRussiansLetters } from '../utils'
 
 export function searchWiki(query: string) {

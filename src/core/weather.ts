@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { get } from 'lodash'
 import fetch from 'node-fetch'
-import { segments } from '../index'
+import { segments } from '../handler'
 
 const weatherToken = process.env.OPENWEATHERMAP_TOKEN || 'set_your_token'
 

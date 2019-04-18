@@ -4,7 +4,7 @@ import fetch from 'node-fetch'
 // @ts-ignore
 import * as remont from '../remont.mp4' // tslint:disable-line
 
-import { segments } from '..'
+import { segments } from '../handler'
 
 const AWSXRay = require('aws-xray-sdk')
 

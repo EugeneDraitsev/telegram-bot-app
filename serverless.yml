@@ -21,36 +21,35 @@ provider:
   iamRoleStatements:
     ${file(roleStatements.yml)}
 
-package:
-  exclude:
-  - node_modules/**/*
-  - .idea/**
-  - .git/**
-  - node.exe
-  - yarn.lock
-
 functions:
   telegram-bot:
-    handler: src/index.handler
+    handler: src/handler.default
     events:
-    - http:
-        path: /
-        method: post
-    - http:
-        path: /
-        method: get
-    - schedule:
-        rate: cron(0 7,9,11,13,15,17 ? * MON-FRI *)
-        enabled: true
-        input:
-          message:
-            text: /c
-            chat:
-              id: -1001111472139.0
+      - http:
+          path: /
+          method: post
+      - http:
+          path: /
+          method: get
+      - schedule:
+          rate: cron(0 7,9,11,13,15,17 ? * MON-FRI *)
+          enabled: true
+          input:
+            message:
+              text: /c
+              chat:
+                id: -1001111472139.0
 
 plugins:
-- serverless-webpack
-- serverless-offline
+  - serverless-webpack
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    port: 4000
+  custom:
+    webpack:
+      packager: 'yarn'
 
 resources:
   ${file(resources.yml)}

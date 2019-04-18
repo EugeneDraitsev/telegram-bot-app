@@ -1,7 +1,7 @@
 import { includes, map, round } from 'lodash'
 import fetch from 'node-fetch'
 
-import { segments } from '..'
+import { segments } from '../handler'
 
 const apiKey = process.env.FCC_API_KEY || 'set_your_token'
 

@@ -1,7 +1,7 @@
 import { every, filter, get, includes, sample } from 'lodash'
 import fetch, { Headers } from 'node-fetch'
 
-import { segments } from '../..'
+import { segments } from '../../handler'
 
 const googleSearchToken = process.env.GOOGLE_SEARCH_TOKEN || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'

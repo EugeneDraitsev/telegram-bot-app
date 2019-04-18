@@ -1,7 +1,7 @@
 import { sample } from 'lodash'
 import fetch from 'node-fetch'
 
-import { segments } from '../..'
+import { segments } from '../../handler'
 
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'
 const BASE_URL = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video'

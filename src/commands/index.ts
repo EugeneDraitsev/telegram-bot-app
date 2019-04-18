@@ -1,7 +1,7 @@
 import * as AWSXRay from 'aws-xray-sdk'
 import { random } from 'lodash'
 
-import { segments } from '..'
+import { segments } from '../handler'
 import {
   getCurrency,
   getFormattedChatStatistics,
