@@ -9,9 +9,7 @@ Resources:
       KeySchema:
         - AttributeName: chatId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
+      BillingMode: PAY_PER_REQUEST
 
   ChatEventsTable:
     Type: AWS::DynamoDB::Table
@@ -27,9 +25,7 @@ Resources:
           KeyType: HASH
         - AttributeName: date
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
+      BillingMode: PAY_PER_REQUEST
 
   DynamoDBIamPolicy:
     Type: AWS::IAM::Policy
