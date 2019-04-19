@@ -81,6 +81,14 @@ export async function processQuery(text: string, message_id: string, chat_id: st
         const stats = await getFormattedChatStatistics(chat_id, segments.querySegment)
         return sendMessage(chat_id, stats)
       }
+      case '/s': {
+        return sendMessage(
+          chat_id,
+          `Last 24h chat statistics available <a href="https://telegram-bot-ui.surge.sh/${chat_id}">here</a>`,
+          replyId,
+          'HTML',
+        )
+      }
       case '/8': {
         return sendSticker(chat_id, getPrediction()!, replyId)
       }
