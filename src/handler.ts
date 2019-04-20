@@ -3,6 +3,7 @@ import 'source-map-support/register' // eslint-disable-line import/no-extraneous
 
 import { processQuery, findCommand } from './commands'
 import { saveEvent, updateStatistics } from './core'
+import './dynamo-optimization'
 
 export let segment: any // eslint-disable-line import/no-mutable-exports
 export const segments: any = {
