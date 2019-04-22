@@ -84,7 +84,7 @@ export async function processQuery(text: string, message_id: string, chat_id: st
       case '/s': {
         return sendMessage(
           chat_id,
-          `Last 24h chat statistics available <a href="https://telegram-bot-ui.surge.sh/chat/${chat_id}">here</a>`,
+          `Last 24h chat statistics: https://telegram-bot-ui.surge.sh/chat/${chat_id}`,
           replyId,
           'HTML',
         )
