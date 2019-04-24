@@ -22,7 +22,7 @@ const getImage = async (url: string, tbUrl: string) => {
 
   try {
     if (tbUrl) {
-      const tabImageResponse = await fetch(url, { timeout: 10000 })
+      const tabImageResponse = await fetch(tbUrl, { timeout: 10000 })
 
       if (isResponseImage(tabImageResponse.headers)) {
         return tabImageResponse.buffer()
