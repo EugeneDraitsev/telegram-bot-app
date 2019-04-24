@@ -16,7 +16,11 @@ const getImage = async (url: string, tbUrl: string) => {
     if (isResponseImage(imageResponse.headers)) {
       return imageResponse.buffer()
     }
+  } finally {
+    console.log('Failed to load image. Trying to load TabUrl') // eslint-disable-line no-console
+  }
 
+  try {
     if (tbUrl) {
       const tabImageResponse = await fetch(url, { timeout: 10000 })
 
