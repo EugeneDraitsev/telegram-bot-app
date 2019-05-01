@@ -1,5 +1,6 @@
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { random } from 'lodash'
+import * as fs from 'fs'
 
 import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved
 import { checkCommand, isYaMusicLink } from './utils'
@@ -17,6 +18,7 @@ import {
   searchWiki,
   translate,
 } from './core'
+import * as remont from './remont.mp4'
 
 export default (bot: Telegraf<ContextMessageUpdate>) => {
   bot.hears(isYaMusicLink, (ctx, next) => {
@@ -48,11 +50,11 @@ export default (bot: Telegraf<ContextMessageUpdate>) => {
     return ctx.reply(yasno, { reply_to_message_id: ctx.replyId })
   })
 
-  bot.hears(checkCommand('/с'), async (ctx: Context) =>
+  bot.hears(checkCommand('/c'), async (ctx: Context) =>
     ctx.reply(await getCurrency()))
 
   bot.hears(checkCommand('/t'), async (ctx: Context) =>
-    ctx.reply(await translate(ctx.text)))
+    ctx.reply(await translate(ctx.text), { reply_to_message_id: ctx.replyId }))
 
   bot.hears(checkCommand('/z'), async (ctx: Context) =>
     ctx.reply(await getFormattedChatStatistics(ctx.chat.id)))
@@ -95,7 +97,7 @@ export default (bot: Telegraf<ContextMessageUpdate>) => {
 
   bot.hears(checkCommand('/remont'), (ctx: Context) =>
     ctx.replyWithVideo(
-      { filename: 'remont.mp4', source: './remont.mp4' },
+      { filename: 'remont.mp4', source: fs.readFileSync(remont) },
       { reply_to_message_id: ctx.replyId, caption: '@perturbator_soznaniya как ремонт?' } as ExtraVideo,
     ))
 

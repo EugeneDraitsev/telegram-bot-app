@@ -11,3 +11,5 @@ declare module 'aws-xray-sdk' {
   export const captureAWSClient: any
   export default def
 }
+
+declare module '*.mp4'

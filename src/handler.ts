@@ -1,6 +1,7 @@
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { Message, Chat } from 'telegram-typings'
+import { get } from 'lodash'
 
 import { isBotCommand, parseMessage } from './utils'
 import { saveEvent, updateStatistics } from './core'
@@ -26,7 +27,7 @@ bot.use(async (ctx: Context, next) => {
       const replyId = text ? message_id : (reply_to_message && reply_to_message!.message_id) || message_id
 
       ctx.command = command
-      ctx.text = text
+      ctx.text = text || get(reply_to_message, 'text', '')
       ctx.replyId = replyId
     }
 
