@@ -1,5 +1,4 @@
 import fetch from 'node-fetch'
-import { segments } from '../handler'
 import { normalize } from '../utils'
 
 const rus = [
@@ -54,7 +53,6 @@ export const getHoroscope = async (query: string) => {
     return `<b>Сегодня:</b>\n\n${normalize(today.text)}\n
 <b>Завтра:</b>\n\n${normalize(tomorrow.text)}`
   } catch (e) {
-    segments.querySegment.addError(e)
     return 'Request error 😿'
   }
 }

@@ -7,7 +7,9 @@ provider:
   memorySize: 512
   timeout: 30
   runtime: nodejs8.10
-  tracing: false
+  tracing:
+    apiGateway: true
+    lambda: true
   environment:
     GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN, file(./config.json):GOOGLE_CX_TOKEN}
     GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN, file(./config.json):GOOGLE_SEARCH_TOKEN}

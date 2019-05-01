@@ -1,7 +1,6 @@
 /* eslint-disable max-len */
 import { get } from 'lodash'
 import fetch from 'node-fetch'
-import { segments } from '../handler'
 
 const weatherToken = process.env.OPENWEATHERMAP_TOKEN || 'set_your_token'
 
@@ -66,8 +65,5 @@ export function getWeather(location: string) {
               \nЗавтра: *${nextDayTempHigh}°C* / *${nextDayTempLow}°C*, ${nextDayDescription} ${nextDayIcon}\
               \nПослезавтра: *${nextNextDayTempHigh}°C* / *${nextNextDayTempLow}°C*, ${nextNextDayDescription} ${nextNextDayIcon}`
     })
-    .catch((e) => {
-      segments.querySegment.addError(e)
-      return 'Неверно выбран населенный пункт'
-    })
+    .catch(() => 'Неверно выбран населенный пункт')
 }

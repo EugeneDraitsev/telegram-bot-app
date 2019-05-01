@@ -1,8 +1,6 @@
 import { includes, map, round } from 'lodash'
 import fetch from 'node-fetch'
 
-import { segments } from '../handler'
-
 const apiKey = process.env.FCC_API_KEY || 'set_your_token'
 
 const timeout = 15000
@@ -47,7 +45,8 @@ const getCryptoCurrency = async () => {
 }
 
 const getError = (err: Error, from: string) => {
-  segments.querySegment.addError(err)
+  // eslint-disable-next-line no-console
+  console.log(err)
   return `Can't fetch currency from ${from}`
 }
 

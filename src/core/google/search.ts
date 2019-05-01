@@ -1,8 +1,6 @@
 import { every, filter, get, includes, sample } from 'lodash'
 import fetch, { Headers } from 'node-fetch'
 
-import { segments } from '../../handler'
-
 const googleSearchToken = process.env.GOOGLE_SEARCH_TOKEN || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
@@ -49,7 +47,6 @@ export const searchImage = async (query: string) => {
     return Promise.reject(new Error(`Google can't find ${query} for you`))
   } catch (e) {
     console.log(e) // eslint-disable-line no-console
-    segments.querySegment.addError(e)
-    return Promise.reject(e)
+    return Promise.reject(new Error('Can\'t load image to telegram'))
   }
 }
