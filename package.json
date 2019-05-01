@@ -67,7 +67,7 @@
     ],
     "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
     "moduleNameMapper": {
-      "\\.mp4$": "<rootDir>/src/__mocks__/fileMock.js"
+      "\\.mp4$": "<rootDir>/src/__mocks__/fileMock.ts"
     },
     "moduleFileExtensions": [
       "ts",

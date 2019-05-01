@@ -103,7 +103,7 @@ export default (bot: Telegraf<ContextMessageUpdate>) => {
 
   bot.hears(checkCommand('/x'), async (ctx: Context) => {
     const stats = await getXRayStats()
-    return ctx.replyWithDocument({ source: stats.image }, {
+    return ctx.replyWithDocument({ source: stats.image, filename: 'map.png' }, {
       caption: `Browser version available <a href="${stats.url}">here</a>`,
       parse_mode: 'HTML',
       reply_to_message_id: ctx.message.message_id,

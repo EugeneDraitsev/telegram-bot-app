@@ -8,7 +8,7 @@ export const getXRayStats = async () => {
     Payload: JSON.stringify({ queryStringParameters: { url } }),
   }
 
-  const result = await invokeLambda(options).promise()
+  const result = await invokeLambda(options)
   const image = Buffer.from(JSON.parse(result.Payload as any).body, 'base64')
 
   return { url, image }
