@@ -111,5 +111,5 @@ export default (bot: Telegraf<ContextMessageUpdate>) => {
   })
 
   bot.hears(checkCommand('/shrug'), (ctx: Context) =>
-    ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: ctx.message.message_id }))
+    ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: ctx.replyId }))
 }
