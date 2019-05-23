@@ -45,12 +45,12 @@ export default async (event: any) => {
   try {
     const body = JSON.parse(event.body)
     await bot.handleUpdate(body)
-    const message = '' // await processRequest(body)
-    return { body: JSON.stringify({ body, message }), statusCode: 200 }
+    return { body: JSON.stringify({ body }), statusCode: 200 }
   } catch (e) {
     console.log(e) // eslint-disable-line no-console
     return {
-      body: JSON.stringify({ message: 'something went wrong 😿' }),
+      body: JSON.stringify({ message: 'Something went wrong' }),
+      // we need to send 200 here to avoid issue with telegram attempts to resend you a message
       statusCode: 200,
     }
   }
