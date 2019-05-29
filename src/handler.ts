@@ -43,7 +43,7 @@ setupCommands(bot)
 
 export default async (event: any) => {
   try {
-    const body = JSON.parse(event.body)
+    const body = event.body ? JSON.parse(event.body) : event // Identify lambda call vs http event
     await bot.handleUpdate(body)
     return { body: JSON.stringify({ body }), statusCode: 200 }
   } catch (e) {

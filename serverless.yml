@@ -41,6 +41,8 @@ functions:
               text: /c
               chat:
                 id: -1001111472139.0
+              entities:
+                - type: bot_command
 
 plugins:
   - serverless-webpack
