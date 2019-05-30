@@ -18,11 +18,6 @@
       "text": ""
     },
     "date": 1480189433,
-    "text": "/c",
-    "entities": [
-      {
-        "type": "bot_command"
-      }
-    ]
+    "text": "/c"
   }
 }
