@@ -40,23 +40,28 @@ export const getFormattedChatStatistics = async (chat_id: number) => {
 }
 
 export const updateStatistics = async (userInfo: IUserInfo, chat_id: number) => {
-  const chatStatistics = await getChatStatistic(chat_id)
-  const statistics = chatStatistics || { chatId: String(chat_id), users: [] as IUserStat[] }
+  if (userInfo) {
+    const chatStatistics = await getChatStatistic(chat_id)
+    const statistics = chatStatistics || { chatId: String(chat_id), users: [] as IUserStat[] }
 
-  let userStatistic = find(statistics.users, { id: userInfo.id }) as IUserStat
 
-  if (!userStatistic) {
-    userStatistic = { id: userInfo.id, msgCount: 1, username: getUserName(userInfo) }
-    statistics.users.push(userStatistic)
-  } else {
-    userStatistic.msgCount += 1
-    userStatistic.username = getUserName(userInfo)
+    let userStatistic = find(statistics.users, { id: userInfo.id }) as IUserStat
+
+    if (!userStatistic) {
+      userStatistic = { id: userInfo.id, msgCount: 1, username: getUserName(userInfo) }
+      statistics.users.push(userStatistic)
+    } else {
+      userStatistic.msgCount += 1
+      userStatistic.username = getUserName(userInfo)
+    }
+
+    const params = {
+      TableName: 'chat-statistics',
+      Item: statistics,
+    }
+
+    return dynamoPutItem(params)
   }
 
-  const params = {
-    TableName: 'chat-statistics',
-    Item: statistics,
-  }
-
-  return dynamoPutItem(params)
+  return Promise.resolve()
 }

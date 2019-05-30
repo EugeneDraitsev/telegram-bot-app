@@ -14,18 +14,22 @@ const getBroadcastParams = (chatId: number) => ({
 })
 
 export const saveEvent = async (userInfo: IUserInfo, chat_id: number, date: number, command: string) => {
-  const event = {
-    userInfo,
-    // trying to avoid lost messages
-    date: date * 1000 + random(-500, 500),
-    chatId: String(chat_id),
-    command,
+  if (userInfo) {
+    const event = {
+      userInfo,
+      // trying to avoid lost messages
+      date: date * 1000 + random(-500, 500),
+      chatId: String(chat_id),
+      command,
+    }
+
+    const params = {
+      TableName: 'chat-events',
+      Item: event,
+    }
+
+    return Promise.all([dynamoPutItem(params), invokeLambda(getBroadcastParams(chat_id))])
   }
 
-  const params = {
-    TableName: 'chat-events',
-    Item: event,
-  }
-
-  return Promise.all([dynamoPutItem(params), invokeLambda(getBroadcastParams(chat_id))])
+  return Promise.resolve()
 }
