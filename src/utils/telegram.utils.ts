@@ -1,7 +1,7 @@
 import { MessageEntity } from 'telegram-typings'
 import { some, split } from 'lodash'
 
-export const isYaMusicLink = (text = '') => text.includes('://music.yandex.')
+export const isLink = (text = '') => text.includes('https://')
 
 export const findCommand = (text = '') =>
   text.replace(/ .*/, '').replace(/@.*/, '')

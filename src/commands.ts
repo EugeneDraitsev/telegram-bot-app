@@ -3,10 +3,10 @@ import { random } from 'lodash'
 import * as fs from 'fs'
 
 import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved
-import { checkCommand, isYaMusicLink } from './utils'
+import { checkCommand, isLink } from './utils'
 import { Context } from './handler'
 import { searchImage, searchYoutube } from './core/google'
-import { huify, puntoSwitcher, sayThanksForYaLink, shrugyfy, throwDice, yasnyfy } from './core/text'
+import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './core/text'
 import {
   getCurrency,
   getFormattedChatStatistics,
@@ -21,9 +21,9 @@ import {
 import * as remont from './remont.mp4'
 
 export default (bot: Telegraf<ContextMessageUpdate>) => {
-  bot.hears(isYaMusicLink, (ctx, next) => {
+  bot.hears(isLink, (ctx, next) => {
     if (ctx.message && random(0, 100) > 85) {
-      ctx.reply(sayThanksForYaLink(), { reply_to_message_id: ctx.message.message_id })
+      ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
     }
     next!()
   })
