@@ -1,4 +1,4 @@
-import { findCommand, isYaMusicLink, parseMessage } from '..'
+import { findCommand, isLink, parseMessage } from '..'
 
 describe('findCommand must works as designed', () => {
   test('findCommand must properly commands from first word in message or string ending with @', () => {
@@ -26,13 +26,13 @@ describe('parseMessage should works as designed', () => {
 
 describe('isYaMusicLink works correctly', () => {
   test('isYaMusicLink finds link in a message which contains only link', () => {
-    expect(isYaMusicLink('https://music.yandex.by/')).toBeTruthy()
+    expect(isLink('https://music.yandex.by/')).toBeTruthy()
   })
   test('isYaMusicLink finds no link in an empty message', () => {
-    expect(isYaMusicLink('')).toBeFalsy()
-    expect(isYaMusicLink(undefined)).toBeFalsy()
+    expect(isLink('')).toBeFalsy()
+    expect(isLink(undefined)).toBeFalsy()
   })
   test('isYaMusicLink finds link in a message with text and link', () => {
-    expect(isYaMusicLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.')).toBeTruthy()
+    expect(isLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.')).toBeTruthy()
   })
 })
