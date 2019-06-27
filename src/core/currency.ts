@@ -1,7 +1,8 @@
 import { includes, map, round } from 'lodash'
 import fetch from 'node-fetch'
 
-const apiKey = process.env.FCC_API_KEY || 'set_your_token'
+const fccApiKey = process.env.FCC_API_KEY || 'set_your_token'
+const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 
 const timeout = 15000
 
@@ -21,12 +22,24 @@ const getRussianCurrency = async () => {
 
 const getFreeCurrencyData = async () => {
   const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK'].join(',')
-  const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${apiKey}&q=${currencies}`
+  const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${fccApiKey}&q=${currencies}`
 
   const result = await fetch(url, { timeout }).then(x => x.json())
 
   return `Курсы FCC:
 ${map(result, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')}
+`
+}
+
+const getFixerData = async () => {
+  const url = `http://data.fixer.io/api/latest?access_key=${fixerKey}&format=1&base=EUR`
+  const { rates } = await fetch(url, { timeout }).then(x => x.json())
+
+  return `Курсы fixer:
+USD/BYN: ${round(rates.BYN / rates.USD, 3)}
+EUR/BYN: ${round(rates.BYN, 3)}
+USD/SEK: ${round(rates.SEK / rates.USD, 3)}
+EUR/SEK: ${round(rates.SEK, 3)}
 `
 }
 
@@ -50,9 +63,18 @@ const getError = (err: Error, from: string) => {
   return `Can't fetch currency from ${from}`
 }
 
+const getMainCurrencies = async () => {
+  try {
+    return await getFreeCurrencyData()
+  } catch (e) {
+    const result = await getFixerData()
+    return result
+  }
+}
+
 export const getCurrency = () => {
   const promises = [
-    getFreeCurrencyData().catch(err => getError(err, 'FFC')),
+    getMainCurrencies().catch(err => getError(err, 'FFC and Fixer')),
     getRussianCurrency().catch(err => getError(err, 'meduza')),
     getCryptoCurrency().catch(err => getError(err, 'poloniex')),
   ]

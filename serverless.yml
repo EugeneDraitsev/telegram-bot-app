@@ -18,6 +18,7 @@ provider:
     FCC_API_KEY: ${env:FCC_API_KEY, file(./config.json):FCC_API_KEY}
     TRANSLATION_APP_TOKEN: ${env:TRANSLATION_APP_TOKEN, file(./config.json):TRANSLATION_APP_TOKEN}
     YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN, file(./config.json):YOUTUBE_TOKEN}
+    FIXER_API_KEY: ${env:FIXER_API_KEY, file(./config.json):FIXER_API_KEY}
     IS_LOCAL: ${env:IS_LOCAL}
     region: eu-central-1
   iamRoleStatements:
