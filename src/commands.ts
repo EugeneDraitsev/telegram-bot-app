@@ -22,7 +22,7 @@ import * as remont from './remont.mp4'
 
 export default (bot: Telegraf<ContextMessageUpdate>) => {
   bot.hears(isLink, (ctx, next) => {
-    if (ctx.message && random(0, 100) > 85) {
+    if (ctx.message && random(0, 100) > 99.5) {
       ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
     }
     next!()
