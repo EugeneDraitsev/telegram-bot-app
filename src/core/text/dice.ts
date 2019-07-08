@@ -1,7 +1,8 @@
-import { padStart, random } from 'lodash'
+import { padStart, random, clamp } from 'lodash'
 
 function getRandomDice(number: number) {
-  const max = number > 100 ? 100 : number
+  const max = clamp(number, 2, 999)
+
   return padStart(String(random(1, max)), 3, '0')
 }
 
