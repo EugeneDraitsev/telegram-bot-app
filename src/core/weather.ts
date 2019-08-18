@@ -32,8 +32,8 @@ function getFlag(value: string) {
 
 export function getWeather(location: string) {
   return Promise.all([
-    fetch(getWeatherUrlForecast(location), { timeout: 5000 }).then(x => x.json()),
-    fetch(getWeatherUrlNow(location), { timeout: 5000 }).then(x => x.json()),
+    fetch(getWeatherUrlForecast(location), { timeout: 5000 }).then((x) => x.json()),
+    fetch(getWeatherUrlNow(location), { timeout: 5000 }).then((x) => x.json()),
   ])
     .then(([infoForecast, infoNow]) => {
       const city = infoForecast.city.name

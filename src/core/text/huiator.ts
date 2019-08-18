@@ -10,8 +10,8 @@ const capitalize = (capitalization: boolean[], word: string) =>
 
 function huifyWord(word: string) {
   if (word.length > 2) {
-    const capitalization = map(word, letter => letter === letter.toUpperCase())
-    switch (findIndex(patterns, pattern => pattern.test(word))) {
+    const capitalization = map(word, (letter) => letter === letter.toUpperCase())
+    switch (findIndex(patterns, (pattern) => pattern.test(word))) {
       case 0:
         return capitalize(capitalization, word.replace(mainPattern, 'хуе'))
       case 1:

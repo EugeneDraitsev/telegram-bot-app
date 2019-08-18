@@ -10,7 +10,7 @@ export const checkCommand = (command: string) => (text = '') =>
   findCommand(text) === command
 
 export const isBotCommand = (entities: MessageEntity[]) =>
-  some(entities, entity => entity.type === 'bot_command')
+  some(entities, (entity) => entity.type === 'bot_command')
 
 export const parseMessage = (text = '') => {
   const command = findCommand(text)

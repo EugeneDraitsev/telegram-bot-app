@@ -46,8 +46,8 @@ export const getHoroscope = async (query: string) => {
     }
 
     const [today, tomorrow] = await Promise.all([
-      fetch(urlToday, { timeout: 10000 }).then(x => x.json()),
-      fetch(urlTomorrow, { timeout: 10000 }).then(x => x.json()),
+      fetch(urlToday, { timeout: 10000 }).then((x) => x.json()),
+      fetch(urlTomorrow, { timeout: 10000 }).then((x) => x.json()),
     ])
 
     return `<b>Сегодня:</b>\n\n${normalize(today.text)}\n

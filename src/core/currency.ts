@@ -13,7 +13,7 @@ const getRussianCurrency = async () => {
   const currency = await response.json()
 
   return `Курсы медузы:\n${Object.keys(currency)
-    .filter(curr => includes(currencyCodes, curr))
+    .filter((curr) => includes(currencyCodes, curr))
     .reduce(
       (message, key) => message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`),
       '',
@@ -24,7 +24,7 @@ const getFreeCurrencyData = async () => {
   const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK'].join(',')
   const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${fccApiKey}&q=${currencies}`
 
-  const result = await fetch(url, { timeout }).then(x => x.json())
+  const result = await fetch(url, { timeout }).then((x) => x.json())
 
   return `Курсы FCC:
 ${map(result, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')}
@@ -33,7 +33,7 @@ ${map(result, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`
 
 const getFixerData = async () => {
   const url = `http://data.fixer.io/api/latest?access_key=${fixerKey}&format=1&base=EUR`
-  const { rates } = await fetch(url, { timeout }).then(x => x.json())
+  const { rates } = await fetch(url, { timeout }).then((x) => x.json())
 
   return `Курсы fixer:
 USD/BYN: ${round(rates.BYN / rates.USD, 3)}
@@ -74,11 +74,11 @@ const getMainCurrencies = async () => {
 
 export const getCurrency = () => {
   const promises = [
-    getMainCurrencies().catch(err => getError(err, 'FFC and Fixer')),
-    getRussianCurrency().catch(err => getError(err, 'meduza')),
-    getCryptoCurrency().catch(err => getError(err, 'poloniex')),
+    getMainCurrencies().catch((err) => getError(err, 'FFC and Fixer')),
+    getRussianCurrency().catch((err) => getError(err, 'meduza')),
+    getCryptoCurrency().catch((err) => getError(err, 'poloniex')),
   ]
 
   return Promise.all(promises)
-    .then(result => `${result.join('\n')}`)
+    .then((result) => `${result.join('\n')}`)
 }

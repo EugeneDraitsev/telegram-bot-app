@@ -13,7 +13,7 @@ export function translate(text: string) {
   body.append('text', text)
 
   return fetch('https://translate.yandex.net/api/v1.5/tr.json/translate', { body, method: 'POST' } as any)
-    .then(x => x.json())
-    .then(response => first(response.text) as string)
+    .then((x) => x.json())
+    .then((response) => first(response.text) as string)
     .catch(() => 'Error from translation service')
 }
