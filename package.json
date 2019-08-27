@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "repository": {
     "type": "git",
-    "url": "https://bitbucket.org/drai/telegram-bot-app"
+    "url": "https://github.com/EugeneDraitsev/telegram-bot-app"
   },
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
