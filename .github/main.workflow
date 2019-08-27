@@ -16,7 +16,7 @@ workflow "Deploy with Serverless" {
 
   action "serverless deploy" {
   uses = "serverless/github-action@master"
-  secrets = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
+  secrets = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "GOOGLE_CX_TOKEN", "GOOGLE_SEARCH_TOKEN", "OPENWEATHERMAP_TOKEN", "TOKEN", "TRANSLATION_APP_TOKEN", "YOUTUBE_TOKEN", "FCC_API_KEY", "FIXER_API_KEY"]
   needs = ["npm install"]
   args = "deploy"
 }
