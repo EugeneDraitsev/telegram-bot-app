@@ -5,7 +5,7 @@ workflow "Deploy with Serverless" {
 
   action "master branch only" {
   uses = "actions/bin/filter@b2bea07"
-  args = "branch actions-test"
+  args = "branch master"
 }
 
   action "npm install" {
