@@ -1,5 +1,5 @@
 # AWS serverless telegram bot 
-![Deploy Latest Master](https://github.com/EugeneDraitsev/simple-blog-task/workflows/Deploy%20Latest%20Master/badge.svg)
+![Deploy Latest Master](https://github.com/EugeneDraitsev/telegram-bot-app/workflows/Deploy%20Latest%20Master/badge.svg)
 
 
 Serverless telegram bot based on [telegraf](https://github.com/telegraf/telegraf) and [serverless framework](https://github.com/serverless/serverless)
