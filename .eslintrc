@@ -3,11 +3,11 @@
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint", "jest"],
   "env": {
-    "browser": true,
     "jest/globals": true
   },
   "parserOptions": {
-    "project": "./tsconfig.json"
+    "project": "./tsconfig.json",
+    "createDefaultProgram": true
   },
   "settings": {
     "import/resolver": {
