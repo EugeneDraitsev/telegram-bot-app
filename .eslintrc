@@ -6,15 +6,10 @@
     "jest/globals": true
   },
   "parserOptions": {
-    "project": "./tsconfig.json",
     "createDefaultProgram": true
   },
   "settings": {
-    "import/resolver": {
-      "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx", ".json"]
-      }
-    }
+    "import/resolver": {"node": {"extensions": [".js", ".jsx", ".ts", ".tsx", ".json"]}}
   },
   "rules": {
     "semi": ["error", "never"],
