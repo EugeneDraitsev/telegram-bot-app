@@ -31,11 +31,11 @@ const eng = [
   'pisces',
 ]
 
-function getAstrologicalSigns(query: string) {
+function getAstrologicalSigns(query: string): string {
   return eng[rus.indexOf(query.toLowerCase())]
 }
 
-export const getHoroscope = async (query: string) => {
+export const getHoroscope = async (query: string): Promise<string> => {
   try {
     const sign = getAstrologicalSigns(query)
     const urlToday = `https://horoscopes.rambler.ru/api/front/v1/horoscope/today/${sign}/`

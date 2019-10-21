@@ -5,7 +5,7 @@ const YEARS = {
   2018: '20!8',
 }
 
-export const yasnyfy = (text: string, year: string) => {
+export const yasnyfy = (text: string, year: string): string => {
   const { month, day } = DateTime.local().setZone('Europe/Minsk').toObject()
   const formattedYear = YEARS[year] || year.replace('0', 'k')
 

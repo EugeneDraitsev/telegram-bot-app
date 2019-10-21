@@ -1,14 +1,14 @@
-import { findIndex, map } from 'lodash'
+import { findIndex, map } from 'lodash-es'
 
 const consonants = ['бвгджзйклмнпрстфхчцшщ']
 const patterns = [new RegExp(`^[${consonants}]*[оеёэ]`, 'i'), new RegExp(`^[${consonants}]*[ую]`, 'i'),
   new RegExp(`^[${consonants}]*[ая]`, 'i'), new RegExp(`^[${consonants}]*[иы]`, 'i')]
 const mainPattern = new RegExp(`^[${consonants}]*.`, 'i')
 
-const capitalize = (capitalization: boolean[], word: string) =>
+const capitalize = (capitalization: boolean[], word: string): string =>
   map(word, (letter, index) => (capitalization[index] ? letter.toUpperCase() : letter.toLowerCase())).join('')
 
-function huifyWord(word: string) {
+const huifyWord = (word: string): string => {
   if (word.length > 2) {
     const capitalization = map(word, (letter) => letter === letter.toUpperCase())
     switch (findIndex(patterns, (pattern) => pattern.test(word))) {
@@ -27,4 +27,4 @@ function huifyWord(word: string) {
   return word
 }
 
-export const huify = (text: string) => (text && text.replace ? text.replace(/[А-Я0-9]+/ig, huifyWord) : text)
+export const huify = (text: string): string => (text && text.replace ? text.replace(/[А-Я0-9]+/ig, huifyWord) : text)

@@ -1,5 +1,6 @@
-import { DynamoDB, AWSError } from 'aws-sdk'
+import { DynamoDB } from 'aws-sdk'
 import { captureAWSClient } from 'aws-xray-sdk'
+import { DocumentClient } from 'aws-sdk/lib/dynamodb/document_client'
 
 const documentClient = new DynamoDB.DocumentClient({
   apiVersion: '2012-08-10',
@@ -8,33 +9,12 @@ const documentClient = new DynamoDB.DocumentClient({
 })
 
 if (!process.env.IS_LOCAL) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   captureAWSClient((documentClient as any).service)
 }
 
-export const dynamoScan = (params: DynamoDB.DocumentClient.ScanInput) =>
-  new Promise((resolve, reject) => {
-    const scanParams = { ...params }
+export const dynamoQuery = (params: DynamoDB.DocumentClient.QueryInput): Promise<DocumentClient.QueryOutput> =>
+  documentClient.query(params).promise()
 
-    const results: any[] = []
-
-    const onScan = (err: AWSError, data: DynamoDB.ScanOutput) => {
-      if (err) {
-        reject(err)
-      } else {
-        results.push(...data.Items!)
-        // continue scanning if we have more records, because
-        // scan can retrieve a maximum of 1MB of data
-        if (typeof data.LastEvaluatedKey !== 'undefined') {
-          scanParams.ExclusiveStartKey = data.LastEvaluatedKey
-          documentClient.scan(scanParams, onScan)
-        } else {
-          resolve(results)
-        }
-      }
-    }
-
-    documentClient.scan(scanParams, onScan)
-  })
-
-export const dynamoQuery = (params: DynamoDB.DocumentClient.QueryInput) => documentClient.query(params).promise()
-export const dynamoPutItem = (params: DynamoDB.DocumentClient.PutItemInput) => documentClient.put(params).promise()
+export const dynamoPutItem = (params: DynamoDB.DocumentClient.PutItemInput): Promise<DocumentClient.PutItemOutput> =>
+  documentClient.put(params).promise()

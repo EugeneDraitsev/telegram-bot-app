@@ -1,29 +1,34 @@
-import { find, orderBy } from 'lodash'
-import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
-import { getUserName, IUserInfo, IUserStat } from '.'
+import { find, orderBy, first } from 'lodash-es'
+import { DocumentClient } from 'aws-sdk/lib/dynamodb/document_client'
 
-const getChatStatistic = async (chat_id: number) => {
+import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
+import { getUserName, UserInfo, UserStat } from '.'
+
+interface ChatStat {
+  users: UserStat[];
+}
+
+const getChatStatistic = async (chat_id: number): Promise<ChatStat> => {
   const params = {
     TableName: 'chat-statistics',
     ExpressionAttributeValues: { ':chatId': String(chat_id) },
     KeyConditionExpression: 'chatId = :chatId',
   }
 
-  const result = await dynamoQuery(params) as any
-  return result.Items[0]
+  const result = await dynamoQuery(params)
+  return first(result.Items) as ChatStat
 }
 
-export const getUsersList = async (chat_id: number, query: string) => {
+export const getUsersList = async (chat_id: number, query: string): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
-    return result.users.map((user: IUserStat) =>
-      `@${user.username}`).join(' ').concat('\n') + query
+    return result.users.map((user: UserStat) => `@${user.username}`).join(' ').concat('\n') + query
   } catch (e) {
     return 'Error while fetching users'
   }
 }
 
-export const getFormattedChatStatistics = async (chat_id: number) => {
+export const getFormattedChatStatistics = async (chat_id: number): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
     const stats = orderBy(result.users, 'msgCount', 'desc')
@@ -31,7 +36,7 @@ export const getFormattedChatStatistics = async (chat_id: number) => {
     const formattedUsers = stats.map((user) =>
       `${user.msgCount} (${((user.msgCount / messagesCount) * 100).toFixed(2)}%) - ${user.username}`)
     return dedent`Users Statistic:
-            All messages: ${messagesCount}
+            All messages: ${String(messagesCount)}
             ${formattedUsers.join('\n')}`
   } catch (e) {
     console.log(e) // eslint-disable-line no-console
@@ -39,13 +44,15 @@ export const getFormattedChatStatistics = async (chat_id: number) => {
   }
 }
 
-export const updateStatistics = async (userInfo: IUserInfo, chat_id: number) => {
+type UpdateStatisticsOutput = Promise<void | DocumentClient.PutItemOutput>
+
+export const updateStatistics = async (userInfo: UserInfo, chat_id: number): UpdateStatisticsOutput => {
   if (userInfo) {
     const chatStatistics = await getChatStatistic(chat_id)
-    const statistics = chatStatistics || { chatId: String(chat_id), users: [] as IUserStat[] }
+    const statistics = chatStatistics || { chatId: String(chat_id), users: [] as UserStat[] }
 
 
-    let userStatistic = find(statistics.users, { id: userInfo.id }) as IUserStat
+    let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
 
     if (!userStatistic) {
       userStatistic = { id: userInfo.id, msgCount: 1, username: getUserName(userInfo) }

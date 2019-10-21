@@ -1,13 +1,15 @@
-import { every, filter, get, includes, sample } from 'lodash'
+import { every, filter, get, includes, sample } from 'lodash-es'
 import fetch, { Headers } from 'node-fetch'
 
 const googleSearchToken = process.env.GOOGLE_SEARCH_TOKEN || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
-const isResponseImage = (headers: Headers) => headers.get('content-type')!.split('/')[0] === 'image'
-const filterMimeTypes = (item: any) => every(['ico', 'svg'], (x) => !includes(item.mime, x))
+type Image = { mime: string }
 
-const getImage = async (url: string, tbUrl: string) => {
+const isResponseImage = (headers: Headers): boolean => (headers.get('content-type') || '').split('/')[0] === 'image'
+const filterMimeTypes = (item: Image): boolean => every(['ico', 'svg'], (x) => !includes(item.mime, x))
+
+const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
   try {
     const imageResponse = await fetch(url, { timeout: 10000 })
 
@@ -33,7 +35,7 @@ const getImage = async (url: string, tbUrl: string) => {
   }
 }
 
-export const searchImage = async (query: string) => {
+export const searchImage = async (query: string): Promise<{ image: Buffer; url: string }> => {
   try {
     const url = 'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
       `&key=${googleSearchToken}&cx=${cxToken}&q=${encodeURI(query)}`

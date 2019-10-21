@@ -1,4 +1,4 @@
-import { sample } from 'lodash'
+import { sample } from 'lodash-es'
 
 const APPRECIATION = [
   'Ух контент.',
@@ -13,4 +13,4 @@ const APPRECIATION = [
 
 ]
 
-export const sayThanksForLink = () => String(sample(APPRECIATION))
+export const sayThanksForLink = (): string => String(sample(APPRECIATION))

@@ -1,5 +1,5 @@
 {
-  "extends": ["airbnb-base"],
+  "extends": ["plugin:@typescript-eslint/recommended", "airbnb-base"],
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint", "jest"],
   "env": {
@@ -15,7 +15,7 @@
     "semi": ["error", "never"],
     "max-len": ["error", 120],
     "object-curly-newline": ["error", {"consistent": true}],
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/camelcase": "off",
     "operator-linebreak": "off",
     "implicit-arrow-linebreak": "off",
     "import/prefer-default-export": "off",

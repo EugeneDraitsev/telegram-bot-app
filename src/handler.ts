@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { Message, Chat } from 'telegram-typings'
-import { get } from 'lodash'
+import { get } from 'lodash-es'
 
 import { isBotCommand, parseMessage } from './utils'
 import { saveEvent, updateStatistics } from './core'
@@ -9,14 +10,14 @@ import setupCommands from './commands'
 import './dynamo-optimization'
 
 export interface Context extends ContextMessageUpdate {
-  message: Message,
-  chat: Chat,
-  command: string,
-  text: string
-  replyId: number
+  message: Message;
+  chat: Chat;
+  command: string;
+  text: string;
+  replyId: number;
 }
 
-const bot = new Telegraf(process.env.TOKEN!)
+const bot = new Telegraf(process.env.TOKEN as string)
 
 bot.use(async (ctx: Context, next) => {
   const { chat, message } = ctx
@@ -41,7 +42,8 @@ bot.use(async (ctx: Context, next) => {
 
 setupCommands(bot)
 
-export default async (event: any) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async (event: any): Promise<any> => {
   try {
     const body = event.body ? JSON.parse(event.body) : event // Identify lambda call vs http event
     await bot.handleUpdate(body)

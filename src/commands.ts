@@ -1,5 +1,5 @@
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
-import { random } from 'lodash'
+import { random, noop } from 'lodash-es'
 import * as fs from 'fs'
 
 import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved
@@ -20,12 +20,12 @@ import {
 } from './core'
 import * as remont from './remont.mp4'
 
-export default (bot: Telegraf<ContextMessageUpdate>) => {
-  bot.hears(isLink, (ctx, next) => {
+export default (bot: Telegraf<ContextMessageUpdate>): void => {
+  bot.hears(isLink, (ctx, next = noop) => {
     if (ctx.message && random(0, 100) > 99.5) {
       ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
     }
-    next!()
+    next()
   })
 
   bot.hears(checkCommand('/g'), async (ctx: Context) => {
@@ -66,7 +66,7 @@ export default (bot: Telegraf<ContextMessageUpdate>) => {
     ))
 
   bot.hears(checkCommand('/8'), async (ctx: Context) =>
-    ctx.replyWithSticker(getPrediction()!, { reply_to_message_id: ctx.replyId }))
+    ctx.replyWithSticker(getPrediction(), { reply_to_message_id: ctx.replyId }))
 
   bot.hears(checkCommand('/v'), async (ctx: Context) =>
     ctx.reply(await searchYoutube(ctx.text)))

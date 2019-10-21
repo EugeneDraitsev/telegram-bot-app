@@ -1,4 +1,3 @@
-/* tslint:disable: object-literal-sort-keys */
 import { hasRussiansLetters } from '../../utils'
 
 const enRu = {
@@ -73,7 +72,7 @@ const ruEn = Object.keys(enRu).reduce(
   {},
 )
 
-export const puntoSwitcher = (text: string) => {
+export const puntoSwitcher = (text: string): string => {
   const charsToSwitch = hasRussiansLetters(text) ? ruEn : enRu
   if (text.split) {
     return text.split('').map((char) => (charsToSwitch[char] ? charsToSwitch[char] : char)).join('')

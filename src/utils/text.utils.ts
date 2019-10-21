@@ -1,7 +1,9 @@
-export const hasRussiansLetters = (text: string) => text.match && text.match(/^[А-Яа-яёЁ]+/)
+export const hasRussiansLetters = (text: string): boolean => Boolean(text.match && text.match(/^[А-Яа-яёЁ]+/))
 
-export const dedent = (callSite: any, ...args: any[]): string => {
-  const format = (str: string) => {
+type DedentInput = ((args?: string) => string) | string | TemplateStringsArray
+
+export const dedent = (callSite: DedentInput, ...args: string[]): string => {
+  const format = (str: string): string => {
     let size = -1
     return str.replace(/\n(\s+)/g, (m, m1) => {
       if (size < 0) {
@@ -16,7 +18,7 @@ export const dedent = (callSite: any, ...args: any[]): string => {
   }
 
   if (typeof callSite === 'function') {
-    return String((...values: any[]) => format(callSite(...values)))
+    return String((...values: string[]) => format(callSite(...values)))
   }
 
   const output = callSite
@@ -27,7 +29,7 @@ export const dedent = (callSite: any, ...args: any[]): string => {
   return format(output)
 }
 
-export const normalize = (str: string) => str
+export const normalize = (str: string): string => str
   .replace(/<(.|\n)*?>/g, '')
   .replace(/\s\s+/g, ' ')
   .replace('\n', ' ')

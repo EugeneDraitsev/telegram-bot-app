@@ -1,9 +1,10 @@
-import { random } from 'lodash'
+import { Lambda } from 'aws-sdk'
+import { random } from 'lodash-es'
 
 import { dynamoPutItem, invokeLambda } from '../../../utils'
-import { IUserInfo } from '.'
+import { UserInfo } from '.'
 
-const getBroadcastParams = (chatId: number) => ({
+const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => ({
   FunctionName: 'telegram-websockets-prod-broadcastStats',
   Payload: JSON.stringify({
     queryStringParameters: {
@@ -13,7 +14,8 @@ const getBroadcastParams = (chatId: number) => ({
   }),
 })
 
-export const saveEvent = async (userInfo: IUserInfo, chat_id: number, date: number, command: string) => {
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const saveEvent = async (userInfo: UserInfo, chat_id: number, date: number, command: string) => {
   if (userInfo) {
     const event = {
       userInfo,
