@@ -1,4 +1,4 @@
-import { every, filter, get, includes, sample } from 'lodash-es'
+import { every, filter, get, includes, sample } from 'lodash'
 import fetch, { Headers } from 'node-fetch'
 
 const googleSearchToken = process.env.GOOGLE_SEARCH_TOKEN || 'set_your_token'

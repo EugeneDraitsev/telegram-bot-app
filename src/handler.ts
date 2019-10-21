@@ -2,7 +2,7 @@
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { Message, Chat } from 'telegram-typings'
-import { get } from 'lodash-es'
+import { get } from 'lodash'
 
 import { isBotCommand, parseMessage } from './utils'
 import { saveEvent, updateStatistics } from './core'

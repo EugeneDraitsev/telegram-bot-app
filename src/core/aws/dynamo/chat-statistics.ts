@@ -1,4 +1,4 @@
-import { find, orderBy, first } from 'lodash-es'
+import { find, orderBy, first } from 'lodash'
 import { DocumentClient } from 'aws-sdk/lib/dynamodb/document_client'
 
 import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'

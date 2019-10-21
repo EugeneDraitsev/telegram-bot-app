@@ -1,4 +1,4 @@
-import { includes, map, round } from 'lodash-es'
+import { includes, map, round } from 'lodash'
 import fetch from 'node-fetch'
 
 const fccApiKey = process.env.FCC_API_KEY || 'set_your_token'

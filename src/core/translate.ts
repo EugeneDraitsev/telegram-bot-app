@@ -1,4 +1,4 @@
-import { first } from 'lodash-es'
+import { first } from 'lodash'
 import fetch from 'node-fetch'
 import { URLSearchParams } from 'url'
 

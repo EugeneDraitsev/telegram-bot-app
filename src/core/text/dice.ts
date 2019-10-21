@@ -1,4 +1,4 @@
-import { padStart, random, clamp } from 'lodash-es'
+import { padStart, random, clamp } from 'lodash'
 
 const getRandomDice = (number: number): string => {
   const max = clamp(number, 2, 999)

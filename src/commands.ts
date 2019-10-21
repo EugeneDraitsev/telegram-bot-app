@@ -1,5 +1,5 @@
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
-import { random, noop } from 'lodash-es'
+import { random, noop } from 'lodash'
 import * as fs from 'fs'
 
 import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved

@@ -1,5 +1,5 @@
 import { MessageEntity } from 'telegram-typings'
-import { some, split } from 'lodash-es'
+import { some, split } from 'lodash'
 
 export const isLink = (text = ''): boolean => text.includes('https://')
 

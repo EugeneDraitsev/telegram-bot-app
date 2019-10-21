@@ -1,4 +1,4 @@
-import { findIndex, map } from 'lodash-es'
+import { findIndex, map } from 'lodash'
 
 const consonants = ['бвгджзйклмнпрстфхчцшщ']
 const patterns = [new RegExp(`^[${consonants}]*[оеёэ]`, 'i'), new RegExp(`^[${consonants}]*[ую]`, 'i'),

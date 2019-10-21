@@ -1,4 +1,4 @@
-import { sample } from 'lodash-es'
+import { sample } from 'lodash'
 import fetch from 'node-fetch'
 
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'

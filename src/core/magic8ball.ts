@@ -1,4 +1,4 @@
-import { sample } from 'lodash-es'
+import { sample } from 'lodash'
 
 // Collection of file_id's for stickers (https://telegram.me/addstickers/magicBall)
 export const getPrediction = (): string => sample([

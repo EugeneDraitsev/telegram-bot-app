@@ -1,5 +1,5 @@
 import { Lambda } from 'aws-sdk'
-import { random } from 'lodash-es'
+import { random } from 'lodash'
 
 import { dynamoPutItem, invokeLambda } from '../../../utils'
 import { UserInfo } from '.'
