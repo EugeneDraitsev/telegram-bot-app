@@ -11,8 +11,12 @@ type YoutubeVideo = {
   };
 }
 
-export const searchYoutube = (query: string): Promise<string> =>
-  fetch(`${BASE_URL}&key=${YOUTUBE_TOKEN}&q=${encodeURI(query)}&maxResults=${8}`)
-    .then((res) => res.json())
-    .then((response) => `${RESULT_PREFIX}${sample(response.items.map((item: YoutubeVideo) => item.id.videoId))}`)
-    .catch(() => `No results for: ${query}`)
+export async function searchYoutube(query: string): Promise<string> {
+  try {
+    const response = await fetch(`${BASE_URL}&key=${YOUTUBE_TOKEN}&q=${encodeURI(query)}&maxResults=${8}`)
+    const json = await response.json()
+    return `${RESULT_PREFIX}${sample(json.items.map((item: YoutubeVideo) => item.id.videoId))}`
+  } catch (e) {
+    return `No results for: ${query}`
+  }
+}
