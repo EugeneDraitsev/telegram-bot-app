@@ -15,6 +15,10 @@ jobs:
       - run: yarn lint
       - run: yarn tsc
       - run: yarn test
+      - name: Coveralls
+          uses: coverallsapp/github-action@master
+          with:
+            github-token: ${{ secrets.REPO_TOKEN }}
       - run: yarn deploy-function
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}

@@ -27,6 +27,7 @@ node_modules
 .serverless
 .webpack
 yarn-error.log
+coverage
 
 config.*
 config.json

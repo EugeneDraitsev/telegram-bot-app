@@ -5,12 +5,14 @@ describe('huiator must works as designed', () => {
     expect(huify('кот')).toEqual('хует')
     expect(huify('яблоко')).toEqual('хуяблоко')
     expect(huify('несколько слов')).toEqual('хуесколько хуев')
+    expect(huify('кит')).toEqual('хуит')
     expect(huify('а')).toEqual('а')
     expect(huify('даунил на саппорте')).toEqual('хуяунил на хуяппорте')
   })
   test('huiator must returns original word on english or unconvertible russian words', () => {
     expect(huify('test')).toEqual('test')
     expect(huify('ккккккккккккккккккк')).toEqual('ккккккккккккккккккк')
+    expect(huify('')).toEqual('')
   })
   test('huiator must save Capitalization letters', () => {
     expect(huify('Журавлева')).toEqual('Хуюравлева')

@@ -46,7 +46,7 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
   })
 
   bot.hears(checkCommand('/y'), (ctx: Context) => {
-    const yasno = yasnyfy(ctx.text, String(new Date().getFullYear()))
+    const yasno = yasnyfy(ctx.text)
     return ctx.reply(yasno, { reply_to_message_id: ctx.replyId })
   })
 
