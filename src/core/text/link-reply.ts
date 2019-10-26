@@ -1,6 +1,6 @@
 import { sample } from 'lodash'
 
-const APPRECIATION = [
+export const APPRECIATIONS = [
   'Ух контент.',
   'Бля, ты опять?!',
   'А вот это заебись!...а не, тоже говно.',
@@ -13,4 +13,4 @@ const APPRECIATION = [
 
 ]
 
-export const sayThanksForLink = (): string => String(sample(APPRECIATION))
+export const sayThanksForLink = (): string => String(sample(APPRECIATIONS))

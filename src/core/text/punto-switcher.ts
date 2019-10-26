@@ -74,8 +74,5 @@ const ruEn = Object.keys(enRu).reduce(
 
 export const puntoSwitcher = (text: string): string => {
   const charsToSwitch = hasRussiansLetters(text) ? ruEn : enRu
-  if (text.split) {
-    return text.split('').map((char) => (charsToSwitch[char] ? charsToSwitch[char] : char)).join('')
-  }
-  return text
+  return text.split('').map((char) => (charsToSwitch[char] ? charsToSwitch[char] : char)).join('')
 }
