@@ -1,4 +1,6 @@
-import { findCommand, isLink, parseMessage } from '..'
+import { MessageEntity } from 'telegram-typings'
+
+import { findCommand, isLink, parseMessage, checkCommand, isBotCommand } from '..'
 
 describe('findCommand must works as designed', () => {
   test('findCommand must properly commands from first word in message or string ending with @', () => {
@@ -6,6 +8,7 @@ describe('findCommand must works as designed', () => {
     expect(findCommand('/hello world')).toEqual('/hello')
     expect(findCommand('/g@draiBot')).toEqual('/g')
     expect(findCommand('g')).toEqual('g')
+    expect(findCommand(undefined)).toEqual('')
   })
 })
 
@@ -21,6 +24,7 @@ describe('parseMessage should works as designed', () => {
     expect(parseMessage('/g@draiBot cats')).toEqual(['/g', 'cats'])
     expect(parseMessage('/g@draiBot testing is cool')).toEqual(['/g', 'testing is cool'])
     expect(parseMessage('/p multi / slashes /')).toEqual(['/p', 'multi / slashes /'])
+    expect(parseMessage(undefined)).toEqual(['', ''])
   })
 })
 
@@ -34,5 +38,20 @@ describe('isYaMusicLink works correctly', () => {
   })
   test('isYaMusicLink finds link in a message with text and link', () => {
     expect(isLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.')).toBeTruthy()
+  })
+})
+
+describe('checkCommand', () => {
+  test('should returns function that properly identifies command', () => {
+    expect(checkCommand('/g')('/g blbalba')).toEqual(true)
+    expect(checkCommand('/test')('/g blbalba')).toEqual(false)
+    expect(checkCommand('/test')(undefined)).toEqual(false)
+  })
+})
+
+describe('isBotCommand', () => {
+  test('checks that provided message contains bot command', () => {
+    expect(isBotCommand([{ type: 'bot_command' }] as MessageEntity[])).toEqual(true)
+    expect(isBotCommand([])).toEqual(false)
   })
 })

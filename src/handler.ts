@@ -2,12 +2,18 @@
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { Message, Chat } from 'telegram-typings'
+import AWS from 'aws-sdk'
+import { captureAWSClient } from 'aws-xray-sdk'
 import { get } from 'lodash'
 
 import { isBotCommand, parseMessage } from './utils'
 import { saveEvent, updateStatistics } from './core'
 import setupCommands from './commands'
 import './dynamo-optimization'
+
+if (!process.env.IS_LOCAL) {
+  captureAWSClient(AWS)
+}
 
 export interface Context extends ContextMessageUpdate {
   message: Message;

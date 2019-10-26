@@ -1,6 +1,6 @@
 export const hasRussiansLetters = (text: string): boolean => Boolean(text.match && text.match(/^[А-Яа-яёЁ]+/))
 
-type DedentInput = ((args?: string) => string) | string | TemplateStringsArray
+type DedentInput = string | TemplateStringsArray
 
 export const dedent = (callSite: DedentInput, ...args: string[]): string => {
   const format = (str: string): string => {
@@ -15,10 +15,6 @@ export const dedent = (callSite: DedentInput, ...args: string[]): string => {
 
   if (typeof callSite === 'string') {
     return format(callSite)
-  }
-
-  if (typeof callSite === 'function') {
-    return String((...values: string[]) => format(callSite(...values)))
   }
 
   const output = callSite
