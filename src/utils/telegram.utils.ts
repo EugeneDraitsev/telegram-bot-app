@@ -9,7 +9,7 @@ export const findCommand = (text = ''): string =>
 export const checkCommand = (command: string) => (text = ''): boolean =>
   findCommand(text) === command
 
-export const isBotCommand = (entities: MessageEntity[]): boolean =>
+export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
   some(entities, (entity) => entity.type === 'bot_command')
 
 export const parseMessage = (text = ''): [string, string] => {
