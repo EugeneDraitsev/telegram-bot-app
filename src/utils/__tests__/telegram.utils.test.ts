@@ -53,5 +53,6 @@ describe('isBotCommand', () => {
   test('checks that provided message contains bot command', () => {
     expect(isBotCommand([{ type: 'bot_command' }] as MessageEntity[])).toEqual(true)
     expect(isBotCommand([])).toEqual(false)
+    expect(isBotCommand()).toEqual(false)
   })
 })
