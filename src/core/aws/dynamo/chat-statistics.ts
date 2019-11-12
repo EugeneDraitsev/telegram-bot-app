@@ -46,8 +46,8 @@ export const getFormattedChatStatistics = async (chat_id: number): Promise<strin
 
 type UpdateStatisticsOutput = Promise<void | DocumentClient.PutItemOutput>
 
-export const updateStatistics = async (userInfo: UserInfo, chat_id: number): UpdateStatisticsOutput => {
-  if (userInfo) {
+export const updateStatistics = async (userInfo?: UserInfo, chat_id?: number): UpdateStatisticsOutput => {
+  if (userInfo && chat_id) {
     const chatStatistics = await getChatStatistic(chat_id)
     const statistics = chatStatistics || { chatId: String(chat_id), users: [] as UserStat[] }
 

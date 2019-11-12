@@ -15,8 +15,8 @@ const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => (
 })
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const saveEvent = async (userInfo: UserInfo, chat_id: number, date: number, command: string) => {
-  if (userInfo) {
+export const saveEvent = async (userInfo?: UserInfo, chat_id?: number, date = Date.now(), command?: string) => {
+  if (userInfo && chat_id) {
     const event = {
       userInfo,
       // trying to avoid lost messages
