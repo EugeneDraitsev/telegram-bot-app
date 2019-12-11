@@ -2,7 +2,7 @@ import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
 import * as fs from 'fs'
 
-import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved
+import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
 import { checkCommand, isLink } from './utils'
 import { Context } from './handler'
 import { searchImage, searchYoutube } from './core/google'

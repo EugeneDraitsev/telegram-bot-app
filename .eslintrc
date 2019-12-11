@@ -15,6 +15,7 @@
     "semi": ["error", "never"],
     "max-len": ["error", 120],
     "object-curly-newline": ["error", {"consistent": true}],
+    "import/extensions": ["error", "ignorePackages", {"js": "never", "jsx": "never", "ts": "never", "tsx": "never"}],
     "@typescript-eslint/camelcase": "off",
     "operator-linebreak": "off",
     "implicit-arrow-linebreak": "off",
