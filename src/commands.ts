@@ -1,5 +1,6 @@
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
+import fetch from 'node-fetch'
 import * as fs from 'fs'
 
 import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
@@ -59,11 +60,14 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(checkCommand('/z'), async (ctx: Context) =>
     ctx.reply(await getFormattedChatStatistics(ctx.chat.id)))
 
-  bot.hears(checkCommand('/s'), async (ctx: Context) =>
-    ctx.replyWithHTML(
+  bot.hears(checkCommand('/s'), async (ctx: Context) => {
+    // fetch ssr-render url without await to reduce coldstart
+    fetch(`https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`).catch(noop)
+    return ctx.replyWithHTML(
       `Last 24h chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
       { reply_to_message_id: ctx.replyId },
-    ))
+    )
+  })
 
   bot.hears(checkCommand('/8'), async (ctx: Context) =>
     ctx.replyWithSticker(getPrediction(), { reply_to_message_id: ctx.replyId }))
