@@ -61,7 +61,7 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/s'), async (ctx: Context) =>
     ctx.replyWithHTML(
-      `Last 24h chat statistics: https://telegram-bot-ui.surge.sh/chat/${ctx.chat.id}`,
+      `Last 24h chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
       { reply_to_message_id: ctx.replyId },
     ))
 
