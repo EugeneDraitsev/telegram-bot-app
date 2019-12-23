@@ -26,8 +26,15 @@ const getFreeCurrencyData = async (): Promise<string> => {
 
   const result = await fetch(url, { timeout }).then((x) => x.json())
 
-  return `Курсы FCC:
-${map(result, (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')}
+  if (result.error) {
+    throw new Error(result.error)
+  }
+
+  const currencyMessage = map(result,
+    (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')
+
+  return `Курсы FCC:\
+          \n${currencyMessage}
 `
 }
 
@@ -35,11 +42,11 @@ const getFixerData = async (): Promise<string> => {
   const url = `http://data.fixer.io/api/latest?access_key=${fixerKey}&format=1&base=EUR`
   const { rates } = await fetch(url, { timeout }).then((x) => x.json())
 
-  return `Курсы fixer:
-USD/BYN: ${round(rates.BYN / rates.USD, 3)}
-EUR/BYN: ${round(rates.BYN, 3)}
-USD/SEK: ${round(rates.SEK / rates.USD, 3)}
-EUR/SEK: ${round(rates.SEK, 3)}
+  return `Курсы fixer:\
+          \nUSD/BYN: ${round(rates.BYN / rates.USD, 3)}\
+          \nEUR/BYN: ${round(rates.BYN, 3)}\
+          \nUSD/SEK: ${round(rates.SEK / rates.USD, 3)}\
+          \nEUR/SEK: ${round(rates.SEK, 3)}
 `
 }
 
