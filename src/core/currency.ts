@@ -33,9 +33,7 @@ const getFreeCurrencyData = async (): Promise<string> => {
   const currencyMessage = map(result,
     (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')
 
-  return `Курсы FCC:\
-          \n${currencyMessage}
-`
+  return `Курсы FCC:\n${currencyMessage}\n`
 }
 
 const getFixerData = async (): Promise<string> => {
