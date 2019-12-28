@@ -19,7 +19,7 @@ import {
   searchWiki,
   translate,
 } from './core'
-import remont from './remont.mp4'
+import sdr from './sdr.mp4'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(isLink, (ctx, next = noop) => {
@@ -99,10 +99,10 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(checkCommand('/ps'), (ctx: Context) =>
     ctx.reply(puntoSwitcher(ctx.text), { reply_to_message_id: ctx.replyId }))
 
-  bot.hears(checkCommand('/remont'), (ctx: Context) =>
+  bot.hears(checkCommand('/dr'), (ctx: Context) =>
     ctx.replyWithVideo(
-      { filename: 'remont.mp4', source: fs.readFileSync(remont) },
-      { reply_to_message_id: ctx.replyId, caption: '@perturbator_soznaniya как ремонт?' } as ExtraVideo,
+      { filename: 'sdr.mp4', source: fs.readFileSync(sdr) },
+      { reply_to_message_id: ctx.replyId, caption: '@perturbator_soznaniya с др' } as ExtraVideo,
     ))
 
   bot.hears(checkCommand('/x'), async (ctx: Context) => {
