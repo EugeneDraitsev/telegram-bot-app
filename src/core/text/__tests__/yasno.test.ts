@@ -15,6 +15,7 @@ describe('yasnyfy should works as designed', () => {
     expect(yasnyfy('тест')).toEqual('\n>2k19\n>тест\nЯсно')
     expect(yasnyfy('')).toEqual('\n>2k19\nЯсно')
   })
+
   test('yasnyfy should properly work with warhammer values', () => {
     Settings.now = (): number => new Date(2021, 10, 10).valueOf()
     expect(yasnyfy('тест').slice(7)).toEqual(' 021.M3\n>тест\nЯсно')

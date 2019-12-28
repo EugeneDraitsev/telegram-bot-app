@@ -17,6 +17,7 @@ const whDate = (): string => { // https://warhammer40k.fandom.com/wiki/Imperial_
   const millenium = Math.floor(currentYear / 1000) + 1
   return `0 ${yearFraction} ${String(currentYear).slice(1, 4)}.M${millenium}`
 }
+
 export const yasnyfy = (text: string): string => {
   const { month, day, year } = DateTime.local().setZone('Europe/Minsk').toObject()
   const stringYear = String(year)

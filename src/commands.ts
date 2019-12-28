@@ -19,7 +19,7 @@ import {
   searchWiki,
   translate,
 } from './core'
-import * as remont from './remont.mp4'
+import remont from './remont.mp4'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(isLink, (ctx, next = noop) => {
