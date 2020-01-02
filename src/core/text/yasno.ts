@@ -1,3 +1,4 @@
+import { padStart } from 'lodash'
 import { DateTime } from 'luxon'
 
 const YEARS = {
@@ -15,7 +16,7 @@ const whDate = (): string => { // https://warhammer40k.fandom.com/wiki/Imperial_
   const yearFraction = Math.floor((currentTimeInSeconds - currentYearStart) / secondsInFraction)
   const currentYear = yearsFromEpochStart + 1970
   const millenium = Math.floor(currentYear / 1000) + 1
-  return `0 ${yearFraction} ${String(currentYear).slice(1, 4)}.M${millenium}`
+  return `0 ${padStart(String(yearFraction), 3, '0')} ${String(currentYear).slice(1, 4)}.M${millenium}`
 }
 
 export const yasnyfy = (text: string): string => {
