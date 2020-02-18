@@ -15,6 +15,12 @@ describe('searchYoutube', () => {
     fetchMock.mockResponseOnce(JSON.stringify({}))
 
     expect(await searchYoutube('test query'))
-      .toEqual('No results for: test query')
+      .toEqual('No videos found')
+  })
+  test('should return proper string when something will go wrong', async () => {
+    fetchMock.mockResponseOnce('BROKEN JSON')
+
+    expect(await searchYoutube('test query'))
+      .toEqual('No videos found')
   })
 })
