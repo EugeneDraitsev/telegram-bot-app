@@ -1,4 +1,7 @@
-export const hasRussiansLetters = (text: string): boolean => Boolean(text.match && text.match(/^[А-Яа-яёЁ]+/))
+const punctuationRegex = /[.,/#!$%^&*;:{}=\-_`~<>[\]()]/g
+
+export const hasRussiansLetters = (text: string): boolean => Boolean(text.replace(punctuationRegex, '')
+  .match(/^[А-Яа-яёЁ]+/))
 
 type DedentInput = string | TemplateStringsArray
 
