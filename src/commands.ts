@@ -116,9 +116,4 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/shrug'), (ctx: Context) =>
     ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: ctx.replyId }))
-
-  bot.hears(checkCommand('/ncov'), async (ctx: Context) => ctx.replyWithHTML(
-    '2019-ncov models comparison: https://kabold-2019-ncov.netlify.com/',
-    { reply_to_message_id: ctx.replyId },
-  ))
 }
