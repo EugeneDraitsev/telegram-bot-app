@@ -22,7 +22,7 @@ const getRussianCurrency = async (): Promise<string> => {
 
 const getFreeCurrencyData = async (): Promise<string> => {
   const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK'].join(',')
-  const url = `https://free.currencyconverterapi.com/api/v6/convert?compact=y&apiKey=${fccApiKey}&q=${currencies}`
+  const url = `https://free.currconv.com/api/v7/convert?compact=y&apiKey=${fccApiKey}&q=${currencies}`
 
   const result = await fetch(url, { timeout }).then((x) => x.json())
 
