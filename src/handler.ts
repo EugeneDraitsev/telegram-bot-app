@@ -6,7 +6,7 @@ import { captureAWS } from 'aws-xray-sdk'
 import { get } from 'lodash'
 
 import { isBotCommand, parseMessage } from './utils'
-import { saveEvent, updateStatistics } from './core'
+import { saveEvent, updateChatS3Data, updateStatistics } from './core'
 import setupCommands from './commands'
 import './dynamo-optimization'
 
@@ -36,6 +36,8 @@ bot.use(async (ctx: Context, next) => {
       ctx.text = text || get(reply_to_message, 'text', '')
       ctx.replyId = replyId
     }
+
+    updateChatS3Data(chat.id)
 
     await Promise.all([
       updateStatistics(message.from, chat.id),
