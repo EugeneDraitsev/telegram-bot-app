@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 const path = require('path')
 const slsw = require('serverless-webpack')
 
@@ -25,17 +26,6 @@ module.exports = {
         type: 'javascript/auto',
         test: /\.mjs$/,
         use: [],
-      },
-      {
-        test: /\.(mp4)$/,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: '[path][name].[ext]',
-            },
-          },
-        ],
       },
     ],
   },

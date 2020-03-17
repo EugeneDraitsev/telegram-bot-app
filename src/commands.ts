@@ -1,9 +1,8 @@
 import Telegraf, { ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
 import fetch from 'node-fetch'
-import * as fs from 'fs'
 
-import { ExtraDocument, ExtraVideo } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
+import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
 import { checkCommand, isLink } from './utils'
 import { Context } from './handler'
 import { searchImage, searchYoutube } from './core/google'
@@ -19,7 +18,6 @@ import {
   searchWiki,
   translate,
 } from './core'
-import sdr from './sdr.mp4'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(isLink, (ctx, next = noop) => {
@@ -98,12 +96,6 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/ps'), (ctx: Context) =>
     ctx.reply(puntoSwitcher(ctx.text), { reply_to_message_id: ctx.replyId }))
-
-  bot.hears(checkCommand('/dr'), (ctx: Context) =>
-    ctx.replyWithVideo(
-      { filename: 'sdr.mp4', source: fs.readFileSync(sdr) },
-      { reply_to_message_id: ctx.replyId, caption: '@perturbator_soznaniya с др' } as ExtraVideo,
-    ))
 
   bot.hears(checkCommand('/x'), async (ctx: Context) => {
     const stats = await getXRayStats()
