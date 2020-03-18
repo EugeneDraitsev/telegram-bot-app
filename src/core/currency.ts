@@ -7,17 +7,22 @@ const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 const timeout = 15000
 
 const getRussianCurrency = async (): Promise<string> => {
-  const currencyCodes = ['usd', 'eur', 'brent']
-  const url = 'https://meduza.io/api/v3/stock/all'
-  const response = await fetch(url, { timeout })
-  const currency = await response.json()
+  const currencyCodes = ['usd', 'eur']
+  const medusaUrl = 'https://meduza.io/api/v3/stock/all'
+  const nasdaqUrl = 'https://api.nasdaq.com/api/quote/BZ%3ANMX/summary?assetclass=commodities'
 
-  return `Курсы медузы:\n${Object.keys(currency)
+  const [currency, brent] = await Promise.all([
+    fetch(medusaUrl, { timeout }).then((x) => x.json()),
+    fetch(nasdaqUrl, { timeout }).then((x) => x.json()),
+  ])
+
+  const brentPrice = brent?.data?.summaryData?.LastSalePrice?.value ?? currency?.brent?.current
+
+  const currencyString = Object.keys(currency)
     .filter((curr) => includes(currencyCodes, curr))
-    .reduce(
-      (message, key) => message.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`),
-      '',
-    )}`
+    .reduce((value, key) => value.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`), '')
+
+  return `Курсы медузы:\n${currencyString}BRENT: ${brentPrice}\n`
 }
 
 const getFreeCurrencyData = async (): Promise<string> => {

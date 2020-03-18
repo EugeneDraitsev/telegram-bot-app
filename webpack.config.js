@@ -12,6 +12,7 @@ module.exports = {
     path: path.join(__dirname, '.webpack'),
     filename: '[name].js',
   },
+  externals: [{ 'aws-sdk': 'commonjs aws-sdk' }],
   module: {
     rules: [
       {
