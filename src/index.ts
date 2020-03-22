@@ -50,7 +50,7 @@ bot.use(async (ctx: Context, next) => {
 setupCommands(bot)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async (event: any): Promise<{ body: string; statusCode: number }> => {
+export const handler = async (event: any): Promise<{ body: string; statusCode: number }> => {
   try {
     const body = event.body ? JSON.parse(event.body) : event // Identify lambda call vs http event
     await bot.handleUpdate(body)

@@ -26,7 +26,7 @@ provider:
 
 functions:
   telegram-bot:
-    handler: src/handler.default
+    handler: src/index.handler
     events:
       - http:
           path: /
@@ -49,7 +49,7 @@ plugins:
 
 custom:
   serverless-offline:
-    port: 4000
+    httpPort: 4000
   custom:
     webpack:
       packager: 'yarn'
