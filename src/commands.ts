@@ -4,7 +4,7 @@ import fetch from 'node-fetch'
 
 import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
 import { checkCommand, isLink } from './utils'
-import { Context } from './handler'
+import { Context } from '.'
 import { searchImage, searchYoutube } from './core/google'
 import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './core/text'
 import {
