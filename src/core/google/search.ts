@@ -22,7 +22,7 @@ const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
 
   try {
     if (tbUrl) {
-      const tabImageResponse = await fetch(tbUrl, { timeout: 10000 })
+      const tabImageResponse = await fetch(tbUrl, { timeout: 5000 })
 
       if (isResponseImage(tabImageResponse.headers)) {
         return tabImageResponse.buffer()
@@ -39,7 +39,7 @@ export const searchImage = async (query: string): Promise<{ image: Buffer; url: 
   try {
     const url = 'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
       `&key=${googleSearchToken}&cx=${cxToken}&q=${encodeURI(query)}`
-    const response = await fetch(url, { timeout: 10000 }).then((r) => r.json())
+    const response = await fetch(url, { timeout: 5000 }).then((r) => r.json())
 
     if (get(response, 'items.length') > 0) {
       const image = sample(filter(response.items, filterMimeTypes))
