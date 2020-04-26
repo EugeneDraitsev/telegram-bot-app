@@ -1,4 +1,4 @@
-import { find, orderBy, first } from 'lodash'
+import { find, orderBy, first, toLower } from 'lodash'
 import { DocumentClient } from 'aws-sdk/lib/dynamodb/document_client'
 import { Chat } from 'telegram-typings'
 
@@ -57,7 +57,7 @@ export const updateStatistics = async (
     const chatStatistics = await getChatStatistic(chat_id)
     const statistics = chatStatistics || { chatId: String(chat_id), users: [] as UserStat[] }
 
-    statistics.chatName = chatName || getUserName(chat)
+    statistics.chatName = toLower(chatName || getUserName(chat))
 
     let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
 
