@@ -40,7 +40,7 @@ bot.use(async (ctx: Context, next) => {
     updateChatS3Data(chat.id)
 
     await Promise.all([
-      updateStatistics(message.from, chat.id, chat.title),
+      updateStatistics(message.from, chat),
       saveEvent(message.from, chat.id, message.date, ctx.command),
       next?.(),
     ])

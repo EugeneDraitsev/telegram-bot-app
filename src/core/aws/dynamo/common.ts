@@ -11,5 +11,5 @@ export interface UserInfo {
   id: number;
 }
 
-export const getUserName = (userInfo: UserInfo): string =>
-  userInfo.username || userInfo.first_name || userInfo.last_name || String(userInfo.id)
+export const getUserName = (userInfo?: UserInfo): string =>
+  userInfo?.username || userInfo?.first_name || userInfo?.last_name || String(userInfo?.id || '')
