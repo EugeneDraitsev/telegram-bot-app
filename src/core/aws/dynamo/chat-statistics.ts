@@ -6,6 +6,8 @@ import { getUserName, UserInfo, UserStat } from '.'
 
 interface ChatStat {
   users: UserStat[];
+  chatName: string;
+  id: string;
 }
 
 const getChatStatistic = async (chat_id: number): Promise<ChatStat> => {
@@ -46,11 +48,13 @@ export const getFormattedChatStatistics = async (chat_id: number): Promise<strin
 
 type UpdateStatisticsOutput = Promise<void | DocumentClient.PutItemOutput>
 
-export const updateStatistics = async (userInfo?: UserInfo, chat_id?: number): UpdateStatisticsOutput => {
+export const updateStatistics = async (
+  userInfo?: UserInfo, chat_id?: number, chatName = ''): UpdateStatisticsOutput => {
   if (userInfo && chat_id) {
     const chatStatistics = await getChatStatistic(chat_id)
     const statistics = chatStatistics || { chatId: String(chat_id), users: [] as UserStat[] }
 
+    statistics.chatName = chatName
 
     let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
 
