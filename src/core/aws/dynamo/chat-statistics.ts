@@ -8,6 +8,7 @@ import { getUserName, UserInfo, UserStat } from '.'
 interface ChatStat {
   users: UserStat[];
   chatName: string;
+  chatInfo: Chat;
   id: string;
 }
 
@@ -58,6 +59,7 @@ export const updateStatistics = async (
     const statistics = chatStatistics || { chatId: String(chat_id), users: [] as UserStat[] }
 
     statistics.chatName = toLower(chatName || getUserName(chat))
+    statistics.chatInfo = chat ?? {} as Chat
 
     let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
 
