@@ -1,6 +1,6 @@
 import { invokeLambda } from '../../utils'
 
-const url = 'https://epy9udvh20.execute-api.eu-central-1.amazonaws.com/prod/'
+const url = 'https://telegram-bot-ui.drai.now.sh/stats'
 
 interface XRayStats {
   url: string;
