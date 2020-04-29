@@ -23,7 +23,7 @@
     "lodash": "^4.17.15",
     "luxon": "^1.23.0",
     "node-fetch": "^2.6.0",
-    "telegraf": "^3.38.0",
+    "telegraf": "3.37.0",
     "telegram-typings": "^4.0.0-beta",
     "url": "^0.11.0"
   },
