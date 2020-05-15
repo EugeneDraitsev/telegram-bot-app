@@ -17,7 +17,7 @@
     "deploy-function": "sls deploy function --function telegram-bot --verbose"
   },
   "dependencies": {
-    "aws-sdk": "^2.675.0",
+    "aws-sdk": "^2.677.0",
     "aws-xray-sdk": "^3.0.1",
     "form-data": "^3.0.0",
     "lodash": "^4.17.15",
@@ -32,8 +32,8 @@
     "@babel/preset-env": "7.9.6",
     "@babel/preset-typescript": "^7.9.0",
     "@types/form-data": "^2.5.0",
-    "@types/jest": "^25.2.1",
-    "@types/lodash": "^4.14.150",
+    "@types/jest": "^25.2.2",
+    "@types/lodash": "^4.14.151",
     "@types/luxon": "^1.24.0",
     "@types/node-fetch": "^2.5.7",
     "@types/xml2js": "^0.4.5",
