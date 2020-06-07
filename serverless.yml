@@ -44,6 +44,7 @@ functions:
                 id: -1001111472139.0
 
 plugins:
+  - "@recap.dev/serverless-plugin"
   - serverless-webpack
   - serverless-offline
 
