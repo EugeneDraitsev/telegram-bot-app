@@ -17,7 +17,7 @@
     "deploy-function": "sls deploy function --function telegram-bot --verbose"
   },
   "dependencies": {
-    "@recap.dev/client": "^1.3.1",
+    "@recap.dev/client": "^1.3.2",
     "aws-sdk": "^2.677.0",
     "aws-xray-sdk": "^3.0.1",
     "form-data": "^3.0.0",
