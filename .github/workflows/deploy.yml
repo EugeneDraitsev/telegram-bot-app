@@ -30,3 +30,4 @@ jobs:
           YOUTUBE_TOKEN: ${{secrets.YOUTUBE_TOKEN}}
           FCC_API_KEY: ${{secrets.FCC_API_KEY}}
           FIXER_API_KEY: ${{secrets.FIXER_API_KEY}}
+          RECAP_DEV_SYNC_ENDPOINT: ${{secrets.RECAP_DEV_SYNC_ENDPOINT}}
