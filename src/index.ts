@@ -1,5 +1,5 @@
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
-import Telegraf, { ContextMessageUpdate } from 'telegraf'
+import Telegraf, { Context as ContextMessageUpdate } from 'telegraf'
 import { Message, Chat } from 'telegram-typings'
 import AWS from 'aws-sdk'
 import { captureAWS } from 'aws-xray-sdk'
@@ -49,7 +49,7 @@ bot.use(async (ctx: Context, next) => {
 
 setupCommands(bot)
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/explicit-module-boundary-types
 export const handler = async (event: any): Promise<{ body: string; statusCode: number }> => {
   try {
     const body = event.body ? JSON.parse(event.body) : event // Identify lambda call vs http event

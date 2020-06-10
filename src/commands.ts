@@ -1,4 +1,4 @@
-import Telegraf, { ContextMessageUpdate } from 'telegraf'
+import Telegraf, { Context as ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
 import fetch from 'node-fetch'
 
@@ -20,11 +20,12 @@ import {
 } from './core'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {
-  bot.hears(isLink, (ctx, next = noop) => {
+  bot.hears(isLink, (ctx, next) => {
     if (ctx.message && random(0, 100) > 99.5) {
       ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
     }
-    next()
+    // eslint-disable-next-line no-unused-expressions
+    next?.()
   })
 
   bot.hears(checkCommand('/g'), async (ctx: Context) => {

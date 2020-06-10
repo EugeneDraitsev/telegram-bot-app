@@ -1,12 +1,14 @@
 import { MessageEntity } from 'telegram-typings'
 import { some, split, toLower } from 'lodash'
 
-export const isLink = (text = ''): boolean => text.includes('https://')
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const isLink = (text = ''): any => text.includes('https://')
 
 export const findCommand = (text = ''): string =>
   text.replace(/ .*/, '').replace(/@.*/, '')
 
-export const checkCommand = (command: string) => (text = ''): boolean =>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const checkCommand = (command: string) => (text = ''): any =>
   findCommand(toLower(text)) === toLower(command)
 
 export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
