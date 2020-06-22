@@ -11,7 +11,6 @@ describe('dynamo utils', () => {
   jest.spyOn((DynamoDB.DocumentClient as any).prototype, 'query')
     .mockImplementation(() => ({ promise: (): string => 'query response!!' }))
 
-
   test('dynamoPutItem should call put on dynamo object and return promise with result', async () => {
     const options = {} as DynamoDB.DocumentClient.PutItemInput
     expect(await dynamoPutItem(options)).toEqual('put response!!')
