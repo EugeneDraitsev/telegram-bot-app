@@ -10,7 +10,6 @@ export const APPRECIATIONS = [
   'А вот это заебись!',
   'Om-nom-nom-nom',
   'Moar',
-
 ]
 
 export const sayThanksForLink = (): string => String(sample(APPRECIATIONS))

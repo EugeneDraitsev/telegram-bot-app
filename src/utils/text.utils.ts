@@ -1,7 +1,7 @@
 const punctuationRegex = /[.,/#!$%^&*;:{}=\-_`~<>[\]()]/g
 
-export const hasRussiansLetters = (text: string): boolean => Boolean(text.replace(punctuationRegex, '')
-  .match(/^[А-Яа-яёЁ]+/))
+export const hasRussiansLetters = (text: string): boolean =>
+  Boolean(text.replace(punctuationRegex, '').match(/^[А-Яа-яёЁ]+/))
 
 type DedentInput = string | TemplateStringsArray
 
@@ -28,7 +28,8 @@ export const dedent = (callSite: DedentInput, ...args: string[]): string => {
   return format(output)
 }
 
-export const normalize = (str: string): string => str
-  .replace(/<(.|\n)*?>/g, '')
-  .replace(/\s\s+/g, ' ')
-  .trim()
+export const normalize = (str: string): string =>
+  str
+    .replace(/<(.|\n)*?>/g, '')
+    .replace(/\s\s+/g, ' ')
+    .trim()

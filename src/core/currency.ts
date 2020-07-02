@@ -20,7 +20,11 @@ const getRussianCurrency = async (): Promise<string> => {
 
   const currencyString = Object.keys(currency)
     .filter((curr) => includes(currencyCodes, curr))
-    .reduce((value, key) => value.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`), '')
+    .reduce(
+      (value, key) =>
+        value.concat(`${key.toUpperCase()}: ${Number(currency[key].current).toFixed(2)}\n`),
+      '',
+    )
 
   return `Курсы медузы:\n${currencyString}BRENT: ${brentPrice}\n`
 }
@@ -35,8 +39,10 @@ const getFreeCurrencyData = async (): Promise<string> => {
     throw new Error(result.error)
   }
 
-  const currencyMessage = map(result,
-    (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`).join('\n')
+  const currencyMessage = map(
+    result,
+    (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`,
+  ).join('\n')
 
   return `Курсы FCC:\n${currencyMessage}\n`
 }
@@ -62,9 +68,10 @@ const getCryptoCurrency = async (): Promise<string> => {
     ETH: `${round(currency.USDT_ETH.highestBid, 2)} / ${round(currency.USDT_ETH.lowestAsk, 2)}`,
     XRP: `${round(currency.USDT_XRP.highestBid, 4)} / ${round(currency.USDT_XRP.lowestAsk, 4)}`,
   }
-  return `Курсы криптовалют:\n${
-    Object.keys(filteredCurrency)
-      .reduce((message, key) => message.concat(`${key}: ${filteredCurrency[key]}\n`), '')}`
+  return `Курсы криптовалют:\n${Object.keys(filteredCurrency).reduce(
+    (message, key) => message.concat(`${key}: ${filteredCurrency[key]}\n`),
+    '',
+  )}`
 }
 
 const getError = (err: Error, from: string): string => {
@@ -89,6 +96,5 @@ export const getCurrency = (): Promise<string> => {
     getCryptoCurrency().catch((err) => getError(err, 'poloniex')),
   ]
 
-  return Promise.all(promises)
-    .then((result) => `${result.join('\n')}`)
+  return Promise.all(promises).then((result) => `${result.join('\n')}`)
 }

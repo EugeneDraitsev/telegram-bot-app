@@ -14,7 +14,10 @@ export async function translate(text: string): Promise<string> {
   body.append('text', text)
 
   try {
-    const result = await fetch('https://translate.yandex.net/api/v1.5/tr.json/translate', { body, method: 'POST' })
+    const result = await fetch('https://translate.yandex.net/api/v1.5/tr.json/translate', {
+      body,
+      method: 'POST',
+    })
     const response = await result.json()
     return first(response.text) as string
   } catch (e) {

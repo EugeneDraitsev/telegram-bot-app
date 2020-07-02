@@ -6,8 +6,8 @@ import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
 import { getUserName, UserInfo, UserStat } from '.'
 
 interface ChatStat {
-  users: UserStat[];
-  id: string;
+  users: UserStat[]
+  id: string
 }
 
 const getChatStatistic = async (chat_id: number): Promise<ChatStat> => {
@@ -24,7 +24,12 @@ const getChatStatistic = async (chat_id: number): Promise<ChatStat> => {
 export const getUsersList = async (chat_id: number, query: string): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
-    return result.users.map((user: UserStat) => `@${user.username}`).join(' ').concat('\n') + query
+    return (
+      result.users
+        .map((user: UserStat) => `@${user.username}`)
+        .join(' ')
+        .concat('\n') + query
+    )
   } catch (e) {
     return 'Error while fetching users'
   }
@@ -35,8 +40,12 @@ export const getFormattedChatStatistics = async (chat_id: number): Promise<strin
     const result = await getChatStatistic(chat_id)
     const stats = orderBy(result.users, 'msgCount', 'desc')
     const messagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
-    const formattedUsers = stats.map((user) =>
-      `${user.msgCount} (${((user.msgCount / messagesCount) * 100).toFixed(2)}%) - ${user.username}`)
+    const formattedUsers = stats.map(
+      (user) =>
+        `${user.msgCount} (${((user.msgCount / messagesCount) * 100).toFixed(2)}%) - ${
+          user.username
+        }`,
+    )
     return dedent`Users Statistic:
             All messages: ${String(messagesCount)}
             ${formattedUsers.join('\n')}`
@@ -49,7 +58,9 @@ export const getFormattedChatStatistics = async (chat_id: number): Promise<strin
 type UpdateStatisticsOutput = Promise<void | DocumentClient.PutItemOutput>
 
 export const updateStatistics = async (
-  userInfo?: UserInfo, chat?: Chat): UpdateStatisticsOutput => {
+  userInfo?: UserInfo,
+  chat?: Chat,
+): UpdateStatisticsOutput => {
   const chat_id = chat?.id
 
   if (userInfo && chat_id) {

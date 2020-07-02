@@ -3,8 +3,8 @@ import { invokeLambda } from '../../utils'
 const url = 'https://telegram-bot-ui.drai.now.sh/stats'
 
 interface XRayStats {
-  url: string;
-  image: Buffer;
+  url: string
+  image: Buffer
 }
 
 export const getXRayStats = async (): Promise<XRayStats> => {

@@ -15,11 +15,11 @@ if (!process.env.IS_LOCAL) {
 }
 
 export interface Context extends ContextMessageUpdate {
-  message: Message;
-  chat: Chat;
-  command: string;
-  text: string;
-  replyId: number;
+  message: Message
+  chat: Chat
+  command: string
+  text: string
+  replyId: number
 }
 
 const bot = new Telegraf(process.env.TOKEN as string)
@@ -30,7 +30,9 @@ bot.use(async (ctx: Context, next) => {
     const { message_id, reply_to_message } = message
     if (isBotCommand(message?.entities)) {
       const [command, text] = parseMessage(message.text)
-      const replyId = text ? message_id : (reply_to_message && reply_to_message?.message_id) || message_id
+      const replyId = text
+        ? message_id
+        : (reply_to_message && reply_to_message?.message_id) || message_id
 
       ctx.command = command
       ctx.text = text || get(reply_to_message, 'text', '')

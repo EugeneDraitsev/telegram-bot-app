@@ -6,8 +6,10 @@ const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
 type Image = { mime: string }
 
-const isResponseImage = (headers: Headers): boolean => (headers.get('content-type') || '').split('/')[0] === 'image'
-const filterMimeTypes = (item: Image): boolean => every(['ico', 'svg'], (x) => !includes(item.mime, x))
+const isResponseImage = (headers: Headers): boolean =>
+  (headers.get('content-type') || '').split('/')[0] === 'image'
+const filterMimeTypes = (item: Image): boolean =>
+  every(['ico', 'svg'], (x) => !includes(item.mime, x))
 
 const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
   try {
@@ -37,7 +39,8 @@ const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
 
 export const searchImage = async (query: string): Promise<{ image: Buffer; url: string }> => {
   try {
-    const url = 'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
+    const url =
+      'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
       `&key=${googleSearchToken}&cx=${cxToken}&q=${encodeURI(query)}`
     const response = await fetch(url, { timeout: 5000 }).then((r) => r.json())
 
@@ -53,6 +56,6 @@ export const searchImage = async (query: string): Promise<{ image: Buffer; url: 
     return Promise.reject(new Error(`Google can't find ${query} for you`))
   } catch (e) {
     console.log(e) // eslint-disable-line no-console
-    return Promise.reject(new Error('Can\'t load image to telegram'))
+    return Promise.reject(new Error("Can't load image to telegram"))
   }
 }

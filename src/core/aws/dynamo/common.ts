@@ -1,14 +1,14 @@
 export interface UserStat {
-  id: number;
-  msgCount: number;
-  username: string;
+  id: number
+  msgCount: number
+  username: string
 }
 
 export interface UserInfo {
-  username?: string;
-  first_name?: string;
-  last_name?: string;
-  id: number;
+  username?: string
+  first_name?: string
+  last_name?: string
+  id: number
 }
 
 export const getUserName = (userInfo?: UserInfo): string =>

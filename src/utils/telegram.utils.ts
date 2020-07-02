@@ -4,8 +4,7 @@ import { some, split, toLower } from 'lodash'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isLink = (text = ''): any => text.includes('https://')
 
-export const findCommand = (text = ''): string =>
-  text.replace(/ .*/, '').replace(/@.*/, '')
+export const findCommand = (text = ''): string => text.replace(/ .*/, '').replace(/@.*/, '')
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const checkCommand = (command: string) => (text = ''): any =>

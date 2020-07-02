@@ -15,7 +15,12 @@ const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => (
 })
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const saveEvent = async (userInfo?: UserInfo, chat_id?: number, date = Date.now(), command?: string) => {
+export const saveEvent = async (
+  userInfo?: UserInfo,
+  chat_id?: number,
+  date = Date.now(),
+  command?: string,
+) => {
   if (userInfo && chat_id) {
     const event = {
       userInfo,

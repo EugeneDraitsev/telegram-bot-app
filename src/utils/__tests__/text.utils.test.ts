@@ -11,9 +11,10 @@ describe('dedent', () => {
   test('removes unnecessary spaces after \\n', () => {
     expect(dedent`\n   some redundant\n   spaces here`).toEqual('\nsome redundant\nspaces here')
     expect(dedent('\n   some redundant\n   spaces here')).toEqual('\nsome redundant\nspaces here')
-    expect(dedent(dedent`Users Statistic:
-            All messages: ${String(123123)}`))
-      .toEqual('Users Statistic:\nAll messages: 123123')
+    expect(
+      dedent(dedent`Users Statistic:
+            All messages: ${String(123123)}`),
+    ).toEqual('Users Statistic:\nAll messages: 123123')
   })
 })
 

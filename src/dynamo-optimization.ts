@@ -6,7 +6,7 @@ const sslAgent = new https.Agent({
   keepAlive: true,
   maxSockets: 50,
   rejectUnauthorized: true,
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any
 
 sslAgent.setMaxListeners(0)

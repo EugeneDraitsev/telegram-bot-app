@@ -32,7 +32,8 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
     const { text, replyId } = ctx
     try {
       const { image, url } = await searchImage(text)
-      return await ctx.replyWithPhoto({ source: image }, { reply_to_message_id: replyId })
+      return await ctx
+        .replyWithPhoto({ source: image }, { reply_to_message_id: replyId })
         .catch(() => Promise.reject(new Error(`Can't load ${url} to telegram`)))
     } catch (e) {
       return ctx.reply(e.message, { reply_to_message_id: replyId })
@@ -50,14 +51,15 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
     return ctx.reply(yasno, { reply_to_message_id: ctx.replyId })
   })
 
-  bot.hears(checkCommand('/c'), async (ctx: Context) =>
-    ctx.reply(await getCurrency()))
+  bot.hears(checkCommand('/c'), async (ctx: Context) => ctx.reply(await getCurrency()))
 
   bot.hears(checkCommand('/t'), async (ctx: Context) =>
-    ctx.reply(await translate(ctx.text), { reply_to_message_id: ctx.replyId }))
+    ctx.reply(await translate(ctx.text), { reply_to_message_id: ctx.replyId }),
+  )
 
   bot.hears(checkCommand('/z'), async (ctx: Context) =>
-    ctx.reply(await getFormattedChatStatistics(ctx.chat.id)))
+    ctx.reply(await getFormattedChatStatistics(ctx.chat.id)),
+  )
 
   bot.hears(checkCommand('/s'), async (ctx: Context) => {
     // fetch ssr-render url without await to reduce coldstart
@@ -69,34 +71,36 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
   })
 
   bot.hears(checkCommand('/8'), async (ctx: Context) =>
-    ctx.replyWithSticker(getPrediction(), { reply_to_message_id: ctx.replyId }))
+    ctx.replyWithSticker(getPrediction(), { reply_to_message_id: ctx.replyId }),
+  )
 
-  bot.hears(checkCommand('/v'), async (ctx: Context) =>
-    ctx.reply(await searchYoutube(ctx.text)))
+  bot.hears(checkCommand('/v'), async (ctx: Context) => ctx.reply(await searchYoutube(ctx.text)))
 
-  bot.hears(checkCommand('/w'), async (ctx: Context) =>
-    ctx.reply(await searchWiki(ctx.text)))
+  bot.hears(checkCommand('/w'), async (ctx: Context) => ctx.reply(await searchWiki(ctx.text)))
 
   bot.hears(checkCommand('/dice'), (ctx: Context) =>
-    ctx.replyWithMarkdown(
-      throwDice(parseInt(ctx.text, 10) || 6),
-      { reply_to_message_id: ctx.message.message_id },
-    ))
+    ctx.replyWithMarkdown(throwDice(parseInt(ctx.text, 10) || 6), {
+      reply_to_message_id: ctx.message.message_id,
+    }),
+  )
 
   bot.hears(checkCommand('/p'), async (ctx: Context) =>
-    ctx.replyWithHTML(await getHoroscope(ctx.text), { reply_to_message_id: ctx.replyId }))
+    ctx.replyWithHTML(await getHoroscope(ctx.text), { reply_to_message_id: ctx.replyId }),
+  )
 
   bot.hears(checkCommand('/f'), async (ctx: Context) =>
-    ctx.replyWithMarkdown(
-      await getWeather(ctx.text || 'Минск'),
-      { reply_to_message_id: ctx.message.message_id },
-    ))
+    ctx.replyWithMarkdown(await getWeather(ctx.text || 'Минск'), {
+      reply_to_message_id: ctx.message.message_id,
+    }),
+  )
 
   bot.hears(checkCommand('/all'), async (ctx: Context) =>
-    ctx.reply(await getUsersList(ctx.chat.id, ctx.text), { reply_to_message_id: ctx.replyId }))
+    ctx.reply(await getUsersList(ctx.chat.id, ctx.text), { reply_to_message_id: ctx.replyId }),
+  )
 
   bot.hears(checkCommand('/ps'), (ctx: Context) =>
-    ctx.reply(puntoSwitcher(ctx.text), { reply_to_message_id: ctx.replyId }))
+    ctx.reply(puntoSwitcher(ctx.text), { reply_to_message_id: ctx.replyId }),
+  )
 
   bot.hears(checkCommand('/x'), async (ctx: Context) => {
     const stats = await getXRayStats()
@@ -108,5 +112,6 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
   })
 
   bot.hears(checkCommand('/shrug'), (ctx: Context) =>
-    ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: ctx.replyId }))
+    ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: ctx.replyId }),
+  )
 }

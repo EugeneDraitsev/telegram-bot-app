@@ -7,16 +7,22 @@ const YEARS = {
   2019: '2k19',
 }
 
-const whDate = (): string => { // https://warhammer40k.fandom.com/wiki/Imperial_Dating_System
+const whDate = (): string => {
+  // https://warhammer40k.fandom.com/wiki/Imperial_Dating_System
   const secondsInYear = 31556926
   const secondsInFraction = 31557
-  const currentTimeInSeconds = Math.floor(DateTime.local().setZone('Europe/Minsk').toMillis() / 1000)
+  const currentTimeInSeconds = Math.floor(
+    DateTime.local().setZone('Europe/Minsk').toMillis() / 1000,
+  )
   const yearsFromEpochStart = Math.floor(currentTimeInSeconds / secondsInYear)
   const currentYearStart = yearsFromEpochStart * secondsInYear
   const yearFraction = Math.floor((currentTimeInSeconds - currentYearStart) / secondsInFraction)
   const currentYear = yearsFromEpochStart + 1970
   const millenium = Math.floor(currentYear / 1000) + 1
-  return `0 ${padStart(String(yearFraction), 3, '0')} ${String(currentYear).slice(1, 4)}.M${millenium}`
+  return `0 ${padStart(String(yearFraction), 3, '0')} ${String(currentYear).slice(
+    1,
+    4,
+  )}.M${millenium}`
 }
 
 export const yasnyfy = (text: string): string => {

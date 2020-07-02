@@ -9,13 +9,15 @@ const NOT_FOUND_MESSAGE = 'No videos found'
 
 type YoutubeVideo = {
   id: {
-    videoId: string;
-  };
+    videoId: string
+  }
 }
 
 export async function searchYoutube(query: string): Promise<string> {
   try {
-    const response = await fetch(`${BASE_URL}&key=${YOUTUBE_TOKEN}&q=${encodeURI(query)}&maxResults=${MAX_RESULTS}`)
+    const response = await fetch(
+      `${BASE_URL}&key=${YOUTUBE_TOKEN}&q=${encodeURI(query)}&maxResults=${MAX_RESULTS}`,
+    )
     const json = await response.json()
     const videoIds = compact(map(json.items, (item: YoutubeVideo) => item.id.videoId))
     if (!isEmpty(videoIds)) {

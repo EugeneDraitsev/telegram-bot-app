@@ -49,7 +49,7 @@ const enRu = {
   k: 'л',
   l: 'д',
   ';': 'ж',
-  '\'': 'э',
+  "'": 'э',
   z: 'я',
   x: 'ч',
   c: 'с',
@@ -63,16 +63,16 @@ const enRu = {
   '&': '?',
 }
 
-const ruEn = Object.keys(enRu).reduce(
-  (obj, key) => {
-    // eslint-disable-next-line no-param-reassign
-    obj[enRu[key]] = key
-    return obj
-  },
-  {},
-)
+const ruEn = Object.keys(enRu).reduce((obj, key) => {
+  // eslint-disable-next-line no-param-reassign
+  obj[enRu[key]] = key
+  return obj
+}, {})
 
 export const puntoSwitcher = (text: string): string => {
   const charsToSwitch = hasRussiansLetters(text) ? ruEn : enRu
-  return text.split('').map((char) => (charsToSwitch[char] ? charsToSwitch[char] : char)).join('')
+  return text
+    .split('')
+    .map((char) => (charsToSwitch[char] ? charsToSwitch[char] : char))
+    .join('')
 }

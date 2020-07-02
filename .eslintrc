@@ -1,5 +1,5 @@
 {
-  "extends": ["plugin:@typescript-eslint/recommended", "airbnb-base"],
+  "extends": ["plugin:@typescript-eslint/recommended", "airbnb-base", "prettier"],
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint", "jest"],
   "env": {
@@ -12,15 +12,9 @@
     "import/resolver": {"node": {"extensions": [".js", ".jsx", ".ts", ".tsx", ".json"]}}
   },
   "rules": {
-    "semi": ["error", "never"],
-    "max-len": ["error", 120],
-    "object-curly-newline": ["error", {"consistent": true}],
     "import/extensions": ["error", "ignorePackages", {"js": "never", "jsx": "never", "ts": "never", "tsx": "never"}],
     "@typescript-eslint/camelcase": "off",
-    "operator-linebreak": "off",
-    "implicit-arrow-linebreak": "off",
     "import/prefer-default-export": "off",
-    "newline-per-chained-call": "off",
     "camelcase": "off"
   }
 }

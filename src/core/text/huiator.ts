@@ -1,12 +1,18 @@
 import { findIndex, map } from 'lodash'
 
 const consonants = ['бвгджзйклмнпрстфхчцшщ']
-const patterns = [new RegExp(`^[${consonants}]*[оеёэ]`, 'i'), new RegExp(`^[${consonants}]*[ую]`, 'i'),
-  new RegExp(`^[${consonants}]*[ая]`, 'i'), new RegExp(`^[${consonants}]*[иы]`, 'i')]
+const patterns = [
+  new RegExp(`^[${consonants}]*[оеёэ]`, 'i'),
+  new RegExp(`^[${consonants}]*[ую]`, 'i'),
+  new RegExp(`^[${consonants}]*[ая]`, 'i'),
+  new RegExp(`^[${consonants}]*[иы]`, 'i'),
+]
 const mainPattern = new RegExp(`^[${consonants}]*.`, 'i')
 
 const capitalize = (capitalization: boolean[], word: string): string =>
-  map(word, (letter, index) => (capitalization[index] ? letter.toUpperCase() : letter.toLowerCase())).join('')
+  map(word, (letter, index) =>
+    capitalization[index] ? letter.toUpperCase() : letter.toLowerCase(),
+  ).join('')
 
 const huifyWord = (word: string): string => {
   if (word.length > 2) {
@@ -27,4 +33,5 @@ const huifyWord = (word: string): string => {
   return word
 }
 
-export const huify = (text: string): string => (text && text.replace ? text.replace(/[А-Я0-9]+/ig, huifyWord) : text)
+export const huify = (text: string): string =>
+  text && text.replace ? text.replace(/[А-Я0-9]+/gi, huifyWord) : text
