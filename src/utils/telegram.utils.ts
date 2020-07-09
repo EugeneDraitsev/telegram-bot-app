@@ -1,4 +1,4 @@
-import { MessageEntity } from 'telegram-typings'
+import { Chat, MessageEntity, User } from 'telegram-typings'
 import { some, split, toLower } from 'lodash'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,3 +18,10 @@ export const parseMessage = (text = ''): [string, string] => {
   const parsedText = split(text, ' ').slice(1).join(' ')
   return [command, parsedText]
 }
+
+export const getUserName = (user?: User | Chat): string =>
+  user?.username ||
+  `${user?.first_name || ''} ${user?.last_name || ''}`.trim() ||
+  String(user?.id ?? 'Unknown Chat')
+
+export const getChatName = (chat: Chat): string => chat?.title || getUserName(chat)

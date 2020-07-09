@@ -1,9 +1,9 @@
 import { find, orderBy, first } from 'lodash'
 import { DocumentClient } from 'aws-sdk/lib/dynamodb/document_client'
-import { Chat } from 'telegram-typings'
+import { Chat, User } from 'telegram-typings'
 
-import { dedent, dynamoPutItem, dynamoQuery } from '../../../utils'
-import { getUserName, UserInfo, UserStat } from '.'
+import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../../utils'
+import { UserStat } from '../../../types'
 
 interface ChatStat {
   users: UserStat[]
@@ -57,10 +57,7 @@ export const getFormattedChatStatistics = async (chat_id: number): Promise<strin
 
 type UpdateStatisticsOutput = Promise<void | DocumentClient.PutItemOutput>
 
-export const updateStatistics = async (
-  userInfo?: UserInfo,
-  chat?: Chat,
-): UpdateStatisticsOutput => {
+export const updateStatistics = async (userInfo?: User, chat?: Chat): UpdateStatisticsOutput => {
   const chat_id = chat?.id
 
   if (userInfo && chat_id) {

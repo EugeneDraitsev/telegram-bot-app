@@ -1,6 +1,14 @@
-import { MessageEntity } from 'telegram-typings'
+import { Chat, MessageEntity, User } from 'telegram-typings'
 
-import { findCommand, isLink, parseMessage, checkCommand, isBotCommand } from '..'
+import {
+  findCommand,
+  isLink,
+  parseMessage,
+  checkCommand,
+  isBotCommand,
+  getUserName,
+  getChatName,
+} from '..'
 
 describe('findCommand must works as designed', () => {
   test('findCommand must properly commands from first word in message or string ending with @', () => {
@@ -54,5 +62,15 @@ describe('isBotCommand', () => {
     expect(isBotCommand([{ type: 'bot_command' }] as MessageEntity[])).toEqual(true)
     expect(isBotCommand([])).toEqual(false)
     expect(isBotCommand()).toEqual(false)
+  })
+})
+
+describe('getUserName', () => {
+  it('should return correct user name, if it exists', () => {
+    expect(getUserName({ first_name: 'User', last_name: 'Name' } as User)).toEqual('User Name')
+    expect(getUserName({ username: 'UserName' } as Chat)).toEqual('UserName')
+  })
+  it('should return "Unknown Chat" if name doesn\'t exist', () => {
+    expect(getChatName({} as Chat)).toEqual('Unknown Chat')
   })
 })

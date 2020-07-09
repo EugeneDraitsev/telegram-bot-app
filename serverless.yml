@@ -51,9 +51,11 @@ plugins:
 custom:
   serverless-offline:
     httpPort: 4000
-  custom:
-    webpack:
-      packager: 'yarn'
+  webpack:
+    includeModules:
+      forceExclude:
+        - aws-sdk
+    packager: 'yarn'
 
 resources:
   ${file(resources.yml)}
