@@ -1,8 +1,9 @@
 import { Lambda } from 'aws-sdk'
-import { random } from 'lodash'
+import { chain, random, groupBy } from 'lodash'
+import { User } from 'telegram-typings'
 
-import { dynamoPutItem, invokeLambda } from '../../../utils'
-import { UserInfo } from '.'
+import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../../utils'
+import { ChatEvent } from '../../../types'
 
 const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => ({
   FunctionName: 'telegram-websockets-prod-broadcastStats',
@@ -14,13 +15,12 @@ const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => (
   }),
 })
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const saveEvent = async (
-  userInfo?: UserInfo,
+  userInfo?: User,
   chat_id?: number,
   date = Date.now(),
   command?: string,
-) => {
+): Promise<void> => {
   if (userInfo && chat_id) {
     const event = {
       userInfo,
@@ -35,8 +35,31 @@ export const saveEvent = async (
       Item: event,
     }
 
-    return Promise.all([dynamoPutItem(params), invokeLambda(getBroadcastParams(chat_id))])
+    await Promise.all([dynamoPutItem(params), invokeLambda(getBroadcastParams(chat_id))])
   }
+}
 
-  return Promise.resolve()
+const DAY = 1000 * 60 * 60 * 24
+
+export const get24hChatStats = async (chatId: string | number): Promise<User[]> => {
+  const { Items } = await dynamoQuery({
+    TableName: 'chat-events',
+    KeyConditionExpression: 'chatId = :chatId AND #date > :date',
+    ExpressionAttributeValues: {
+      ':chatId': String(Number(chatId)),
+      ':date': Date.now() - DAY,
+    },
+    ExpressionAttributeNames: { '#date': 'date' },
+  })
+
+  const data = Items as ChatEvent[]
+
+  const groupedMessages = groupBy(data, (x) => x.userInfo.id)
+
+  return chain(data)
+    .map((x) => x.userInfo)
+    .uniqBy('id')
+    .map((x) => ({ ...x, messages: groupedMessages[x.id].length }))
+    .orderBy('messages', 'desc')
+    .value()
 }

@@ -33,3 +33,7 @@ export const normalize = (str: string): string =>
     .replace(/<(.|\n)*?>/g, '')
     .replace(/\s\s+/g, ' ')
     .trim()
+
+export const sanitizeSvg = (html: string): string => {
+  return html.replace(/<(div|\/div)[^>]*>/g, '')
+}
