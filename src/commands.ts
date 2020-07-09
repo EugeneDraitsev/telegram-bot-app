@@ -1,15 +1,13 @@
 import Telegraf, { Context as ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
 import fetch from 'node-fetch'
-import sharp from 'sharp'
 
 import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
-import { checkCommand, isLink, sanitizeSvg } from './utils'
+import { checkCommand, getChatName, isLink } from './utils'
 import { Context } from '.'
 import { searchImage, searchYoutube } from './core/google'
 import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './core/text'
 import {
-  get24hChatStats,
   getCurrency,
   getFormattedChatStatistics,
   getHoroscope,
@@ -20,14 +18,12 @@ import {
   searchWiki,
   translate,
 } from './core'
-import { getDailyUsersBarsSvg } from './charts/daily-users-bars.component'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(isLink, (ctx, next) => {
     if (ctx.message && random(0, 100) > 99.5) {
       ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
     }
-    // eslint-disable-next-line no-unused-expressions
     next?.()
   })
 
@@ -65,35 +61,42 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
   )
 
   bot.hears(checkCommand('/s'), async (ctx: Context) => {
-    try {
-      const chatData = await get24hChatStats(ctx.chat.id)
-      const html = getDailyUsersBarsSvg(chatData)
-      const svg = sanitizeSvg(html)
+    // fetch ssr-render url without await to reduce coldstart
+    fetch(`https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`).catch(noop)
+    const chatName = getChatName(ctx.chat)
 
-      const image = await sharp(Buffer.from(svg))
-        .resize(1200, 400)
-        .flatten({ background: '#fff' })
-        .png()
-        .toBuffer()
+    return ctx.replyWithHTML(
+      `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
+      { reply_to_message_id: ctx.replyId },
+    )
 
-      return ctx.replyWithPhoto(
-        {
-          source: image,
-          filename: 'stats.png',
-        },
-        {
-          reply_to_message_id: ctx.replyId,
-          caption: `Last 24h chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
-        },
-      )
-    } catch (e) {
-      // fetch ssr-render url without await to reduce coldstart
-      fetch(`https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`).catch(noop)
-      return ctx.replyWithHTML(
-        `Last 24h chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
-        { reply_to_message_id: ctx.replyId },
-      )
-    }
+    // try {
+    //   const chatData = await get24hChatStats(ctx.chat.id)
+    //   const html = getDailyUsersBarsSvg(chatData)
+    //   const svg = sanitizeSvg(html)
+    //
+    //   const image = await sharp(Buffer.from(svg))
+    //     .resize(1200, 400)
+    //     .flatten({ background: '#fff' })
+    //     .png()
+    //     .toBuffer()
+    //
+    //   return ctx.replyWithPhoto(
+    //     {
+    //       source: image,
+    //       filename: 'stats.png',
+    //     },
+    //     {
+    //       reply_to_message_id: ctx.replyId,
+    //       caption: `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
+    //     },
+    //   )
+    // } catch (e) {
+    //   return ctx.replyWithHTML(
+    //     `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
+    //     { reply_to_message_id: ctx.replyId },
+    //   )
+    // }
   })
 
   bot.hears(checkCommand('/8'), async (ctx: Context) =>
