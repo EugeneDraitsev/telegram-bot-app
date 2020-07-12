@@ -1,13 +1,15 @@
 import Telegraf, { Context as ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
 import fetch from 'node-fetch'
+import sharp from 'sharp'
 
 import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
-import { checkCommand, getChatName, isLink } from './utils'
+import { checkCommand, getChatName, isLink, sanitizeSvg } from './utils'
 import { Context } from '.'
 import { searchImage, searchYoutube } from './core/google'
 import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './core/text'
 import {
+  get24hChatStats,
   getCurrency,
   getFormattedChatStatistics,
   getHoroscope,
@@ -18,6 +20,7 @@ import {
   searchWiki,
   translate,
 } from './core'
+import { getDailyUsersBarsSvg } from './charts/daily-users-bars.component'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(isLink, (ctx, next) => {
@@ -65,38 +68,33 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
     fetch(`https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`).catch(noop)
     const chatName = getChatName(ctx.chat)
 
-    return ctx.replyWithHTML(
-      `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
-      { reply_to_message_id: ctx.replyId },
-    )
+    try {
+      const chatData = await get24hChatStats(ctx.chat.id)
+      const html = getDailyUsersBarsSvg(chatData)
+      const svg = sanitizeSvg(html)
 
-    // try {
-    //   const chatData = await get24hChatStats(ctx.chat.id)
-    //   const html = getDailyUsersBarsSvg(chatData)
-    //   const svg = sanitizeSvg(html)
-    //
-    //   const image = await sharp(Buffer.from(svg))
-    //     .resize(1200, 400)
-    //     .flatten({ background: '#fff' })
-    //     .png()
-    //     .toBuffer()
-    //
-    //   return ctx.replyWithPhoto(
-    //     {
-    //       source: image,
-    //       filename: 'stats.png',
-    //     },
-    //     {
-    //       reply_to_message_id: ctx.replyId,
-    //       caption: `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
-    //     },
-    //   )
-    // } catch (e) {
-    //   return ctx.replyWithHTML(
-    //     `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
-    //     { reply_to_message_id: ctx.replyId },
-    //   )
-    // }
+      const image = await sharp(Buffer.from(svg))
+        .resize(1200, 400)
+        .flatten({ background: '#fff' })
+        .png()
+        .toBuffer()
+
+      return ctx.replyWithPhoto(
+        {
+          source: image,
+          filename: 'stats.png',
+        },
+        {
+          reply_to_message_id: ctx.replyId,
+          caption: `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
+        },
+      )
+    } catch (e) {
+      return ctx.replyWithHTML(
+        `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
+        { reply_to_message_id: ctx.replyId },
+      )
+    }
   })
 
   bot.hears(checkCommand('/8'), async (ctx: Context) =>

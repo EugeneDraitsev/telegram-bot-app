@@ -21,6 +21,7 @@ provider:
     FIXER_API_KEY: ${env:FIXER_API_KEY, file(./config.json):FIXER_API_KEY}
     IS_LOCAL: ${env:IS_LOCAL}
     RECAP_DEV_SYNC_ENDPOINT: ${env:RECAP_DEV_SYNC_ENDPOINT, file(./config.json):RECAP_DEV_SYNC_ENDPOINT}
+    FONTCONFIG_PATH: './fonts'
     region: eu-central-1
   iamRoleStatements:
     ${file(roleStatements.yml)}

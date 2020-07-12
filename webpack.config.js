@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const path = require('path')
 const slsw = require('serverless-webpack')
+const CopyPlugin = require('copy-webpack-plugin')
 
 module.exports = {
   entry: slsw.lib.entries,
@@ -30,6 +31,11 @@ module.exports = {
       },
     ],
   },
+  plugins: [
+    new CopyPlugin({
+      patterns: [{ from: 'fonts', to: 'fonts' }],
+    }),
+  ],
   resolve: {
     extensions: ['.tsx', '.ts', '.js', '.jsx'],
   },
