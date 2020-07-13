@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-var-requires,import/no-extraneous-dependencies */
 const path = require('path')
 const slsw = require('serverless-webpack')
 const CopyPlugin = require('copy-webpack-plugin')
