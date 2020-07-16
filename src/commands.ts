@@ -24,7 +24,7 @@ import { getDailyUsersBarsSvg } from './charts/daily-users-bars.component'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(isLink, (ctx, next) => {
-    if (ctx.message && random(0, 100) > 99.5) {
+    if (ctx.message && random(0, 100, true) > 99.7) {
       ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
     }
     next?.()
