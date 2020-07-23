@@ -1,4 +1,5 @@
-import fetch from 'node-fetch'
+import axios from 'axios'
+
 import { hasRussiansLetters } from '../utils'
 
 export const searchWiki = async (query: string): Promise<string> => {
@@ -9,8 +10,8 @@ export const searchWiki = async (query: string): Promise<string> => {
   )}`
 
   try {
-    const response = await fetch(url)
-    const result = await response.json()
+    const response = await axios(url)
+    const result = response.data
     return result[3][0] || `Failed to find article for term: ${query}`
   } catch (e) {
     return 'Wiki error'

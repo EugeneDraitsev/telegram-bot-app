@@ -1,5 +1,5 @@
 import { every, filter, get, includes, sample } from 'lodash'
-import fetch, { Headers } from 'node-fetch'
+import axios from 'axios'
 
 const googleSearchToken = process.env.GOOGLE_SEARCH_TOKEN || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
@@ -7,16 +7,16 @@ const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 type Image = { mime: string }
 
 const isResponseImage = (headers: Headers): boolean =>
-  (headers.get('content-type') || '').split('/')[0] === 'image'
+  (headers['content-type'] || '').split('/')[0] === 'image'
 const filterMimeTypes = (item: Image): boolean =>
   every(['ico', 'svg'], (x) => !includes(item.mime, x))
 
 const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
   try {
-    const imageResponse = await fetch(url, { timeout: 10000 })
+    const imageResponse = await axios(url, { timeout: 10000, responseType: 'arraybuffer' })
 
     if (isResponseImage(imageResponse.headers)) {
-      return imageResponse.buffer()
+      return Buffer.from(imageResponse.data)
     }
   } catch (e) {
     console.log('Failed to load image. Trying to load TabUrl') // eslint-disable-line no-console
@@ -24,10 +24,10 @@ const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
 
   try {
     if (tbUrl) {
-      const tabImageResponse = await fetch(tbUrl, { timeout: 5000 })
+      const tabImageResponse = await axios(tbUrl, { timeout: 5000, responseType: 'arraybuffer' })
 
       if (isResponseImage(tabImageResponse.headers)) {
-        return tabImageResponse.buffer()
+        return Buffer.from(tabImageResponse.data)
       }
     }
     throw new Error()
@@ -42,7 +42,7 @@ export const searchImage = async (query: string): Promise<{ image: Buffer; url: 
     const url =
       'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
       `&key=${googleSearchToken}&cx=${cxToken}&q=${encodeURI(query)}`
-    const response = await fetch(url, { timeout: 5000 }).then((r) => r.json())
+    const response = await axios(url, { timeout: 5000 }).then((r) => r.data)
 
     if (get(response, 'items.length') > 0) {
       const image = sample(filter(response.items, filterMimeTypes))

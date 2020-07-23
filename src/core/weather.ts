@@ -1,5 +1,5 @@
 import { get } from 'lodash'
-import fetch from 'node-fetch'
+import axios from 'axios'
 
 const weatherToken = process.env.OPENWEATHERMAP_TOKEN || 'set_your_token'
 
@@ -560,8 +560,8 @@ const getFlag = (value: string): string => get(flags, regions.indexOf(value.toUp
 export const getWeather = async (location: string): Promise<string> => {
   try {
     const [infoForecast, infoNow] = await Promise.all([
-      fetch(getWeatherUrlForecast(location), { timeout: 5000 }).then((x) => x.json()),
-      fetch(getWeatherUrlNow(location), { timeout: 5000 }).then((x) => x.json()),
+      axios(getWeatherUrlForecast(location), { timeout: 5000 }).then((x) => x.data),
+      axios(getWeatherUrlNow(location), { timeout: 5000 }).then((x) => x.data),
     ])
 
     const city = infoForecast.city.name

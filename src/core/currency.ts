@@ -1,5 +1,5 @@
 import { includes, map, round } from 'lodash'
-import fetch from 'node-fetch'
+import axios from 'axios'
 
 const fccApiKey = process.env.FCC_API_KEY || 'set_your_token'
 const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
@@ -9,11 +9,11 @@ const timeout = 15000
 const getRussianCurrency = async (): Promise<string> => {
   const currencyCodes = ['usd', 'eur']
   const medusaUrl = 'https://meduza.io/api/v3/stock/all'
-  const nasdaqUrl = 'https://api.nasdaq.com/api/quote/BZ%3ANMX/summary?assetclass=commodities'
+  const nasdaqUrl = 'https://api.nasdaq.com/api/quote/BZ%3ANMX/info?assetclass=commoditie'
 
   const [currency, brent] = await Promise.all([
-    fetch(medusaUrl, { timeout }).then((x) => x.json()),
-    fetch(nasdaqUrl, { timeout }).then((x) => x.json()),
+    axios(medusaUrl, { timeout }).then((x) => x.data),
+    axios(nasdaqUrl, { timeout: 5000 }).then((x) => x.data),
   ])
 
   const brentPrice = brent?.data?.summaryData?.LastSalePrice?.value ?? currency?.brent?.current
@@ -26,14 +26,16 @@ const getRussianCurrency = async (): Promise<string> => {
       '',
     )
 
-  return `Курсы медузы:\n${currencyString}BRENT: ${brentPrice}\n`
+  const brentString = brentPrice ? `BRENT: ${brentPrice}\n` : ''
+
+  return `Курсы медузы:\n${currencyString}${brentString}`
 }
 
 const getFreeCurrencyData = async (): Promise<string> => {
   const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK'].join(',')
   const url = `https://free.currconv.com/api/v7/convert?compact=y&apiKey=${fccApiKey}&q=${currencies}`
 
-  const result = await fetch(url, { timeout }).then((x) => x.json())
+  const result = await axios(url, { timeout }).then((x) => x.data)
 
   if (result.error) {
     throw new Error(result.error)
@@ -49,7 +51,7 @@ const getFreeCurrencyData = async (): Promise<string> => {
 
 const getFixerData = async (): Promise<string> => {
   const url = `http://data.fixer.io/api/latest?access_key=${fixerKey}&format=1&base=EUR`
-  const { rates } = await fetch(url, { timeout }).then((x) => x.json())
+  const { rates } = await axios(url, { timeout }).then((x) => x.data)
 
   return `Курсы fixer:\
           \nUSD/BYN: ${round(rates.BYN / rates.USD, 3)}\
@@ -61,8 +63,8 @@ const getFixerData = async (): Promise<string> => {
 
 const getCryptoCurrency = async (): Promise<string> => {
   const url = 'https://poloniex.com/public?command=returnTicker'
-  const response = await fetch(url, { timeout })
-  const currency = await response.json()
+  const response = await axios(url, { timeout })
+  const currency = response.data
   const filteredCurrency = {
     BTC: `${round(currency.USDT_BTC.highestBid)} / ${round(currency.USDT_BTC.lowestAsk)}`,
     ETH: `${round(currency.USDT_ETH.highestBid, 2)} / ${round(currency.USDT_ETH.lowestAsk, 2)}`,
@@ -77,7 +79,7 @@ const getCryptoCurrency = async (): Promise<string> => {
 const getError = (err: Error, from: string): string => {
   // eslint-disable-next-line no-console
   console.log(err)
-  return `Can't fetch currency from ${from}`
+  return `Can't fetch currency from ${from}\n`
 }
 
 const getMainCurrencies = async (): Promise<string> => {

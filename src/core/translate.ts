@@ -1,5 +1,5 @@
 import { first } from 'lodash'
-import fetch from 'node-fetch'
+import axios from 'axios'
 import { URLSearchParams } from 'url'
 
 import { hasRussiansLetters } from '../utils'
@@ -14,11 +14,8 @@ export async function translate(text: string): Promise<string> {
   body.append('text', text)
 
   try {
-    const result = await fetch('https://translate.yandex.net/api/v1.5/tr.json/translate', {
-      body,
-      method: 'POST',
-    })
-    const response = await result.json()
+    const result = await axios.post('https://translate.yandex.net/api/v1.5/tr.json/translate', body)
+    const response = await result.data
     return first(response.text) as string
   } catch (e) {
     return 'Error from translation service'

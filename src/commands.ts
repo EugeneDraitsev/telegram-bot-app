@@ -1,6 +1,6 @@
 import Telegraf, { Context as ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
-import fetch from 'node-fetch'
+import axios from 'axios'
 import sharp from 'sharp'
 
 import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
@@ -65,7 +65,7 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/s'), async (ctx: Context) => {
     // fetch ssr-render url without await to reduce coldstart
-    fetch(`https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`).catch(noop)
+    axios(`https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`).catch(noop)
     const chatName = getChatName(ctx.chat)
 
     try {

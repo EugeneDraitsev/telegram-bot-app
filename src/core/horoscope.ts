@@ -1,4 +1,5 @@
-import fetch from 'node-fetch'
+import axios from 'axios'
+
 import { normalize } from '../utils'
 
 const rus = [
@@ -46,8 +47,8 @@ export const getHoroscope = async (query: string): Promise<string> => {
     }
 
     const [today, tomorrow] = await Promise.all([
-      fetch(urlToday, { timeout: 10000 }).then((x) => x.json()),
-      fetch(urlTomorrow, { timeout: 10000 }).then((x) => x.json()),
+      axios(urlToday, { timeout: 10000 }).then((x) => x.data),
+      axios(urlTomorrow, { timeout: 10000 }).then((x) => x.data),
     ])
 
     return `<b>Сегодня:</b>\n\n${normalize(today.text)}\n
