@@ -1,4 +1,4 @@
-import { includes, map, round } from 'lodash'
+import { includes, map, round, noop } from 'lodash'
 import axios from 'axios'
 
 const fccApiKey = process.env.FCC_API_KEY || 'set_your_token'
@@ -11,12 +11,15 @@ const getRussianCurrency = async (): Promise<string> => {
   const medusaUrl = 'https://meduza.io/api/v3/stock/all'
   const nasdaqUrl = 'https://api.nasdaq.com/api/quote/BZ%3ANMX/info?assetclass=commoditie'
 
-  const [currency, brent] = await Promise.all([
-    axios(medusaUrl, { timeout }).then((x) => x.data),
-    axios(nasdaqUrl, { timeout: 5000 }).then((x) => x.data),
-  ])
+  const currency = await axios(medusaUrl, { timeout })
+    .then((x) => x.data)
+    .catch(noop)
 
-  const brentPrice = brent?.data?.summaryData?.LastSalePrice?.value ?? currency?.brent?.current
+  const brentPrice =
+    currency?.brent?.current ||
+    (await axios(nasdaqUrl, { timeout: 5000 })
+      .then((x) => x.data?.summaryData?.LastSalePrice?.value)
+      .catch(noop))
 
   const currencyString = Object.keys(currency)
     .filter((curr) => includes(currencyCodes, curr))
