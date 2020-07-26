@@ -38,6 +38,10 @@ const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
 }
 
 export const searchImage = async (query: string): Promise<{ image: Buffer; url: string }> => {
+  if (!query) {
+    return Promise.reject(new Error("We can't search with an empty text message"))
+  }
+
   try {
     const url =
       'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
