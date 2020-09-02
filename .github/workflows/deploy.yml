@@ -26,7 +26,6 @@ jobs:
           GOOGLE_API_KEY: ${{secrets.GOOGLE_API_KEY}}
           OPENWEATHERMAP_TOKEN: ${{secrets.OPENWEATHERMAP_TOKEN}}
           TOKEN: ${{secrets.TOKEN}}
-          TRANSLATION_APP_TOKEN: ${{secrets.TRANSLATION_APP_TOKEN}}
           YOUTUBE_TOKEN: ${{secrets.YOUTUBE_TOKEN}}
           FCC_API_KEY: ${{secrets.FCC_API_KEY}}
           FIXER_API_KEY: ${{secrets.FIXER_API_KEY}}
