@@ -12,7 +12,7 @@ provider:
     lambda: true
   environment:
     GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN, file(./config.json):GOOGLE_CX_TOKEN}
-    GOOGLE_SEARCH_TOKEN: ${env:GOOGLE_SEARCH_TOKEN, file(./config.json):GOOGLE_SEARCH_TOKEN}
+    GOOGLE_API_KEY: ${env:GOOGLE_API_KEY, file(./config.json):GOOGLE_API_KEY}
     OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN, file(./config.json):OPENWEATHERMAP_TOKEN}
     TOKEN: ${env:TOKEN, file(./config.json):TOKEN}
     FCC_API_KEY: ${env:FCC_API_KEY, file(./config.json):FCC_API_KEY}
