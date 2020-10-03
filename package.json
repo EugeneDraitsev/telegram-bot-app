@@ -68,12 +68,12 @@
     "jest": "^26.4.2",
     "jest-mock-axios": "^4.2.1",
     "prettier": "^2.1.2",
-    "serverless": "^1.83.0",
+    "serverless": "^2.4.0",
     "serverless-offline": "^6.8.0",
     "serverless-webpack": "^5.3.5",
     "telegram-typings": "^4.0.0-beta",
     "typescript": "^4.0.3",
-    "webpack": "^5.0.0-beta.28"
+    "webpack": "^5.0.0-rc.3"
   },
   "jest": {
     "testEnvironment": "node",

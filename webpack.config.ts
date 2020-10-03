@@ -24,6 +24,16 @@ module.exports = {
           },
         ],
       },
+      {
+        test: /\.m?js/,
+        resolve: {
+          fullySpecified: false,
+        },
+      },
+      {
+        test: /sandwich-stream\.m?js/,
+        type: 'javascript/auto',
+      },
     ],
   },
   plugins: [
