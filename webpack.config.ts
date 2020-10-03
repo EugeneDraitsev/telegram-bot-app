@@ -38,7 +38,10 @@ module.exports = {
   },
   plugins: [
     new CopyPlugin({
-      patterns: [{ from: 'fonts', to: 'fonts' }],
+      patterns: [
+        { from: 'fonts', to: 'fonts' },
+        { from: 'node_modules/sharp', to: 'node_modules/sharp' },
+      ],
     }),
   ],
   resolve: {
