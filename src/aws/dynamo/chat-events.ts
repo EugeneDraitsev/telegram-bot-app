@@ -2,8 +2,8 @@ import { Lambda } from 'aws-sdk'
 import { chain, random, groupBy } from 'lodash'
 import { User } from 'telegram-typings'
 
-import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../../utils'
-import { ChatEvent } from '../../../types'
+import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
+import { ChatEvent } from '../../types'
 
 const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => ({
   FunctionName: 'telegram-websockets-prod-broadcastStats',

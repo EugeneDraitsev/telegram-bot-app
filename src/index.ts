@@ -6,7 +6,7 @@ import { captureAWS } from 'aws-xray-sdk'
 import { get } from 'lodash'
 
 import { isBotCommand, parseMessage } from './utils'
-import { saveEvent, updateChatMetaData, updateStatistics } from './core'
+import { saveEvent, updateChatMetaData, updateStatistics } from './aws'
 import setupCommands from './commands'
 import './dynamo-optimization'
 

@@ -2,8 +2,8 @@ import { find, orderBy, first } from 'lodash'
 import { DocumentClient } from 'aws-sdk/lib/dynamodb/document_client'
 import { Chat, User } from 'telegram-typings'
 
-import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../../utils'
-import { UserStat } from '../../../types'
+import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
+import { UserStat } from '../../types'
 
 interface ChatStat {
   users: UserStat[]

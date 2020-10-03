@@ -1,4 +1,4 @@
-import { hasRussiansLetters } from '../../utils'
+import { hasRussiansLetters } from '../utils'
 
 const enRu = {
   Q: 'Й',

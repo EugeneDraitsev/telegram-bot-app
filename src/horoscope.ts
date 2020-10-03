@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-import { normalize } from '../utils'
+import { normalize } from './utils'
 
 const rus = [
   'овен',

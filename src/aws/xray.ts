@@ -1,4 +1,4 @@
-import { invokeLambda } from '../../utils'
+import { invokeLambda } from '../utils'
 
 const url = 'https://telegram-bot-ui.drai.now.sh/stats'
 

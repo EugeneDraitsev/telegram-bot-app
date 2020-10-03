@@ -6,20 +6,14 @@ import sharp from 'sharp'
 import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
 import { checkCommand, getChatName, isLink, sanitizeSvg } from './utils'
 import { Context } from '.'
-import { searchImage, searchYoutube } from './core/google'
-import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './core/text'
-import {
-  get24hChatStats,
-  getCurrency,
-  getFormattedChatStatistics,
-  getHoroscope,
-  getPrediction,
-  getUsersList,
-  getWeather,
-  getXRayStats,
-  searchWiki,
-  translate,
-} from './core'
+import { translate, searchImage, searchYoutube } from './google'
+import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './text'
+import { get24hChatStats, getFormattedChatStatistics, getUsersList, getXRayStats } from './aws'
+import { searchWiki } from './wiki'
+import { getCurrency } from './currency'
+import { getPrediction } from './magic8ball'
+import { getHoroscope } from './horoscope'
+import { getWeather } from './weather'
 import { getDailyUsersBarsSvg } from './charts/daily-users-bars.component'
 
 export default (bot: Telegraf<ContextMessageUpdate>): void => {

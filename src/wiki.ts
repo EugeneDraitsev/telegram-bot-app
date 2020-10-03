@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-import { hasRussiansLetters } from '../utils'
+import { hasRussiansLetters } from './utils'
 
 export const searchWiki = async (query: string): Promise<string> => {
   const lang = hasRussiansLetters(query) ? 'ru' : 'en'

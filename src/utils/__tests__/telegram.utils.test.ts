@@ -17,6 +17,7 @@ describe('findCommand must works as designed', () => {
     expect(findCommand('/g@draiBot')).toEqual('/g')
     expect(findCommand('g')).toEqual('g')
     expect(findCommand(undefined)).toEqual('')
+    expect(findCommand('/t multi \n\n\r line')).toEqual('/t')
   })
 })
 

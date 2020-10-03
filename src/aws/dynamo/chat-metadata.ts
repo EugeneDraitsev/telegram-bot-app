@@ -1,4 +1,4 @@
-import { invokeLambda } from '../../../utils'
+import { invokeLambda } from '../../utils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const updateChatMetaData = async (chatId?: number): Promise<any> => {
