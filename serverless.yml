@@ -54,6 +54,8 @@ custom:
   webpack:
     webpackConfig: ./webpack.config.ts
     includeModules:
+      forceInclude:
+        - sharp
       forceExclude:
         - aws-sdk
     packager: 'yarn'

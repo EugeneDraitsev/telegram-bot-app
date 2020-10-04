@@ -13,7 +13,7 @@ module.exports = {
     path: path.join(__dirname, '.webpack'),
     filename: '[name].js',
   },
-  externals: [{ 'aws-sdk': 'commonjs aws-sdk', sharp: 'sharp' }],
+  externals: [{ 'aws-sdk': 'commonjs aws-sdk', sharp: 'commonjs sharp' }],
   module: {
     rules: [
       {
@@ -38,10 +38,7 @@ module.exports = {
   },
   plugins: [
     new CopyPlugin({
-      patterns: [
-        { from: 'fonts', to: 'fonts' },
-        { from: 'node_modules/sharp', to: 'node_modules/sharp' },
-      ],
+      patterns: [{ from: 'fonts', to: 'fonts' }],
     }),
   ],
   resolve: {
