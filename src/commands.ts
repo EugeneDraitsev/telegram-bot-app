@@ -16,7 +16,7 @@ import { getHoroscope } from './horoscope'
 import { getWeather } from './weather'
 import { getDailyUsersBarsSvg } from './charts/daily-users-bars.component'
 
-export default (bot: Telegraf<ContextMessageUpdate>): void => {
+const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(isLink, (ctx, next) => {
     if (ctx.message && random(0, 100, true) > 99.7) {
       ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
@@ -136,3 +136,5 @@ export default (bot: Telegraf<ContextMessageUpdate>): void => {
     ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: ctx.replyId }),
   )
 }
+
+export default commands
