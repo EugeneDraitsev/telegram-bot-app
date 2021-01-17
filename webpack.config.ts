@@ -2,7 +2,7 @@
 const path = require('path')
 const slsw = require('serverless-webpack')
 const CopyPlugin = require('copy-webpack-plugin')
-const ESBuildPlugin = require('esbuild-webpack-plugin').default
+// const ESBuildPlugin = require('esbuild-webpack-plugin').default
 
 module.exports = {
   entry: slsw.lib.entries,
@@ -14,9 +14,9 @@ module.exports = {
     path: path.join(__dirname, '.webpack'),
     filename: '[name].js',
   },
-  optimization: {
-    minimizer: [new ESBuildPlugin()],
-  },
+  // optimization: {
+  //   minimizer: [new ESBuildPlugin()],
+  // },
   externals: [{ 'aws-sdk': 'commonjs aws-sdk', sharp: 'commonjs sharp' }],
   module: {
     rules: [
