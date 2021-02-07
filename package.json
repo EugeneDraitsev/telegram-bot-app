@@ -15,7 +15,8 @@
     "format": "prettier --write ./src",
     "test": "cross-env IS_LOCAL=true jest --verbose  --coverage",
     "logs": "sls logs -f telegram-bot -t",
-    "deploy-function": "sls deploy function --function telegram-bot --verbose"
+    "deploy": "sls deploy",
+    "deploy:function": "sls deploy function --function telegram-bot --verbose"
   },
   "dependencies": {
     "aws-sdk": "^2.839.0",
