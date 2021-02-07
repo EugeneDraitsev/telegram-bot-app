@@ -6,7 +6,7 @@ provider:
   region: eu-central-1
   memorySize: 512
   timeout: 30
-  runtime: nodejs12.x
+  runtime: nodejs14.x
   tracing:
     apiGateway: true
     lambda: true

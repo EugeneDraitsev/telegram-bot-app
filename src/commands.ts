@@ -1,4 +1,4 @@
-import Telegraf, { Context as ContextMessageUpdate } from 'telegraf'
+import { Telegraf, Context as ContextMessageUpdate } from 'telegraf'
 import { random, noop } from 'lodash'
 import axios from 'axios'
 import sharp from 'sharp'
