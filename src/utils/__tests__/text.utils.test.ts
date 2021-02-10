@@ -3,7 +3,8 @@ import { hasRussiansLetters, dedent, normalize, sanitizeSvg } from '..'
 describe('hasRussiansLetters', () => {
   test('can check is provided text on russian or not', () => {
     expect(hasRussiansLetters('да, тут есть русские буквы')).toEqual(true)
-    expect(hasRussiansLetters('no, there is no russian letters here')).toEqual(false)
+    expect(hasRussiansLetters('  а тут есть русские буквы, да ещё и целый пробел!  ')).toEqual(true)
+    expect(hasRussiansLetters('no, there are no russian letters here')).toEqual(false)
   })
 })
 
