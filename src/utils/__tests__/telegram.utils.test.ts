@@ -1,13 +1,14 @@
-import { Chat, MessageEntity, User } from 'telegram-typings'
+import { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 import {
   findCommand,
   isLink,
-  parseMessage,
+  getParsedText,
   checkCommand,
   isBotCommand,
   getUserName,
   getChatName,
+  getCommandData,
 } from '..'
 
 describe('findCommand must works as designed', () => {
@@ -21,19 +22,19 @@ describe('findCommand must works as designed', () => {
   })
 })
 
-describe('parseMessage should works as designed', () => {
-  test('parseMessage should correct handle empty commands', () => {
-    expect(parseMessage('/g')).toEqual(['/g', ''])
-    expect(parseMessage('')).toEqual(['', ''])
-    expect(parseMessage('/g@draiBot')).toEqual(['/g', ''])
+describe('getParsedText should works as designed', () => {
+  test('getParsedText should correct handle empty commands', () => {
+    expect(getParsedText('/g')).toEqual('')
+    expect(getParsedText('')).toEqual('')
+    expect(getParsedText('/g@draiBot')).toEqual('')
   })
-  test('parseMessage should properly parse different types of commands', () => {
-    expect(parseMessage('/hello world')).toEqual(['/hello', 'world'])
-    expect(parseMessage('/g cats')).toEqual(['/g', 'cats'])
-    expect(parseMessage('/g@draiBot cats')).toEqual(['/g', 'cats'])
-    expect(parseMessage('/g@draiBot testing is cool')).toEqual(['/g', 'testing is cool'])
-    expect(parseMessage('/p multi / slashes /')).toEqual(['/p', 'multi / slashes /'])
-    expect(parseMessage(undefined)).toEqual(['', ''])
+  test('getParsedText should properly parse different types of commands', () => {
+    expect(getParsedText('/hello world')).toEqual('world')
+    expect(getParsedText('/g cats')).toEqual('cats')
+    expect(getParsedText('/g@draiBot cats')).toEqual('cats')
+    expect(getParsedText('/g@draiBot testing is cool')).toEqual('testing is cool')
+    expect(getParsedText('/p multi / slashes /')).toEqual('multi / slashes /')
+    expect(getParsedText(undefined)).toEqual('')
   })
 })
 
@@ -73,5 +74,24 @@ describe('getUserName', () => {
   })
   it('should return "Unknown Chat" if name doesn\'t exist', () => {
     expect(getChatName({} as Chat)).toEqual('Unknown Chat')
+  })
+})
+
+describe('getCommandData', () => {
+  it('getCommandData return correct text and replyId', () => {
+    expect(
+      getCommandData({ text: '/s', reply_to_message: { message_id: 123 } } as Message),
+    ).toEqual({ text: '', replyId: 123 })
+    expect(getCommandData({ text: '/z', message_id: 555 } as Message)).toEqual({
+      text: '',
+      replyId: 555,
+    })
+    expect(
+      getCommandData({
+        text: '/g cat',
+        message_id: 555,
+        reply_to_message: { message_id: 123 },
+      } as Message),
+    ).toEqual({ text: 'cat', replyId: 555 })
   })
 })

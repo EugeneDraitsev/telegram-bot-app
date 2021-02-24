@@ -1,12 +1,11 @@
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
-import Telegraf, { Context as ContextMessageUpdate } from 'telegraf'
-import { Message, Chat } from 'telegram-typings'
+import { Telegraf } from 'telegraf'
+import { Message } from 'telegram-typings'
 import AWS from 'aws-sdk'
 import { captureAWS } from 'aws-xray-sdk'
-import { get } from 'lodash'
 
-import { isBotCommand, parseMessage } from './utils'
 import { saveEvent, updateChatMetaData, updateStatistics } from './aws'
+import { findCommand } from './utils'
 import setupCommands from './commands'
 import './dynamo-optimization'
 
@@ -14,36 +13,19 @@ if (!process.env.IS_LOCAL) {
   captureAWS(AWS)
 }
 
-export interface Context extends ContextMessageUpdate {
-  message: Message
-  chat: Chat
-  command: string
-  text: string
-  replyId: number
-}
-
 const bot = new Telegraf(process.env.TOKEN as string)
 
-bot.use(async (ctx: Context, next) => {
-  const { chat, message } = ctx
+bot.use(async (ctx, next) => {
+  const { chat } = ctx
+  const message = ctx.message as Message
   if (chat && message) {
-    const { message_id, reply_to_message } = message
-    if (isBotCommand(message?.entities)) {
-      const [command, text] = parseMessage(message.text)
-      const replyId = text
-        ? message_id
-        : (reply_to_message && reply_to_message?.message_id) || message_id
-
-      ctx.command = command
-      ctx.text = text || get(reply_to_message, 'text', '')
-      ctx.replyId = replyId
-    }
+    const command = findCommand(message.text)
 
     updateChatMetaData(chat.id)
 
     await Promise.all([
       updateStatistics(message.from, chat),
-      saveEvent(message.from, chat.id, message.date, ctx.command),
+      saveEvent(message.from, chat.id, message.date, command),
       next?.(),
     ])
   }

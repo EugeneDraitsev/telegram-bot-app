@@ -10,7 +10,7 @@ interface ChatStat {
   id: string
 }
 
-const getChatStatistic = async (chat_id: number): Promise<ChatStat> => {
+const getChatStatistic = async (chat_id: number | string): Promise<ChatStat> => {
   const params = {
     TableName: 'chat-statistics',
     ExpressionAttributeValues: { ':chatId': String(chat_id) },
@@ -21,7 +21,7 @@ const getChatStatistic = async (chat_id: number): Promise<ChatStat> => {
   return first(result.Items) as ChatStat
 }
 
-export const getUsersList = async (chat_id: number, query: string): Promise<string> => {
+export const getUsersList = async (chat_id: number | string, query: string): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
     return (
@@ -35,7 +35,7 @@ export const getUsersList = async (chat_id: number, query: string): Promise<stri
   }
 }
 
-export const getFormattedChatStatistics = async (chat_id: number): Promise<string> => {
+export const getFormattedChatStatistics = async (chat_id: number | string): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
     const stats = orderBy(result.users, 'msgCount', 'desc')

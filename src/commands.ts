@@ -4,8 +4,7 @@ import axios from 'axios'
 import sharp from 'sharp'
 
 import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
-import { checkCommand, getChatName, isLink, sanitizeSvg } from './utils'
-import { Context } from '.'
+import { checkCommand, getChatName, getCommandData, isLink, sanitizeSvg } from './utils'
 import { translate, searchImage, searchYoutube } from './google'
 import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './text'
 import { get24hChatStats, getFormattedChatStatistics, getUsersList, getXRayStats } from './aws'
@@ -24,8 +23,8 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     next?.()
   })
 
-  bot.hears(checkCommand('/g'), async (ctx: Context) => {
-    const { text, replyId } = ctx
+  bot.hears(checkCommand('/g'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
     try {
       const { image, url } = await searchImage(text)
       return await ctx
@@ -36,34 +35,38 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     }
   })
 
-  bot.hears(checkCommand('/h'), (ctx: Context) => {
-    const huext = huify(ctx.text)
-    const result = ctx.text === huext ? 'https://www.youtube.com/watch?v=q5bc4nmDNio' : huext
-    return ctx.reply(result, { reply_to_message_id: ctx.replyId })
+  bot.hears(checkCommand('/h'), (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    const huext = huify(text)
+    const result = text === huext ? 'https://www.youtube.com/watch?v=q5bc4nmDNio' : huext
+    return ctx.reply(result, { reply_to_message_id: replyId })
   })
 
-  bot.hears(checkCommand('/y'), (ctx: Context) => {
-    const yasno = yasnyfy(ctx.text)
-    return ctx.reply(yasno, { reply_to_message_id: ctx.replyId })
+  bot.hears(checkCommand('/y'), (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    const yasno = yasnyfy(text)
+    return ctx.reply(yasno, { reply_to_message_id: replyId })
   })
 
-  bot.hears(checkCommand('/c'), async (ctx: Context) => ctx.reply(await getCurrency()))
+  bot.hears(checkCommand('/c'), async (ctx) => ctx.reply(await getCurrency()))
 
-  bot.hears(checkCommand('/t'), async (ctx: Context) =>
-    ctx.reply(await translate(ctx.text), { reply_to_message_id: ctx.replyId }),
+  bot.hears(checkCommand('/t'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.reply(await translate(text), { reply_to_message_id: replyId })
+  })
+
+  bot.hears(checkCommand('/z'), async (ctx) =>
+    ctx.reply(await getFormattedChatStatistics(ctx?.chat?.id ?? '')),
   )
 
-  bot.hears(checkCommand('/z'), async (ctx: Context) =>
-    ctx.reply(await getFormattedChatStatistics(ctx.chat.id)),
-  )
-
-  bot.hears(checkCommand('/s'), async (ctx: Context) => {
+  bot.hears(checkCommand('/s'), async (ctx) => {
     // fetch ssr-render url without await to reduce coldstart
-    axios(`https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`).catch(noop)
-    const chatName = getChatName(ctx.chat)
+    const { replyId } = getCommandData(ctx.message)
+    axios(`https://telegram-bot-ui.now.sh/chat/${ctx?.chat?.id}`).catch(noop)
+    const chatName = getChatName(ctx?.chat)
 
     try {
-      const chatData = await get24hChatStats(ctx.chat.id)
+      const chatData = await get24hChatStats(ctx?.chat?.id ?? '')
       const html = getDailyUsersBarsSvg(chatData)
       const svg = sanitizeSvg(html)
 
@@ -79,62 +82,77 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
           filename: 'stats.png',
         },
         {
-          reply_to_message_id: ctx.replyId,
-          caption: `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
+          reply_to_message_id: replyId,
+          caption: `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx?.chat?.id}`,
         },
       )
     } catch (e) {
       return ctx.replyWithHTML(
-        `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx.chat.id}`,
-        { reply_to_message_id: ctx.replyId },
+        `${chatName} chat statistics: https://telegram-bot-ui.now.sh/chat/${ctx?.chat?.id}`,
+        { reply_to_message_id: replyId },
       )
     }
   })
 
-  bot.hears(checkCommand('/8'), async (ctx: Context) =>
-    ctx.replyWithSticker(getPrediction(), { reply_to_message_id: ctx.replyId }),
-  )
+  bot.hears(checkCommand('/8'), async (ctx) => {
+    const { replyId } = getCommandData(ctx.message)
+    return ctx.replyWithSticker(getPrediction(), { reply_to_message_id: replyId })
+  })
 
-  bot.hears(checkCommand('/v'), async (ctx: Context) => ctx.reply(await searchYoutube(ctx.text)))
+  bot.hears(checkCommand('/v'), async (ctx) => {
+    const { text } = getCommandData(ctx.message)
+    return ctx.reply(await searchYoutube(text))
+  })
 
-  bot.hears(checkCommand('/w'), async (ctx: Context) => ctx.reply(await searchWiki(ctx.text)))
+  bot.hears(checkCommand('/w'), async (ctx) => {
+    const { text } = getCommandData(ctx.message)
+    return ctx.reply(await searchWiki(text))
+  })
 
-  bot.hears(checkCommand('/dice'), (ctx: Context) =>
-    ctx.replyWithMarkdown(throwDice(parseInt(ctx.text, 10) || 6), {
-      reply_to_message_id: ctx.message.message_id,
-    }),
-  )
+  bot.hears(checkCommand('/dice'), (ctx) => {
+    const { text } = getCommandData(ctx.message)
+    return ctx.replyWithMarkdown(throwDice(parseInt(text, 10) || 6), {
+      reply_to_message_id: ctx.message?.message_id,
+    })
+  })
 
-  bot.hears(checkCommand('/p'), async (ctx: Context) =>
-    ctx.replyWithHTML(await getHoroscope(ctx.text), { reply_to_message_id: ctx.replyId }),
-  )
+  bot.hears(checkCommand('/p'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.replyWithHTML(await getHoroscope(text), { reply_to_message_id: replyId })
+  })
 
-  bot.hears(checkCommand('/f'), async (ctx: Context) =>
-    ctx.replyWithMarkdown(await getWeather(ctx.text || 'Минск'), {
-      reply_to_message_id: ctx.message.message_id,
-    }),
-  )
+  bot.hears(checkCommand('/f'), async (ctx) => {
+    const { text } = getCommandData(ctx.message)
+    return ctx.replyWithMarkdown(await getWeather(text || 'Минск'), {
+      reply_to_message_id: ctx.message?.message_id,
+    })
+  })
 
-  bot.hears(checkCommand('/all'), async (ctx: Context) =>
-    ctx.reply(await getUsersList(ctx.chat.id, ctx.text), { reply_to_message_id: ctx.replyId }),
-  )
+  bot.hears(checkCommand('/all'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.reply(await getUsersList(ctx.chat?.id ?? '', text), {
+      reply_to_message_id: replyId,
+    })
+  })
 
-  bot.hears(checkCommand('/ps'), (ctx: Context) =>
-    ctx.reply(puntoSwitcher(ctx.text), { reply_to_message_id: ctx.replyId }),
-  )
+  bot.hears(checkCommand('/ps'), (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.reply(puntoSwitcher(text), { reply_to_message_id: replyId })
+  })
 
-  bot.hears(checkCommand('/x'), async (ctx: Context) => {
+  bot.hears(checkCommand('/x'), async (ctx) => {
     const stats = await getXRayStats()
     return ctx.replyWithDocument({ source: stats.image, filename: 'map.png' }, {
       caption: `Browser version available <a href="${stats.url}">here</a>`,
       parse_mode: 'HTML',
-      reply_to_message_id: ctx.message.message_id,
+      reply_to_message_id: ctx.message?.message_id,
     } as ExtraDocument)
   })
 
-  bot.hears(checkCommand('/shrug'), (ctx: Context) =>
-    ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: ctx.replyId }),
-  )
+  bot.hears(checkCommand('/shrug'), (ctx) => {
+    const { replyId } = getCommandData(ctx.message)
+    return ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: replyId })
+  })
 }
 
 export default commands
