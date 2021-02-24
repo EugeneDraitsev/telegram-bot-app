@@ -1,13 +1,6 @@
 import { padStart } from 'lodash'
 import { DateTime } from 'luxon'
 
-const YEARS = {
-  2017: '2k17',
-  2018: '20!8',
-  2019: '2k19',
-  2021: '2021',
-}
-
 const whDate = (): string => {
   // https://warhammer40k.fandom.com/wiki/Imperial_Dating_System
   const secondsInYear = 31556926
@@ -26,10 +19,18 @@ const whDate = (): string => {
   )}.M${millenium}`
 }
 
+const YEARS = {
+  2017: () => '2k17',
+  2018: () => '20!8',
+  2019: () => '2k19',
+  2020: whDate,
+  2021: () => '2021',
+}
+
 export const yasnyfy = (text: string): string => {
   const { month, day, year } = DateTime.local().setZone('Europe/Minsk').toObject()
   const stringYear = String(year)
-  const formattedYear = YEARS[stringYear] || whDate()
+  const formattedYear = YEARS[stringYear]?.() ?? stringYear
 
   if (month === 4 && day === 1) {
     return `\n>1 Апреля ${stringYear.slice(2)} года${text ? `\n>${text}` : ''}\nЯсно😐`
