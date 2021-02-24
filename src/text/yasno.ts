@@ -24,7 +24,7 @@ const YEARS = {
   2018: () => '20!8',
   2019: () => '2k19',
   2020: whDate,
-  2021: () => '2021',
+  2021: () => '2️⃣0️⃣2️⃣1️⃣',
 }
 
 export const yasnyfy = (text: string): string => {
