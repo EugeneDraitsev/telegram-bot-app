@@ -3,11 +3,10 @@ import { random, noop } from 'lodash'
 import axios from 'axios'
 import sharp from 'sharp'
 
-import { ExtraDocument } from 'telegraf/typings/telegram-types' // eslint-disable-line import/no-unresolved, import/extensions, max-len
 import { checkCommand, getChatName, getCommandData, isLink, sanitizeSvg } from './utils'
 import { translate, searchImage, searchYoutube } from './google'
 import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy } from './text'
-import { get24hChatStats, getFormattedChatStatistics, getUsersList, getXRayStats } from './aws'
+import { get24hChatStats, getFormattedChatStatistics, getUsersList } from './aws'
 import { searchWiki } from './wiki'
 import { getCurrency } from './currency'
 import { getPrediction } from './magic8ball'
@@ -138,15 +137,6 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(checkCommand('/ps'), (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(puntoSwitcher(text), { reply_to_message_id: replyId })
-  })
-
-  bot.hears(checkCommand('/x'), async (ctx) => {
-    const stats = await getXRayStats()
-    return ctx.replyWithDocument({ source: stats.image, filename: 'map.png' }, {
-      caption: `Browser version available <a href="${stats.url}">here</a>`,
-      parse_mode: 'HTML',
-      reply_to_message_id: ctx.message?.message_id,
-    } as ExtraDocument)
   })
 
   bot.hears(checkCommand('/shrug'), (ctx) => {

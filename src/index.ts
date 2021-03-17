@@ -1,17 +1,11 @@
 import 'source-map-support/register' // eslint-disable-line import/no-extraneous-dependencies
 import { Telegraf } from 'telegraf'
 import { Message } from 'telegram-typings'
-import AWS from 'aws-sdk'
-import { captureAWS } from 'aws-xray-sdk'
 
 import { saveEvent, updateChatMetaData, updateStatistics } from './aws'
 import { findCommand } from './utils'
 import setupCommands from './commands'
 import './dynamo-optimization'
-
-if (!process.env.IS_LOCAL) {
-  captureAWS(AWS)
-}
 
 const bot = new Telegraf(process.env.TOKEN as string)
 

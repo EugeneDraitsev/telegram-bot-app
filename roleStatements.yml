@@ -1,12 +1,10 @@
 - Effect: Allow
   Action:
-    - xray:PutTraceSegments
-    - xray:PutTelemetryRecords
     - lambda:InvokeFunction
     - lambda:InvokeAsync
-    - logs:*
   Resource:
-    - '*'
+    - arn:aws:lambda:*:*:telegram-websockets-prod-updateChatData
+    - arn:aws:lambda:*:*:telegram-websockets-prod-broadcastStats
 - Effect: Allow
   Action:
     - dynamodb:Query
