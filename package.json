@@ -19,7 +19,7 @@
     "deploy:function": "sls deploy function --function telegram-bot --verbose"
   },
   "dependencies": {
-    "aws-sdk": "^2.865.0",
+    "aws-sdk": "^2.868.0",
     "axios": "^0.21.1",
     "form-data": "^4.0.0",
     "lodash": "^4.17.21",
@@ -30,7 +30,7 @@
     "recharts": "^2.0.8",
     "sharp": "^0.27.2",
     "styled-components": "^5.2.1",
-    "telegraf": "4.2.1",
+    "telegraf": "4.3.0",
     "url": "^0.11.0"
   },
   "devDependencies": {
@@ -39,7 +39,7 @@
     "@babel/preset-react": "^7.12.13",
     "@babel/preset-typescript": "^7.13.0",
     "@types/form-data": "^2.5.0",
-    "@types/jest": "^26.0.20",
+    "@types/jest": "^26.0.21",
     "@types/lodash": "^4.14.168",
     "@types/luxon": "^1.26.2",
     "@types/node-fetch": "^2.5.8",
@@ -55,7 +55,6 @@
     "babel-loader": "^8.2.2",
     "copy-webpack-plugin": "^8.0.0",
     "cross-env": "^7.0.3",
-    "esbuild-webpack-plugin": "^1.1.0",
     "eslint": "7.22.0",
     "eslint-config-airbnb": "^18.2.1",
     "eslint-config-prettier": "^8.1.0",
@@ -71,10 +70,10 @@
     "prettier": "^2.2.1",
     "serverless": "^2.30.3",
     "serverless-offline": "^6.8.0",
-    "serverless-webpack": "^5.3.5",
+    "serverless-webpack": "^5.4.0",
     "telegram-typings": "5.0.0",
     "typescript": "^4.2.3",
-    "webpack": "^5.26.2"
+    "webpack": "^5.27.1"
   },
   "jest": {
     "testEnvironment": "node",
