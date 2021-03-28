@@ -8,12 +8,12 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start": "cross-env IS_LOCAL=true sls offline start",
+    "start": "sls offline start",
     "lint": "eslint \"src/**\"",
     "lint:fix": "eslint \"src/**\" --fix",
     "tsc": "tsc --noEmit",
     "format": "prettier --write ./src",
-    "test": "cross-env IS_LOCAL=true jest --verbose  --coverage",
+    "test": "jest --verbose  --coverage",
     "logs": "sls logs -f telegram-bot -t",
     "deploy": "sls deploy",
     "deploy:function": "sls deploy function --function telegram-bot --verbose"
@@ -53,7 +53,6 @@
     "babel-jest": "^26.6.3",
     "babel-loader": "^8.2.2",
     "copy-webpack-plugin": "^8.1.0",
-    "cross-env": "^7.0.3",
     "eslint": "7.23.0",
     "eslint-config-airbnb": "^18.2.1",
     "eslint-config-prettier": "^8.1.0",
