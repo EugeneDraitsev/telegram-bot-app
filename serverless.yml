@@ -40,7 +40,7 @@ functions:
             message:
               text: /c
               chat:
-                id: -1001111472139.0
+                id: -1001306676509.0
 
 plugins:
   - serverless-webpack
