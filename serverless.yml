@@ -34,7 +34,7 @@ functions:
           path: /
           method: get
       - schedule:
-          rate: cron(0 7,9,11,13,15,17 ? * MON-FRI *)
+          rate: cron(0 9,11,13,15,17 ? * MON-FRI *)
           enabled: true
           input:
             message:
