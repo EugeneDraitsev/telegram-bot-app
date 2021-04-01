@@ -33,7 +33,7 @@ export const yasnyfy = (text: string): string => {
   const formattedYear = YEARS[stringYear]?.() ?? stringYear
 
   if (month === 4 && day === 1) {
-    return `\n>1 Апреля ${stringYear.slice(2)} года${text ? `\n>${text}` : ''}\nЯсно😐`
+    return `\n>1 Апреля ${stringYear.slice(2)} года${text ? `\n> ${text}` : ''}\nЯсно😐`
   }
   return `\n>${formattedYear}${text ? `\n>${text}` : ''}\nЯсно`
 }
