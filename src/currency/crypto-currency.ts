@@ -60,6 +60,8 @@ export const getCryptoCurrency = async (): Promise<string> => {
   try {
     return await getCoinMarketCapData()
   } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log(`CoinMarketCap error: `, e)
     const result = await getPoloniexData()
     return result
   }
