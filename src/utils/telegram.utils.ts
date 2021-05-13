@@ -15,9 +15,11 @@ export const findCommand = (text = ''): string =>
     .replace(/ .*/, '')
     .replace(/@.*/, '')
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const checkCommand = (command: string) => (text = ''): any =>
-  findCommand(toLower(text)) === toLower(command)
+export const checkCommand =
+  (command: string) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (text = ''): any =>
+    findCommand(toLower(text)) === toLower(command)
 
 export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
   some(entities, (entity) => entity.type === 'bot_command')
