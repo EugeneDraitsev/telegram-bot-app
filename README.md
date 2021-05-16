@@ -10,7 +10,7 @@ Serverless telegram bot based on [telegraf](https://github.com/telegraf/telegraf
 
 
 ## Bot Architecture
-![architecture](.github/architecture.svg)
+![architecture](.github/architecture.png)
 
 #### Repositories from scheme:
 
