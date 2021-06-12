@@ -51,7 +51,6 @@ custom:
   serverless-offline:
     httpPort: 4000
   webpack:
-    webpackConfig: ./webpack.config.ts
     includeModules:
       forceInclude:
         - sharp
