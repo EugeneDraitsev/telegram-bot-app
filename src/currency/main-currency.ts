@@ -6,7 +6,7 @@ const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 const timeout = 15000
 
 const getFreeCurrencyData = async (): Promise<string> => {
-  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK'].join(',')
+  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK', 'USD_PLN', 'EUR_PLN'].join(',')
   const url = 'https://free.currconv.com/api/v7/convert'
 
   const result = await axios(url, {
@@ -37,7 +37,9 @@ const getFixerData = async (): Promise<string> => {
           \nUSD/BYN: ${round(rates.BYN / rates.USD, 3)}\
           \nEUR/BYN: ${round(rates.BYN, 3)}\
           \nUSD/SEK: ${round(rates.SEK / rates.USD, 3)}\
-          \nEUR/SEK: ${round(rates.SEK, 3)}
+          \nEUR/SEK: ${round(rates.SEK, 3)}\
+          \nUSD/PLN: ${round(rates.PLN / rates.USD, 3)}\
+          \nEUR/PLN: ${round(rates.PLN, 3)}
 `
 }
 
