@@ -1,25 +1,26 @@
 import axios from 'axios'
-import { map, round } from 'lodash'
+import { map, round, chunk } from 'lodash'
 
 const fccApiKey = process.env.FCC_API_KEY || 'set_your_token'
 const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 const timeout = 15000
 
 const getFreeCurrencyData = async (): Promise<string> => {
-  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK', 'USD_PLN', 'EUR_PLN'].join(',')
+  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK', 'USD_PLN', 'EUR_PLN']
   const url = 'https://free.currconv.com/api/v7/convert'
 
-  const result = await axios(url, {
-    timeout,
-    params: { compact: 'y', apiKey: fccApiKey, q: currencies },
-  }).then((x) => x.data)
+  const promises = chunk(currencies, 2).map((pair) =>
+    axios(url, {
+      timeout,
+      params: { compact: 'y', apiKey: fccApiKey, q: pair.join(',') },
+    }).then((x) => x.data),
+  )
 
-  if (result.error) {
-    throw new Error(result.error)
-  }
+  const result = await Promise.all(promises)
+  const mergedResult = Object.assign({}, ...result)
 
   const currencyMessage = map(
-    result,
+    mergedResult,
     (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`,
   ).join('\n')
 
