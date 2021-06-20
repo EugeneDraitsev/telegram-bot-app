@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const googleApiKey = process.env.GOOGLE_API_KEY || 'set_your_token'
 
-export const translate = async (text: string): Promise<string> => {
+export const translate = async (text: string, targetLanguage = ''): Promise<string> => {
   const detectUrl = `https://translation.googleapis.com/language/translate/v2/detect?key=${googleApiKey}`
   const translateUrl = `https://translation.googleapis.com/language/translate/v2?key=${googleApiKey}`
 
@@ -13,7 +13,7 @@ export const translate = async (text: string): Promise<string> => {
       data: { q: text },
     }).then(({ data }) => data.data.detections?.[0]?.[0]?.language)
 
-    const target = inputLanguage === 'ru' ? 'en' : 'ru'
+    const target = targetLanguage || (inputLanguage === 'ru' ? 'en' : 'ru')
 
     return axios(translateUrl, {
       timeout: 5000,
