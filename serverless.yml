@@ -44,20 +44,20 @@ functions:
                 id: -1001306676509.0
 
 plugins:
-  - serverless-webpack
   - serverless-offline
+  - serverless-esbuild
+
+package:
+  patterns:
+    - fonts/**
 
 custom:
   serverless-offline:
     httpPort: 4000
-  webpack:
-    webpackConfig: ./webpack.config.ts
-    includeModules:
-      forceInclude:
-        - sharp
-      forceExclude:
-        - aws-sdk
-    packager: 'yarn'
+  esbuild:
+    packager: yarn
+    external:
+      - sharp
 
 resources:
   ${file(resources.yml)}
