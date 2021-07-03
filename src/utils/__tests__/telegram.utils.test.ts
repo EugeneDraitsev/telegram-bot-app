@@ -70,10 +70,20 @@ describe('isBotCommand', () => {
 describe('getUserName', () => {
   it('should return correct user name, if it exists', () => {
     expect(getUserName({ first_name: 'User', last_name: 'Name' } as User)).toEqual('User Name')
-    expect(getUserName({ username: 'UserName' } as Chat)).toEqual('UserName')
+    expect(getUserName({ username: 'UserName' } as User)).toEqual('UserName')
+    expect(getUserName({ id: 123 } as User)).toEqual('123')
   })
   it('should return "Unknown Chat" if name doesn\'t exist', () => {
-    expect(getChatName({} as Chat)).toEqual('Unknown Chat')
+    expect(getUserName()).toEqual('Unknown Chat')
+  })
+})
+
+describe('getChatName', () => {
+  it('should return correct user name, if it exists', () => {
+    expect(getChatName({ title: 'ChatTitle' } as Chat)).toEqual('ChatTitle')
+  })
+  it('should return "Unknown Chat" if name doesn\'t exist', () => {
+    expect(getChatName()).toEqual('Unknown Chat')
   })
 })
 

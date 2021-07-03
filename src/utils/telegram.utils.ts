@@ -31,8 +31,6 @@ export const getUserName = (user?: User | Chat): string =>
   `${user?.first_name || ''} ${user?.last_name || ''}`.trim() ||
   String(user?.id ?? 'Unknown Chat')
 
-export const getChatName = (chat?: Chat): string => chat?.title || getUserName(chat)
-
 export const getCommandData = (message: Message): CommandData => {
   const { message_id, reply_to_message } = message
   const parsedText = getParsedText(message.text)
@@ -42,3 +40,5 @@ export const getCommandData = (message: Message): CommandData => {
 
   return { text, replyId }
 }
+
+export const getChatName = (chat?: Chat): string => chat?.title || getUserName(chat)
