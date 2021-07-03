@@ -58,6 +58,8 @@ custom:
     packager: yarn
     external:
       - sharp
+    exclude:
+      - aws-sdk
 
 resources:
   ${file(resources.yml)}
