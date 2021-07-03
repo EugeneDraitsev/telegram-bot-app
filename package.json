@@ -76,7 +76,7 @@
   },
   "jest": {
     "transform": {
-      "^.+\\.(j|t)sx?$": "esbuild-jest"
+      "^.+\\.tsx?$": ["esbuild-jest", { "sourcemap": true }]
     }
   }
 }
