@@ -7,6 +7,7 @@ provider:
   memorySize: 512
   timeout: 30
   runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
   environment:
     GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN, file(./config.json):GOOGLE_CX_TOKEN}
     GOOGLE_API_KEY: ${env:GOOGLE_API_KEY, file(./config.json):GOOGLE_API_KEY}

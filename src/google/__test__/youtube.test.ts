@@ -14,13 +14,13 @@ describe('searchYoutube', () => {
     expect(await promise).toEqual('https://youtu.be/4')
   })
   test('should return proper string when videos is not found', async () => {
-    const promise = searchYoutube('test query')
+    const promise = searchYoutube('test query 2')
     mockAxios.mockResponse({ data: {} })
 
     expect(await promise).toEqual('No videos found')
   })
   test('should return proper string when something will go wrong', async () => {
-    const promise = searchYoutube('test query')
+    const promise = searchYoutube('test query 3')
     mockAxios.mockResponse({ data: 'BROKEN JSON', status: 500 })
 
     expect(await promise).toEqual('No videos found')

@@ -48,7 +48,6 @@ export const getMainCurrencies = async (): Promise<string> => {
   try {
     return await getFreeCurrencyData()
   } catch (e) {
-    const result = await getFixerData()
-    return result
+    return getFixerData()
   }
 }

@@ -13,10 +13,13 @@ const getPoloniexData = async (): Promise<string> => {
     ETH: `${round(currency.USDT_ETH.highestBid, 2)} / ${round(currency.USDT_ETH.lowestAsk, 2)}`,
     XRP: `${round(currency.USDT_XRP.highestBid, 4)} / ${round(currency.USDT_XRP.lowestAsk, 4)}`,
   }
-  return `Курсы криптовалют:\n${Object.keys(filteredCurrency).reduce(
+
+  const resultString = Object.keys(filteredCurrency).reduce(
     (message, key) => message.concat(`${key}: ${filteredCurrency[key]}\n`),
     '',
-  )}`
+  )
+
+  return `Курсы криптовалют:\n${resultString}`
 }
 
 interface CoinMarketCurrency {
@@ -62,7 +65,6 @@ export const getCryptoCurrency = async (): Promise<string> => {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.log(`CoinMarketCap error: `, e)
-    const result = await getPoloniexData()
-    return result
+    return getPoloniexData()
   }
 }
