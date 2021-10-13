@@ -35,6 +35,7 @@ export const dedent = (callSite: DedentInput, ...args: string[]): string => {
 
 export const normalize = (str: string): string =>
   str
+    // lgtm [js/incomplete-multi-character-sanitization]
     .replace(/<(.|\n)*?>/g, '')
     .replace(/\s\s+/g, ' ')
     .trim()
