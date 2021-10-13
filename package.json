@@ -19,7 +19,7 @@
     "deploy:function": "sls deploy function --function telegram-bot --verbose"
   },
   "dependencies": {
-    "aws-sdk": "^2.1004.0",
+    "aws-sdk": "^2.1006.0",
     "axios": "^0.21.4",
     "form-data": "^4.0.0",
     "lodash": "^4.17.21",
@@ -39,7 +39,7 @@
     "@types/form-data": "^2.5.0",
     "@types/jest": "^27.0.2",
     "@types/lodash": "^4.14.175",
-    "@types/react": "^17.0.27",
+    "@types/react": "^17.0.29",
     "@types/react-dom": "^17.0.9",
     "@types/recharts": "^2.0.0",
     "@types/sharp": "^0.29.2",
@@ -66,7 +66,7 @@
     "serverless-esbuild": "^1.19.0",
     "serverless-offline": "^8.2.0",
     "telegram-typings": "5.0.0",
-    "typescript": "^4.4.3"
+    "typescript": "^4.4.4"
   },
   "jest": {
     "transform": {
