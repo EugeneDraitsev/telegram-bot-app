@@ -1,12 +1,12 @@
 import { every, filter, get, includes, sample } from 'lodash'
-import axios from 'axios'
+import axios, { AxiosResponseHeaders } from 'axios'
 
 const googleApiKey = process.env.GOOGLE_API_KEY || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
 type Image = { mime: string }
 
-const isResponseImage = (headers: Headers): boolean =>
+const isResponseImage = (headers: AxiosResponseHeaders): boolean =>
   (headers['content-type'] || '').split('/')[0] === 'image'
 const filterMimeTypes = (item: Image): boolean =>
   every(['ico', 'svg'], (x) => !includes(item.mime, x))
