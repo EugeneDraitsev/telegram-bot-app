@@ -7,19 +7,11 @@ provider:
   memorySize: 512
   timeout: 30
   runtime: nodejs14.x
-  architecture: x86_64
+  architecture: arm64
   lambdaHashingVersion: 20201221
   environment:
-    GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN, file(./config.json):GOOGLE_CX_TOKEN}
-    GOOGLE_API_KEY: ${env:GOOGLE_API_KEY, file(./config.json):GOOGLE_API_KEY}
-    OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN, file(./config.json):OPENWEATHERMAP_TOKEN}
-    TOKEN: ${env:TOKEN, file(./config.json):TOKEN}
-    FCC_API_KEY: ${env:FCC_API_KEY, file(./config.json):FCC_API_KEY}
-    YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN, file(./config.json):YOUTUBE_TOKEN}
-    FIXER_API_KEY: ${env:FIXER_API_KEY, file(./config.json):FIXER_API_KEY}
-    COIN_MARKET_CAP_API_KEY: ${env:COIN_MARKET_CAP_API_KEY, file(./config.json):COIN_MARKET_CAP_API_KEY}
-    FONTCONFIG_PATH: './fonts'
     region: eu-central-1
+    stage: ${sls:stage}
   iam:
     role:
       statements:
@@ -27,14 +19,20 @@ provider:
 
 functions:
   telegram-bot:
-    handler: src/index.handler
+    handler: packages/lambdas/telegram-bot/index.default
+    environment:
+      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN, file(./config.json):GOOGLE_CX_TOKEN}
+      GOOGLE_API_KEY: ${env:GOOGLE_API_KEY, file(./config.json):GOOGLE_API_KEY}
+      OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN, file(./config.json):OPENWEATHERMAP_TOKEN}
+      TOKEN: ${env:TOKEN, file(./config.json):TOKEN}
+      FCC_API_KEY: ${env:FCC_API_KEY, file(./config.json):FCC_API_KEY}
+      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN, file(./config.json):YOUTUBE_TOKEN}
+      FIXER_API_KEY: ${env:FIXER_API_KEY, file(./config.json):FIXER_API_KEY}
+      COIN_MARKET_CAP_API_KEY: ${env:COIN_MARKET_CAP_API_KEY, file(./config.json):COIN_MARKET_CAP_API_KEY}
     events:
       - http:
           path: /
           method: post
-      - http:
-          path: /
-          method: get
       - schedule:
           name: kabold-chat-event
           rate: cron(0 9,11,13,15,17 ? * MON-FRI *)
@@ -44,14 +42,22 @@ functions:
               text: /c
               chat:
                 id: -1001306676509.0
+  sharp-statistics:
+    handler: packages/lambdas/sharp-statistics/index.default
+    environment:
+      FONTCONFIG_PATH: './fonts'
+    package:
+      patterns:
+        - fonts/**
+    architecture: x86_64
+    memorySize: 1536
 
 plugins:
   - serverless-offline
   - serverless-esbuild
 
 package:
-  patterns:
-    - fonts/**
+  individually: true
 
 custom:
   serverless-offline:
@@ -63,6 +69,7 @@ custom:
       - sharp
     exclude:
       - aws-sdk
+      - encoding
 
 resources:
   ${file(resources.yml)}
