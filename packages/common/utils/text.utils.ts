@@ -34,9 +34,9 @@ export const dedent = (callSite: DedentInput, ...args: string[]) => {
 }
 
 export const normalize = (str: string) =>
-  str // lgtm [js/incomplete-multi-character-sanitization, js/polynomial-redos]
+  str // lgtm[js/incomplete-multi-character-sanitization] lgtm[js/polynomial-redos]
     .replace(/<(.|\n)*?>/g, '')
     .replace(/\s\s+/g, ' ')
     .trim()
 
-export const sanitizeSvg = (html: string) => html.replace(/<(div|\/div)[^>]*>/g, '') // lgtm [js/polynomial-redos]
+export const sanitizeSvg = (html: string) => html.replace(/<(div|\/div)[^>]*>/g, '') // lgtm[js/polynomial-redos]
