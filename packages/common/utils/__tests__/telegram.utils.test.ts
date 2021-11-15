@@ -9,7 +9,7 @@ import {
   getUserName,
   getChatName,
   getCommandData,
-} from '../index'
+} from '..'
 
 describe('findCommand must works as designed', () => {
   test('findCommand must properly commands from first word in message or string ending with @', () => {

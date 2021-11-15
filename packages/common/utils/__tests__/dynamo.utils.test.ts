@@ -1,6 +1,6 @@
 import { DynamoDB } from 'aws-sdk'
 
-import { dynamoPutItem, dynamoQuery } from '../index'
+import { dynamoPutItem, dynamoQuery } from '..'
 
 describe('dynamo utils', () => {
   jest

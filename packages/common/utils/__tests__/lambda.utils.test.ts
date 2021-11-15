@@ -1,6 +1,6 @@
 import { Lambda } from 'aws-sdk'
 
-import { invokeLambda } from '../index'
+import { invokeLambda } from '..'
 
 describe('invokeLambda', () => {
   test('should call lambda with provided options', async () => {

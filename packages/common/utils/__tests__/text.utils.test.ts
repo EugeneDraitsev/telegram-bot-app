@@ -1,4 +1,4 @@
-import { hasRussiansLetters, dedent, normalize, sanitizeSvg } from '../index'
+import { hasRussiansLetters, dedent, normalize, sanitizeSvg } from '..'
 
 describe('hasRussiansLetters', () => {
   test('can check is provided text on russian or not', () => {
