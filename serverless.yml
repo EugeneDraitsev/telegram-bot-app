@@ -64,7 +64,6 @@ custom:
     httpPort: 4000
   esbuild:
     packager: yarn
-    minify: true
     external:
       - sharp
     exclude:

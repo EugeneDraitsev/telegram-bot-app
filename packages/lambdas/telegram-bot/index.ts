@@ -1,4 +1,3 @@
-import 'source-map-support/register'
 import '@tg-bot/dynamo-optimization'
 
 import { Telegraf } from 'telegraf'
