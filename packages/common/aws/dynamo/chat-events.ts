@@ -18,8 +18,8 @@ const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => (
 export const saveEvent = async (
   userInfo?: User,
   chat_id?: number,
-  date = Date.now(),
   command?: string,
+  date = Date.now(),
 ): Promise<void> => {
   if (userInfo && chat_id) {
     const event = {

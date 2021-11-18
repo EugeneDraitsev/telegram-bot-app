@@ -1,3 +1,4 @@
+/* eslint-disable react/function-component-definition,react/no-unstable-nested-components */
 import React from 'react'
 import styled from 'styled-components'
 import { tint } from 'polished'
@@ -20,7 +21,7 @@ interface DailyUsersBarsProps {
   data: User[]
 }
 
-export const DailyUsersBars = ({ data }: DailyUsersBarsProps): JSX.Element => (
+export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => (
   <BarChart
     data={data}
     margin={{ top: 20, right: 20, left: 20, bottom: 10 }}

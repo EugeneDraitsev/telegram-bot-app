@@ -14,7 +14,7 @@
     "lint": "eslint \"packages/**\"",
     "lint:fix": "eslint \"packages/**\" --fix",
     "tsc": "tsc --noEmit",
-    "format": "prettier --write ./src",
+    "format": "prettier --write ./packages",
     "test": "jest --verbose  --coverage",
     "logs": "sls logs -f telegram-bot -t",
     "deploy": "sls deploy"
@@ -59,7 +59,12 @@
   },
   "jest": {
     "transform": {
-      "^.+\\.tsx?$": ["esbuild-jest"]
+      "^.+\\.tsx?$": [
+        "esbuild-jest",
+        {
+          "sourcemap": true
+        }
+      ]
     }
   },
   "workspaces": {

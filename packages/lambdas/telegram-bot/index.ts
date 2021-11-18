@@ -19,7 +19,7 @@ bot.use(async (ctx, next) => {
 
     await Promise.all([
       updateStatistics(message.from, chat),
-      saveEvent(message.from, chat.id, message.date, command),
+      saveEvent(message.from, chat.id, command, message.date),
       next?.(),
     ])
   }
