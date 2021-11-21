@@ -1,0 +1,18 @@
+{
+  "name": "@tg-bot/chat-bot",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EugeneDraitsev/telegram-bot-app"
+  },
+  "author": "Eugene Draitsev <ddrrai@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.1023.0",
+    "axios": "^0.24.0",
+    "telegraf": "4.4.2"
+  },
+  "devDependencies": {
+    "telegram-typings": "5.0.0"
+  }
+}

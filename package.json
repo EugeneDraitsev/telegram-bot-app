@@ -7,66 +7,55 @@
   },
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
+  "private": true,
   "scripts": {
     "start": "sls offline start",
-    "lint": "eslint \"src/**\"",
-    "lint:fix": "eslint \"src/**\" --fix",
+    "build": "sls package",
+    "lint": "eslint \"packages/**\"",
+    "lint:fix": "eslint \"packages/**\" --fix",
     "tsc": "tsc --noEmit",
-    "format": "prettier --write ./src",
+    "format": "prettier --write ./packages",
     "test": "jest --verbose  --coverage",
     "logs": "sls logs -f telegram-bot -t",
-    "deploy": "sls deploy",
-    "deploy:function": "sls deploy function --function telegram-bot --verbose"
+    "deploy": "sls deploy"
   },
   "dependencies": {
-    "aws-sdk": "^2.1021.0",
-    "axios": "^0.24.0",
-    "form-data": "^4.0.0",
+    "aws-sdk": "^2.1031.0",
     "lodash": "^4.17.21",
-    "polished": "^4.1.3",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "recharts": "^2.1.6",
-    "sharp": "^0.29.2",
-    "styled-components": "^5.3.3",
-    "telegraf": "4.4.2"
+    "sharp": "^0.29.3"
   },
   "devDependencies": {
-    "@babel/core": "7.16.0",
-    "@babel/preset-env": "7.16.0",
-    "@babel/preset-react": "^7.16.0",
-    "@babel/preset-typescript": "^7.16.0",
+    "@types/aws-lambda": "^8.10.85",
     "@types/form-data": "^2.5.0",
     "@types/jest": "^27.0.2",
-    "@types/lodash": "^4.14.176",
-    "@types/react": "^17.0.34",
-    "@types/react-dom": "^17.0.11",
-    "@types/recharts": "^2.0.0",
-    "@types/sharp": "^0.29.3",
-    "@types/styled-components": "^5.1.15",
-    "@typescript-eslint/eslint-plugin": "^5.3.0",
-    "@typescript-eslint/parser": "^5.3.0",
-    "esbuild": "^0.13.12",
+    "@types/lodash": "^4.14.177",
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "@typescript-eslint/parser": "^5.4.0",
+    "aws-lambda": "^1.0.7",
+    "esbuild": "^0.13.14",
     "esbuild-jest": "^0.5.0",
-    "eslint": "8.1.0",
-    "eslint-config-airbnb": "^18.2.1",
+    "eslint": "^8.2.0",
+    "eslint-config-airbnb": "^19.0.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-config-react-app": "^6.0.0",
     "eslint-plugin-flowtype": "^8.0.3",
-    "eslint-plugin-import": "^2.25.2",
-    "eslint-plugin-jest": "^25.2.3",
-    "eslint-plugin-jsx-a11y": "^6.4.1",
-    "eslint-plugin-react": "^7.26.1",
-    "eslint-plugin-react-hooks": "^4.2.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-jest": "^25.2.4",
+    "eslint-plugin-jsx-a11y": "^6.5.1",
+    "eslint-plugin-react": "^7.27.0",
+    "eslint-plugin-react-hooks": "^4.3.0",
     "eslint-plugin-sonarjs": "^0.10.0",
     "jest": "^27.3.1",
     "jest-mock-axios": "^4.4.1",
+    "lerna": "^4.0.0",
     "prettier": "^2.4.1",
-    "serverless": "^2.65.0",
-    "serverless-esbuild": "^1.21.1",
+    "serverless": "^2.66.2",
+    "serverless-esbuild": "^1.22.0",
     "serverless-offline": "^8.2.0",
-    "telegram-typings": "5.0.0",
-    "typescript": "^4.4.4"
+    "typescript": "^4.5.2"
+  },
+  "engines": {
+    "node": ">= 14"
   },
   "jest": {
     "transform": {
@@ -77,5 +66,10 @@
         }
       ]
     }
+  },
+  "workspaces": {
+    "packages": [
+      "packages/**"
+    ]
   }
 }

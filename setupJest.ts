@@ -1,2 +1,2 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires,import/no-extraneous-dependencies
+// eslint-disable-next-line
 jest.setMock('axios', require('jest-mock-axios'))
