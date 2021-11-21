@@ -12,18 +12,19 @@ const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
   const html = getDailyUsersBarsSvg(chatData)
   const svg = sanitizeSvg(html)
 
+  const image = await sharp(Buffer.from(svg))
+    .resize(1200, 400)
+    .flatten({ background: '#fff' })
+    .png()
+    .toBuffer()
+
   return {
     statusCode: 200,
     headers: {
       'Content-Type': 'image/svg+xml',
       'Content-Disposition': 'inline; filename=chart.svg',
     },
-    body: sharp(Buffer.from(svg))
-      .resize(1200, 400)
-      .flatten({ background: '#fff' })
-      .png()
-      .toBuffer()
-      .toString(),
+    body: image.toString('base64'),
   }
 }
 
