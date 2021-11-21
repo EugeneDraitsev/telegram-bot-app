@@ -46,9 +46,6 @@ functions:
     handler: packages/lambdas/sharp-statistics/index.default
     environment:
       FONTCONFIG_PATH: './fonts'
-    package:
-      patterns:
-        - fonts/**
     architecture: x86_64
     memorySize: 1536
 
@@ -58,6 +55,8 @@ plugins:
 
 package:
   individually: true
+  patterns:
+    - fonts/**
 
 custom:
   serverless-offline:
