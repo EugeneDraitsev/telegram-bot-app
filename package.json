@@ -29,6 +29,7 @@
     "@types/form-data": "^2.5.0",
     "@types/jest": "^27.0.3",
     "@types/lodash": "^4.14.177",
+    "@types/sharp": "^0.29.4",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
     "aws-lambda": "^1.0.7",
