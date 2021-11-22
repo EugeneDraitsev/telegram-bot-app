@@ -8,7 +8,6 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "aws-sdk": "^2.1023.0",
     "axios": "^0.24.0",
     "telegraf": "4.4.2"
   },
