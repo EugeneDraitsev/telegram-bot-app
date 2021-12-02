@@ -5,7 +5,7 @@ const timeout = 15000
 
 export const getRussianCurrency = async (): Promise<string> => {
   const currencyCodes = ['usd', 'eur']
-  const medusaUrl = 'https://meduza.io/api/v3/stock/all'
+  const medusaUrl = 'https://meduza.io/api/misc/stock/all'
   const nasdaqUrl = 'https://api.nasdaq.com/api/quote/BZ%3ANMX/info?assetclass=commoditie'
 
   const currency = await axios(medusaUrl, { timeout })
