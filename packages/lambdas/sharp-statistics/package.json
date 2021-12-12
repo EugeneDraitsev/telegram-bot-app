@@ -9,9 +9,9 @@
     "styled-components": "^5.3.3"
   },
   "devDependencies": {
-    "@types/react": "^17.0.36",
+    "@types/react": "^17.0.37",
     "@types/react-dom": "^17.0.11",
     "@types/recharts": "^2.0.0",
-    "@types/styled-components": "^5.1.15"
+    "@types/styled-components": "^5.1.17"
   }
 }
