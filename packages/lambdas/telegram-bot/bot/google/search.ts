@@ -42,24 +42,20 @@ export const searchImage = async (query: string): Promise<{ image: Buffer; url: 
     return Promise.reject(new Error("We can't search with an empty text message"))
   }
 
-  try {
-    const url =
-      'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
-      `&key=${googleApiKey}&cx=${cxToken}&q=${encodeURI(query)}`
-    const response = await axios(url, { timeout: 5000 }).then((r) => r.data)
+  const url =
+    'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
+    `&key=${googleApiKey}&cx=${cxToken}&q=${encodeURI(query)}`
+  const response = await axios(url, { timeout: 5000 }).then((r) => r.data)
 
-    if (get(response, 'items.length') > 0) {
-      const image = sample(filter(response.items, filterMimeTypes))
-      const imageUrl = image.link
-      const tbUrl = image.image.thumbnailLink
+  if (get(response, 'items.length') > 0) {
+    const image = sample(filter(response.items, filterMimeTypes))
+    const imageUrl = image.link
+    const tbUrl = image.image.thumbnailLink
 
-      const loadedImage = await getImage(imageUrl, tbUrl)
+    const loadedImage = await getImage(imageUrl, tbUrl)
 
-      return { image: loadedImage, url: imageUrl }
-    }
-    return Promise.reject(new Error(`Google can't find ${query} for you`))
-  } catch (e) {
-    console.log(e) // eslint-disable-line no-console
-    return Promise.reject(new Error("Can't load image to telegram"))
+    return { image: loadedImage, url: imageUrl }
   }
+
+  return Promise.reject(new Error(`Google can't find ${query} for you`))
 }
