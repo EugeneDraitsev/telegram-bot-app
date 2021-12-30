@@ -47,13 +47,17 @@ const getCoinMarketCapData = async (): Promise<string> => {
   const currencies = response.data.data
   const data = Object.keys(symbols).map((symbol) => {
     const currency = currencies.find((c: CoinMarketCurrency) => c.symbol === symbol)
+
+    if (!currency) {
+      return ''
+    }
+
     const { price, percent_change_24h } = currency.quote.USD
     const isUp = percent_change_24h >= 0
+    const formattedPrice = round(price, symbols[symbol])
+    const priceChange = round(percent_change_24h, 2)
 
-    return `${symbol}: ${round(price, symbols[symbol])} (${isUp ? '+' : ''}${round(
-      percent_change_24h,
-      2,
-    )}%)`
+    return `${symbol}: ${formattedPrice} (${isUp ? '+' : ''}${priceChange}%)`
   })
 
   return `Курсы криптовалют:\n${data.join('\n')}`
