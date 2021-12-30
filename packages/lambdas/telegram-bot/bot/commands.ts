@@ -115,9 +115,13 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/dice'), (ctx) => {
     const { text } = getCommandData(ctx.message)
-    return ctx.replyWithMarkdown(throwDice(parseInt(text, 10) || 6), {
-      reply_to_message_id: ctx.message?.message_id,
-    })
+    const diceRoll = parseInt(text, 10)
+    if (diceRoll) {
+      return ctx.replyWithMarkdown(throwDice(parseInt(text, 10) || 6), {
+        reply_to_message_id: ctx.message?.message_id,
+      })
+    }
+    return ctx.replyWithDice()
   })
 
   bot.hears(checkCommand('/p'), async (ctx) => {
