@@ -22,19 +22,15 @@ const getImage = async (url: string, tbUrl: string): Promise<Buffer> => {
     console.log('Failed to load image. Trying to load TabUrl') // eslint-disable-line no-console
   }
 
-  try {
-    if (tbUrl) {
-      const tabImageResponse = await axios(tbUrl, { timeout: 5000, responseType: 'arraybuffer' })
+  if (tbUrl) {
+    const tabImageResponse = await axios(tbUrl, { timeout: 5000, responseType: 'arraybuffer' })
 
-      if (isResponseImage(tabImageResponse.headers)) {
-        return Buffer.from(tabImageResponse.data)
-      }
+    if (isResponseImage(tabImageResponse.headers)) {
+      return Buffer.from(tabImageResponse.data)
     }
-    throw new Error()
-  } catch (e) {
-    console.log(e) // eslint-disable-line no-console
-    throw new Error(`Can't load image: ${url} (preview: ${tbUrl})`)
   }
+
+  return Promise.reject(new Error('Failed to load image'))
 }
 
 export const searchImage = async (query: string): Promise<{ image: Buffer; url: string }> => {
@@ -52,9 +48,12 @@ export const searchImage = async (query: string): Promise<{ image: Buffer; url: 
     const imageUrl = image.link
     const tbUrl = image.image.thumbnailLink
 
-    const loadedImage = await getImage(imageUrl, tbUrl)
-
-    return { image: loadedImage, url: imageUrl }
+    try {
+      const loadedImage = await getImage(imageUrl, tbUrl)
+      return { image: loadedImage, url: imageUrl }
+    } catch (e) {
+      return Promise.reject(new Error(`Can't load image: ${url} (preview: ${tbUrl})`))
+    }
   }
 
   return Promise.reject(new Error(`Google can't find ${query} for you`))
