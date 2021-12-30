@@ -33,7 +33,7 @@ interface CoinMarketCurrency {
 }
 
 const getCoinMarketCapData = async (): Promise<string> => {
-  const symbols = { BTC: 2, ETH: 2, XRP: 4, ADA: 3, CERE: 4 }
+  const symbols = { BTC: 2, ETH: 2, ADA: 3, CERE: 4 }
   const url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 
   const response = await axios(url, {

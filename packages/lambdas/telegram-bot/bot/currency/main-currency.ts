@@ -6,7 +6,7 @@ const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 const timeout = 15000
 
 const getFreeCurrencyData = async (): Promise<string> => {
-  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK', 'USD_PLN', 'EUR_PLN']
+  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK', 'USD_PLN', 'EUR_PLN', 'USD_TRY']
   const url = 'https://free.currconv.com/api/v7/convert'
 
   const promises = chunk(currencies, 2).map((pair) =>
@@ -21,7 +21,7 @@ const getFreeCurrencyData = async (): Promise<string> => {
 
   const currencyMessage = map(
     mergedResult,
-    (value, key) => `${key.replace('_', '/')}: ${round(value.val, 4)}`,
+    (value, key) => `${key.replace('_', '/')}: ${round(value.val, 2)}`,
   ).join('\n')
 
   return `Курсы FCC:\n${currencyMessage}\n`
@@ -40,7 +40,8 @@ const getFixerData = async (): Promise<string> => {
           \nUSD/SEK: ${round(rates.SEK / rates.USD, 3)}\
           \nEUR/SEK: ${round(rates.SEK, 3)}\
           \nUSD/PLN: ${round(rates.PLN / rates.USD, 3)}\
-          \nEUR/PLN: ${round(rates.PLN, 3)}
+          \nEUR/PLN: ${round(rates.PLN, 3)}\
+          \nUSD/TRY: ${round(rates.TRY / rates.USD, 2)}
 `
 }
 
