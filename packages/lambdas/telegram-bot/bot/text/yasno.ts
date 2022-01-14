@@ -1,4 +1,4 @@
-import { padStart } from 'lodash'
+import { padStart, sample } from 'lodash'
 
 const whDate = (): string => {
   // https://warhammer40k.fandom.com/wiki/Imperial_Dating_System
@@ -27,6 +27,7 @@ const YEARS = {
   2019: () => '2k19',
   2020: whDate,
   2021: () => '2️⃣0️⃣2️⃣1️⃣',
+  2022: () => sample(['² ⁰ ² ²', '２０２２']),
 }
 
 export const yasnyfy = (text: string): string => {
