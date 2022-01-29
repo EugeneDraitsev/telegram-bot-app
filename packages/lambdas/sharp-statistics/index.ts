@@ -7,7 +7,7 @@ import { get24hChatStats, sanitizeSvg } from '@tg-bot/common'
 import { getDailyUsersBarsSvg } from './charts/daily-users-bars.component'
 
 const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
-  const chatId = event.queryStringParameters?.chatId || ''
+  const chatId = event.queryStringParameters?.chatId || event.pathParameters?.chatId || ''
   const chatData = await get24hChatStats(chatId)
   const html = getDailyUsersBarsSvg(chatData)
   const svg = sanitizeSvg(html)
@@ -20,10 +20,8 @@ const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: {
-      'Content-Type': 'image/svg+xml',
-      'Content-Disposition': 'inline; filename=chart.svg',
-    },
+    headers: { 'Content-Type': 'image/png' },
+    isBase64Encoded: true,
     body: image.toString('base64'),
   }
 }

@@ -48,6 +48,10 @@ functions:
       FONTCONFIG_PATH: './fonts'
     architecture: x86_64
     memorySize: 1536
+    events:
+      - http:
+          path: /statistics/{chatId}
+          method: get
 
 plugins:
   - serverless-offline
