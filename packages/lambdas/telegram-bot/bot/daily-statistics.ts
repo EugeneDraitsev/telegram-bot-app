@@ -11,7 +11,7 @@ export const getDailyStatistics = async (
   chatName: string,
 ) => {
   // fetch ssr-render url without await to reduce coldstart
-  const statisticsMessage = `${chatName} chat statistics:${FRONTEND_BASE_URL}/chat/${chatId}`
+  const statisticsMessage = `24h ${chatName} chat statistics: ${FRONTEND_BASE_URL}/chat/${chatId}`
 
   try {
     axios(`${FRONTEND_BASE_URL}/chat/${chatId}`).catch(noop)
