@@ -60,7 +60,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
           )}
         />
       </Bar>
-      <YAxis hide />
+      <YAxis hide padding={{ top: 30 }} />
       <XAxis
         dataKey="id"
         tickLine={false}
