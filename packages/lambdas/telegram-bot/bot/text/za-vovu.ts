@@ -14,7 +14,7 @@ const convertText = (text: string): string => {
   }
 
   if (/[зЗвВ]/g.test(text)) {
-    return text..replaceAll(/[зЗ]/g, 'Z').replaceAll(/[вВ]/g, 'V')
+    return text.replaceAll(/[зЗ]/g, 'Z').replaceAll(/[вВ]/g, 'V')
   } else {
     return String(sample(ANSWERS))
   }
