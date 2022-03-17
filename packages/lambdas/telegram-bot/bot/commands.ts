@@ -11,7 +11,15 @@ import {
 } from '@tg-bot/common'
 
 import { translate, searchImage, searchYoutube } from './google'
-import { huify, puntoSwitcher, sayThanksForLink, shrugyfy, throwDice, yasnyfy, zavovu } from './text'
+import {
+  huify,
+  puntoSwitcher,
+  sayThanksForLink,
+  shrugyfy,
+  throwDice,
+  yasnyfy,
+  zavovu,
+} from './text'
 import { searchWiki } from './wiki'
 import { getCurrency } from './currency'
 import { getPrediction } from './magic8ball'
@@ -74,7 +82,7 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     return ctx.reply(await translate(text, 'de'), { reply_to_message_id: replyId })
   })
 
-  bot.hears(checkCommand('/za'), ctx => {
+  bot.hears(checkCommand('/za'), (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(zavovu(text), { reply_to_message_id: replyId })
   })

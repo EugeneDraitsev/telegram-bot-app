@@ -9,12 +9,12 @@ export const ANSWERS = [
 ]
 
 const convertText = (text: string): string => {
-  if (text.length == 0) {
+  if (!text.length) {
     return 'VoVa обоcралZя'
   }
 
   if (/[зЗвВ]/g.test(text)) {
-    return text.replaceAll(/[зЗ]/g, 'Z').replaceAll(/[вВ]/g, 'V')
+    return text.replace(/[зЗ]/g, 'Z').replace(/[вВ]/g, 'V')
   } else {
     return String(sample(ANSWERS))
   }
