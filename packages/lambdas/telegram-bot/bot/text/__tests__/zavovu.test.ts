@@ -13,4 +13,8 @@ describe('zavovu should work correctly', () => {
   test('zavovu should convert letters of mixed case correctly', () => {
     expect(zavovu('зв ВЗ')).toEqual('ZV VZ')
   })
+  test('zavovu should provide one of the default answers if string is non-convertable', () => {
+    const result = sayThanksForLink()
+    expect(ANSWERS.includes(result)).toEqual(true)
+  })
 })
