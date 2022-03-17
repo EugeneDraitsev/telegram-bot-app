@@ -3,6 +3,7 @@
     "module": "commonjs",
     "target": "es6",
     "lib": [
+      "ES2021.String",
       "es2018",
       "es6",
       "dom"
