@@ -1,8 +1,8 @@
-import { zavovu } from '..'
+import { zavovu, ANSWERS } from '..'
 
 describe('zavovu should work correctly', () => {
   test('zavovu should reply default answer for empty input', () => {
-    expect(zavovu()).toEqual('VoVa обоcралZя')
+    expect(zavovu('')).toEqual('VoVa обоcралZя')
   })
   test('zavovu should convert lower case letters correctly', () => {
     expect(zavovu('зв')).toEqual('ZV')
@@ -14,7 +14,7 @@ describe('zavovu should work correctly', () => {
     expect(zavovu('зв ВЗ')).toEqual('ZV VZ')
   })
   test('zavovu should provide one of the default answers if string is non-convertable', () => {
-    const result = sayThanksForLink()
+    const result = zavovu('ааа')
     expect(ANSWERS.includes(result)).toEqual(true)
   })
 })
