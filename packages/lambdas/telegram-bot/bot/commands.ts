@@ -82,6 +82,11 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     return ctx.reply(await translate(text, 'de'), { reply_to_message_id: replyId })
   })
 
+  bot.hears(checkCommand('/tb'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.reply(await translate(text, 'be'), { reply_to_message_id: replyId })
+  })
+
   bot.hears(checkCommand('/za'), (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(zavovu(text), { reply_to_message_id: replyId })
