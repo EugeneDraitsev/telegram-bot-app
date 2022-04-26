@@ -5,7 +5,7 @@ import { Message } from 'telegram-typings'
 import { APIGatewayProxyHandler } from 'aws-lambda'
 import { saveEvent, updateChatMetaData, updateStatistics, findCommand } from '@tg-bot/common'
 
-import setupCommands from './bot/commands'
+import setupCommands from './src/commands'
 
 const bot = new Telegraf(process.env.TOKEN as string)
 
