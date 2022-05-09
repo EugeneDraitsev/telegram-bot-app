@@ -1,5 +1,6 @@
 import { Telegraf, Context as ContextMessageUpdate } from 'telegraf'
 import { random } from 'lodash'
+import axios from 'axios'
 
 import {
   checkCommand,
@@ -171,10 +172,15 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     return ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: replyId })
   })
 
-  bot.hears(checkCommand('/check'), (ctx) => {
+  bot.hears(checkCommand('/check'), async (ctx) => {
     const { replyId } = getCommandData(ctx.message)
+    const imageResponse = await axios('https://masha-migrationsverket.deno.dev', {
+      timeout: 5000,
+      responseType: 'arraybuffer',
+    })
+    const image = Buffer.from(imageResponse.data)
     return ctx.replyWithPhoto(
-      { source: 'https://masha-migrationsverket.deno.dev', filename: 'status.png' },
+      { source: image, filename: 'status.png' },
       { reply_to_message_id: replyId },
     )
   })
