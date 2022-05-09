@@ -170,6 +170,14 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     const { replyId } = getCommandData(ctx.message)
     return ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: replyId })
   })
+
+  bot.hears(checkCommand('/check'), (ctx) => {
+    const { replyId } = getCommandData(ctx.message)
+    return ctx.replyWithPhoto(
+      { source: 'https://masha-migrationsverket.deno.dev', filename: 'status.png' },
+      { reply_to_message_id: replyId },
+    )
+  })
 }
 
 export default commands
