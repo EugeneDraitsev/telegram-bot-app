@@ -57,7 +57,7 @@ const getCurrenciesResult = (currencies: CoinMarketCurrency[]) => {
 
 const getCoinMarketCapData = async (): Promise<string> => {
   const url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
-  const roundedDate = String(getRoundedDate(5))
+  const roundedDate = String(getRoundedDate(5).valueOf())
   const savedDataBuffer = await getFile(cryptoRequestsBucketName, roundedDate).catch(() => null)
   const savedDate = JSON.parse(savedDataBuffer?.Body?.toString() || '{}')
 
