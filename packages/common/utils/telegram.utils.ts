@@ -31,9 +31,7 @@ export const getCommandData = (message: Message) => {
   const parsedText = getParsedText(message.text)
 
   const replyId = parsedText ? message_id : reply_to_message?.message_id ?? message_id
-  const text = parsedText || reply_to_message?.text || ''
-  console.log(JSON.stringify({ parsedText }))
-  console.log(JSON.stringify({ reply_to_message }))
+  const text = parsedText || reply_to_message?.text || reply_to_message?.caption || ''
 
   return { text, replyId }
 }
