@@ -19,7 +19,12 @@ export const checkCommand =
 export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
   some(entities, (entity) => entity.type === 'bot_command')
 
-export const getParsedText = (text = '') => split(text, ' ').slice(1).join(' ')
+export const getParsedText = (text = '') => {
+  if (text.startsWith('/')) {
+    return split(text, ' ').slice(1).join(' ')
+  }
+  return text
+}
 
 export const getUserName = (user?: User | Chat) =>
   user?.username ||
@@ -28,7 +33,7 @@ export const getUserName = (user?: User | Chat) =>
 
 export const getCommandData = (message: Message) => {
   const { message_id, reply_to_message } = message
-  const parsedText = getParsedText(message.text)
+  const parsedText = getParsedText(message.text || message.caption)
 
   const replyId = parsedText ? message_id : reply_to_message?.message_id ?? message_id
   const text = parsedText || reply_to_message?.text || reply_to_message?.caption || ''

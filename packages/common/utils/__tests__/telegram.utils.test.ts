@@ -11,8 +11,8 @@ import {
   getCommandData,
 } from '..'
 
-describe('findCommand must works as designed', () => {
-  test('findCommand must properly commands from first word in message or string ending with @', () => {
+describe('findCommand', () => {
+  test('must properly commands from first word in message or string ending with @', () => {
     expect(findCommand('/g')).toEqual('/g')
     expect(findCommand('/hello world')).toEqual('/hello')
     expect(findCommand('/g@draiBot')).toEqual('/g')
@@ -22,13 +22,16 @@ describe('findCommand must works as designed', () => {
   })
 })
 
-describe('getParsedText should works as designed', () => {
-  test('getParsedText should correct handle empty commands', () => {
+describe('getParsedText', () => {
+  test('should correct handle empty commands without text', () => {
     expect(getParsedText('/g')).toEqual('')
     expect(getParsedText('')).toEqual('')
     expect(getParsedText('/g@draiBot')).toEqual('')
   })
-  test('getParsedText should properly parse different types of commands', () => {
+  test('should correct handle text without command', () => {
+    expect(getParsedText('hello world')).toEqual('hello world')
+  })
+  test('should properly parse different types of commands', () => {
     expect(getParsedText('/hello world')).toEqual('world')
     expect(getParsedText('/g cats')).toEqual('cats')
     expect(getParsedText('/g@draiBot cats')).toEqual('cats')
@@ -38,15 +41,15 @@ describe('getParsedText should works as designed', () => {
   })
 })
 
-describe('isYaMusicLink works correctly', () => {
-  test('isYaMusicLink finds link in a message which contains only link', () => {
+describe('isLink', () => {
+  test('finds link in a message which contains only link', () => {
     expect(isLink('https://music.yandex.by/')).toBeTruthy()
   })
-  test('isYaMusicLink finds no link in an empty message', () => {
+  test('finds no link in an empty message', () => {
     expect(isLink('')).toBeFalsy()
     expect(isLink(undefined)).toBeFalsy()
   })
-  test('isYaMusicLink finds link in a message with text and link', () => {
+  test('finds link in a message with text and link', () => {
     expect(isLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.')).toBeTruthy()
   })
 })
@@ -88,7 +91,7 @@ describe('getChatName', () => {
 })
 
 describe('getCommandData', () => {
-  it('getCommandData return correct text and replyId', () => {
+  it('return correct text and replyId', () => {
     expect(
       getCommandData({ text: '/s', reply_to_message: { message_id: 123 } } as Message),
     ).toEqual({ text: '', replyId: 123 })
@@ -103,5 +106,8 @@ describe('getCommandData', () => {
         reply_to_message: { message_id: 123 },
       } as Message),
     ).toEqual({ text: 'cat', replyId: 555 })
+  })
+  it('should return caption if text is empty', () => {
+    expect(getCommandData({ text: '', caption: '123123' } as Message)).toEqual({ text: '123123' })
   })
 })
