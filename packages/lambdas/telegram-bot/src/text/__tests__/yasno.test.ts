@@ -2,7 +2,7 @@ import { yasnyfy } from '..'
 
 describe('yasnyfy should works as designed', () => {
   test('yasnyfy should properly work with hardcoded values', () => {
-    jest.useFakeTimers('modern')
+    jest.useFakeTimers()
     jest.setSystemTime(new Date(2018, 10, 10))
 
     expect(yasnyfy('тест')).toEqual('\n>20!8\n>тест\nЯсно')
@@ -10,7 +10,7 @@ describe('yasnyfy should works as designed', () => {
   })
 
   test('yasnyfy should properly work with ordinary values', () => {
-    jest.useFakeTimers('modern')
+    jest.useFakeTimers()
     jest.setSystemTime(new Date(2017, 10, 10))
 
     expect(yasnyfy('тест')).toEqual('\n>2k17\n>тест\nЯсно')

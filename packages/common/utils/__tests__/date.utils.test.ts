@@ -12,7 +12,7 @@ describe('getRoundedDate', () => {
   })
 
   it('should round the date to the nearest 5 min current date', () => {
-    jest.useFakeTimers('modern')
+    jest.useFakeTimers()
     jest.setSystemTime(new Date(Date.UTC(2018, 0, 1, 1, 1, 1, 1)))
 
     expect(getRoundedDate(5).valueOf()).toEqual(1514768400000)
