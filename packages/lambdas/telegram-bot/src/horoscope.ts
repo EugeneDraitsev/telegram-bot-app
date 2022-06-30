@@ -51,8 +51,9 @@ export const getHoroscope = async (query: string): Promise<string> => {
       axios(urlTomorrow, { timeout: 10000 }).then((x) => x.data),
     ])
 
-    return `<b>Сегодня:</b>\n\n${normalize(today.text)}\n
-<b>Завтра:</b>\n\n${normalize(tomorrow.text)}`
+    return `<b>Сегодня:</b>\n\n${normalize(today.text)}\n\n<b>Завтра:</b>\n\n${normalize(
+      tomorrow.text,
+    )}`
   } catch (e) {
     return 'Request error 😿'
   }
