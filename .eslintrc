@@ -1,4 +1,4 @@
 {
-  "extends": ["plugin:@typescript-eslint/recommended", "react-app", "plugin:sonarjs/recommended", "prettier"],
-  "plugins": ["@typescript-eslint", "sonarjs", "jest"]
+  "extends": ["react-app", "plugin:sonarjs/recommended", "prettier"],
+  "plugins": ["sonarjs", "jest"]
 }
