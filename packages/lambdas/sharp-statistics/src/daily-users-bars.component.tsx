@@ -1,5 +1,4 @@
 /* eslint-disable react/function-component-definition,react/no-unstable-nested-components */
-import React from 'react'
 import styled from 'styled-components'
 import { tint } from 'polished'
 import { BarChart, XAxis, Bar, Cell, LabelList, YAxis } from 'recharts'
