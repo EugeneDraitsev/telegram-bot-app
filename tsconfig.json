@@ -23,7 +23,7 @@
     "suppressImplicitAnyIndexErrors": true,
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
-    "jsx": "preserve"
+    "jsx": "react-jsx"
   },
   "exclude": [
     "node_modules",
