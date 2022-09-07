@@ -123,8 +123,8 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
   })
 
   bot.hears(checkCommand('/v'), async (ctx) => {
-    const { text } = getCommandData(ctx.message)
-    return ctx.reply(await searchYoutube(text))
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.reply(await searchYoutube(text), { reply_to_message_id: replyId })
   })
 
   bot.hears(checkCommand('/w'), async (ctx) => {
