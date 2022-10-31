@@ -32,7 +32,12 @@ const getFixerData = async (): Promise<string> => {
   const { rates } = await axios(url, {
     timeout,
     params: { access_key: fixerKey, format: 1, base: 'EUR' },
-  }).then((x) => x.data)
+  }).then((x) => {
+    if (!x.data.success) {
+      throw new Error(x.data.error.info)
+    }
+    return x.data
+  })
 
   return `Курсы fixer:\
           \nUSD/BYN: ${round(rates.BYN / rates.USD, 3)}\
@@ -49,6 +54,10 @@ export const getMainCurrencies = async (): Promise<string> => {
   try {
     return await getFreeCurrencyData()
   } catch (e) {
-    return getFixerData()
+    console.error('FCC API error', e)
+    return getFixerData().catch((err) => {
+      console.error('Fixer API error', err)
+      throw err
+    })
   }
 }
