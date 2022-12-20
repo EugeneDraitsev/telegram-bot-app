@@ -28,6 +28,7 @@ const YEARS = {
   2020: whDate,
   2021: () => '2️⃣0️⃣2️⃣1️⃣',
   2022: () => sample(['² ⁰ ² ²', '２０２２']),
+  2022: () => sample(['202 :3', '2023', 'MMXXIII'])
 }
 
 export const yasnyfy = (text: string): string => {
