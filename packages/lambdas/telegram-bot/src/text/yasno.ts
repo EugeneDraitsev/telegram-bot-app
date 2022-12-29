@@ -28,7 +28,7 @@ const YEARS = {
   2020: whDate,
   2021: () => '2️⃣0️⃣2️⃣1️⃣',
   2022: () => sample(['² ⁰ ² ²', '２０２２']),
-  2023: () => sample(['202 :3', '2023', 'MMXXIII'])
+  2023: () => `||${sample(['202 :3', '2023', 'MMXXIII'])}||`,
 }
 
 export const yasnyfy = (text: string): string => {
@@ -41,10 +41,10 @@ export const yasnyfy = (text: string): string => {
 
   const stringYear = String(year)
   const formattedYear = YEARS[stringYear]?.() ?? stringYear
-  const quotedText = text ? `\n>${text}` : ''
+  const quotedText = text ? `\n\\>${text}` : ''
 
   if (month === 3 && day === 1) {
-    return `\n>1 Апреля ${stringYear.slice(2)} года${quotedText}\nЯсно😐`
+    return `\n\\>1 Апреля ${stringYear.slice(2)} года${quotedText}\nЯсно😐`
   }
-  return `\n>${formattedYear}${quotedText}\nЯсно`
+  return `\n\\>${formattedYear}${quotedText}\nЯсно`
 }

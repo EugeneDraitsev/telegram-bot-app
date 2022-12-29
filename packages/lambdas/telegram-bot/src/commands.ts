@@ -1,6 +1,5 @@
 import { Telegraf, Context as ContextMessageUpdate } from 'telegraf'
 import { random } from 'lodash'
-import axios from 'axios'
 
 import {
   checkCommand,
@@ -39,10 +38,13 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(checkCommand('/g'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     try {
-      const { image, url } = await searchImage(text)
+      const { url, tbUrl } = await searchImage(text)
       return await ctx
-        .replyWithPhoto({ source: image }, { reply_to_message_id: replyId })
-        .catch(() => Promise.reject(new Error(`Can't load ${url} to telegram`)))
+        .replyWithPhoto({ url, filename: text }, { reply_to_message_id: replyId })
+        .catch(() =>
+          ctx.replyWithPhoto({ url: tbUrl, filename: text }, { reply_to_message_id: replyId }),
+        )
+        .catch(() => Promise.reject(new Error(`Can't load ${url} to telegram (tabUrl: ${tbUrl})`)))
     } catch (e) {
       return ctx.reply(e.message, { reply_to_message_id: replyId })
     }
@@ -58,7 +60,7 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
   bot.hears(checkCommand('/y'), (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     const yasno = yasnyfy(text)
-    return ctx.reply(yasno, { reply_to_message_id: replyId })
+    return ctx.replyWithMarkdownV2(yasno, { reply_to_message_id: replyId })
   })
 
   bot.hears(checkCommand('/c'), async (ctx) => ctx.reply(await getCurrency()))
@@ -136,7 +138,7 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     const { text } = getCommandData(ctx.message)
     const diceRoll = parseInt(text, 10)
     if (diceRoll) {
-      return ctx.replyWithMarkdown(throwDice(parseInt(text, 10) || 6), {
+      return ctx.replyWithMarkdownV2(throwDice(parseInt(text, 10) || 6), {
         reply_to_message_id: ctx.message?.message_id,
       })
     }
@@ -150,7 +152,7 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/f'), async (ctx) => {
     const { text } = getCommandData(ctx.message)
-    return ctx.replyWithMarkdown(await getWeather(text || 'Минск'), {
+    return ctx.replyWithMarkdownV2(await getWeather(text || 'Минск'), {
       reply_to_message_id: ctx.message?.message_id,
     })
   })
@@ -169,18 +171,13 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/shrug'), (ctx) => {
     const { replyId } = getCommandData(ctx.message)
-    return ctx.replyWithMarkdown(shrugyfy(), { reply_to_message_id: replyId })
+    return ctx.replyWithMarkdownV2(shrugyfy(), { reply_to_message_id: replyId })
   })
 
   bot.hears(checkCommand('/check'), async (ctx) => {
     const { replyId } = getCommandData(ctx.message)
-    const imageResponse = await axios('https://masha-migrationsverket.deno.dev', {
-      timeout: 5000,
-      responseType: 'arraybuffer',
-    })
-    const image = Buffer.from(imageResponse.data)
     return ctx.replyWithPhoto(
-      { source: image, filename: 'status.png' },
+      { url: 'https://masha-migrationsverket.deno.dev', filename: 'status.png' },
       { reply_to_message_id: replyId },
     )
   })

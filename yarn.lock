@@ -14968,19 +14968,19 @@ tar@^6.1.13:
     mkdirp "^1.0.3"
     yallist "^4.0.0"
 
-telegraf@4.9.1:
-  version "4.9.1"
-  resolved "https://registry.yarnpkg.com/telegraf/-/telegraf-4.9.1.tgz#bc12e98ea75f2aaf72c5c4a8a0d49c68837bf0b7"
-  integrity sha512-MukWpKvAZ6/HpT3yHXz+jwUf2HsPa9TcsqPLQjJ+kHNGUS2PLgaNX690ExdWmWPuxjVjC4wNHmZ9JetO3C/tVA==
+telegraf@4.11.2:
+  version "4.11.2"
+  resolved "https://registry.yarnpkg.com/telegraf/-/telegraf-4.11.2.tgz#1cf4e74418b4fb6eaddd11a74cc50b0971c06c35"
+  integrity sha512-RGEh+NXkHbq1KcSSbJeVYhHMrEN4rymd9DSe3SoIV0886bJPBHLzYCNrOqnk9aeZE2Idwh5uK0X/xbR6jScQKQ==
   dependencies:
     abort-controller "^3.0.0"
-    debug "^4.3.3"
+    debug "^4.3.4"
     mri "^1.2.0"
     node-fetch "^2.6.7"
     p-timeout "^4.1.0"
     safe-compare "^1.1.4"
     sandwich-stream "^2.0.2"
-    typegram "^3.11.0"
+    typegram "^4.1.0"
 
 telegram-typings@5.0.0:
   version "5.0.0"
@@ -15319,10 +15319,10 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
-typegram@^3.11.0:
-  version "3.12.0"
-  resolved "https://registry.yarnpkg.com/typegram/-/typegram-3.12.0.tgz#e35e2e50ced1c2b5775176c5b3be5dfffdf03a1a"
-  integrity sha512-/VrU0sJv8BdOsBIpYT4w35C7dPg5YyKP6fLiYN9qYXRZ86TVIiw0ZypkzElTAfDVsJtJSluGAufUrcX7VRSIYQ==
+typegram@^4.1.0:
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/typegram/-/typegram-4.1.1.tgz#afda728d793d97b8c202290eb617640ddd89d005"
+  integrity sha512-4xR41CHqE2gKmbv1t1C4JM0MNtaQWo28Ez4c2dDAwdKL7BixDRxk0THmiWjJTGKAZdkaaD1I3tVMXRlbk9VJOw==
 
 "typescript@^3 || ^4", typescript@^4.9.4:
   version "4.9.4"
