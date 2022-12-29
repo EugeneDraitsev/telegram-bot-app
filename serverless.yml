@@ -24,7 +24,6 @@ functions:
       GOOGLE_API_KEY: ${env:GOOGLE_API_KEY, file(./config.json):GOOGLE_API_KEY}
       OPENWEATHERMAP_TOKEN: ${env:OPENWEATHERMAP_TOKEN, file(./config.json):OPENWEATHERMAP_TOKEN}
       TOKEN: ${env:TOKEN, file(./config.json):TOKEN}
-      FCC_API_KEY: ${env:FCC_API_KEY, file(./config.json):FCC_API_KEY}
       YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN, file(./config.json):YOUTUBE_TOKEN}
       FIXER_API_KEY: ${env:FIXER_API_KEY, file(./config.json):FIXER_API_KEY}
       COIN_MARKET_CAP_API_KEY: ${env:COIN_MARKET_CAP_API_KEY, file(./config.json):COIN_MARKET_CAP_API_KEY}

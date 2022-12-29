@@ -27,6 +27,14 @@ describe('yasnyfy should works as designed', () => {
     jest.setSystemTime(new Date(2022, 10, 10))
     const result = yasnyfy('тест')
     expect(result.includes('² ⁰ ² ²') || result.includes('２０２２')).toBeTruthy()
+
+    jest.setSystemTime(new Date(2023, 10, 10))
+    const result2023 = yasnyfy('тест')
+    expect(
+      result2023.includes('202 :3') ||
+        result2023.includes('2023') ||
+        result2023.includes('MMXXIII'),
+    ).toBeTruthy()
   })
 
   test('yasnyfy should properly work with warhammer values', () => {
