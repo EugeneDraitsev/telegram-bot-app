@@ -3,6 +3,7 @@ import { some, split, toLower } from 'lodash'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isLink = (text = ''): any => text.includes('https://')
+export const isTwitterLink = (text = ''): any => text.includes('https://twitter.com/')
 
 export const findCommand = (text = ''): string =>
   text

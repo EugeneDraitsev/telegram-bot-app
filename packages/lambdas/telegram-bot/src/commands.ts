@@ -8,6 +8,7 @@ import {
   isLink,
   getFormattedChatStatistics,
   getUsersList,
+  isTwitterLink,
 } from '@tg-bot/common'
 
 import { translate, searchImage, searchYoutube } from './google'
@@ -35,6 +36,18 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     next?.()
   })
 
+  bot.hears(isTwitterLink, async (ctx, next) => {
+    try {
+      await ctx.editMessageText(
+        ctx.message?.text.replace('https://twitter.com/', 'https://fxtwitter.com/'),
+      )
+    } catch (e) {
+      console.error('Message edit error: ', e)
+    } finally {
+      next?.()
+    }
+  })
+
   bot.hears(checkCommand('/g'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     try {
@@ -44,7 +57,11 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
         .catch(() =>
           ctx.replyWithPhoto({ url: tbUrl, filename: text }, { reply_to_message_id: replyId }),
         )
-        .catch(() => Promise.reject(new Error(`Can't load ${url} to telegram (tabUrl: ${tbUrl})`)))
+        .catch(() => {
+          ctx.reply(`Can't load ${url} to telegram (tabUrl: ${tbUrl})`, {
+            reply_to_message_id: replyId,
+          })
+        })
     } catch (e) {
       return ctx.reply(e.message, { reply_to_message_id: replyId })
     }
