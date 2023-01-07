@@ -8,7 +8,6 @@ import {
   isLink,
   getFormattedChatStatistics,
   getUsersList,
-  isTwitterLink,
 } from '@tg-bot/common'
 
 import { translate, searchImage, searchYoutube } from './google'
@@ -34,18 +33,6 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
       ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
     }
     next?.()
-  })
-
-  bot.hears(isTwitterLink, async (ctx, next) => {
-    try {
-      await ctx.editMessageText(
-        ctx.message?.text.replace('https://twitter.com/', 'https://fxtwitter.com/'),
-      )
-    } catch (e) {
-      console.error('Message edit error: ', e)
-    } finally {
-      next?.()
-    }
   })
 
   bot.hears(checkCommand('/g'), async (ctx) => {
