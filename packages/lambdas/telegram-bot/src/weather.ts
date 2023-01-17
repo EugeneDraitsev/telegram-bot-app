@@ -557,6 +557,8 @@ const windDirection = (value: number): string => windDir[Math.round(value / 45)]
 
 const getFlag = (value: string): string => get(flags, regions.indexOf(value.toUpperCase()), '🙊')
 
+const formatTemperature = (value: number): string => `<b>${value}°C</b>`
+
 export const getWeather = async (location: string): Promise<string> => {
   try {
     const [infoForecast, infoNow] = await Promise.all([
@@ -566,20 +568,23 @@ export const getWeather = async (location: string): Promise<string> => {
 
     const city = infoForecast.city.name
     const { country } = infoForecast.city
-    const { temp } = infoNow.main
     const { humidity } = infoNow.main
     const wind = infoNow.wind.speed
     const dir = windDirection(infoNow.wind.deg)
-    const dayTempHigh = infoForecast.list[0].temp.max
-    const dayTempLow = infoForecast.list[0].temp.min
-    const nextDayTempHigh = infoForecast.list[1].temp.max
-    const nextDayTempLow = infoForecast.list[1].temp.min
-    const nextNextDayTempHigh = infoForecast.list[2].temp.max
-    const nextNextDayTempLow = infoForecast.list[2].temp.min
+
+    const temp = formatTemperature(infoNow.main.temp)
+    const dayTempHigh = formatTemperature(infoForecast.list[0].temp.max)
+    const dayTempLow = formatTemperature(infoForecast.list[0].temp.min)
+    const nextDayTempHigh = formatTemperature(infoForecast.list[1].temp.max)
+    const nextDayTempLow = formatTemperature(infoForecast.list[1].temp.min)
+    const nextNextDayTempHigh = formatTemperature(infoForecast.list[2].temp.max)
+    const nextNextDayTempLow = formatTemperature(infoForecast.list[2].temp.min)
+
     const nowDescription = infoNow.weather[0].description
     const dayDescription = infoForecast.list[0].weather[0].description
     const nextDayDescription = infoForecast.list[1].weather[0].description
     const nextNextDayDescription = infoForecast.list[2].weather[0].description
+
     const nowIcon = icon(infoNow.weather[0].icon)
     const dayIcon = icon(infoForecast.list[0].weather[0].icon)
     const nextDayIcon = icon(infoForecast.list[1].weather[0].icon)
@@ -587,11 +592,11 @@ export const getWeather = async (location: string): Promise<string> => {
     const flag = getFlag(country)
     return `Город: ${city} регион: ${flag} ${country}\
               \nНаправление ветра: ${dir}, скорость: ${wind}м/с\
-              \nТемпература: *${temp}°C*, влажность: ${humidity}%\
+              \nТемпература: ${temp}, влажность: ${humidity}%\
               \n${nowDescription} ${nowIcon}\
-              \nСегодня: *${dayTempHigh}°C* / *${dayTempLow}°C*, ${dayDescription} ${dayIcon}\
-              \nЗавтра: *${nextDayTempHigh}°C* / *${nextDayTempLow}°C*, ${nextDayDescription} ${nextDayIcon}\
-              \nПослезавтра: *${nextNextDayTempHigh}°C* / *${nextNextDayTempLow}°C*, ${nextNextDayDescription} ${nextNextDayIcon}`
+              \nСегодня: ${dayTempHigh} / ${dayTempLow}, ${dayDescription} ${dayIcon}\
+              \nЗавтра: ${nextDayTempHigh} / ${nextDayTempLow}, ${nextDayDescription} ${nextDayIcon}\
+              \nПослезавтра: ${nextNextDayTempHigh} / ${nextNextDayTempLow}, ${nextNextDayDescription} ${nextNextDayIcon}`
   } catch (e) {
     return 'Неверно выбран населенный пункт'
   }

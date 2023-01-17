@@ -142,7 +142,7 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     const { text } = getCommandData(ctx.message)
     const diceRoll = parseInt(text, 10)
     if (diceRoll) {
-      return ctx.replyWithMarkdownV2(throwDice(parseInt(text, 10) || 6), {
+      return ctx.replyWithHTML(throwDice(parseInt(text, 10) || 6), {
         reply_to_message_id: ctx.message?.message_id,
       })
     }
@@ -156,7 +156,7 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
 
   bot.hears(checkCommand('/f'), async (ctx) => {
     const { text } = getCommandData(ctx.message)
-    return ctx.replyWithMarkdownV2(await getWeather(text || 'Минск'), {
+    return ctx.replyWithHTML(await getWeather(text || 'Минск'), {
       reply_to_message_id: ctx.message?.message_id,
     })
   })

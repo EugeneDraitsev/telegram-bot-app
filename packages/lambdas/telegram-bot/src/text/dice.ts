@@ -7,4 +7,4 @@ const getRandomDice = (number: number): string => {
 }
 
 export const throwDice = (number: number): string =>
-  `\`\`\`\n  ___\n/     \\\n| ${getRandomDice(number)} |\n\\     /\n  ¯¯¯\`\`\``
+  `<pre>\n  ___\n/     \\\n| ${getRandomDice(number)} |\n\\     /\n  ¯¯¯</pre>`
