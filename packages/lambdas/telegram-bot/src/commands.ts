@@ -67,7 +67,7 @@ const commands = (bot: Telegraf<ContextMessageUpdate>): void => {
     return ctx.replyWithMarkdownV2(yasno, { reply_to_message_id: replyId })
   })
 
-  bot.hears(checkCommand('/c'), async (ctx) => ctx.reply(await getCurrency()))
+  bot.hears(checkCommand('/c'), async (ctx) => ctx.replyWithHTML(await getCurrency()))
 
   bot.hears(checkCommand('/t'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)

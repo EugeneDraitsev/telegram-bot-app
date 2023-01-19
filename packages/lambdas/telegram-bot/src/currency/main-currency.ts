@@ -1,8 +1,9 @@
 import axios from 'axios'
-import { round } from 'lodash'
 
 const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 const timeout = 15000
+
+const formatRow = (value: number, length = 10) => value.toFixed(2).padStart(length, ' ')
 
 const getExchangeRateData = async (url: string, provider: string): Promise<string> => {
   const { rates } = await axios(url, {
@@ -15,24 +16,32 @@ const getExchangeRateData = async (url: string, provider: string): Promise<strin
     return x.data
   })
 
-  return `Курсы ${provider}:\
-          \nUSD/BYN: ${round(rates.BYN / rates.USD, 3)}\
-          \nEUR/BYN: ${round(rates.BYN, 3)}\
-          \nUSD/SEK: ${round(rates.SEK / rates.USD, 3)}\
-          \nEUR/SEK: ${round(rates.SEK, 3)}\
-          \nUSD/PLN: ${round(rates.PLN / rates.USD, 3)}\
-          \nEUR/PLN: ${round(rates.PLN, 3)}\
-          \nUSD/TRY: ${round(rates.TRY / rates.USD, 2)}
-`
+  const ratesToDisplay = {
+    'USD/BYN': rates.BYN / rates.USD,
+    'EUR/BYN': rates.BYN,
+    'USD/SEK': rates.SEK / rates.USD,
+    'EUR/SEK': rates.SEK,
+    'USD/PLN': rates.PLN / rates.USD,
+    'EUR/PLN': rates.PLN,
+    'USD/TRY': rates.TRY / rates.USD,
+  }
+
+  const maxLength = Math.max(...Object.values(ratesToDisplay).map((x) => x.toFixed(2).length))
+
+  const ratesString = Object.entries(ratesToDisplay)
+    .map(([key, value]) => `${key}: ${formatRow(value, maxLength)}`)
+    .join('\n')
+
+  return `Курсы ${provider}:<pre>${ratesString}</pre>\n`
 }
 
 export const getMainCurrencies = async (): Promise<string> => {
   try {
     const url = 'https://api.exchangerate.host/latest'
-    const provider = 'exchangerate host'
+    const provider = 'ExchangeRate host'
     return await getExchangeRateData(url, provider)
   } catch (e) {
-    console.error('exchangerate host error', e)
+    console.error('ExchangeRate host error', e)
     const url = 'http://data.fixer.io/api/latest'
     const provider = 'fixer'
 
