@@ -32,7 +32,7 @@ const getExchangeRateData = async (url: string, provider: string): Promise<strin
     .map(([key, value]) => `${key}: ${formatRow(value, maxLength)}`)
     .join('\n')
 
-  return `Курсы ${provider}:<pre>${ratesString}</pre>\n`
+  return `Курсы ${provider}:\n<pre>${ratesString}</pre>\n`
 }
 
 export const getMainCurrencies = async (): Promise<string> => {

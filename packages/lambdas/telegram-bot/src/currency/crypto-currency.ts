@@ -50,7 +50,7 @@ const getPoloniexData = async (): Promise<string> => {
     .map(([key, value]) => formatRow(key, value, maxLength))
     .join('\n')
 
-  return `Курсы криптовалют:<pre>${resultString}</pre>`
+  return `Курсы криптовалют:\n<pre>${resultString}</pre>`
 }
 
 const getCurrenciesResult = (currencies: CoinMarketCurrency[]) => {
@@ -77,7 +77,7 @@ const getCurrenciesResult = (currencies: CoinMarketCurrency[]) => {
   const maxLength = Math.max(...data.map(([key, value]) => value.length + key.length))
   const result = data.map(([key, value]) => formatRow(key, value, maxLength)).join('\n')
 
-  return `Курсы криптовалют:<pre>${result}</pre>`
+  return `Курсы криптовалют:\n<pre>${result}</pre>`
 }
 
 const getCoinMarketCapData = async (): Promise<string> => {

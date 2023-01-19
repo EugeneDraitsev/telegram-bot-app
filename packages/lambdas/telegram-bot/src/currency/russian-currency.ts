@@ -38,5 +38,5 @@ export const getRussianCurrency = async (): Promise<string> => {
 
   const brentString = brentPrice ? `\nBRENT: ${brentPrice}` : ''
 
-  return `Курсы медузы:<pre>${currencyString}${brentString}</pre>\n`
+  return `Курсы медузы:\n<pre>${currencyString}${brentString}</pre>\n`
 }
