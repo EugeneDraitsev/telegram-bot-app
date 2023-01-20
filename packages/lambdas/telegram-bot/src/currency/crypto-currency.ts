@@ -19,9 +19,42 @@ const coinMarketCapApiKey = process.env.COIN_MARKET_CAP_API_KEY || 'set_your_tok
 const cryptoRequestsBucketName = process.env.CRYPTO_REQUESTS_BUCKET_NAME as Bucket
 const symbols = { BTC: 2, ETH: 2, ADA: 3, CERE: 4 }
 
+/* Helpers */
+const formatCurrency = (value: string | number, fractionDigits = 2) =>
+  parseFloat(value as string)
+    .toLocaleString('en', {
+      maximumFractionDigits: fractionDigits,
+    })
+    .replaceAll(',', ' ')
+
 const formatRow = (key: string, value: string, length = 10) => {
   return `${key}: ${value.padStart(length - key.length, ' ')}`
 }
+
+const formatCoinMarketCapResult = (currencies: CoinMarketCurrency[]) => {
+  const data = Object.keys(symbols).map((symbol) => {
+    const currency = currencies.find((c: CoinMarketCurrency) => c.symbol === symbol)
+
+    if (!currency) {
+      return ''
+    }
+
+    const { price, percent_change_24h } = currency.quote.USD
+    const isUp = percent_change_24h >= 0
+    const formattedPrice = formatCurrency(price, symbols[symbol])
+
+    const priceChange = round(percent_change_24h, 2)
+
+    return [symbol, `${formattedPrice} (${isUp ? '+' : ''}${priceChange}%)`]
+  })
+
+  const maxLength = Math.max(...data.map(([key, value]) => value.length + key.length))
+  const result = data.map(([key, value]) => formatRow(key, value, maxLength)).join('\n')
+
+  return `Курсы криптовалют:\n<pre>${result}</pre>`
+}
+
+/* Main Functions */
 
 const getPoloniexData = async (): Promise<string> => {
   const url = 'https://poloniex.com/public?command=returnTicker'
@@ -32,11 +65,7 @@ const getPoloniexData = async (): Promise<string> => {
     const currencyData = currency[`USDT_${key}`]
 
     if (currencyData) {
-      acc[key] = parseFloat(currencyData.highestBid)
-        .toLocaleString('en', {
-          maximumFractionDigits: symbols[key],
-        })
-        .replaceAll(',', ' ')
+      acc[key] = formatCurrency(currencyData.highestBid, symbols[key])
     }
 
     return acc
@@ -53,38 +82,11 @@ const getPoloniexData = async (): Promise<string> => {
   return `Курсы криптовалют:\n<pre>${resultString}</pre>`
 }
 
-const getCurrenciesResult = (currencies: CoinMarketCurrency[]) => {
-  const data = Object.keys(symbols).map((symbol) => {
-    const currency = currencies.find((c: CoinMarketCurrency) => c.symbol === symbol)
-
-    if (!currency) {
-      return ''
-    }
-
-    const { price, percent_change_24h } = currency.quote.USD
-    const isUp = percent_change_24h >= 0
-    const formattedPrice = price
-      .toLocaleString('en', {
-        maximumFractionDigits: symbols[symbol],
-      })
-      .replaceAll(',', ' ')
-
-    const priceChange = round(percent_change_24h, 2)
-
-    return [symbol, `${formattedPrice} (${isUp ? '+' : ''}${priceChange}%)`]
-  })
-
-  const maxLength = Math.max(...data.map(([key, value]) => value.length + key.length))
-  const result = data.map(([key, value]) => formatRow(key, value, maxLength)).join('\n')
-
-  return `Курсы криптовалют:\n<pre>${result}</pre>`
-}
-
 const getCoinMarketCapData = async (): Promise<string> => {
   const url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
   const roundedDate = String(getRoundedDate(5).valueOf())
   const savedDataBuffer = await getFile(cryptoRequestsBucketName, roundedDate).catch(() => null)
-  const savedDate = JSON.parse(savedDataBuffer?.Body?.toString() || '{}')
+  const savedData = JSON.parse(savedDataBuffer?.Body?.toString() || '{}')
 
   if (!savedDataBuffer) {
     const response = await axios(url, {
@@ -102,10 +104,10 @@ const getCoinMarketCapData = async (): Promise<string> => {
       Buffer.from(JSON.stringify(filteredCurrencies)),
     )
 
-    return getCurrenciesResult(filteredCurrencies)
+    return formatCoinMarketCapResult(filteredCurrencies)
   }
 
-  return getCurrenciesResult(savedDate)
+  return formatCoinMarketCapResult(savedData)
 }
 
 export const getCryptoCurrency = async (): Promise<string> => {
