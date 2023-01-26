@@ -17,13 +17,12 @@ const getExchangeRateData = async (url: string, provider: string): Promise<strin
   })
 
   const ratesToDisplay = {
-    'USD/BYN': rates.BYN / rates.USD,
-    'EUR/BYN': rates.BYN,
-    'USD/SEK': rates.SEK / rates.USD,
-    'EUR/SEK': rates.SEK,
-    'USD/PLN': rates.PLN / rates.USD,
-    'EUR/PLN': rates.PLN,
-    'USD/TRY': rates.TRY / rates.USD,
+    '🇧🇾USD/BYN': rates.BYN / rates.USD,
+    '🇧🇾EUR/BYN': rates.BYN,
+    '🇸🇪USD/SEK': rates.SEK / rates.USD,
+    '🇸🇪EUR/SEK': rates.SEK,
+    '🇵🇱USD/PLN': rates.PLN / rates.USD,
+    '🇵🇱EUR/PLN': rates.PLN,
   }
 
   const maxLength = Math.max(...Object.values(ratesToDisplay).map((x) => x.toFixed(2).length))
