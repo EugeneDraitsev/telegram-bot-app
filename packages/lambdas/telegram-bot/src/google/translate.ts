@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+import { unEscape } from '@tg-bot/common/utils'
+
 const googleApiKey = process.env.GOOGLE_API_KEY || 'set_your_token'
 
 export const translate = async (text: string, targetLanguage = ''): Promise<string> => {
@@ -19,7 +21,7 @@ export const translate = async (text: string, targetLanguage = ''): Promise<stri
       timeout: 5000,
       method: 'POST',
       data: { q: text, target },
-    }).then((x) => x.data.data.translations?.[0]?.translatedText)
+    }).then((x) => unEscape(x.data.data.translations?.[0]?.translatedText))
   } catch (e) {
     return 'Error from translation service'
   }

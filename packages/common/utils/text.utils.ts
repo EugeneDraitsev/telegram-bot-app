@@ -40,3 +40,11 @@ export const normalize = (str: string) =>
     .trim()
 
 export const sanitizeSvg = (html: string) => html.replace(/<(div|\/div)[^>]*>/g, '') // lgtm[js/polynomial-redos]
+
+export const unEscape = (htmlStr: string) =>
+  htmlStr
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
