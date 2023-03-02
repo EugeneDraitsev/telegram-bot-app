@@ -1,6 +1,6 @@
 import lodash from 'lodash'
 
-import { throwDice } from '..'
+import { throwDice } from '../dice'
 
 lodash.random = jest.fn(() => 1)
 

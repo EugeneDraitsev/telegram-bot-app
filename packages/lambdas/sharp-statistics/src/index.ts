@@ -4,7 +4,7 @@ import sharp from 'sharp'
 import { APIGatewayProxyHandler } from 'aws-lambda'
 import { get24hChatStats, sanitizeSvg } from '@tg-bot/common'
 
-import { getDailyUsersBarsSvg } from './src/daily-users-bars.component'
+import { getDailyUsersBarsSvg } from './daily-users-bars.component'
 
 const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
   const chatId = event.queryStringParameters?.chatId || event.pathParameters?.chatId || ''

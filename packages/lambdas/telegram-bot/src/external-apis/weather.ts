@@ -1,7 +1,7 @@
 import { get } from 'lodash'
 import axios from 'axios'
 
-const weatherToken = process.env.OPENWEATHERMAP_TOKEN || 'set_your_token'
+const weatherToken = process.env.OPEN_WEATHER_MAP_TOKEN || 'set_your_token'
 
 const iconGet = [
   '01d',

@@ -1,4 +1,4 @@
-import { yasnyfy } from '..'
+import { yasnyfy } from '../yasno'
 
 describe('yasnyfy should works as designed', () => {
   test('yasnyfy should properly work with hardcoded values', () => {

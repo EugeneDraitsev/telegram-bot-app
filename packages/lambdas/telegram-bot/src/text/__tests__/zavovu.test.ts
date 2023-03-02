@@ -1,4 +1,4 @@
-import { zavovu, ANSWERS } from '..'
+import { zavovu, ANSWERS } from '../za-vovu'
 
 describe('zavovu should work correctly', () => {
   test('zavovu should reply default answer for empty input', () => {
