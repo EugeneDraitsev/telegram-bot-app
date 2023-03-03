@@ -1,5 +1,3 @@
-import '@tg-bot/dynamo-optimization'
-
 import { Telegraf } from 'telegraf'
 import { Message } from 'telegram-typings'
 import { APIGatewayProxyHandler } from 'aws-lambda'

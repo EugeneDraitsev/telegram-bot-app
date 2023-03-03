@@ -1,18 +1,19 @@
-import { Lambda } from 'aws-sdk'
 import { chain, random, groupBy } from 'lodash'
-import { User } from 'telegram-typings'
+import type { User } from 'telegram-typings'
 
 import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
 import { ChatEvent } from '../../types'
 
-const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => ({
+const getBroadcastParams = (chatId: number) => ({
   FunctionName: `telegram-websockets-${process.env.stage}-broadcastStats`,
-  Payload: JSON.stringify({
-    queryStringParameters: {
-      chatId,
-      endpoint: '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod',
-    },
-  }),
+  Payload: Buffer.from(
+    JSON.stringify({
+      queryStringParameters: {
+        chatId,
+        endpoint: '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod',
+      },
+    }),
+  ),
 })
 
 export const saveEvent = async (
