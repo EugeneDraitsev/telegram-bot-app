@@ -1,8 +1,7 @@
-import '@tg-bot/dynamo-optimization'
-
 import { Telegraf } from 'telegraf'
-import { Message } from 'telegram-typings'
-import { APIGatewayProxyHandler } from 'aws-lambda'
+import type { Message } from 'telegram-typings'
+import type { APIGatewayProxyHandler } from 'aws-lambda'
+
 import { saveEvent, updateChatMetaData, updateStatistics, findCommand } from '@tg-bot/common'
 import setupTextCommands from './text'
 import setupGoogleCommands from './google'

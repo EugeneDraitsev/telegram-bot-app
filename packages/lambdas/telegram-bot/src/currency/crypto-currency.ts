@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { round } from 'lodash'
 import { getFile, getRoundedDate, saveFile } from '@tg-bot/common'
-import { Bucket } from 'aws-sdk/clients/s3'
 
 interface CoinMarketCurrency {
   symbol: string
@@ -16,7 +15,7 @@ interface CoinMarketCurrency {
 
 const timeout = 15000
 const coinMarketCapApiKey = process.env.COIN_MARKET_CAP_API_KEY || 'set_your_token'
-const cryptoRequestsBucketName = process.env.CRYPTO_REQUESTS_BUCKET_NAME as Bucket
+const cryptoRequestsBucketName = process.env.CRYPTO_REQUESTS_BUCKET_NAME || 'set_your_bucket_name'
 const symbols = { BTC: 2, ETH: 2, ADA: 3, CERE: 4 }
 
 /* Helpers */
@@ -85,10 +84,10 @@ const getPoloniexData = async (): Promise<string> => {
 const getCoinMarketCapData = async (): Promise<string> => {
   const url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
   const roundedDate = String(getRoundedDate(5).valueOf())
-  const savedDataBuffer = await getFile(cryptoRequestsBucketName, roundedDate).catch(() => null)
-  const savedData = JSON.parse(savedDataBuffer?.Body?.toString() || '{}')
+  const savedDataString = await getFile(cryptoRequestsBucketName, roundedDate).catch(() => null)
+  const savedData = JSON.parse(savedDataString || '{}')
 
-  if (!savedDataBuffer) {
+  if (!savedDataString) {
     const response = await axios(url, {
       timeout,
       params: { start: 1, limit: 5_000, convert: 'USD' },

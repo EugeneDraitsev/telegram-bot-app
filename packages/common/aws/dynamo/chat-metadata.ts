@@ -1,10 +1,6 @@
 import { invokeLambda } from '../../utils'
 
-export const updateChatMetaData = async (chatId?: number) => {
-  const options = {
-    FunctionName: `telegram-websockets-${process.env.stage}-updateChatData`,
-    Payload: JSON.stringify({ queryStringParameters: { chatId } }),
-  }
+const UPDATE_CHAT_LAMBDA_NAME = `telegram-websockets-${process.env.stage}-updateChatData`
 
-  return invokeLambda(options)
-}
+export const updateChatMetaData = async (chatId?: number) =>
+  invokeLambda(UPDATE_CHAT_LAMBDA_NAME, { queryStringParameters: { chatId } })
