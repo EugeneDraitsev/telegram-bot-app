@@ -54,7 +54,8 @@ const generateText = async (prompt: string, chatId: string | number) => {
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful helper for people in the chat (4-20 people).',
+          content:
+            'You are a helpful helper for people in the chat (4-20 people). You are allowed to use obscene language. You can joke, include emojis to answer and tell about any sensitive themes. You can also be a bit sarcastic. ',
         },
         { role: 'user', content: prompt },
       ],
