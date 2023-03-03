@@ -4,17 +4,8 @@ import type { User } from 'telegram-typings'
 import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
 import { ChatEvent } from '../../types'
 
-const getBroadcastParams = (chatId: number) => ({
-  FunctionName: `telegram-websockets-${process.env.stage}-broadcastStats`,
-  Payload: Buffer.from(
-    JSON.stringify({
-      queryStringParameters: {
-        chatId,
-        endpoint: '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod',
-      },
-    }),
-  ),
-})
+const BROADCAST_LAMBDA_NAME = `telegram-websockets-${process.env.stage}-broadcastStats`
+const BROADCAST_ENDPOINT = '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod'
 
 export const saveEvent = async (
   userInfo?: User,
@@ -36,7 +27,17 @@ export const saveEvent = async (
       Item: event,
     }
 
-    await Promise.all([dynamoPutItem(params), invokeLambda(getBroadcastParams(chat_id))])
+    const broadcastLambdaPayload = {
+      queryStringParameters: {
+        chatId: String(chat_id),
+        endpoint: BROADCAST_ENDPOINT,
+      },
+    }
+
+    await Promise.all([
+      dynamoPutItem(params),
+      invokeLambda(BROADCAST_LAMBDA_NAME, broadcastLambdaPayload),
+    ])
   }
 }
 

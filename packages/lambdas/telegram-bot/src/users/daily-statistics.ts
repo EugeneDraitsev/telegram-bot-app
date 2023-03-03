@@ -1,6 +1,7 @@
 import { invokeLambda, safeJSONParse } from '@tg-bot/common'
 
 const FRONTEND_BASE_URL = 'https://telegram-bot-ui.vercel.app'
+const SHARP_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-statistics`
 
 export const getDailyStatistics = async (
   replyId: number,
@@ -10,15 +11,8 @@ export const getDailyStatistics = async (
   const statisticsMessage = `24h ${chatName} chat statistics: ${FRONTEND_BASE_URL}/chat/${chatId}`
 
   try {
-    const sharpResponse = await invokeLambda({
-      FunctionName: `telegram-${process.env.stage}-sharp-statistics`,
-      Payload: Buffer.from(
-        JSON.stringify({
-          queryStringParameters: {
-            chatId,
-          },
-        }),
-      ),
+    const sharpResponse = await invokeLambda(SHARP_LAMBDA_NAME, {
+      queryStringParameters: { chatId },
     })
 
     if (sharpResponse.FunctionError) {

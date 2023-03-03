@@ -5,7 +5,6 @@ const client = new S3Client({ region: process.env.region })
 export const getFile = async (Bucket: string, Key: string) => {
   const command = new GetObjectCommand({ Bucket, Key })
   const data = await client.send(command)
-  // return consumers.text(data.Body as NodeJS.ReadableStream)
   return data.Body?.transformToString()
 }
 

@@ -74,7 +74,10 @@ custom:
     external:
       - sharp
     exclude:
-      - aws-sdk
+      - '@aws-sdk/client-dynamodb'
+      - '@aws-sdk/client-lambda'
+      - '@aws-sdk/client-s3'
+      - '@aws-sdk/lib-dynamodb'
       - encoding
 
 resources:
