@@ -22,7 +22,9 @@ export const getDailyStatistics = async (
       }
     }
 
-    const image = safeJSONParse(new TextDecoder().decode(sharpResponse.Payload)).body
+    const image = safeJSONParse(
+      new TextDecoder().decode(sharpResponse.Payload),
+    ).body
     const imageBuffer = Buffer.from(image, 'base64')
     return {
       image: imageBuffer,

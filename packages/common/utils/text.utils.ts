@@ -39,7 +39,8 @@ export const normalize = (str: string) =>
     .replace(/\s\s+/g, ' ')
     .trim()
 
-export const sanitizeSvg = (html: string) => html.replace(/<(div|\/div)[^>]*>/g, '') // lgtm[js/polynomial-redos]
+export const sanitizeSvg = (html: string) =>
+  html.replace(/<(div|\/div)[^>]*>/g, '') // lgtm[js/polynomial-redos]
 
 export const unEscape = (htmlStr: string) =>
   htmlStr

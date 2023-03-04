@@ -5,7 +5,8 @@ import { checkCommand, getCommandData } from '@tg-bot/common'
 
 const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
 const PROMPT_MISSING_ERROR = 'Prompt is required'
-const NOT_ALLOWED_ERROR = 'OpenAI is not allowed for this chat. Contact @drrrrrrrr for details'
+const NOT_ALLOWED_ERROR =
+  'OpenAI is not allowed for this chat. Contact @drrrrrrrr for details'
 
 const allowedChatIds = process.env.OPENAI_CHAT_IDS?.split(',') ?? []
 
@@ -15,7 +16,8 @@ const configuration = new Configuration({
 
 const openai = new OpenAIApi(configuration)
 
-const isAllowedChat = (chatId: string | number) => allowedChatIds.includes(String(chatId))
+const isAllowedChat = (chatId: string | number) =>
+  allowedChatIds.includes(String(chatId))
 
 const generateImage = async (prompt: string, chatId: string | number) => {
   if (!isAllowedChat(chatId)) {
@@ -87,7 +89,9 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
         { reply_to_message_id: replyId },
       )
     } catch (error) {
-      return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, { reply_to_message_id: replyId })
+      return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
+        reply_to_message_id: replyId,
+      })
     }
   })
 

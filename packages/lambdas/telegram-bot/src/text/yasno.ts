@@ -12,13 +12,14 @@ const whDate = (): string => {
   const currentTimeInSeconds = date.valueOf() / 1000
   const yearsFromEpochStart = Math.floor(currentTimeInSeconds / secondsInYear)
   const currentYearStart = yearsFromEpochStart * secondsInYear
-  const yearFraction = Math.floor((currentTimeInSeconds - currentYearStart) / secondsInFraction)
+  const yearFraction = Math.floor(
+    (currentTimeInSeconds - currentYearStart) / secondsInFraction,
+  )
   const currentYear = yearsFromEpochStart + 1970
   const millenium = Math.floor(currentYear / 1000) + 1
-  return `0 ${padStart(String(yearFraction), 3, '0')} ${String(currentYear).slice(
-    1,
-    4,
-  )}.M${millenium}`
+  return `0 ${padStart(String(yearFraction), 3, '0')} ${String(
+    currentYear,
+  ).slice(1, 4)}.M${millenium}`
 }
 
 const YEARS = {
@@ -37,7 +38,11 @@ export const yasnyfy = (text: string): string => {
       timeZone: 'Europe/Minsk',
     }),
   )
-  const [month, day, year] = [date.getMonth(), date.getDate(), date.getFullYear()]
+  const [month, day, year] = [
+    date.getMonth(),
+    date.getDate(),
+    date.getFullYear(),
+  ]
 
   const stringYear = String(year)
   const formattedYear = YEARS[stringYear]?.() ?? stringYear

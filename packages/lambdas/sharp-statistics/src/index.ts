@@ -5,7 +5,8 @@ import { get24hChatStats, sanitizeSvg } from '@tg-bot/common'
 import { getDailyUsersBarsSvg } from './daily-users-bars.component'
 
 const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
-  const chatId = event.queryStringParameters?.chatId || event.pathParameters?.chatId || ''
+  const chatId =
+    event.queryStringParameters?.chatId || event.pathParameters?.chatId || ''
   const chatData = await get24hChatStats(chatId)
   const html = getDailyUsersBarsSvg(chatData)
   const svg = sanitizeSvg(html)

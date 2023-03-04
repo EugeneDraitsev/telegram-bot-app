@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { round } from 'lodash'
 import { getFile, getRoundedDate, saveFile } from '@tg-bot/common'
 
@@ -14,8 +13,10 @@ interface CoinMarketCurrency {
 }
 
 const timeout = 15000
-const coinMarketCapApiKey = process.env.COIN_MARKET_CAP_API_KEY || 'set_your_token'
-const cryptoRequestsBucketName = process.env.CRYPTO_REQUESTS_BUCKET_NAME || 'set_your_bucket_name'
+const coinMarketCapApiKey =
+  process.env.COIN_MARKET_CAP_API_KEY || 'set_your_token'
+const cryptoRequestsBucketName =
+  process.env.CRYPTO_REQUESTS_BUCKET_NAME || 'set_your_bucket_name'
 const symbols = { BTC: 2, ETH: 2, ADA: 3, CERE: 4 }
 
 /* Helpers */
@@ -32,7 +33,9 @@ const formatRow = (key: string, value: string, length = 10) => {
 
 const formatCoinMarketCapResult = (currencies: CoinMarketCurrency[]) => {
   const data = Object.keys(symbols).map((symbol) => {
-    const currency = currencies.find((c: CoinMarketCurrency) => c.symbol === symbol)
+    const currency = currencies.find(
+      (c: CoinMarketCurrency) => c.symbol === symbol,
+    )
 
     if (!currency) {
       return ''
@@ -47,8 +50,12 @@ const formatCoinMarketCapResult = (currencies: CoinMarketCurrency[]) => {
     return [symbol, `${formattedPrice} (${isUp ? '+' : ''}${priceChange}%)`]
   })
 
-  const maxLength = Math.max(...data.map(([key, value]) => value.length + key.length))
-  const result = data.map(([key, value]) => formatRow(key, value, maxLength)).join('\n')
+  const maxLength = Math.max(
+    ...data.map(([key, value]) => value.length + key.length),
+  )
+  const result = data
+    .map(([key, value]) => formatRow(key, value, maxLength))
+    .join('\n')
 
   return `Курсы криптовалют:\n<pre>${result}</pre>`
 }
@@ -57,8 +64,9 @@ const formatCoinMarketCapResult = (currencies: CoinMarketCurrency[]) => {
 
 const getPoloniexData = async (): Promise<string> => {
   const url = 'https://poloniex.com/public?command=returnTicker'
-  const response = await axios(url, { timeout })
-  const currency = response.data
+  const currency = await fetch(url, {
+    signal: AbortSignal.timeout(timeout),
+  }).then((res) => res.json())
 
   const filteredCurrency = Object.keys(symbols).reduce((acc, key) => {
     const currencyData = currency[`USDT_${key}`]
@@ -71,7 +79,9 @@ const getPoloniexData = async (): Promise<string> => {
   }, {} as Record<string, string>)
 
   const maxLength = Math.max(
-    ...Object.entries(filteredCurrency).map(([key, value]) => key.length + value.length),
+    ...Object.entries(filteredCurrency).map(
+      ([key, value]) => key.length + value.length,
+    ),
   )
 
   const resultString = Object.entries(filteredCurrency)
@@ -82,21 +92,30 @@ const getPoloniexData = async (): Promise<string> => {
 }
 
 const getCoinMarketCapData = async (): Promise<string> => {
-  const url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
+  const url =
+    'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
   const roundedDate = String(getRoundedDate(5).valueOf())
-  const savedDataString = await getFile(cryptoRequestsBucketName, roundedDate).catch(() => null)
+  const savedDataString = await getFile(
+    cryptoRequestsBucketName,
+    roundedDate,
+  ).catch(() => null)
   const savedData = JSON.parse(savedDataString || '{}')
 
   if (!savedDataString) {
-    const response = await axios(url, {
-      timeout,
-      params: { start: 1, limit: 5_000, convert: 'USD' },
-      headers: {
-        'X-CMC_PRO_API_KEY': coinMarketCapApiKey,
-      },
+    const params = new URLSearchParams({
+      start: '1',
+      limit: '5000',
+      convert: 'USD',
     })
-    const currencies = response.data.data
-    const filteredCurrencies = currencies.filter((c: CoinMarketCurrency) => symbols[c.symbol])
+    const response = await fetch(`${url}?${params}`, {
+      headers: { 'X-CMC_PRO_API_KEY': coinMarketCapApiKey },
+      signal: AbortSignal.timeout(timeout),
+    }).then((res) => res.json())
+
+    const currencies = response.data
+    const filteredCurrencies = currencies.filter(
+      (c: CoinMarketCurrency) => symbols[c.symbol],
+    )
     await saveFile(
       cryptoRequestsBucketName,
       roundedDate,

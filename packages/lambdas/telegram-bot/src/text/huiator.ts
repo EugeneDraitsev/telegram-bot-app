@@ -16,7 +16,10 @@ const capitalize = (capitalization: boolean[], word: string): string =>
 
 const huifyWord = (word: string): string => {
   if (word.length > 2) {
-    const capitalization = map(word, (letter) => letter === letter.toUpperCase())
+    const capitalization = map(
+      word,
+      (letter) => letter === letter.toUpperCase(),
+    )
     switch (findIndex(patterns, (pattern) => pattern.test(word))) {
       case 0:
         return capitalize(capitalization, word.replace(mainPattern, 'хуе'))

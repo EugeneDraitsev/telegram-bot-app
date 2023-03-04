@@ -13,12 +13,16 @@ const getError = (err: Error, from: string): string => {
 const setupCurrencyCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/c'), async (ctx) => {
     const promises = [
-      getMainCurrencies().catch((err) => getError(err, 'ExchangeRate and Fixer')),
+      getMainCurrencies().catch((err) =>
+        getError(err, 'ExchangeRate and Fixer'),
+      ),
       getRussianCurrency().catch((err) => getError(err, 'meduza')),
       getCryptoCurrency().catch((err) => getError(err, 'poloniex')),
     ]
 
-    const result = await Promise.all(promises).then((result) => `${result.join('\n')}`)
+    const result = await Promise.all(promises).then(
+      (result) => `${result.join('\n')}`,
+    )
 
     return ctx.replyWithHTML(result)
   })

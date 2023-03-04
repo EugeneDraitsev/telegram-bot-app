@@ -1,6 +1,6 @@
 import { get } from 'lodash'
-import axios from 'axios'
 
+const timeout = 5_000
 const weatherToken = process.env.OPEN_WEATHER_MAP_TOKEN || 'set_your_token'
 
 const iconGet = [
@@ -551,19 +551,25 @@ const getWeatherUrlNow = (locationURL: string): string =>
     locationURL,
   )}&units=metric&lang=ru&APPID=${weatherToken}`
 
-const icon = (value: string): string => get(iconTake, iconGet.indexOf(value.toLowerCase()), '🙈')
+const icon = (value: string): string =>
+  get(iconTake, iconGet.indexOf(value.toLowerCase()), '🙈')
 
 const windDirection = (value: number): string => windDir[Math.round(value / 45)]
 
-const getFlag = (value: string): string => get(flags, regions.indexOf(value.toUpperCase()), '🙊')
+const getFlag = (value: string): string =>
+  get(flags, regions.indexOf(value.toUpperCase()), '🙊')
 
 const formatTemperature = (value: number): string => `<b>${value}°C</b>`
 
 export const getWeather = async (location: string): Promise<string> => {
   try {
     const [infoForecast, infoNow] = await Promise.all([
-      axios(getWeatherUrlForecast(location), { timeout: 5000 }).then((x) => x.data),
-      axios(getWeatherUrlNow(location), { timeout: 5000 }).then((x) => x.data),
+      fetch(getWeatherUrlForecast(location), {
+        signal: AbortSignal.timeout(timeout),
+      }).then((x) => x.json()),
+      fetch(getWeatherUrlNow(location), {
+        signal: AbortSignal.timeout(timeout),
+      }).then((x) => x.json()),
     ])
 
     const city = infoForecast.city.name

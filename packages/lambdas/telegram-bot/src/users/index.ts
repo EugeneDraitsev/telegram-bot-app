@@ -19,7 +19,11 @@ const setupUsersCommands = (bot: Telegraf<Context>) => {
     const chatName = getChatName(ctx?.chat)
     const chatId = ctx?.chat?.id ?? ''
 
-    const { message, image } = await getDailyStatistics(replyId, chatId, chatName)
+    const { message, image } = await getDailyStatistics(
+      replyId,
+      chatId,
+      chatName,
+    )
 
     if (image) {
       return ctx.replyWithPhoto(

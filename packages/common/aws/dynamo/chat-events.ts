@@ -5,7 +5,8 @@ import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
 import { ChatEvent } from '../../types'
 
 const BROADCAST_LAMBDA_NAME = `telegram-websockets-${process.env.stage}-broadcastStats`
-const BROADCAST_ENDPOINT = '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod'
+const BROADCAST_ENDPOINT =
+  '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod'
 
 export const saveEvent = async (
   userInfo?: User,
@@ -43,7 +44,9 @@ export const saveEvent = async (
 
 const DAY = 1000 * 60 * 60 * 24
 
-export const get24hChatStats = async (chatId: string | number): Promise<User[]> => {
+export const get24hChatStats = async (
+  chatId: string | number,
+): Promise<User[]> => {
   const { Items } = await dynamoQuery({
     TableName: 'chat-events',
     KeyConditionExpression: 'chatId = :chatId AND #date > :date',

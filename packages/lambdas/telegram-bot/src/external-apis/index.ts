@@ -13,7 +13,9 @@ const setupExternalApisCommands = (bot: Telegraf<Context>) => {
 
   bot.hears(checkCommand('/p'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
-    return ctx.replyWithHTML(await getHoroscope(text), { reply_to_message_id: replyId })
+    return ctx.replyWithHTML(await getHoroscope(text), {
+      reply_to_message_id: replyId,
+    })
   })
 
   bot.hears(checkCommand('/f'), async (ctx) => {
@@ -26,7 +28,10 @@ const setupExternalApisCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/check'), async (ctx) => {
     const { replyId } = getCommandData(ctx.message)
     return ctx.replyWithPhoto(
-      { url: 'https://masha-migrationsverket.deno.dev', filename: 'status.png' },
+      {
+        url: 'https://masha-migrationsverket.deno.dev',
+        filename: 'status.png',
+      },
       { reply_to_message_id: replyId },
     )
   })

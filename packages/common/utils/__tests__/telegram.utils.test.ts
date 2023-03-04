@@ -35,7 +35,9 @@ describe('getParsedText', () => {
     expect(getParsedText('/hello world')).toEqual('world')
     expect(getParsedText('/g cats')).toEqual('cats')
     expect(getParsedText('/g@draiBot cats')).toEqual('cats')
-    expect(getParsedText('/g@draiBot testing is cool')).toEqual('testing is cool')
+    expect(getParsedText('/g@draiBot testing is cool')).toEqual(
+      'testing is cool',
+    )
     expect(getParsedText('/p multi / slashes /')).toEqual('multi / slashes /')
     expect(getParsedText(undefined)).toEqual('')
   })
@@ -50,7 +52,9 @@ describe('isLink', () => {
     expect(isLink(undefined)).toBeFalsy()
   })
   test('finds link in a message with text and link', () => {
-    expect(isLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.')).toBeTruthy()
+    expect(
+      isLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.'),
+    ).toBeTruthy()
   })
 })
 
@@ -64,7 +68,9 @@ describe('checkCommand', () => {
 
 describe('isBotCommand', () => {
   test('checks that provided message contains bot command', () => {
-    expect(isBotCommand([{ type: 'bot_command' }] as MessageEntity[])).toEqual(true)
+    expect(isBotCommand([{ type: 'bot_command' }] as MessageEntity[])).toEqual(
+      true,
+    )
     expect(isBotCommand([])).toEqual(false)
     expect(isBotCommand()).toEqual(false)
   })
@@ -72,7 +78,9 @@ describe('isBotCommand', () => {
 
 describe('getUserName', () => {
   it('should return correct user name, if it exists', () => {
-    expect(getUserName({ first_name: 'User', last_name: 'Name' } as User)).toEqual('User Name')
+    expect(
+      getUserName({ first_name: 'User', last_name: 'Name' } as User),
+    ).toEqual('User Name')
     expect(getUserName({ username: 'UserName' } as User)).toEqual('UserName')
     expect(getUserName({ id: 123 } as User)).toEqual('123')
   })
@@ -93,7 +101,10 @@ describe('getChatName', () => {
 describe('getCommandData', () => {
   it('return correct text and replyId', () => {
     expect(
-      getCommandData({ text: '/s', reply_to_message: { message_id: 123 } } as Message),
+      getCommandData({
+        text: '/s',
+        reply_to_message: { message_id: 123 },
+      } as Message),
     ).toEqual({ text: '', replyId: 123 })
     expect(getCommandData({ text: '/z', message_id: 555 } as Message)).toEqual({
       text: '',
@@ -108,6 +119,8 @@ describe('getCommandData', () => {
     ).toEqual({ text: 'cat', replyId: 555 })
   })
   it('should return caption if text is empty', () => {
-    expect(getCommandData({ text: '', caption: '123123' } as Message)).toEqual({ text: '123123' })
+    expect(getCommandData({ text: '', caption: '123123' } as Message)).toEqual({
+      text: '123123',
+    })
   })
 })

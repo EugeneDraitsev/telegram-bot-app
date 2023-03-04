@@ -4,7 +4,9 @@ import { dynamoPutItem, dynamoQuery } from '..'
 
 describe('dynamo utils', () => {
   test('dynamoPutItem should call send on dynamo object and return promise with result', async () => {
-    jest.spyOn(DynamoDBDocumentClient.prototype, 'send').mockImplementation(() => 'put response!!')
+    jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => 'put response!!')
 
     const options = {} as PutCommandInput
     expect(await dynamoPutItem(options)).toEqual('put response!!')

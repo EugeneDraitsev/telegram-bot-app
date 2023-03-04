@@ -2,7 +2,12 @@ import { Telegraf } from 'telegraf'
 import type { Message } from 'telegram-typings'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import { saveEvent, updateChatMetaData, updateStatistics, findCommand } from '@tg-bot/common'
+import {
+  saveEvent,
+  updateChatMetaData,
+  updateStatistics,
+  findCommand,
+} from '@tg-bot/common'
 import setupTextCommands from './text'
 import setupGoogleCommands from './google'
 import setupCurrencyCommands from './currency'

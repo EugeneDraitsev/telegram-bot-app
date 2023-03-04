@@ -20,8 +20,12 @@ describe('s3 utils', () => {
   })
 
   test('saveFile should call send on s3 object and return promise with result', async () => {
-    jest.spyOn(S3Client.prototype, 'send').mockImplementation(() => 'putObject response!!')
+    jest
+      .spyOn(S3Client.prototype, 'send')
+      .mockImplementation(() => 'putObject response!!')
 
-    expect(await saveFile('Bucket', 'Key', new Buffer('test'))).toEqual('putObject response!!')
+    expect(await saveFile('Bucket', 'Key', new Buffer('test'))).toEqual(
+      'putObject response!!',
+    )
   })
 })

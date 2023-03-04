@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { trim } from 'lodash'
 
 import { hasRussiansLetters } from '@tg-bot/common/utils'
@@ -11,8 +10,8 @@ export const searchWiki = async (query: string): Promise<string> => {
   )}`
 
   try {
-    const response = await axios(url)
-    const result = response.data
+    const response = await fetch(url)
+    const result = await response.json()
     return result[3][0] || `Failed to find article for term: ${query}`
   } catch (e) {
     return 'Wiki error'

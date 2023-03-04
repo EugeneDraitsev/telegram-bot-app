@@ -13,7 +13,9 @@ import { getPrediction } from './magic8ball'
 const setupTextCommands = (bot: Telegraf<Context>) => {
   bot.hears(isLink, (ctx, next) => {
     if (ctx.message && random(0, 100, true) > 99.7) {
-      ctx.reply(sayThanksForLink(), { reply_to_message_id: ctx.message.message_id })
+      ctx.reply(sayThanksForLink(), {
+        reply_to_message_id: ctx.message.message_id,
+      })
     }
     next?.()
   })
@@ -21,7 +23,8 @@ const setupTextCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/h'), (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     const huext = huify(text)
-    const result = text === huext ? 'https://www.youtube.com/watch?v=q5bc4nmDNio' : huext
+    const result =
+      text === huext ? 'https://www.youtube.com/watch?v=q5bc4nmDNio' : huext
     return ctx.reply(result, { reply_to_message_id: replyId })
   })
 
@@ -44,12 +47,16 @@ const setupTextCommands = (bot: Telegraf<Context>) => {
 
   bot.hears(checkCommand('/8'), async (ctx) => {
     const { replyId } = getCommandData(ctx.message)
-    return ctx.replyWithSticker(getPrediction(), { reply_to_message_id: replyId })
+    return ctx.replyWithSticker(getPrediction(), {
+      reply_to_message_id: replyId,
+    })
   })
 
   bot.hears(checkCommand('/shrug'), (ctx) => {
     const { replyId } = getCommandData(ctx.message)
-    return ctx.replyWithMarkdownV2('`¯\\\\_(ツ)_/¯`', { reply_to_message_id: replyId })
+    return ctx.replyWithMarkdownV2('`¯\\\\_(ツ)_/¯`', {
+      reply_to_message_id: replyId,
+    })
   })
 
   bot.hears(checkCommand('/ps'), (ctx) => {
