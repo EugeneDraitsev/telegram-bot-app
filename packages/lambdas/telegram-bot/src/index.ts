@@ -2,12 +2,7 @@ import { Telegraf } from 'telegraf'
 import type { Message } from 'telegram-typings'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import {
-  saveEvent,
-  updateChatMetaData,
-  updateStatistics,
-  findCommand,
-} from '@tg-bot/common'
+import { saveEvent, updateStatistics, findCommand } from '@tg-bot/common'
 import setupTextCommands from './text'
 import setupGoogleCommands from './google'
 import setupCurrencyCommands from './currency'
@@ -22,8 +17,6 @@ bot.use(async (ctx, next) => {
   const message = ctx.message as Message
   if (chat && message) {
     const command = findCommand(message.text)
-
-    updateChatMetaData(chat.id)
 
     await Promise.all([
       updateStatistics(message.from, chat),
