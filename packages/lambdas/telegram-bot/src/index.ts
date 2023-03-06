@@ -19,7 +19,7 @@ bot.use(async (ctx, next) => {
     const command = findCommand(message.text)
 
     await Promise.all([
-      updateStatistics(message.from, chat),
+      updateStatistics(message.from, await ctx.getChat()),
       saveEvent(message.from, chat.id, command, message.date),
       next?.(),
     ])

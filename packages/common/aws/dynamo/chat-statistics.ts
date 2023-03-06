@@ -66,9 +66,10 @@ export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
 
   if (userInfo && chat_id) {
     const chatStatistics = await getChatStatistic(chat_id)
-    const statistics = chatStatistics || {
+    const statistics = { ...chatStatistics, chatInfo: chat } || {
       chatId: String(chat_id),
       users: [] as UserStat[],
+      chatInfo: chat,
     }
 
     let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
