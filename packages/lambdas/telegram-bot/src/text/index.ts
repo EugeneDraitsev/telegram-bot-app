@@ -24,7 +24,7 @@ const setupTextCommands = (bot: Telegraf<Context>) => {
     const { text, replyId } = getCommandData(ctx.message)
     const huext = huify(text)
     const result =
-      text === huext ? 'https://www.youtube.com/watch?v=q5bc4nmDNio' : huext
+      text === huext ? 'https://www.youtube.com/watch?v=uEhw8urePQM' : huext
     return ctx.reply(result, { reply_to_message_id: replyId })
   })
 
