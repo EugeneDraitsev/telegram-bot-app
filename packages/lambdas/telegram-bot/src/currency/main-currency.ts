@@ -53,7 +53,7 @@ const getExchangeRateData = async (
   return `Курсы ${provider}:\n<pre>${ratesString}</pre>\n`
 }
 
-export const getMainCurrencies = async (): Promise<string> => {
+export const getMainCurrencies = async () => {
   try {
     const url = 'https://api.exchangerate.host/latest'
     const provider = 'ExchangeRate host'
