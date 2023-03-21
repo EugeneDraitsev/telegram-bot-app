@@ -19,6 +19,8 @@ const cryptoRequestsBucketName =
   process.env.CRYPTO_REQUESTS_BUCKET_NAME || 'set_your_bucket_name'
 const symbols = { BTC: 2, ETH: 2, ADA: 3, CERE: 4 }
 
+type Symbol = keyof typeof symbols
+
 /* Helpers */
 const formatCurrency = (value: string | number, fractionDigits = 2) =>
   parseFloat(value as string)
@@ -43,7 +45,7 @@ const formatCoinMarketCapResult = (currencies: CoinMarketCurrency[]) => {
 
     const { price, percent_change_24h } = currency.quote.USD
     const isUp = percent_change_24h >= 0
-    const formattedPrice = formatCurrency(price, symbols[symbol])
+    const formattedPrice = formatCurrency(price, symbols[symbol as Symbol])
 
     const priceChange = round(percent_change_24h, 2)
 
@@ -72,7 +74,7 @@ const getPoloniexData = async (): Promise<string> => {
     const currencyData = currency[`USDT_${key}`]
 
     if (currencyData) {
-      acc[key] = formatCurrency(currencyData.highestBid, symbols[key])
+      acc[key] = formatCurrency(currencyData.highestBid, symbols[key as Symbol])
     }
 
     return acc
@@ -114,7 +116,7 @@ const getCoinMarketCapData = async (): Promise<string> => {
 
     const currencies = response.data
     const filteredCurrencies = currencies.filter(
-      (c: CoinMarketCurrency) => symbols[c.symbol],
+      (c: CoinMarketCurrency) => symbols[c.symbol as Symbol],
     )
     await saveFile(
       cryptoRequestsBucketName,

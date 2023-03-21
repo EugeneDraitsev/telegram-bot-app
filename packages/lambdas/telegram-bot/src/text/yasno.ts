@@ -32,6 +32,8 @@ const YEARS = {
   2023: () => `||${sample(['202 :3', '2023', 'MMXXIII'])}||`,
 }
 
+type Year = keyof typeof YEARS
+
 export const yasnyfy = (text: string): string => {
   const date = new Date(
     new Date().toLocaleString('en-US', {
@@ -44,12 +46,11 @@ export const yasnyfy = (text: string): string => {
     date.getFullYear(),
   ]
 
-  const stringYear = String(year)
-  const formattedYear = YEARS[stringYear]?.() ?? stringYear
+  const formattedYear = YEARS[year as Year]?.() ?? year
   const quotedText = text ? `\n\\>${text}` : ''
 
   if (month === 3 && day === 1) {
-    return `\n\\>1 Апреля ${stringYear.slice(2)} года${quotedText}\nЯсно😐`
+    return `\n\\>1 Апреля ${String(year).slice(2)} года${quotedText}\nЯсно😐`
   }
   return `\n\\>${formattedYear}${quotedText}\nЯсно`
 }
