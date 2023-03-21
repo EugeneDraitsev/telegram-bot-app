@@ -7,5 +7,6 @@ describe('puntoSwitcher', () => {
   })
   test('should fix wrong types words (rus -> en', () => {
     expect(puntoSwitcher('руддщ еруку')).toEqual('hello there')
+    expect(puntoSwitcher('ghbdtnbrb dctv')).toEqual('приветики всем')
   })
 })
