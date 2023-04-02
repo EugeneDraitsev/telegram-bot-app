@@ -9,7 +9,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "sls offline start",
+    "start": "sls offline start --reloadHandler",
     "build": "sls package",
     "lint": "eslint packages",
     "lint:fix": "eslint packages --fix",
