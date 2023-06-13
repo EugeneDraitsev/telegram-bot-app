@@ -71,7 +71,7 @@ const generateText = async (prompt: string, chatId: string | number) => {
 
     return message.content
   } catch (error) {
-    console.log(error)
+    console.log(error.message)
     return DEFAULT_ERROR_MESSAGE
   }
 }

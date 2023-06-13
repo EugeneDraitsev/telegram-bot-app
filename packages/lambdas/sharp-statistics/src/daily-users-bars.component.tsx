@@ -1,4 +1,3 @@
-/* eslint-disable react/function-component-definition,react/no-unstable-nested-components */
 import styled from 'styled-components'
 import { tint } from 'polished'
 import { BarChart, XAxis, Bar, Cell, LabelList, YAxis } from 'recharts'
@@ -14,6 +13,9 @@ const ChartLabel = styled.text`
   font-size: 12px;
 `
 
+const BarChartAny = BarChart as any
+const BarAny = Bar as any
+
 const getBarColor = (i: number, length: number) =>
   tint(i / (length * 1.3), '#4A90E2')
 
@@ -25,7 +27,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
   const allMessages = sumBy(data, 'messages')
 
   return (
-    <BarChart
+    <BarChartAny
       data={data}
       margin={{ top: 20, right: 20, left: 20, bottom: 10 }}
       width={1200}
@@ -34,7 +36,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
       <text fontSize={14} textAnchor="middle" x={80} y={30}>
         All messages: {allMessages}
       </text>
-      <Bar
+      <BarAny
         dataKey="messages"
         maxBarSize={50}
         minPointSize={5}
@@ -59,7 +61,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
             </ChartLabel>
           )}
         />
-      </Bar>
+      </BarAny>
       <YAxis hide padding={{ top: 30 }} />
       <XAxis
         dataKey="id"
@@ -81,7 +83,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
           </g>
         )}
       />
-    </BarChart>
+    </BarChartAny>
   )
 }
 
