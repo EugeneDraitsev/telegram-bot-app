@@ -28,10 +28,12 @@ const getExchangeRateData = async (
     signal: AbortSignal.timeout(timeout),
   }).then((x) => x.json())
 
-  const [{ data: bynRates }, { rates }] = await Promise.all([
+  const [bynData, { rates }] = await Promise.all([
     bynRatesPromise,
     ratesPromise,
   ])
+
+  const bynRates = bynData?.data
 
   const ratesToDisplay = {
     '🇧🇾USD/BYN': Number(bynRates?.USD?.BUY?.BYN) || rates.BYN / rates.USD,
