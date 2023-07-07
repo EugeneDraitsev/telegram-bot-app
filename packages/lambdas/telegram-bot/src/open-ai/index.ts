@@ -99,8 +99,9 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     const { text, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 
-    const message = await generateText(text, chatId)
-    return ctx.reply(message, { reply_to_message_id: replyId })
+    generateText(text, chatId).then((message) =>
+      ctx.reply(message, { reply_to_message_id: replyId }),
+    )
   })
 }
 
