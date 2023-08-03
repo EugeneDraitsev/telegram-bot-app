@@ -80,7 +80,11 @@ export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
         msgCount: 1,
         username: getUserName(userInfo),
       }
-      statistics.users.push(userStatistic)
+      if (statistics.users) {
+        statistics.users?.push?.(userStatistic)
+      } else {
+        statistics.users = [userStatistic]
+      }
     } else {
       userStatistic.msgCount += 1
       userStatistic.username = getUserName(userInfo)
