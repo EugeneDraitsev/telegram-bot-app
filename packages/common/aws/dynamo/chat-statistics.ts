@@ -66,11 +66,13 @@ export const updateStatistics = async (userInfo?: User, chat?: void | Chat) => {
 
   if (userInfo && chat_id) {
     const chatStatistics = await getChatStatistic(chat_id)
-    const statistics = { ...chatStatistics, chatInfo: chat } || {
-      chatId: String(chat_id),
-      users: [] as UserStat[],
-      chatInfo: chat,
-    }
+    const statistics = chatStatistics
+      ? { ...chatStatistics, chatInfo: chat }
+      : {
+          chatId: String(chat_id),
+          users: [] as UserStat[],
+          chatInfo: chat,
+        }
 
     let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
 
@@ -80,11 +82,7 @@ export const updateStatistics = async (userInfo?: User, chat?: void | Chat) => {
         msgCount: 1,
         username: getUserName(userInfo),
       }
-      if (statistics.users) {
-        statistics.users?.push?.(userStatistic)
-      } else {
-        statistics.users = [userStatistic]
-      }
+      statistics.users = [...(statistics.users || []), userStatistic]
     } else {
       userStatistic.msgCount += 1
       userStatistic.username = getUserName(userInfo)
