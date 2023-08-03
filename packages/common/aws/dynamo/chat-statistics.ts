@@ -61,7 +61,7 @@ export const getFormattedChatStatistics = async (
   }
 }
 
-export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
+export const updateStatistics = async (userInfo?: User, chat?: void | Chat) => {
   const chat_id = chat?.id
 
   if (userInfo && chat_id) {
