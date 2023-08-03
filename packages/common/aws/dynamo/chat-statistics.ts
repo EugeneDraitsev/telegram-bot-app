@@ -44,7 +44,7 @@ export const getFormattedChatStatistics = async (
 ): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
-    const stats = orderBy(result.users, 'msgCount', 'desc')
+    const stats = orderBy(result?.users, 'msgCount', 'desc')
     const messagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
     const formattedUsers = stats.map(
       (user) =>
