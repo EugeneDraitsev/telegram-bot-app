@@ -18,11 +18,15 @@ bot.use(async (ctx, next) => {
   if (chat && message) {
     const command = findCommand(message.text)
 
-    await Promise.all([
-      updateStatistics(message.from, await ctx.getChat()),
-      saveEvent(message.from, chat.id, command, message.date),
-      next?.(),
-    ])
+    try {
+      await Promise.all([
+        updateStatistics(message.from, await ctx.getChat()),
+        saveEvent(message.from, chat.id, command, message.date),
+        next?.(),
+      ])
+    } catch (error) {
+      console.log('Root error: ', error)
+    }
   }
 })
 
