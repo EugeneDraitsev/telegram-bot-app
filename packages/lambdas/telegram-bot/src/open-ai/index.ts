@@ -100,7 +100,12 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     const chatId = ctx?.chat?.id ?? ''
 
     generateText(text, chatId).then((message) =>
-      ctx.reply(message, { reply_to_message_id: replyId }),
+      ctx
+        .replyWithMarkdownV2(message, { reply_to_message_id: replyId })
+        .catch((err) => {
+          console.error(err)
+          ctx.reply(message, { reply_to_message_id: replyId })
+        }),
     )
   })
 }
