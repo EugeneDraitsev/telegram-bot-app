@@ -101,7 +101,10 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
 
     generateText(text, chatId).then((message) =>
       ctx
-        .replyWithMarkdownV2(message, { reply_to_message_id: replyId })
+        .replyWithMarkdownV2(
+          message?.replace(/([-_*\[\]()~`>#+=|{}.!])/g, '\\$1'),
+          { reply_to_message_id: replyId },
+        )
         .catch((err) => {
           console.error(err)
           ctx.reply(message, { reply_to_message_id: replyId })
