@@ -1,20 +1,12 @@
 import { padStart, sample } from 'lodash'
 
-const date = new Date(
-  new Date().toLocaleString('en-US', {
-    timeZone: 'Europe/Minsk',
-  }),
-)
-const [month, day, year, weekDay] = [
-  date.getMonth(),
-  date.getDate(),
-  date.getFullYear(),
-  date.getDay()
-]
-
-
 const whDate = (): string => {
   // https://warhammer40k.fandom.com/wiki/Imperial_Dating_System
+  const date = new Date(
+    new Date().toLocaleString('en-US', {
+      timeZone: 'Europe/Minsk',
+    }),
+  )
   const secondsInYear = 31556926
   const secondsInFraction = 31557
   const currentTimeInSeconds = date.valueOf() / 1000
@@ -43,6 +35,18 @@ const YEARS = {
 type Year = keyof typeof YEARS
 
 export const yasnyfy = (text: string): string => {
+  const date = new Date(
+    new Date().toLocaleString('en-US', {
+      timeZone: 'Europe/Minsk',
+    }),
+  )
+  const [month, day, year, weekDay] = [
+    date.getMonth(),
+    date.getDate(),
+    date.getFullYear(),
+    date.getDay()
+  ]
+  
   const formattedYear = YEARS[year as Year]?.() ?? year
   const quotedText = text ? `\n\\>${text}` : ''
 
