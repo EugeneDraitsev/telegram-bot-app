@@ -35,7 +35,8 @@ describe('yasnyfy should works as designed', () => {
     expect(
       result2023.includes('||202 :3||') ||
         result2023.includes('||2023||') ||
-        result2023.includes('||MMXXIII||'),
+        result2023.includes('||MMXXIII||') ||
+        result2023.includes('||9 023.M3||')
     ).toBeTruthy()
   })
 
