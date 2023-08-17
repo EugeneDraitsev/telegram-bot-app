@@ -43,8 +43,7 @@ const YEARS = {
 type Year = keyof typeof YEARS
 
 export const yasnyfy = (text: string): string => {
-  const stringYear = String(year)
-  const formattedYear = YEARS[stringYear]?.() ?? stringYear
+  const formattedYear = YEARS[year as Year]?.() ?? year
   const quotedText = text ? `\n\\>${text}` : ''
 
   if (month === 3 && day === 1) {
