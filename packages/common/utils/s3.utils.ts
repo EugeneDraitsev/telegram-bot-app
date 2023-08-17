@@ -1,19 +1,18 @@
-import { S3 } from 'aws-sdk'
+import {
+  S3Client,
+  GetObjectCommand,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3'
 
-const s3 = new S3({
-  region: process.env.region,
-  apiVersion: '2006-03-01',
-})
+const client = new S3Client({ region: process.env.region })
 
-export const getFile = async (
-  Bucket: S3.Bucket | string,
-  Key: string,
-): Promise<S3.Types.GetObjectOutput> =>
-  s3.getObject({ Bucket, Key } as S3.GetObjectRequest).promise()
+export const getFile = async (Bucket: string, Key: string) => {
+  const command = new GetObjectCommand({ Bucket, Key })
+  const data = await client.send(command)
+  return data.Body?.transformToString()
+}
 
-export const saveFile = async (
-  Bucket: S3.Bucket | string,
-  Key: string,
-  Body: Buffer,
-): Promise<S3.Types.PutObjectOutput> =>
-  s3.putObject({ Bucket, Key, Body } as S3.PutObjectRequest).promise()
+export const saveFile = async (Bucket: string, Key: string, Body: Buffer) => {
+  const command = new PutObjectCommand({ Bucket, Key, Body })
+  return client.send(command)
+}

@@ -5,16 +5,16 @@
     "polished": "^4.2.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.1.15",
-    "styled-components": "^5.3.6"
+    "recharts": "^2.4.3",
+    "styled-components": "^5.3.8"
   },
   "devDependencies": {
-    "@types/react": "^18.0.21",
-    "@types/react-dom": "^18.0.6",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
     "@types/recharts": "^2.0.0",
     "@types/styled-components": "^5.1.26"
   },
   "peerDependencies": {
-    "sharp": "^0.30.0"
+    "sharp": "^0.31.3"
   }
 }

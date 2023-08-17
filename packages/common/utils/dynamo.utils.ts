@@ -1,13 +1,20 @@
-import { DynamoDB } from 'aws-sdk'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import {
+  DynamoDBDocumentClient,
+  QueryCommand,
+  PutCommand,
+} from '@aws-sdk/lib-dynamodb'
+import type { QueryCommandInput, PutCommandInput } from '@aws-sdk/lib-dynamodb'
 
-const documentClient = new DynamoDB.DocumentClient({
-  apiVersion: '2012-08-10',
-  region: process.env.region,
-  service: new DynamoDB({ apiVersion: '2012-08-10', region: process.env.region }),
-})
+const client = new DynamoDBClient({ region: process.env.region })
+const docClient = DynamoDBDocumentClient.from(client) // client is DynamoDB client
 
-export const dynamoQuery = (params: DynamoDB.DocumentClient.QueryInput) =>
-  documentClient.query(params).promise()
+export const dynamoQuery = (params: QueryCommandInput) => {
+  const command = new QueryCommand(params)
+  return docClient.send(command)
+}
 
-export const dynamoPutItem = (params: DynamoDB.DocumentClient.PutItemInput) =>
-  documentClient.put(params).promise()
+export const dynamoPutItem = (params: PutCommandInput) => {
+  const command = new PutCommand(params)
+  return docClient.send(command)
+}

@@ -1,25 +1,23 @@
-import { DynamoDB } from 'aws-sdk'
+import { DynamoDBDocumentClient, PutCommandInput } from '@aws-sdk/lib-dynamodb'
 
 import { dynamoPutItem, dynamoQuery } from '..'
 
 describe('dynamo utils', () => {
-  jest
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .spyOn((DynamoDB.DocumentClient as any).prototype, 'put')
-    .mockImplementation(() => ({ promise: (): string => 'put response!!' }))
+  test('dynamoPutItem should call send on dynamo object and return promise with result', async () => {
+    jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => 'put response!!')
 
-  jest
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .spyOn((DynamoDB.DocumentClient as any).prototype, 'query')
-    .mockImplementation(() => ({ promise: (): string => 'query response!!' }))
-
-  test('dynamoPutItem should call put on dynamo object and return promise with result', async () => {
-    const options = {} as DynamoDB.DocumentClient.PutItemInput
+    const options = {} as PutCommandInput
     expect(await dynamoPutItem(options)).toEqual('put response!!')
   })
 
-  test('dynamoQuery should call query on dynamo object and return promise with result', async () => {
-    const options = {} as DynamoDB.DocumentClient.PutItemInput
+  test('dynamoQuery should call send on dynamo object and return promise with result', async () => {
+    jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => 'query response!!')
+
+    const options = {} as PutCommandInput
     expect(await dynamoQuery(options)).toEqual('query response!!')
   })
 })

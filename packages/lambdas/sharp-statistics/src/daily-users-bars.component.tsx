@@ -14,7 +14,8 @@ const ChartLabel = styled.text`
   font-size: 12px;
 `
 
-const getBarColor = (i: number, length: number) => tint(i / (length * 1.3), '#4A90E2')
+const getBarColor = (i: number, length: number) =>
+  tint(i / (length * 1.3), '#4A90E2')
 
 interface DailyUsersBarsProps {
   data: User[]
@@ -66,7 +67,13 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
         axisLine={{ stroke: ' #4A4A4A', strokeDasharray: '3 3' }}
         tick={({ x, y, width, payload }) => (
           <g transform={`translate(${x},${y})`}>
-            <text width={width} height="auto" textAnchor="middle" fill="#4a4a4a" fontSize={12}>
+            <text
+              width={width}
+              height="auto"
+              textAnchor="middle"
+              fill="#4a4a4a"
+              fontSize={12}
+            >
               <tspan x={0} y={0} dy={10}>
                 {getUserName(data.find((d) => d.id === payload.value))}
               </tspan>

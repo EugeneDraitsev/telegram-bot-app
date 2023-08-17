@@ -8,8 +8,8 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.27.2",
-    "telegraf": "4.9.1"
+    "openai": "^3.2.1",
+    "telegraf": "4.12.2"
   },
   "devDependencies": {
     "telegram-typings": "5.0.0"

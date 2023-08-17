@@ -1,61 +1,69 @@
-import axios from 'axios'
-import { map, round, chunk } from 'lodash'
-
-const fccApiKey = process.env.FCC_API_KEY || 'set_your_token'
 const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
-const timeout = 15000
+const timeout = 10_000
+const BYN_RATES_URL = 'https://www.bsb.by/ajax.php?request=currencyrate'
 
-const getFreeCurrencyData = async (): Promise<string> => {
-  const currencies = ['USD_BYN', 'EUR_BYN', 'USD_SEK', 'EUR_SEK', 'USD_PLN', 'EUR_PLN', 'USD_TRY']
-  const url = 'https://free.currconv.com/api/v7/convert'
+const formatRow = (value: number, length = 10) =>
+  value.toFixed(2).padStart(length, ' ')
 
-  const promises = chunk(currencies, 2).map((pair) =>
-    axios(url, {
-      timeout,
-      params: { compact: 'y', apiKey: fccApiKey, q: pair.join(',') },
-    }).then((x) => x.data),
-  )
+const getExchangeRateData = async (
+  url: string,
+  provider: string,
+): Promise<string> => {
+  // More precise BYN rates
+  const bynRatesPromise = fetch(BYN_RATES_URL, {
+    signal: AbortSignal.timeout(timeout),
+  })
+    .then((x) => x.json())
+    // ignore errors
+    .catch(() => null)
 
-  const result = await Promise.all(promises)
-  const mergedResult = Object.assign({}, ...result)
-
-  const currencyMessage = map(
-    mergedResult,
-    (value, key) => `${key.replace('_', '/')}: ${round(value.val, 2)}`,
-  ).join('\n')
-
-  return `Курсы FCC:\n${currencyMessage}\n`
-}
-
-const getFixerData = async (): Promise<string> => {
-  const url = 'http://data.fixer.io/api/latest'
-  const { rates } = await axios(url, {
-    timeout,
-    params: { access_key: fixerKey, format: 1, base: 'EUR' },
-  }).then((x) => {
-    if (!x.data.success) {
-      throw new Error(x.data.error.info)
-    }
-    return x.data
+  // Other currencies rates
+  const params = new URLSearchParams({
+    access_key: fixerKey,
+    format: '1',
+    base: 'EUR',
   })
 
-  return `Курсы fixer:\
-          \nUSD/BYN: ${round(rates.BYN / rates.USD, 3)}\
-          \nEUR/BYN: ${round(rates.BYN, 3)}\
-          \nUSD/SEK: ${round(rates.SEK / rates.USD, 3)}\
-          \nEUR/SEK: ${round(rates.SEK, 3)}\
-          \nUSD/PLN: ${round(rates.PLN / rates.USD, 3)}\
-          \nEUR/PLN: ${round(rates.PLN, 3)}\
-          \nUSD/TRY: ${round(rates.TRY / rates.USD, 2)}
-`
+  const ratesPromise = fetch(`${url}?${params}`, {
+    signal: AbortSignal.timeout(timeout),
+  }).then((x) => x.json())
+
+  const [{ data: bynRates }, { rates }] = await Promise.all([
+    bynRatesPromise,
+    ratesPromise,
+  ])
+
+  const ratesToDisplay = {
+    '🇧🇾USD/BYN': Number(bynRates?.USD?.BUY?.BYN) || rates.BYN / rates.USD,
+    '🇧🇾EUR/BYN': Number(bynRates?.EUR?.BUY?.BYN) || rates.BYN,
+    '🇸🇪USD/SEK': rates.SEK / rates.USD,
+    '🇸🇪EUR/SEK': rates.SEK,
+    '🇵🇱USD/PLN': rates.PLN / rates.USD,
+    '🇵🇱EUR/PLN': rates.PLN,
+  }
+
+  const maxLength = Math.max(
+    ...Object.values(ratesToDisplay).map((x) => x.toFixed(2).length),
+  )
+
+  const ratesString = Object.entries(ratesToDisplay)
+    .map(([key, value]) => `${key}: ${formatRow(value, maxLength)}`)
+    .join('\n')
+
+  return `Курсы ${provider}:\n<pre>${ratesString}</pre>\n`
 }
 
-export const getMainCurrencies = async (): Promise<string> => {
+export const getMainCurrencies = async () => {
   try {
-    return await getFreeCurrencyData()
+    const url = 'https://api.exchangerate.host/latest'
+    const provider = 'ExchangeRate host'
+    return await getExchangeRateData(url, provider)
   } catch (e) {
-    console.error('FCC API error', e)
-    return getFixerData().catch((err) => {
+    console.error('ExchangeRate host error', e)
+    const url = 'http://data.fixer.io/api/latest'
+    const provider = 'fixer'
+
+    return getExchangeRateData(url, provider).catch((err) => {
       console.error('Fixer API error', err)
       throw err
     })

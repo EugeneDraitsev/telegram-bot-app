@@ -1,7 +1,6 @@
-import axios from 'axios'
-
 import { normalize } from '@tg-bot/common/utils'
 
+const timeout = 10_000
 const rus = [
   'овен',
   'телец',
@@ -16,7 +15,6 @@ const rus = [
   'водолей',
   'рыбы',
 ]
-
 const eng = [
   'aries',
   'taurus',
@@ -47,13 +45,17 @@ export const getHoroscope = async (query: string): Promise<string> => {
     }
 
     const [today, tomorrow] = await Promise.all([
-      axios(urlToday, { timeout: 10000 }).then((x) => x.data),
-      axios(urlTomorrow, { timeout: 10000 }).then((x) => x.data),
+      fetch(urlToday, { signal: AbortSignal.timeout(timeout) }).then((x) =>
+        x.json(),
+      ),
+      fetch(urlTomorrow, { signal: AbortSignal.timeout(timeout) }).then((x) =>
+        x.json(),
+      ),
     ])
 
-    return `<b>Сегодня:</b>\n\n${normalize(today.text)}\n\n<b>Завтра:</b>\n\n${normalize(
-      tomorrow.text,
-    )}`
+    return `<b>Сегодня:</b>\n\n${normalize(
+      today.text,
+    )}\n\n<b>Завтра:</b>\n\n${normalize(tomorrow.text)}`
   } catch (e) {
     return 'Request error 😿'
   }

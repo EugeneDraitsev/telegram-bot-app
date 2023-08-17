@@ -9,9 +9,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -29,9 +29,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
           GOOGLE_CX_TOKEN: ${{secrets.GOOGLE_CX_TOKEN}}
           GOOGLE_API_KEY: ${{secrets.GOOGLE_API_KEY}}
-          OPENWEATHERMAP_TOKEN: ${{secrets.OPENWEATHERMAP_TOKEN}}
+          OPEN_WEATHER_MAP_TOKEN: ${{secrets.OPEN_WEATHER_MAP_TOKEN}}
           TOKEN: ${{secrets.TOKEN}}
           YOUTUBE_TOKEN: ${{secrets.YOUTUBE_TOKEN}}
-          FCC_API_KEY: ${{secrets.FCC_API_KEY}}
           FIXER_API_KEY: ${{secrets.FIXER_API_KEY}}
           COIN_MARKET_CAP_API_KEY: ${{secrets.COIN_MARKET_CAP_API_KEY}}
+          OPENAI_API_KEY: ${{secrets.OPENAI_API_KEY}}
+          OPENAI_CHAT_IDS: ${{secrets.OPENAI_CHAT_IDS}}

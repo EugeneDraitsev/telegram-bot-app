@@ -1,26 +1,31 @@
+import { S3Client } from '@aws-sdk/client-s3'
+
 import { getFile, saveFile } from '..'
 
-jest.mock('aws-sdk', () => {
-  class mockS3 {
-    getObject() {
-      return { promise: (): string => 'getObject response!!' }
-    }
-    putObject() {
-      return { promise: (): string => 'putObject response!!' }
-    }
-  }
-  return {
-    ...jest.requireActual('aws-sdk'),
-    S3: mockS3,
-  }
-})
-
 describe('s3 utils', () => {
-  test('dynamoPutItem should call put on dynamo object and return promise with result', async () => {
+  test('getFile should call send on s3 object and handle files with data and empty files', async () => {
+    jest.spyOn(S3Client.prototype, 'send').mockImplementation(() => ({
+      Body: {
+        transformToString: () => 'getObject response!!',
+      },
+    }))
+
     expect(await getFile('Bucket', 'Key')).toEqual('getObject response!!')
+
+    jest.spyOn(S3Client.prototype, 'send').mockImplementation(() => ({
+      Body: undefined,
+    }))
+
+    expect(await getFile('Bucket', 'Key')).toEqual(undefined)
   })
 
-  test('dynamoQuery should call query on dynamo object and return promise with result', async () => {
-    expect(await saveFile('Bucket', 'Key', new Buffer('test'))).toEqual('putObject response!!')
+  test('saveFile should call send on s3 object and return promise with result', async () => {
+    jest
+      .spyOn(S3Client.prototype, 'send')
+      .mockImplementation(() => 'putObject response!!')
+
+    expect(await saveFile('Bucket', 'Key', new Buffer('test'))).toEqual(
+      'putObject response!!',
+    )
   })
 })

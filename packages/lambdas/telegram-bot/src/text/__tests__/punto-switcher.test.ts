@@ -1,4 +1,4 @@
-import { puntoSwitcher } from '..'
+import { puntoSwitcher } from '../punto-switcher'
 
 describe('puntoSwitcher', () => {
   test('should fix wrong types words (en -> rus)', () => {

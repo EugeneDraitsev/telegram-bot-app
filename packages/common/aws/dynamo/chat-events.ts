@@ -1,19 +1,12 @@
-import { Lambda } from 'aws-sdk'
 import { chain, random, groupBy } from 'lodash'
-import { User } from 'telegram-typings'
+import type { User } from 'telegram-typings'
 
 import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
 import { ChatEvent } from '../../types'
 
-const getBroadcastParams = (chatId: number): Lambda.Types.InvocationRequest => ({
-  FunctionName: `telegram-websockets-${process.env.stage}-broadcastStats`,
-  Payload: JSON.stringify({
-    queryStringParameters: {
-      chatId,
-      endpoint: '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod',
-    },
-  }),
-})
+const BROADCAST_LAMBDA_NAME = `telegram-websockets-${process.env.stage}-broadcastStats`
+const BROADCAST_ENDPOINT =
+  '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod'
 
 export const saveEvent = async (
   userInfo?: User,
@@ -35,13 +28,25 @@ export const saveEvent = async (
       Item: event,
     }
 
-    await Promise.all([dynamoPutItem(params), invokeLambda(getBroadcastParams(chat_id))])
+    const broadcastLambdaPayload = {
+      queryStringParameters: {
+        chatId: String(chat_id),
+        endpoint: BROADCAST_ENDPOINT,
+      },
+    }
+
+    await Promise.all([
+      dynamoPutItem(params),
+      invokeLambda(BROADCAST_LAMBDA_NAME, broadcastLambdaPayload),
+    ])
   }
 }
 
 const DAY = 1000 * 60 * 60 * 24
 
-export const get24hChatStats = async (chatId: string | number): Promise<User[]> => {
+export const get24hChatStats = async (
+  chatId: string | number,
+): Promise<User[]> => {
   const { Items } = await dynamoQuery({
     TableName: 'chat-events',
     KeyConditionExpression: 'chatId = :chatId AND #date > :date',

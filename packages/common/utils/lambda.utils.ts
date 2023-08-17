@@ -1,7 +1,13 @@
-import { Lambda } from 'aws-sdk'
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
 
 const lambdaOptions = { apiVersion: '2015-03-31', region: process.env.region }
-const lambda = new Lambda(lambdaOptions)
+const client = new LambdaClient(lambdaOptions)
 
-export const invokeLambda = (options: Lambda.Types.InvocationRequest) =>
-  lambda.invoke(options).promise()
+export const invokeLambda = (name: string, payload: Record<string, any>) => {
+  const options = {
+    FunctionName: name,
+    Payload: Buffer.from(JSON.stringify(payload)),
+  }
+  const command = new InvokeCommand(options)
+  return client.send(command)
+}
