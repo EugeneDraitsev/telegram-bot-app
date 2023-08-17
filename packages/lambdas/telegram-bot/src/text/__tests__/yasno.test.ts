@@ -48,7 +48,7 @@ describe('yasnyfy should works as designed', () => {
 
   test('yasnyfy should fallback to default value', () => {
     jest.setSystemTime(new Date(2016, 10, 10))
-    expect(yasnyfy('тест')).toEqual('\n\\>2016\n\\>тест\nЯсно')
+    expect(yasnyfy('тест')).toEqual('\n\\>2016\n\\>тест\nЯсна')
     expect(yasnyfy('')).toEqual('\n\\>2016\nЯсна')
   })
 
