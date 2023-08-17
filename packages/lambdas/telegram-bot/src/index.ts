@@ -17,12 +17,23 @@ bot.use(async (ctx, next) => {
   const message = ctx.message as Message
   if (chat && message) {
     const command = findCommand(message.text)
+    const chat = await ctx
+      .getChat()
+      .catch((error) => console.error('getChat error: ', error))
 
-    await Promise.all([
-      updateStatistics(message.from, await ctx.getChat()),
-      saveEvent(message.from, chat.id, command, message.date),
-      next?.(),
-    ])
+    try {
+      await Promise.all([
+        updateStatistics(message.from, chat).catch((error) =>
+          console.error('updateStatistics error: ', error),
+        ),
+        saveEvent(message.from, chat?.id, command, message.date).catch(
+          (error) => console.error('saveEvent error: ', error),
+        ),
+        next?.(),
+      ])
+    } catch (error) {
+      console.error('Root error: ', error)
+    }
   }
 })
 

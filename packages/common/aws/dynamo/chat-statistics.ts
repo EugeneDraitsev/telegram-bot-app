@@ -44,7 +44,7 @@ export const getFormattedChatStatistics = async (
 ): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
-    const stats = orderBy(result.users, 'msgCount', 'desc')
+    const stats = orderBy(result?.users, 'msgCount', 'desc')
     const messagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
     const formattedUsers = stats.map(
       (user) =>
@@ -61,16 +61,18 @@ export const getFormattedChatStatistics = async (
   }
 }
 
-export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
+export const updateStatistics = async (userInfo?: User, chat?: void | Chat) => {
   const chat_id = chat?.id
 
   if (userInfo && chat_id) {
     const chatStatistics = await getChatStatistic(chat_id)
-    const statistics = { ...chatStatistics, chatInfo: chat } || {
-      chatId: String(chat_id),
-      users: [] as UserStat[],
-      chatInfo: chat,
-    }
+    const statistics = chatStatistics
+      ? { ...chatStatistics, chatInfo: chat }
+      : {
+          chatId: String(chat_id),
+          users: [] as UserStat[],
+          chatInfo: chat,
+        }
 
     let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
 
@@ -80,7 +82,7 @@ export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
         msgCount: 1,
         username: getUserName(userInfo),
       }
-      statistics.users.push(userStatistic)
+      statistics.users = [...(statistics.users || []), userStatistic]
     } else {
       userStatistic.msgCount += 1
       userStatistic.username = getUserName(userInfo)

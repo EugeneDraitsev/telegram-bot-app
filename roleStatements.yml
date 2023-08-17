@@ -22,3 +22,4 @@
     - s3:GetObject
   Resource:
     - arn:aws:s3:::${self:custom.cryptoRequestsBucketName}/*
+    - arn:aws:s3:::migration-checks-bucket/*

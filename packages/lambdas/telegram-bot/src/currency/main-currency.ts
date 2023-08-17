@@ -1,23 +1,44 @@
 const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 const timeout = 10_000
-const BYN_RATES_URL = 'https://www.bsb.by/ajax.php?request=currencyrate'
 
 const formatRow = (value: number, length = 10) =>
   value.toFixed(2).padStart(length, ' ')
+
+// More precise BYN rates
+const getBynRates = async () => {
+  const BYN_RATES_URL =
+    'https://mobile.bsb.by/api/v1/free-zone-management/exchange-rates/rates'
+  const data = await fetch(BYN_RATES_URL, {
+    signal: AbortSignal.timeout(timeout),
+    method: 'POST',
+    body: JSON.stringify({
+      bankDepartmentId: 7,
+      period: Date.now(),
+      type: 'CASH',
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  }).then((x) => x.json())
+
+  const usdRate = data.rates?.find(
+    (x: any) => x.buyCurrencyName === 'USD' && x.sellCurrencyName === 'BYN',
+  )?.sellAmount
+
+  const eurRate = data.rates?.find(
+    (x: any) => x.buyCurrencyName === 'EUR' && x.sellCurrencyName === 'BYN',
+  )?.sellAmount
+
+  return {
+    USD: usdRate,
+    EUR: eurRate,
+  }
+}
 
 const getExchangeRateData = async (
   url: string,
   provider: string,
 ): Promise<string> => {
-  // More precise BYN rates
-  const bynRatesPromise = fetch(BYN_RATES_URL, {
-    signal: AbortSignal.timeout(timeout),
-  })
-    .then((x) => x.json())
-    // ignore errors
-    .catch(() => null)
-
-  // Other currencies rates
   const params = new URLSearchParams({
     access_key: fixerKey,
     format: '1',
@@ -26,16 +47,15 @@ const getExchangeRateData = async (
 
   const ratesPromise = fetch(`${url}?${params}`, {
     signal: AbortSignal.timeout(timeout),
-  }).then((x) => x.json())
+  })
+    .then((x) => x.json())
+    .then((x) => x.rates)
 
-  const [{ data: bynRates }, { rates }] = await Promise.all([
-    bynRatesPromise,
-    ratesPromise,
-  ])
+  const [bynRates, rates] = await Promise.all([getBynRates(), ratesPromise])
 
   const ratesToDisplay = {
-    '🇧🇾USD/BYN': Number(bynRates?.USD?.BUY?.BYN) || rates.BYN / rates.USD,
-    '🇧🇾EUR/BYN': Number(bynRates?.EUR?.BUY?.BYN) || rates.BYN,
+    '🇧🇾USD/BYN': Number(bynRates?.USD) || rates.BYN / rates.USD,
+    '🇧🇾EUR/BYN': Number(bynRates?.EUR) || rates.BYN,
     '🇸🇪USD/SEK': rates.SEK / rates.USD,
     '🇸🇪EUR/SEK': rates.SEK,
     '🇵🇱USD/PLN': rates.PLN / rates.USD,

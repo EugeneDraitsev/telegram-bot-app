@@ -40,13 +40,15 @@ const YEARS = {
   2023: () => `||${sample(['202 :3', '2023', 'MMXXIII', whDate])}||`,
 }
 
+type Year = keyof typeof YEARS
+
 export const yasnyfy = (text: string): string => {
   const stringYear = String(year)
   const formattedYear = YEARS[stringYear]?.() ?? stringYear
   const quotedText = text ? `\n\\>${text}` : ''
 
   if (month === 3 && day === 1) {
-    return `\n\\>1 Апреля ${stringYear.slice(2)} года${quotedText}\nЯсно😐`
+    return `\n\\>1 Апреля ${String(year).slice(2)} года${quotedText}\nЯсно😐`
   } else if (weekDay == 4){
     return `\n\\>${formattedYear}${quotedText}\nЯсна`
   }

@@ -1,6 +1,6 @@
 import { S3Client } from '@aws-sdk/client-s3'
 
-import { getFile, saveFile } from '..'
+import { getFile, getFileStream, saveFile } from '..'
 
 describe('s3 utils', () => {
   test('getFile should call send on s3 object and handle files with data and empty files', async () => {
@@ -11,6 +11,20 @@ describe('s3 utils', () => {
     }))
 
     expect(await getFile('Bucket', 'Key')).toEqual('getObject response!!')
+
+    jest.spyOn(S3Client.prototype, 'send').mockImplementation(() => ({
+      Body: undefined,
+    }))
+
+    expect(await getFile('Bucket', 'Key')).toEqual(undefined)
+  })
+
+  test('getFileStream should call send on s3 object and handle files with data and empty files', async () => {
+    jest.spyOn(S3Client.prototype, 'send').mockImplementation(() => ({
+      Body: 'getObject response!',
+    }))
+
+    expect(await getFileStream('Bucket', 'Key')).toEqual('getObject response!')
 
     jest.spyOn(S3Client.prototype, 'send').mockImplementation(() => ({
       Body: undefined,

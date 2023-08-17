@@ -24,34 +24,36 @@ const ICONS = {
   '50n': '🌫',
 }
 
-function getCountryFlagEmoji(countryCode: string): string | null {
+type Icon = keyof typeof ICONS
+
+function getCountryFlagEmoji(countryCode: string) {
   const codePoints = countryCode
     .toUpperCase()
     .split('')
     .map((char) => 127397 + char.charCodeAt(0))
 
-  return String.fromCodePoint(...codePoints) || null
+  return String.fromCodePoint(...codePoints) || '🙈'
 }
 
-const getWeatherUrlForecast = (locationURL: string): string =>
+const getWeatherUrlForecast = (locationURL: string) =>
   `http://api.openweathermap.org/data/2.5/forecast/daily?q=${encodeURI(
     locationURL,
   )}&units=metric&lang=ru&APPID=${weatherToken}`
 
-const getWeatherUrlNow = (locationURL: string): string =>
+const getWeatherUrlNow = (locationURL: string) =>
   `http://api.openweathermap.org/data/2.5/weather?q=${encodeURI(
     locationURL,
   )}&units=metric&lang=ru&APPID=${weatherToken}`
 
-const getWeatherIcon = (value: string): string =>
-  ICONS[value.toLowerCase()] || '🙈'
+const getWeatherIcon = (value: string) =>
+  ICONS[value.toLowerCase() as Icon] || '🙈'
 
-const getWindDirection = (value: number): string =>
+const getWindDirection = (value: number) =>
   WIND_DIRECTION[Math.round(value / 45)]
 
-const formatTemperature = (value: number): string => `<b>${value}°C</b>`
+const formatTemperature = (value: number) => `<b>${value}°C</b>`
 
-export const getWeather = async (location: string): Promise<string> => {
+export const getWeather = async (location: string) => {
   try {
     const [infoForecast, infoNow] = await Promise.all([
       fetch(getWeatherUrlForecast(location), {

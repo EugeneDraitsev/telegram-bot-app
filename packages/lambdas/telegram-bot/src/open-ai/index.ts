@@ -52,7 +52,7 @@ const generateText = async (prompt: string, chatId: string | number) => {
     }
 
     const completion = await openai.createChatCompletion({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4',
       messages: [
         {
           role: 'system',
@@ -71,7 +71,7 @@ const generateText = async (prompt: string, chatId: string | number) => {
 
     return message.content
   } catch (error) {
-    console.log(error)
+    console.log(error.message)
     return DEFAULT_ERROR_MESSAGE
   }
 }
@@ -99,8 +99,17 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     const { text, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 
-    const message = await generateText(text, chatId)
-    return ctx.reply(message, { reply_to_message_id: replyId })
+    generateText(text, chatId).then((message) =>
+      ctx
+        .replyWithMarkdownV2(
+          message?.replace(/([-_*\[\]()~`>#+=|{}.!])/g, '\\$1'),
+          { reply_to_message_id: replyId },
+        )
+        .catch((err) => {
+          console.error(err)
+          ctx.reply(message, { reply_to_message_id: replyId })
+        }),
+    )
   })
 }
 
