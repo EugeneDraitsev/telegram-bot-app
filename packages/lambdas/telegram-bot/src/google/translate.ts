@@ -7,6 +7,7 @@ const date = new Date(
     timeZone: 'Europe/Minsk',
   }),
 )
+const isBelarussianDay = date.getDay() === 4
 
 export const translate = async (
   text: string,
@@ -23,12 +24,8 @@ export const translate = async (
     })
       .then((x) => x.json())
       .then((x) => x.data.detections?.[0]?.[0]?.language)
-      if(date.getDay() === 4){
-        (inputLanguage === 'be' ? 'en' : 'be')
-      } else{
-        (inputLanguage === 'ru' ? 'en' : 'ru')
-      }
-      const target = targetLanguage || inputLanguage
+
+    const target =  targetLanguage || (isBelarussianDay && inputLanguage === 'be')  ? 'en' : (isBelarussianDay) ? 'be' : (inputLanguage === 'ru' ? 'en' : 'ru')
 
     return fetch(translateUrl, {
       signal: AbortSignal.timeout(timeout),
