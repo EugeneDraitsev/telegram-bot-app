@@ -24,9 +24,9 @@ export const translate = async (
       .then((x) => x.json())
       .then((x) => x.data.detections?.[0]?.[0]?.language)
       if(date.getDay() === 4){
-        inputLanguage === 'be' ? 'en' : 'be'
+        (inputLanguage === 'be' ? 'en' : 'be')
       } else{
-        inputLanguage === 'ru' ? 'en' : 'ru'
+        (inputLanguage === 'ru' ? 'en' : 'ru')
       }
       const target = targetLanguage || inputLanguage
 
