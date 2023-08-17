@@ -7,15 +7,14 @@ const whDate = (): string => {
       timeZone: 'Europe/Minsk',
     }),
   )
-  const secondsInYear = 31556926
-  const secondsInFraction = 31557
-  const currentTimeInSeconds = date.valueOf() / 1000
-  const yearsFromEpochStart = Math.floor(currentTimeInSeconds / secondsInYear)
-  const currentYearStart = yearsFromEpochStart * secondsInYear
+  const startOfYear = new Date(date.getFullYear(), 1, 1, 0, 0, 0 ).valueOf() 
+  const endOfYear = new Date(date.getFullYear(), 11, 31, 23, 59, 59 ).valueOf() 
+  const secondsInCurrentYear = Math.ceil((endOfYear - startOfYear) / 1000)
+  const secondsInFraction = Math.ceil(secondsInCurrentYear / 1000)
+  const currentTime = date.valueOf() 
   const yearFraction = Math.floor(
-    (currentTimeInSeconds - currentYearStart) / secondsInFraction,
-  )
-  const currentYear = yearsFromEpochStart + 1970
+  (currentTime - startOfYear ) / 1000 / secondsInFraction)
+  const currentYear = date.getFullYear() 
   const millenium = Math.floor(currentYear / 1000) + 1
   return `0 ${padStart(String(yearFraction), 3, '0')} ${String(
     currentYear,

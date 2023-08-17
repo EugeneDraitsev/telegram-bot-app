@@ -36,14 +36,14 @@ describe('yasnyfy should works as designed', () => {
       result2023.includes('||202 :3||') ||
         result2023.includes('||2023||') ||
         result2023.includes('||MMXXIII||') ||
-        result2023.includes('||9 023.M3||')
+        result2023.includes('||0 844 023.M3||')
     ).toBeTruthy()
   })
 
   test('yasnyfy should properly work with warhammer values', () => {
     jest.setSystemTime(new Date(2020, 10, 10))
-    expect(yasnyfy('тест').slice(7)).toEqual('9 020.M3\n\\>тест\nЯсно')
-    expect(yasnyfy('').slice(7)).toEqual('9 020.M3\nЯсно')
+    expect(yasnyfy('тест')).toEqual('0 844 020.M3\n\\>тест\nЯсно')
+    expect(yasnyfy('')).toEqual('0 844 020.M3\nЯсно')
   })
 
   test('yasnyfy should fallback to default value', () => {
