@@ -24,10 +24,11 @@ export const translate = async (
       .then((x) => x.json())
       .then((x) => x.data.detections?.[0]?.[0]?.language)
       if(date.getDay() == 4){
-        const target = targetLanguage || (inputLanguage === 'be' ? 'en' : 'be')
+        inputLanguage === 'be' ? 'en' : 'be'
       } else{
-        const target = targetLanguage || (inputLanguage === 'ru' ? 'en' : 'ru')
+        inputLanguage === 'ru' ? 'en' : 'ru'
       }
+      const target = targetLanguage || inputLanguage
 
     return fetch(translateUrl, {
       signal: AbortSignal.timeout(timeout),
