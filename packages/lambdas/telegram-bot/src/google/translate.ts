@@ -2,6 +2,11 @@ import { unEscape } from '@tg-bot/common/utils'
 
 const timeout = 5_000
 const googleApiKey = process.env.GOOGLE_API_KEY || 'set_your_token'
+const date = new Date(
+  new Date().toLocaleString('en-US', {
+    timeZone: 'Europe/Minsk',
+  }),
+)
 
 export const translate = async (
   text: string,
@@ -18,8 +23,11 @@ export const translate = async (
     })
       .then((x) => x.json())
       .then((x) => x.data.detections?.[0]?.[0]?.language)
-
-    const target = targetLanguage || (inputLanguage === 'ru' ? 'en' : 'ru')
+      if(date.getDay() == 4){
+        const target = targetLanguage || (inputLanguage === 'be' ? 'en' : 'be')
+      } else{
+        const target = targetLanguage || (inputLanguage === 'ru' ? 'en' : 'ru')
+      }
 
     return fetch(translateUrl, {
       signal: AbortSignal.timeout(timeout),
