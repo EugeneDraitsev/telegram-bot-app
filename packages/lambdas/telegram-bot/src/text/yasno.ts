@@ -19,7 +19,7 @@ const whDate = (): string => {
   const millenium = Math.floor(currentYear / 1000) + 1
   return `0 ${padStart(String(yearFraction), 3, '0')} ${String(
     currentYear,
-  ).slice(1, 4)}.M${millenium}`
+  ).slice(1, 4)}\\.M${millenium}`
 }
 
 const YEARS = {
