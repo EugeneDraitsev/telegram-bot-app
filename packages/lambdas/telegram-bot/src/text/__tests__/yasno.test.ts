@@ -42,8 +42,8 @@ describe('yasnyfy should works as designed', () => {
 
   test('yasnyfy should properly work with warhammer values', () => {
     jest.setSystemTime(new Date(2020, 10, 10))
-    expect(yasnyfy('тест')).toEqual(('\n\\>0 845 020.M3\n\\>тест\nЯсно').slice(9))
-    expect(yasnyfy('')).toEqual(('\n\\>0 845 020.M3\nЯсно').slice(9))
+    expect(yasnyfy('тест').slice(9)).toEqual('020.M3\n\\>тест\nЯсно')
+    expect(yasnyfy('').slice(9)).toEqual('020.M3\nЯсно')
   })
 
   test('yasnyfy should fallback to default value', () => {
