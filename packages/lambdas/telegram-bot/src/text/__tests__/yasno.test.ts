@@ -42,12 +42,12 @@ describe('yasnyfy should works as designed', () => {
 
   test('yasnyfy should properly work with warhammer values', () => {
     jest.setSystemTime(new Date(
-      new Date(2020, 10, 10).toLocaleString('en-US', {
-        timeZone: 'UTC'
+      new Date(2020, 10, 10, 12, 30).toLocaleString('en-US', {
+        timeZone: 'Europe/Minsk'
       })
     ))
-    expect(yasnyfy('тест')).toEqual('\n\\>0 844 020.M3\n\\>тест\nЯсно')
-    expect(yasnyfy('')).toEqual('\n\\>0 844 020.M3\nЯсно')
+    expect(yasnyfy('тест')).toEqual('\n\\>0 845 020.M3\n\\>тест\nЯсно')
+    expect(yasnyfy('')).toEqual('\n\\>0 845 020.M3\nЯсно')
   })
 
   test('yasnyfy should fallback to default value', () => {
