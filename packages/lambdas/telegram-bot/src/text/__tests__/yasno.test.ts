@@ -35,20 +35,21 @@ describe('yasnyfy should works as designed', () => {
     expect(
       result2023.includes('||202 :3||') ||
         result2023.includes('||2023||') ||
-        result2023.includes('||MMXXIII||'),
+        result2023.includes('||MMXXIII||') ||
+        result2023.includes('||023.M3||')
     ).toBeTruthy()
   })
 
   test('yasnyfy should properly work with warhammer values', () => {
     jest.setSystemTime(new Date(2020, 10, 10))
-    expect(yasnyfy('тест').slice(7)).toEqual('9 020.M3\n\\>тест\nЯсно')
-    expect(yasnyfy('').slice(7)).toEqual('9 020.M3\nЯсно')
+    expect(yasnyfy('тест').slice(9)).toEqual('020.M3\n\\>тест\nЯсно')
+    expect(yasnyfy('').slice(9)).toEqual('020.M3\nЯсно')
   })
 
   test('yasnyfy should fallback to default value', () => {
     jest.setSystemTime(new Date(2016, 10, 10))
-    expect(yasnyfy('тест')).toEqual('\n\\>2016\n\\>тест\nЯсно')
-    expect(yasnyfy('')).toEqual('\n\\>2016\nЯсно')
+    expect(yasnyfy('тест')).toEqual('\n\\>2016\n\\>тест\nЯсна')
+    expect(yasnyfy('')).toEqual('\n\\>2016\nЯсна')
   })
 
   test('yasnyfy should properly work at 1st of april', () => {
