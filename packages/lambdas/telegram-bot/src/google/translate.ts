@@ -27,7 +27,8 @@ export const translate = async (
 
     const defaultTargetFromEn = isBelarusianDay ? 'be' : 'ru'
     const target =
-      targetLanguage || (inputLanguage === 'ru' ? 'en' : defaultTargetFromEn)
+      targetLanguage ||
+      (inputLanguage === defaultTargetFromEn ? 'en' : defaultTargetFromEn)
 
     return fetch(translateUrl, {
       signal: AbortSignal.timeout(timeout),

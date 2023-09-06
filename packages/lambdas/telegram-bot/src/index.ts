@@ -67,7 +67,6 @@ setupUsersCommands(bot)
 // /w <text> - search wikipedia
 // /p <text> - get horoscope
 // /f <text?> - get weather forecast
-// /check - ???
 setupExternalApisCommands(bot)
 
 // /q <text> - generate chat completion
