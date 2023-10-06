@@ -99,17 +99,21 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     const { text, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 
-    generateText(text, chatId).then((message) =>
-      ctx
-        .replyWithMarkdownV2(
-          message?.replace(/([-_*\[\]()~`>#+=|{}.!])/g, '\\$1'),
-          { reply_to_message_id: replyId },
-        )
-        .catch((err) => {
-          console.error(err)
-          ctx.reply(message, { reply_to_message_id: replyId })
-        }),
-    )
+    generateText(text, chatId)
+      .then((message) => {
+        return ctx
+          .replyWithMarkdownV2(
+            message?.replace(/([-_*\[\]()~`>#+=|{}.!])/g, '\\$1'),
+            { reply_to_message_id: replyId },
+          )
+          .catch((err) => {
+            console.error(err)
+            ctx.reply(message, { reply_to_message_id: replyId })
+          })
+      })
+      .catch((err) => {
+        console.error(`Error (Open AI): ${err.message}`)
+      })
   })
 }
 
