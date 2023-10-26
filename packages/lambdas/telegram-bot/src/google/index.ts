@@ -50,6 +50,13 @@ const setupGoogleCommands = (bot: Telegraf<Context>) => {
     })
   })
 
+  bot.hears(checkCommand('/tr'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.reply(await translate(text, 'ru'), {
+      reply_to_message_id: replyId,
+    })
+  })
+
   bot.hears(checkCommand('/tp'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'pl'), {

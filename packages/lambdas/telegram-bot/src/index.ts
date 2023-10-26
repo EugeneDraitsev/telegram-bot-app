@@ -53,6 +53,7 @@ setupTextCommands(bot)
 // /tp <text> - translate text from detected language to polish
 // /ts <text> - translate text from detected language to swedish
 // /td <text> - translate text from detected language to deutsch
+// /tr <text> - translate text from detected language to russian
 // /v <text> -  search random video in YouTube
 setupGoogleCommands(bot)
 
