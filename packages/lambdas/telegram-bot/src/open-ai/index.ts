@@ -1,4 +1,4 @@
-import { Configuration, OpenAIApi } from 'openai'
+import OpenAi from 'openai'
 import type { Context, Telegraf } from 'telegraf'
 
 import { checkCommand, getCommandData } from '@tg-bot/common'
@@ -10,11 +10,9 @@ const NOT_ALLOWED_ERROR =
 
 const allowedChatIds = process.env.OPENAI_CHAT_IDS?.split(',') ?? []
 
-const configuration = new Configuration({
+const openai = new OpenAi({
   apiKey: process.env.OPENAI_API_KEY,
 })
-
-const openai = new OpenAIApi(configuration)
 
 const isAllowedChat = (chatId: string | number) =>
   allowedChatIds.includes(String(chatId))
@@ -27,13 +25,14 @@ const generateImage = async (prompt: string, chatId: string | number) => {
     throw new Error(PROMPT_MISSING_ERROR)
   }
 
-  const response = await openai.createImage({
+  const response = await openai.images.generate({
+    model: 'dall-e-3',
     prompt,
     n: 1,
     size: '1024x1024',
   })
 
-  const { url } = response.data.data[0]
+  const { url } = response.data[0]
 
   if (!url) {
     throw new Error(DEFAULT_ERROR_MESSAGE)
@@ -51,8 +50,8 @@ const generateText = async (prompt: string, chatId: string | number) => {
       return PROMPT_MISSING_ERROR
     }
 
-    const completion = await openai.createChatCompletion({
-      model: 'gpt-4',
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4-1106-preview',
       messages: [
         {
           role: 'system',
@@ -63,7 +62,7 @@ const generateText = async (prompt: string, chatId: string | number) => {
       ],
       user: String(chatId),
     })
-    const { message } = completion.data.choices[0]
+    const { message } = completion.choices[0]
 
     if (!message?.content) {
       return DEFAULT_ERROR_MESSAGE
