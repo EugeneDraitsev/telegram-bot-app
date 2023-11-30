@@ -80,7 +80,7 @@ custom:
       - encoding
     packagerOptions:
       scripts:
-        - npm install --os=linux --cpu=arm64 sharp
+        - npm install --force @img/sharp-linux-arm64
 
 resources:
   ${file(resources.yml)}
