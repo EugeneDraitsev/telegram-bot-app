@@ -11,15 +11,9 @@ const setupGoogleCommands = (bot: Telegraf<Context>) => {
     try {
       const { url, tbUrl } = await searchImage(text)
       return await ctx
-        .replyWithPhoto(
-          { url, filename: text },
-          { reply_to_message_id: replyId },
-        )
+        .replyWithPhoto(url, { reply_to_message_id: replyId })
         .catch(() =>
-          ctx.replyWithPhoto(
-            { url: tbUrl, filename: text },
-            { reply_to_message_id: replyId },
-          ),
+          ctx.replyWithPhoto(tbUrl, { reply_to_message_id: replyId }),
         )
         .catch(() => {
           ctx.reply(`Can't load ${url} to telegram (tabUrl: ${tbUrl})`, {

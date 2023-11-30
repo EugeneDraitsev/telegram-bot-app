@@ -83,10 +83,7 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     try {
       const url = await generateImage(text, chatId)
 
-      return ctx.replyWithPhoto(
-        { url, filename: 'generated-image.png' },
-        { reply_to_message_id: replyId },
-      )
+      return ctx.replyWithPhoto(url, { reply_to_message_id: replyId })
     } catch (error) {
       return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
         reply_to_message_id: replyId,
