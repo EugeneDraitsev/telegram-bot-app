@@ -17,7 +17,6 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - run: yarn
-      - run: npm install --force @img/sharp-linux-arm64
       - run: yarn lint
       - run: yarn tsc
       - run: yarn test

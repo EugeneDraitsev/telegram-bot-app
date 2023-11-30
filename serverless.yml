@@ -80,7 +80,7 @@ custom:
       - encoding
     packagerOptions:
       scripts:
-        - npm install --force @img/sharp-linux-arm64
+        - npm install --force @img/sharp-linux-arm64 @img/sharp-libvips-linux-arm64 @img/sharp-libvips-linuxmusl-arm64 @img/sharp-linuxmusl-arm64
 
 resources:
   ${file(resources.yml)}
