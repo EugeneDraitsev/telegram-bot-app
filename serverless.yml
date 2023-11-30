@@ -7,7 +7,7 @@ provider:
   region: eu-central-1
   memorySize: 512
   timeout: 30
-  runtime: nodejs18.x
+  runtime: nodejs20.x
   architecture: arm64
   environment:
     region: eu-central-1
@@ -48,7 +48,6 @@ functions:
     handler: packages/lambdas/sharp-statistics/src/index.default
     environment:
       FONTCONFIG_PATH: './fonts'
-    architecture: x86_64
     memorySize: 1536
     events:
       - http:
@@ -70,7 +69,7 @@ custom:
     httpPort: 4000
   esbuild:
     packager: yarn
-    target: node18
+    target: node20
     external:
       - sharp
     exclude:
