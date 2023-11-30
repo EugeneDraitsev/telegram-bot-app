@@ -17,7 +17,6 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - run: yarn
-      - run: npm install --os=linux --cpu=arm64 sharp
       - run: yarn build
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
