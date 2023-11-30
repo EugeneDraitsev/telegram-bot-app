@@ -81,6 +81,7 @@ custom:
     packagerOptions:
       scripts:
         - npm install --force @img/sharp-linux-arm64
+        - npm install --os=linux --cpu=arm64 sharp
 
 resources:
   ${file(resources.yml)}
