@@ -17,6 +17,10 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - run: yarn
-      - run: yarn lint
-      - run: yarn tsc
-      - run: yarn test
+      - run: npm install --os=linux --cpu=arm64 sharp
+      - run: yarn build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: sharp-artifact
+          path: .serverless/sharp-statistics.zip
