@@ -1,4 +1,3 @@
-import { random } from 'lodash'
 import type { Context, Telegraf } from 'telegraf'
 
 import { checkCommand, getCommandData, isLink } from '@tg-bot/common'
@@ -7,16 +6,16 @@ import { throwDice } from './dice'
 import { zavovu } from './za-vovu'
 import { huify } from './huiator'
 import { yasnyfy } from './yasno'
-import { sayThanksForLink } from './link-reply'
 import { getPrediction } from './magic8ball'
 
 const setupTextCommands = (bot: Telegraf<Context>) => {
   bot.hears(isLink, (ctx, next) => {
-    if (ctx.message && random(0, 100, true) > 99.7) {
-      ctx.reply(sayThanksForLink(), {
-        reply_to_message_id: ctx.message.message_id,
-      })
-    }
+    // Temporary disabled
+    // if (ctx.message && random(0, 100, true) > 99.7) {
+    //   ctx.reply(sayThanksForLink(), {
+    //     reply_to_message_id: ctx.message.message_id,
+    //   })
+    // }
     next?.()
   })
 
