@@ -1,4 +1,5 @@
 const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
+const exchangeRateKey = process.env.EXCHANGE_RATE_API_KEY || 'set_your_token'
 const timeout = 10_000
 
 const formatRow = (value: number, length = 10) =>
@@ -6,41 +7,47 @@ const formatRow = (value: number, length = 10) =>
 
 // More precise BYN rates
 const getBynRates = async () => {
-  const BYN_RATES_URL =
-    'https://mobile.bsb.by/api/v1/free-zone-management/exchange-rates/rates'
-  const data = await fetch(BYN_RATES_URL, {
-    signal: AbortSignal.timeout(timeout),
-    method: 'POST',
-    body: JSON.stringify({
-      bankDepartmentId: 7,
-      period: Date.now(),
-      type: 'CASH',
-    }),
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  }).then((x) => x.json())
+  try {
+    const BYN_RATES_URL =
+      'https://mobile.bsb.by/api/v1/free-zone-management/exchange-rates/rates'
+    const data = await fetch(BYN_RATES_URL, {
+      signal: AbortSignal.timeout(timeout),
+      method: 'POST',
+      body: JSON.stringify({
+        bankDepartmentId: 7,
+        period: Date.now(),
+        type: 'CASH',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }).then((x) => x.json())
 
-  const usdRate = data.rates?.find(
-    (x: any) => x.buyCurrencyName === 'USD' && x.sellCurrencyName === 'BYN',
-  )?.sellAmount
+    const usdRate = data.rates?.find(
+      (x: any) => x.buyCurrencyName === 'USD' && x.sellCurrencyName === 'BYN',
+    )?.sellAmount
 
-  const eurRate = data.rates?.find(
-    (x: any) => x.buyCurrencyName === 'EUR' && x.sellCurrencyName === 'BYN',
-  )?.sellAmount
+    const eurRate = data.rates?.find(
+      (x: any) => x.buyCurrencyName === 'EUR' && x.sellCurrencyName === 'BYN',
+    )?.sellAmount
 
-  return {
-    USD: usdRate,
-    EUR: eurRate,
+    return {
+      USD: usdRate,
+      EUR: eurRate,
+    }
+  } catch (e) {
+    console.error('Can not fetch BYN rates', e)
+    return {}
   }
 }
 
 const getExchangeRateData = async (
   url: string,
   provider: string,
+  access_key: string,
 ): Promise<string> => {
   const params = new URLSearchParams({
-    access_key: fixerKey,
+    access_key,
     format: '1',
     base: 'EUR',
   })
@@ -75,15 +82,15 @@ const getExchangeRateData = async (
 
 export const getMainCurrencies = async () => {
   try {
-    const url = 'https://api.exchangerate.host/latest'
-    const provider = 'ExchangeRate host'
-    return await getExchangeRateData(url, provider)
+    const url = 'http://api.exchangeratesapi.io/v1/latest'
+    const provider = 'ExchangeRatesAPI'
+    return await getExchangeRateData(url, provider, exchangeRateKey)
   } catch (e) {
     console.error('ExchangeRate host error', e)
     const url = 'http://data.fixer.io/api/latest'
     const provider = 'fixer'
 
-    return getExchangeRateData(url, provider).catch((err) => {
+    return getExchangeRateData(url, provider, fixerKey).catch((err) => {
       console.error('Fixer API error', err)
       throw err
     })
