@@ -71,6 +71,13 @@ const setupGoogleCommands = (bot: Telegraf<Context>) => {
       reply_to_message_id: replyId,
     })
   })
+
+  bot.hears(checkCommand('/te'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    return ctx.reply(await translate(text, 'en'), {
+      reply_to_message_id: replyId,
+    })
+  })
 }
 
 export default setupGoogleCommands
