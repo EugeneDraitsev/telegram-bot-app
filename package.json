@@ -20,21 +20,21 @@
     "deploy": "sls deploy"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.494.0",
-    "@aws-sdk/client-lambda": "^3.490.0",
-    "@aws-sdk/client-s3": "^3.490.0",
-    "@aws-sdk/lib-dynamodb": "^3.494.0",
+    "@aws-sdk/client-dynamodb": "^3.502.0",
+    "@aws-sdk/client-lambda": "^3.502.0",
+    "@aws-sdk/client-s3": "^3.502.0",
+    "@aws-sdk/lib-dynamodb": "^3.502.0",
     "lodash": "^4.17.21",
     "sharp": "^0.33.2"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.131",
+    "@types/aws-lambda": "^8.10.133",
     "@types/form-data": "^2.5.0",
     "@types/jest": "^29.5.11",
     "@types/lodash": "^4.14.202",
-    "@typescript-eslint/eslint-plugin": "6.19.0",
-    "@typescript-eslint/parser": "6.19.0",
-    "esbuild": "^0.19.11",
+    "@typescript-eslint/eslint-plugin": "6.20.0",
+    "@typescript-eslint/parser": "6.20.0",
+    "esbuild": "^0.20.0",
     "esbuild-jest": "^0.5.0",
     "eslint": "8.56.0",
     "eslint-config-prettier": "^9.1.0",
@@ -45,8 +45,8 @@
     "lerna": "^8.0.2",
     "prettier": "^3.2.4",
     "serverless": "^3.38.0",
-    "serverless-esbuild": "1.50.1",
-    "serverless-offline": "^13.3.2",
+    "serverless-esbuild": "1.50.2",
+    "serverless-offline": "^13.3.3",
     "typescript": "^5.3.3"
   },
   "engines": {

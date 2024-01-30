@@ -51,7 +51,7 @@ const generateText = async (prompt: string, chatId: string | number) => {
     }
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-1106-preview',
+      model: 'gpt-4-turbo-preview',
       messages: [
         {
           role: 'system',
