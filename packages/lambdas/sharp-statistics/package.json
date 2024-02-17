@@ -2,15 +2,15 @@
   "name": "@tg-bot/sharp-statictics",
   "version": "0.1.0",
   "dependencies": {
-    "polished": "^4.2.2",
+    "polished": "^4.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.11.0",
+    "recharts": "^2.12.0",
     "styled-components": "^6.1.8"
   },
   "devDependencies": {
-    "@types/react": "^18.2.48",
-    "@types/react-dom": "^18.2.18"
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19"
   },
   "peerDependencies": {
     "sharp": "^0.33.2"
