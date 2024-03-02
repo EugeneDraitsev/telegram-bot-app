@@ -83,10 +83,12 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     try {
       const url = await generateImage(text, chatId)
 
-      return ctx.replyWithPhoto(url, { reply_to_message_id: replyId })
+      return ctx.replyWithPhoto(url, {
+        reply_parameters: { message_id: replyId },
+      })
     } catch (error) {
       return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
-        reply_to_message_id: replyId,
+        reply_parameters: { message_id: replyId },
       })
     }
   })
@@ -100,11 +102,11 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
         return ctx
           .replyWithMarkdownV2(
             message?.replace(/([-_*\[\]()~`>#+=|{}.!])/g, '\\$1'),
-            { reply_to_message_id: replyId },
+            { reply_parameters: { message_id: replyId } },
           )
           .catch((err) => {
             console.error(err)
-            ctx.reply(message, { reply_to_message_id: replyId })
+            ctx.reply(message, { reply_parameters: { message_id: replyId } })
           })
       })
       .catch((err) => {

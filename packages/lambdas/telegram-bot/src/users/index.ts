@@ -28,20 +28,22 @@ const setupUsersCommands = (bot: Telegraf<Context>) => {
     if (image) {
       return ctx.replyWithPhoto(
         { source: image, filename: 'stats.png' },
-        { reply_to_message_id: replyId, caption: message },
+        { reply_parameters: { message_id: replyId }, caption: message },
       )
     }
 
     return ctx.replyWithHTML(
       `${chatName} chat statistics: https://telegram-bot-ui.vercel.app/chat/${chatId}`,
-      { reply_to_message_id: replyId },
+      {
+        reply_parameters: { message_id: replyId },
+      },
     )
   })
 
   bot.hears(checkCommand('/all'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await getUsersList(ctx.chat?.id ?? '', text), {
-      reply_to_message_id: replyId,
+      reply_parameters: { message_id: replyId },
     })
   })
 }

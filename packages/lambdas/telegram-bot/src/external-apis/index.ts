@@ -14,14 +14,14 @@ const setupExternalApisCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/p'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.replyWithHTML(await getHoroscope(text), {
-      reply_to_message_id: replyId,
+      reply_parameters: { message_id: replyId },
     })
   })
 
   bot.hears(checkCommand('/f'), async (ctx) => {
     const { text } = getCommandData(ctx.message)
     return ctx.replyWithHTML(await getWeather(text || 'Минск'), {
-      reply_to_message_id: ctx.message?.message_id,
+      reply_parameters: { message_id: ctx.message?.message_id },
     })
   })
 }
