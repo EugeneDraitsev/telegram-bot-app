@@ -69,7 +69,6 @@ custom:
   serverless-offline:
     httpPort: 4000
   esbuild:
-    packager: yarn
     target: node20
     external:
       - sharp
