@@ -29,6 +29,7 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.136",
     "@types/form-data": "^2.5.0",
+    "@types/jest": "^29.5.12",
     "@types/lodash": "^4.17.0",
     "@typescript-eslint/eslint-plugin": "7.5.0",
     "@typescript-eslint/parser": "7.5.0",
