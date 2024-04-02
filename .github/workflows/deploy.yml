@@ -16,7 +16,7 @@ jobs:
       - run: bun install
       - run: bun lint
       - run: bun tsc
-      - run: bun run test
+      - run: bun test
       - run: bun run deploy
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
