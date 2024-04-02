@@ -16,7 +16,7 @@ jobs:
       - run: bun install
       - run: bun lint
       - run: bun tsc
-      - run: bun test
+      - run: bun run test
       - uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.github_token }}
