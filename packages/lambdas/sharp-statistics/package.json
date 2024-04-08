@@ -5,14 +5,14 @@
     "polished": "^4.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.12.2",
+    "recharts": "^2.12.4",
     "styled-components": "^6.1.8"
   },
   "devDependencies": {
-    "@types/react": "^18.2.61",
-    "@types/react-dom": "^18.2.19"
+    "@types/react": "^18.2.74",
+    "@types/react-dom": "^18.2.24"
   },
   "peerDependencies": {
-    "sharp": "^0.33.2"
+    "sharp": "^0.33.3"
   }
 }
