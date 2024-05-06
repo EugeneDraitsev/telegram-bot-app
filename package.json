@@ -11,11 +11,11 @@
   "scripts": {
     "start": "sls offline start --reloadHandler",
     "build": "sls package",
-    "lint": "eslint packages/**/*.**",
-    "lint:fix": "eslint packages/**/*.** --fix",
+    "lint": "eslint src/**/*.**",
+    "lint:fix": "eslint src/**/*.** --fix",
     "tsc": "tsc --noEmit",
     "test": "bun test",
-    "format": "prettier --write ./packages",
+    "format": "prettier --write src",
     "logs": "sls logs -f telegram-bot -t",
     "deploy": "sls deploy"
   },
@@ -47,7 +47,6 @@
     "typescript": "^5.4.5"
   },
   "workspaces": [
-    "packages/*",
-    "packages/lambdas/*"
+    "src/*"
   ]
 }

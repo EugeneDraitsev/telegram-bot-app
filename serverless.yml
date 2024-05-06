@@ -19,7 +19,7 @@ provider:
 
 functions:
   telegram-bot:
-    handler: packages/lambdas/telegram-bot/src/index.default
+    handler: src/telegram-bot/src/index.default
     environment:
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
       GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
@@ -46,7 +46,7 @@ functions:
               chat:
                 id: -1001306676509.0
   sharp-statistics:
-    handler: packages/lambdas/sharp-statistics/src/index.default
+    handler: src/sharp-statistics/src/index.default
     environment:
       FONTCONFIG_PATH: './fonts'
     memorySize: 1536

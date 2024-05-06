@@ -64,6 +64,8 @@ export const getWeather = async (location: string) => {
       }).then((x) => x.json()),
     ])
 
+    console.log({ infoForecast, infoNow })
+
     const city = infoForecast.city.name
     const { country } = infoForecast.city
     const { humidity } = infoNow.main
