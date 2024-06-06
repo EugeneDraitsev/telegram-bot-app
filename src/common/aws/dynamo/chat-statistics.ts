@@ -56,12 +56,12 @@ export const getFormattedChatStatistics = async (
             All messages: ${String(messagesCount)}
             ${formattedUsers.join('\n')}`
   } catch (e) {
-    console.log(e) // eslint-disable-line no-console
+    console.log(e)
     return 'Error while fetching statistic'
   }
 }
 
-export const updateStatistics = async (userInfo?: User, chat?: void | Chat) => {
+export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
   const chat_id = chat?.id
 
   if (userInfo && chat_id) {

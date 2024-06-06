@@ -52,8 +52,11 @@ export const yasnyfy = (text: string): string => {
 
   if (month === 3 && day === 1) {
     return `\n\\>1 Апреля ${String(year).slice(2)} года${quotedText}\nЯсно😐`
-  } else if (weekDay === 4) {
+  }
+
+  if (weekDay === 4) {
     return `\n\\>${formattedYear}${quotedText}\nЯсна`
   }
+
   return `\n\\>${formattedYear}${quotedText}\nЯсно`
 }

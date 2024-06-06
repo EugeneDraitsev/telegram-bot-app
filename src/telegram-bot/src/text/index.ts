@@ -3,7 +3,6 @@ import type { Context, Telegraf } from 'telegraf'
 import { checkCommand, getCommandData } from '@tg-bot/common'
 import { puntoSwitcher } from './punto-switcher'
 import { throwDice } from './dice'
-import { zavovu } from './za-vovu'
 import { huify } from './huiator'
 import { yasnyfy } from './yasno'
 import { getPrediction } from './magic8ball'
@@ -29,9 +28,9 @@ const setupTextCommands = (bot: Telegraf<Context>) => {
 
   bot.hears(checkCommand('/dice'), (ctx) => {
     const { text } = getCommandData(ctx.message)
-    const diceRoll = parseInt(text, 10)
+    const diceRoll = Number.parseInt(text, 10)
     if (diceRoll) {
-      return ctx.replyWithHTML(throwDice(parseInt(text, 10) || 6), {
+      return ctx.replyWithHTML(throwDice(Number.parseInt(text, 10) || 6), {
         reply_parameters: { message_id: ctx.message?.message_id },
       })
     }
@@ -55,13 +54,6 @@ const setupTextCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/ps'), (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(puntoSwitcher(text), {
-      reply_parameters: { message_id: replyId },
-    })
-  })
-
-  bot.hears(checkCommand('/za'), (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    return ctx.reply(zavovu(text), {
       reply_parameters: { message_id: replyId },
     })
   })

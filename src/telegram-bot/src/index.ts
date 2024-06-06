@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf'
-import type { Message } from 'telegram-typings'
+import type { Chat, Message } from 'telegram-typings'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
 import { saveEvent, updateStatistics, findCommand } from '@tg-bot/common'
@@ -23,7 +23,7 @@ bot.use(async (ctx, next) => {
 
     try {
       await Promise.all([
-        updateStatistics(message.from, chat).catch((error) =>
+        updateStatistics(message.from, chat as Chat).catch((error) =>
           console.error('updateStatistics error: ', error),
         ),
         saveEvent(message.from, chat?.id, command, message.date).catch(
@@ -81,7 +81,6 @@ export const telegramBotHandler: APIGatewayProxyHandler = async (event) => {
     await bot.handleUpdate(body)
     return { body: JSON.stringify({ body }), statusCode: 200 }
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.log(e)
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),

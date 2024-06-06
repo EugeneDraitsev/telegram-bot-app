@@ -11,11 +11,10 @@
   "scripts": {
     "start": "sls offline start --reloadHandler",
     "build": "sls package",
-    "lint": "eslint src/**/*.**",
-    "lint:fix": "eslint src/**/*.** --fix",
     "tsc": "tsc --noEmit",
     "test": "bun test",
-    "format": "prettier --write src",
+    "biome": "biome check ./src",
+    "biome:fix": "biome check ./src --fix",
     "logs": "sls logs -f telegram-bot -t",
     "deploy": "sls deploy"
   },
@@ -28,25 +27,16 @@
     "sharp": "^0.33.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.8.0",
     "@types/aws-lambda": "^8.10.137",
     "@types/form-data": "^2.5.0",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.17.0",
-    "@typescript-eslint/eslint-plugin": "7.6.0",
-    "@typescript-eslint/parser": "7.6.0",
     "esbuild": "^0.20.2",
-    "eslint": "8.57.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-jest": "^28.2.0",
-    "eslint-plugin-react": "^7.34.1",
-    "eslint-plugin-sonarjs": "^0.25.1",
-    "prettier": "^3.2.5",
     "serverless": "^3.38.0",
     "serverless-esbuild": "^1.52.1",
     "serverless-offline": "^13.3.3",
     "typescript": "^5.4.5"
   },
-  "workspaces": [
-    "src/*"
-  ]
+  "workspaces": ["src/*"]
 }

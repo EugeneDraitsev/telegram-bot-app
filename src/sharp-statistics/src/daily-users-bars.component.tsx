@@ -1,9 +1,9 @@
 import styled from 'styled-components'
 import { tint } from 'polished'
 import { BarChart, XAxis, Bar, Cell, LabelList, YAxis } from 'recharts'
-import { User } from 'telegram-typings'
 import { map, sumBy } from 'lodash'
 import ReactDOMServer from 'react-dom/server'
+import type { User } from 'telegram-typings'
 
 import { getUserName } from '@tg-bot/common/utils'
 

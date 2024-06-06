@@ -37,4 +37,4 @@ const huifyWord = (word: string): string => {
 }
 
 export const huify = (text: string): string =>
-  text && text.replace ? text.replace(/[А-Я0-9]+/gi, huifyWord) : text
+  text?.replace ? text.replace(/[А-Я0-9]+/gi, huifyWord) : text

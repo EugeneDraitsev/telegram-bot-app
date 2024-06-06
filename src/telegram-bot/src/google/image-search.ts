@@ -17,9 +17,7 @@ export const searchImage = async (
     )
   }
 
-  const url =
-    'https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by' +
-    `&key=${googleApiKey}&cx=${cxToken}&q=${encodeURI(query)}`
+  const url = `https://www.googleapis.com/customsearch/v1?searchType=image&num=10&filter=1&gl=by&key=${googleApiKey}&cx=${cxToken}&q=${encodeURI(query)}`
   const response = await fetch(url, {
     signal: AbortSignal.timeout(5_000),
   }).then((r) => r.json())

@@ -2,12 +2,7 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es6",
-    "lib": [
-      "ES2021.String",
-      "es2018",
-      "es6",
-      "dom"
-    ],
+    "lib": ["ES2021.String", "es2018", "es6", "dom"],
     "moduleResolution": "node",
     "skipLibCheck": true,
     "rootDir": "./",
@@ -24,12 +19,6 @@
     "allowSyntheticDefaultImports": true,
     "jsx": "react-jsx"
   },
-  "exclude": [
-    "node_modules",
-    "build",
-    "webpack"
-  ],
-  "types": [
-    "typePatches"
-  ]
+  "exclude": ["node_modules", "build", "webpack"],
+  "types": ["typePatches"]
 }
