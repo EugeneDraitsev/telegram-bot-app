@@ -1,4 +1,4 @@
-import { User } from 'telegram-typings'
+import type { User } from 'telegram-typings'
 
 export interface UserStat {
   id: number

@@ -31,7 +31,7 @@ type Symbol = keyof typeof symbols
 
 /* Helpers */
 const formatCurrency = (value: string | number, fractionDigits = 2) =>
-  parseFloat(value as string)
+  Number.parseFloat(value as string)
     .toLocaleString('en', {
       maximumFractionDigits: fractionDigits,
     })
@@ -89,8 +89,11 @@ const getPoloniexData = async (): Promise<string> => {
           currencyData.price,
           symbols[key as Symbol],
         )
-        const priceChange = round(parseFloat(currencyData.dailyChange) * 100, 2)
-        const isUp = parseFloat(currencyData.dailyChange) >= 0
+        const priceChange = round(
+          Number.parseFloat(currencyData.dailyChange) * 100,
+          2,
+        )
+        const isUp = Number.parseFloat(currencyData.dailyChange) >= 0
         acc[key] = `${formattedPrice} (${isUp ? '+' : ''}${priceChange}%)`
       }
 
@@ -153,7 +156,7 @@ export const getCryptoCurrency = async (): Promise<string> => {
   try {
     return getCoinMarketCapData()
   } catch (e) {
-    console.log(`CoinMarketCap error: `, e)
+    console.log('CoinMarketCap error: ', e)
     return getPoloniexData()
   }
 }

@@ -1,4 +1,4 @@
-import { Chat, Message, MessageEntity, User } from 'telegram-typings'
+import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 import { some, split, toLower } from 'lodash'
 
 export const isLink = (text = ''): any => text.includes('https://')
@@ -11,7 +11,6 @@ export const findCommand = (text = ''): string =>
 
 export const checkCommand =
   (command: string) =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (text = ''): any =>
     findCommand(toLower(text)) === toLower(command)
 

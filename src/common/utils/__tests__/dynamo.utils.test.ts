@@ -1,4 +1,7 @@
-import { DynamoDBDocumentClient, PutCommandInput } from '@aws-sdk/lib-dynamodb'
+import {
+  DynamoDBDocumentClient,
+  type PutCommandInput,
+} from '@aws-sdk/lib-dynamodb'
 
 import { dynamoPutItem, dynamoQuery } from '..'
 

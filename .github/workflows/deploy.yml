@@ -14,7 +14,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
 
       - run: bun install
-      - run: bun lint
+      - run: bun biome
       - run: bun tsc
       - run: bun test
       - run: bun run deploy
