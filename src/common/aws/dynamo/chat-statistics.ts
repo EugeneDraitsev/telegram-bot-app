@@ -45,15 +45,17 @@ export const getFormattedChatStatistics = async (
   try {
     const result = await getChatStatistic(chat_id)
     const stats = orderBy(result?.users, 'msgCount', 'desc')
-    const messagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
-    const formattedUsers = stats.map(
-      (user) =>
-        `${user.msgCount} (${((user.msgCount / messagesCount) * 100).toFixed(
-          2,
-        )}%) - ${user.username}`,
-    )
+    const allMessagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
+
+    const formattedUsers = stats.map((user) => {
+      const messagesCount = user.msgCount.toLocaleString()
+      const messagePercentage = (user.msgCount / allMessagesCount) * 100
+
+      return `${messagesCount} (${messagePercentage.toFixed(2)}%) - ${user.username}`
+    })
+
     return dedent`Users Statistic:
-            All messages: ${String(messagesCount)}
+            All messages: ${allMessagesCount.toLocaleString()}
             ${formattedUsers.join('\n')}`
   } catch (e) {
     console.log(e)
