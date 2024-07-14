@@ -57,17 +57,13 @@ functions:
 
 plugins:
   - serverless-offline
-  - serverless-esbuild
 
 package:
   individually: true
   patterns:
     - fonts/**
 
-custom:
-  cryptoRequestsBucketName: crypto-request-timestamp
-  serverless-offline:
-    httpPort: 4000
+build:
   esbuild:
     target: node20
     external:
@@ -78,9 +74,11 @@ custom:
       - '@aws-sdk/client-s3'
       - '@aws-sdk/lib-dynamodb'
       - encoding
-    packagerOptions:
-      scripts:
-        - npm install --force @img/sharp-linux-arm64 @img/sharp-libvips-linux-arm64 @img/sharp-libvips-linuxmusl-arm64 @img/sharp-linuxmusl-arm64
+
+custom:
+  cryptoRequestsBucketName: crypto-request-timestamp
+  serverless-offline:
+    httpPort: 4000
 
 resources:
   ${file(resources.yml)}

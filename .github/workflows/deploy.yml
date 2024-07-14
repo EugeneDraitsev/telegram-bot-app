@@ -17,6 +17,7 @@ jobs:
       - run: bun biome
       - run: bun tsc
       - run: bun test
+      - run: bun i --force @img/sharp-linux-arm64 @img/sharp-libvips-linux-arm64 @img/sharp-libvips-linuxmusl-arm64 @img/sharp-linuxmusl-arm64
       - run: bun run deploy
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
