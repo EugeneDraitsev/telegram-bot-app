@@ -19,24 +19,24 @@
     "deploy": "sls deploy"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.552.0",
-    "@aws-sdk/client-lambda": "^3.552.0",
-    "@aws-sdk/client-s3": "^3.552.0",
-    "@aws-sdk/lib-dynamodb": "^3.552.0",
+    "@aws-sdk/client-dynamodb": "^3.650.0",
+    "@aws-sdk/client-lambda": "^3.650.0",
+    "@aws-sdk/client-s3": "^3.650.0",
+    "@aws-sdk/lib-dynamodb": "^3.650.0",
     "lodash": "^4.17.21",
-    "sharp": "^0.33.3"
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.8.0",
-    "@types/aws-lambda": "^8.10.137",
+    "@biomejs/biome": "^1.8.3",
+    "@types/aws-lambda": "^8.10.145",
     "@types/form-data": "^2.5.0",
     "@types/jest": "^29.5.12",
-    "@types/lodash": "^4.17.0",
-    "esbuild": "^0.20.2",
-    "serverless": "^3.38.0",
+    "@types/lodash": "^4.17.7",
+    "esbuild": "^0.23.1",
+    "serverless": "^3.39.0",
     "serverless-esbuild": "^1.52.1",
-    "serverless-offline": "^13.3.3",
-    "typescript": "^5.4.5"
+    "serverless-offline": "^13.8.0",
+    "typescript": "^5.6.2"
   },
   "workspaces": ["src/*"]
 }
