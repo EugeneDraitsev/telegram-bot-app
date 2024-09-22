@@ -66,7 +66,7 @@ const setupGoogleCommands = (bot: Telegraf<Context>) => {
     })
   })
 
-  bot.hears(checkCommand('/ts'), async (ctx) => {
+  bot.command(checkCommand('/ts'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'sv'), {
       reply_parameters: { message_id: replyId },

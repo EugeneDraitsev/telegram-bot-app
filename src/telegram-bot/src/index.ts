@@ -1,14 +1,14 @@
+import type { APIGatewayProxyHandler } from 'aws-lambda'
 import { Telegraf } from 'telegraf'
 import type { Chat, Message } from 'telegram-typings'
-import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import { saveEvent, updateStatistics, findCommand } from '@tg-bot/common'
-import setupTextCommands from './text'
-import setupGoogleCommands from './google'
+import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
 import setupCurrencyCommands from './currency'
-import setupUsersCommands from './users'
 import setupExternalApisCommands from './external-apis'
+import setupGoogleCommands from './google'
 import setupOpenAiCommands from './open-ai'
+import setupTextCommands from './text'
+import setupUsersCommands from './users'
 
 const bot = new Telegraf(process.env.TOKEN as string)
 

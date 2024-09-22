@@ -1,8 +1,8 @@
-import styled from 'styled-components'
-import { tint } from 'polished'
-import { BarChart, XAxis, Bar, Cell, LabelList, YAxis } from 'recharts'
 import { map, sumBy } from 'lodash'
+import { tint } from 'polished'
 import ReactDOMServer from 'react-dom/server'
+import { Bar, BarChart, Cell, LabelList, XAxis, YAxis } from 'recharts'
+import styled from 'styled-components'
 import type { User } from 'telegram-typings'
 
 import { getUserName } from '@tg-bot/common/utils'
@@ -12,9 +12,6 @@ const ChartLabel = styled.text`
   line-height: 17px;
   font-size: 12px;
 `
-
-const BarChartAny = BarChart as any
-const BarAny = Bar as any
 
 const getBarColor = (i: number, length: number) =>
   tint(i / (length * 1.3), '#4A90E2')
@@ -27,7 +24,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
   const allMessages = sumBy(data, 'messages')
 
   return (
-    <BarChartAny
+    <BarChart
       data={data}
       margin={{ top: 20, right: 20, left: 20, bottom: 10 }}
       width={1200}
@@ -36,7 +33,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
       <text fontSize={14} textAnchor="middle" x={80} y={30}>
         All messages: {allMessages}
       </text>
-      <BarAny
+      <Bar
         dataKey="messages"
         maxBarSize={50}
         minPointSize={5}
@@ -44,7 +41,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
         isAnimationActive={false}
         xmlns="http://www.w3.org/2000/svg"
       >
-        {map(data, (d, i: number) => (
+        {map(data, (_, i: number) => (
           <Cell key={i} fill={getBarColor(i, data.length)} />
         ))}
         <LabelList
@@ -61,7 +58,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
             </ChartLabel>
           )}
         />
-      </BarAny>
+      </Bar>
       <YAxis hide padding={{ top: 30 }} />
       <XAxis
         dataKey="id"
@@ -83,7 +80,7 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
           </g>
         )}
       />
-    </BarChartAny>
+    </BarChart>
   )
 }
 

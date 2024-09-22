@@ -1,4 +1,4 @@
-import { padStart, random, clamp } from 'lodash'
+import { clamp, padStart, random } from 'lodash'
 
 const randomDice = (max: number) => random(1, max)
 

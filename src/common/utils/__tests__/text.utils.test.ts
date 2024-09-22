@@ -1,6 +1,6 @@
 import {
-  hasRussiansLetters,
   dedent,
+  hasRussiansLetters,
   normalize,
   sanitizeSvg,
   unEscape,

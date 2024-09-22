@@ -1,7 +1,7 @@
-import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 import { some, split, toLower } from 'lodash'
+import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
-export const isLink = (text = ''): any => text.includes('https://')
+export const isLink = (text = '') => text.includes('https://')
 
 export const findCommand = (text = ''): string =>
   text
@@ -11,6 +11,7 @@ export const findCommand = (text = ''): string =>
 
 export const checkCommand =
   (command: string) =>
+  // biome-ignore lint: we have to enforce any type here due to the strange typing of the Telegraf library
   (text = ''): any =>
     findCommand(toLower(text)) === toLower(command)
 

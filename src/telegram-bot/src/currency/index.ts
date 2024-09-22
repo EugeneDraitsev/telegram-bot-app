@@ -1,9 +1,9 @@
 import type { Context, Telegraf } from 'telegraf'
 
+import { checkCommand } from '@tg-bot/common'
+import { getCryptoCurrency } from './crypto-currency'
 import { getMainCurrencies } from './main-currency'
 import { getRussianCurrency } from './russian-currency'
-import { getCryptoCurrency } from './crypto-currency'
-import { checkCommand } from '@tg-bot/common'
 
 const getError = (err: Error, from: string): string => {
   console.log(err)

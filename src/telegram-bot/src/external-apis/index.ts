@@ -1,9 +1,9 @@
 import type { Context, Telegraf } from 'telegraf'
 
 import { checkCommand, getCommandData } from '@tg-bot/common'
-import { searchWiki } from './wiki'
 import { getHoroscope } from './horoscope'
 import { getWeather } from './weather'
+import { searchWiki } from './wiki'
 
 const setupExternalApisCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/w'), async (ctx) => {

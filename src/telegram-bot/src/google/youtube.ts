@@ -1,4 +1,4 @@
-import { sample, map, compact, isEmpty } from 'lodash'
+import { compact, isEmpty, map, sample } from 'lodash'
 
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'
 const BASE_URL =

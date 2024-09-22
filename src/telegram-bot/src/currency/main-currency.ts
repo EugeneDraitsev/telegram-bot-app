@@ -2,6 +2,16 @@ const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
 const exchangeRateKey = process.env.EXCHANGE_RATE_API_KEY || 'set_your_token'
 const timeout = 10_000
 
+type Rate = {
+  buyCurrencyName: string
+  sellCurrencyName: string
+  sellAmount: number
+}
+
+type Data = {
+  rates: Array<Rate>
+}
+
 const formatRow = (value: number, length = 10) =>
   value.toFixed(2).padStart(length, ' ')
 
@@ -10,7 +20,7 @@ const getBynRates = async () => {
   try {
     const BYN_RATES_URL =
       'https://mobile.bsb.by/api/v1/free-zone-management/exchange-rates/rates'
-    const data = await fetch(BYN_RATES_URL, {
+    const data: Data = await fetch(BYN_RATES_URL, {
       signal: AbortSignal.timeout(timeout),
       method: 'POST',
       body: JSON.stringify({
@@ -24,11 +34,11 @@ const getBynRates = async () => {
     }).then((x) => x.json())
 
     const usdRate = data.rates?.find(
-      (x: any) => x.buyCurrencyName === 'USD' && x.sellCurrencyName === 'BYN',
+      (x) => x.buyCurrencyName === 'USD' && x.sellCurrencyName === 'BYN',
     )?.sellAmount
 
     const eurRate = data.rates?.find(
-      (x: any) => x.buyCurrencyName === 'EUR' && x.sellCurrencyName === 'BYN',
+      (x) => x.buyCurrencyName === 'EUR' && x.sellCurrencyName === 'BYN',
     )?.sellAmount
 
     return {

@@ -8,16 +8,8 @@
     "lineEnding": "lf",
     "attributePosition": "auto"
   },
-  "organizeImports": { "enabled": false },
   "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "suspicious": {
-        "noExplicitAny": "off",
-        "noMisleadingCharacterClass": "off"
-      }
-    }
+    "enabled": true
   },
   "javascript": {
     "formatter": {

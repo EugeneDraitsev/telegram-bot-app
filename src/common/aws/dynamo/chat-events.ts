@@ -1,8 +1,8 @@
-import { chain, random, groupBy } from 'lodash'
+import { chain, groupBy, random } from 'lodash'
 import type { User } from 'telegram-typings'
 
-import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
 import type { ChatEvent } from '../../types'
+import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
 
 const BROADCAST_LAMBDA_NAME = `telegram-websockets-${process.env.stage}-broadcastStats`
 const BROADCAST_ENDPOINT =

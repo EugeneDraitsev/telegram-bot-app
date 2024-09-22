@@ -1,11 +1,11 @@
 import type { Context, Telegraf } from 'telegraf'
 
 import { checkCommand, getCommandData } from '@tg-bot/common'
-import { puntoSwitcher } from './punto-switcher'
 import { throwDice } from './dice'
 import { huify } from './huiator'
-import { yasnyfy } from './yasno'
 import { getPrediction } from './magic8ball'
+import { puntoSwitcher } from './punto-switcher'
+import { yasnyfy } from './yasno'
 
 const setupTextCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/h'), (ctx) => {

@@ -1,5 +1,9 @@
 import { includes, noop } from 'lodash'
 
+type Currency = {
+  current: number
+}
+
 const timeout = 15000
 
 const formatRow = (key: string, value: number, length = 10) => {
@@ -14,7 +18,7 @@ export const getRussianCurrency = async (): Promise<string> => {
   const nasdaqUrl =
     'https://api.nasdaq.com/api/quote/BZ%3ANMX/info?assetclass=commodities'
 
-  const currency = await fetch(medusaUrl, {
+  const currency: Record<string, Currency> = await fetch(medusaUrl, {
     signal: AbortSignal.timeout(timeout),
   })
     .then((x) => x.json())
@@ -32,7 +36,7 @@ export const getRussianCurrency = async (): Promise<string> => {
 
   const maxLength = Math.max(
     ...Object.entries(currency).map(
-      ([key, value]: any) => String(value.current).length + key.length,
+      ([key, value]) => String(value.current).length + key.length,
     ),
   )
 

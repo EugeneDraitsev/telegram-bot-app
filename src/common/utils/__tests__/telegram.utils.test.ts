@@ -1,14 +1,14 @@
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 import {
-  findCommand,
-  isLink,
-  getParsedText,
   checkCommand,
-  isBotCommand,
-  getUserName,
+  findCommand,
   getChatName,
   getCommandData,
+  getParsedText,
+  getUserName,
+  isBotCommand,
+  isLink,
 } from '..'
 
 describe('findCommand', () => {

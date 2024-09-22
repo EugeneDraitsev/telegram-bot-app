@@ -1,8 +1,8 @@
-import { find, orderBy, first } from 'lodash'
+import { find, first, orderBy } from 'lodash'
 import type { Chat, User } from 'telegram-typings'
 
-import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
 import type { UserStat } from '../../types'
+import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
 
 interface ChatStat {
   users: UserStat[]

@@ -1,10 +1,10 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   DynamoDBDocumentClient,
-  QueryCommand,
   PutCommand,
+  QueryCommand,
 } from '@aws-sdk/lib-dynamodb'
-import type { QueryCommandInput, PutCommandInput } from '@aws-sdk/lib-dynamodb'
+import type { PutCommandInput, QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 
 const client = new DynamoDBClient({ region: process.env.region })
 const docClient = DynamoDBDocumentClient.from(client) // client is DynamoDB client
