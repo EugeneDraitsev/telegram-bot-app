@@ -105,10 +105,12 @@ describe('getCommandData', () => {
         text: '/s',
         reply_to_message: { message_id: 123 },
       } as Message),
-    ).toEqual({ text: '', replyId: 123 })
+    ).toEqual({ text: '', replyId: 123, combinedText: '', images: [] })
     expect(getCommandData({ text: '/z', message_id: 555 } as Message)).toEqual({
       text: '',
       replyId: 555,
+      combinedText: '',
+      images: [],
     })
     expect(
       getCommandData({
@@ -116,11 +118,37 @@ describe('getCommandData', () => {
         message_id: 555,
         reply_to_message: { message_id: 123 },
       } as Message),
-    ).toEqual({ text: 'cat', replyId: 555 })
+    ).toEqual({ text: 'cat', replyId: 555, combinedText: 'cat', images: [] })
+    expect(
+      getCommandData({
+        message_id: 555,
+        reply_to_message: { message_id: 123, text: '/g cat' },
+      } as Message),
+    ).toEqual({
+      text: '/g cat',
+      replyId: 123,
+      combinedText: '/g cat',
+      images: [],
+    })
   })
   it('should return caption if text is empty', () => {
     expect(getCommandData({ text: '', caption: '123123' } as Message)).toEqual({
       text: '123123',
+      combinedText: '123123',
+      images: [],
+    })
+  })
+  it('should return correct combinedText', () => {
+    expect(
+      getCommandData({
+        text: '111',
+        caption: '222',
+        reply_to_message: { message_id: 123, text: '333', caption: '444' },
+      } as Message),
+    ).toEqual({
+      text: '111',
+      combinedText: '333\n111',
+      images: [],
     })
   })
 })

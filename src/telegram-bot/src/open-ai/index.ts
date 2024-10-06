@@ -158,26 +158,7 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
   })
 
   bot.hears(checkCommand('/q'), async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    const chatId = ctx?.chat?.id ?? ''
-
-    const message = await generateMultimodalCompletion(text, chatId)
-
-    return ctx
-      .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
-        reply_parameters: { message_id: replyId },
-      })
-      .catch((err) => {
-        console.error(err)
-        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
-      })
-      .catch((err) => {
-        console.error(`Error (Open AI): ${err.message}`)
-      })
-  })
-
-  bot.hears(checkCommand('/qi'), async (ctx) => {
-    const { text, images, replyId } = getCommandData(ctx.message)
+    const { combinedText, images, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 
     const imagesUrls = await Promise.all(
@@ -185,7 +166,11 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     )
     const imagesData = await getImageBuffers(imagesUrls)
 
-    const message = await generateMultimodalCompletion(text, chatId, imagesData)
+    const message = await generateMultimodalCompletion(
+      combinedText,
+      chatId,
+      imagesData,
+    )
 
     return ctx
       .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
