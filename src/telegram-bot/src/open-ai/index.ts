@@ -200,10 +200,10 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
   })
 
   bot.hears(checkCommand('/o'), async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
+    const { combinedText, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 
-    const message = await generateReasoningCompletion(text, chatId)
+    const message = await generateReasoningCompletion(combinedText, chatId)
 
     return ctx
       .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
