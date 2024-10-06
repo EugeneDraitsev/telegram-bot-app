@@ -45,8 +45,13 @@ export const getCommandData = (message: Message) => {
     replyText && messageText ? `${replyText}\n${messageText}` : text
 
   const images = (message?.photo ?? []).concat(reply_to_message?.photo ?? [])
+  const sticker = reply_to_message?.sticker
 
-  return { text, combinedText, images, replyId }
+  if (sticker) {
+    images.push(sticker)
+  }
+
+  return { text, sticker, combinedText, images, replyId }
 }
 
 export async function getImageBuffers(imagesUrls: URL[]) {

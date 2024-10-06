@@ -3,6 +3,7 @@ import type { Context, Telegraf } from 'telegraf'
 
 import { checkCommand, getCommandData, getImageBuffers } from '@tg-bot/common'
 import type { ChatCompletionContentPart } from 'openai/resources'
+import type { Message } from 'telegram-typings'
 
 const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
 const PROMPT_MISSING_ERROR = 'Prompt is required'
@@ -139,6 +140,36 @@ const generateReasoningCompletion = async (
   }
 }
 
+const setupMultimodalCommands = async (ctx: Context) => {
+  const { combinedText, images, replyId } = getCommandData(
+    ctx.message as Message,
+  )
+  const chatId = ctx?.chat?.id ?? ''
+
+  const imagesUrls = await Promise.all(
+    images?.map((image) => ctx.telegram.getFileLink(image.file_id)) ?? [],
+  )
+  const imagesData = await getImageBuffers(imagesUrls)
+
+  const message = await generateMultimodalCompletion(
+    combinedText,
+    chatId,
+    imagesData,
+  )
+
+  return ctx
+    .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
+      reply_parameters: { message_id: replyId },
+    })
+    .catch((err) => {
+      console.error(err)
+      return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+    })
+    .catch((err) => {
+      console.error(`Error (Open AI): ${err.message}`)
+    })
+}
+
 const setupOpenAiCommands = (bot: Telegraf<Context>) => {
   bot.hears(checkCommand('/e'), async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
@@ -157,32 +188,15 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     }
   })
 
-  bot.hears(checkCommand('/q'), async (ctx) => {
-    const { combinedText, images, replyId } = getCommandData(ctx.message)
-    const chatId = ctx?.chat?.id ?? ''
+  bot.on('photo', (ctx) => {
+    if (!checkCommand('/q')(ctx.message?.caption)) {
+      return
+    }
+    return setupMultimodalCommands(ctx)
+  })
 
-    const imagesUrls = await Promise.all(
-      images?.map((image) => ctx.telegram.getFileLink(image.file_id)) ?? [],
-    )
-    const imagesData = await getImageBuffers(imagesUrls)
-
-    const message = await generateMultimodalCompletion(
-      combinedText,
-      chatId,
-      imagesData,
-    )
-
-    return ctx
-      .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
-        reply_parameters: { message_id: replyId },
-      })
-      .catch((err) => {
-        console.error(err)
-        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
-      })
-      .catch((err) => {
-        console.error(`Error (Open AI): ${err.message}`)
-      })
+  bot.hears(checkCommand('/q'), (ctx) => {
+    return setupMultimodalCommands(ctx)
   })
 
   bot.hears(checkCommand('/o'), async (ctx) => {
