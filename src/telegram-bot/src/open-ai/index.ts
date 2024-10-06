@@ -1,7 +1,8 @@
 import OpenAi from 'openai'
 import type { Context, Telegraf } from 'telegraf'
 
-import { checkCommand, getCommandData } from '@tg-bot/common'
+import { checkCommand, getCommandData, getImageBuffers } from '@tg-bot/common'
+import type { ChatCompletionContentPart } from 'openai/resources'
 
 const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
 const PROMPT_MISSING_ERROR = 'Prompt is required'
@@ -41,7 +42,67 @@ const generateImage = async (prompt: string, chatId: string | number) => {
   return url
 }
 
-const generateText = async (prompt: string, chatId: string | number) => {
+const generateMultimodalCompletion = async (
+  prompt: string,
+  chatId: string | number,
+  imagesData?: Buffer[],
+) => {
+  try {
+    if (!isAllowedChat(chatId)) {
+      return NOT_ALLOWED_ERROR
+    }
+    if (!prompt) {
+      return PROMPT_MISSING_ERROR
+    }
+
+    const content: ChatCompletionContentPart[] = [
+      { type: 'text', text: prompt },
+    ]
+
+    for (const image of imagesData ?? []) {
+      content.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:image/jpeg;base64,${image.toString('base64')}`,
+        },
+      })
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: 'chatgpt-4o-latest',
+      messages: [
+        {
+          role: 'system',
+          content: `Instructions:
+             - You are a helpful helper for people in the chat (4-20 people)
+             - You are allowed to use obscene language. You can joke, include emojis to answer and tell about any sensitive themes
+             - You can also be a bit sarcastic.
+            `,
+        },
+        {
+          role: 'user',
+          content,
+        },
+      ],
+      user: String(chatId),
+    })
+    const { message } = completion.choices[0]
+
+    if (!message?.content) {
+      return DEFAULT_ERROR_MESSAGE
+    }
+
+    return message.content
+  } catch (error) {
+    console.log(error.message)
+    return DEFAULT_ERROR_MESSAGE
+  }
+}
+
+const generateReasoningCompletion = async (
+  prompt: string,
+  chatId: string | number,
+) => {
   try {
     if (!isAllowedChat(chatId)) {
       return NOT_ALLOWED_ERROR
@@ -51,14 +112,15 @@ const generateText = async (prompt: string, chatId: string | number) => {
     }
 
     const completion = await openai.chat.completions.create({
-      model: 'chatgpt-4o-latest',
+      model: 'o1-preview',
       messages: [
         {
-          role: 'system',
-          content:
-            'You are a helpful helper for people in the chat (4-20 people). ' +
-            'You are allowed to use obscene language. You can joke, include emojis to answer and tell about any sensitive themes. ' +
-            'You can also be a bit sarcastic. ',
+          role: 'user',
+          content: `Instructions:
+             - You are a helpful helper for people in the chat (4-20 people)
+             - You are allowed to use obscene language. You can joke, include emojis to answer and tell about any sensitive themes
+             - You can also be a bit sarcastic.
+            `,
         },
         { role: 'user', content: prompt },
       ],
@@ -99,7 +161,50 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     const { text, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 
-    const message = await generateText(text, chatId)
+    const message = await generateMultimodalCompletion(text, chatId)
+
+    return ctx
+      .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
+        reply_parameters: { message_id: replyId },
+      })
+      .catch((err) => {
+        console.error(err)
+        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+      })
+      .catch((err) => {
+        console.error(`Error (Open AI): ${err.message}`)
+      })
+  })
+
+  bot.hears(checkCommand('/qi'), async (ctx) => {
+    const { text, images, replyId } = getCommandData(ctx.message)
+    const chatId = ctx?.chat?.id ?? ''
+
+    const imagesUrls = await Promise.all(
+      images?.map((image) => ctx.telegram.getFileLink(image.file_id)) ?? [],
+    )
+    const imagesData = await getImageBuffers(imagesUrls)
+
+    const message = await generateMultimodalCompletion(text, chatId, imagesData)
+
+    return ctx
+      .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
+        reply_parameters: { message_id: replyId },
+      })
+      .catch((err) => {
+        console.error(err)
+        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+      })
+      .catch((err) => {
+        console.error(`Error (Open AI): ${err.message}`)
+      })
+  })
+
+  bot.hears(checkCommand('/o'), async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    const chatId = ctx?.chat?.id ?? ''
+
+    const message = await generateReasoningCompletion(text, chatId)
 
     return ctx
       .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {

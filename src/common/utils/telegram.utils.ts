@@ -39,8 +39,26 @@ export const getCommandData = (message: Message) => {
     : (reply_to_message?.message_id ?? message_id)
   const text =
     parsedText || reply_to_message?.text || reply_to_message?.caption || ''
+  const images = reply_to_message?.photo
 
-  return { text, replyId }
+  return { text, images, replyId }
+}
+
+export async function getImageBuffers(imagesUrls: URL[]) {
+  const imagesData = await Promise.all(
+    imagesUrls.map(async (url) => {
+      try {
+        const res = await fetch(url)
+        const arrayBuffer = await res.arrayBuffer()
+        return Buffer.from(arrayBuffer)
+      } catch (error) {
+        console.error(error)
+        return undefined
+      }
+    }),
+  )
+
+  return imagesData.filter((image) => image) as Buffer[]
 }
 
 export const getChatName = (chat?: Chat) => chat?.title || getUserName(chat)
