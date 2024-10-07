@@ -113,7 +113,7 @@ const generateReasoningCompletion = async (
     }
 
     const completion = await openai.chat.completions.create({
-      model: 'o1-preview',
+      model: 'o1-mini',
       messages: [
         {
           role: 'user',
