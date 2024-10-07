@@ -52,7 +52,7 @@ const generateMultimodalCompletion = async (
     if (!isAllowedChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
-    if (!prompt) {
+    if (!prompt && !imagesData?.length) {
       return PROMPT_MISSING_ERROR
     }
 
