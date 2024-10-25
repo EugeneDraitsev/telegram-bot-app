@@ -15,8 +15,7 @@ const formatRow = (key: string, value: number, length = 10) => {
 export const getRussianCurrency = async (): Promise<string> => {
   const currencyCodes = ['usd', 'eur']
   const medusaUrl = 'https://meduza.io/api/misc/stock/all'
-  const brentUrl =
-    'https://api.investing.com/api/financialdata/8833/historical/chart/?interval=PT15M&pointscount=60'
+  const brentUrl = 'https://oilprice.com/freewidgets/json_get_oilprices'
 
   const currency: Record<string, Currency> = await fetch(medusaUrl, {
     signal: AbortSignal.timeout(timeout),
@@ -26,9 +25,18 @@ export const getRussianCurrency = async (): Promise<string> => {
 
   const brentPrice =
     currency?.brent?.current ||
-    (await fetch(brentUrl, { signal: AbortSignal.timeout(timeout) })
+    (await fetch(brentUrl, {
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'x-requested-with': 'XMLHttpRequest',
+      },
+      body: 'blend_id=46&period=2',
+      method: 'POST',
+      mode: 'cors',
+      signal: AbortSignal.timeout(timeout),
+    })
       .then((x) => x.json())
-      .then((x) => x?.data?.[0]?.[1])
+      .then((x) => x?.last_price)
       .catch((e) => console.error('Failed to fetch brent price: ', e)))
 
   // fallback brent value if meduza returns undefined
