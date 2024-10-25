@@ -4,7 +4,7 @@ type Currency = {
   current: number
 }
 
-const timeout = 15000
+const timeout = 10_000
 
 const formatRow = (key: string, value: number, length = 10) => {
   return `${key.toUpperCase()}: ${value
