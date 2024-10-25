@@ -78,9 +78,6 @@ custom:
       - '@aws-sdk/client-s3'
       - '@aws-sdk/lib-dynamodb'
       - encoding
-    packagerOptions:
-      scripts:
-        - bun i --force @img/sharp-linux-arm64 @img/sharp-libvips-linux-arm64 @img/sharp-libvips-linuxmusl-arm64 @img/sharp-linuxmusl-arm64
 
 resources:
   ${file(resources.yml)}

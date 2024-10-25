@@ -23,6 +23,10 @@
     "@aws-sdk/client-lambda": "^3.656.0",
     "@aws-sdk/client-s3": "^3.654.0",
     "@aws-sdk/lib-dynamodb": "^3.656.0",
+    "@img/sharp-libvips-linux-arm64": "^1.0.6",
+    "@img/sharp-libvips-linuxmusl-arm64": "^1.0.6",
+    "@img/sharp-linux-arm64": "^0.33.5",
+    "@img/sharp-linuxmusl-arm64": "^0.33.5",
     "lodash": "^4.17.21",
     "sharp": "^0.33.5"
   },
