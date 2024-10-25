@@ -29,7 +29,7 @@ export const getRussianCurrency = async (): Promise<string> => {
     (await fetch(nasdaqUrl, { signal: AbortSignal.timeout(timeout) })
       .then((x) => x.json())
       .then((x) => x.data?.primaryData?.lastSalePrice?.replace('$', ''))
-      .catch(noop))
+      .catch((e) => console.error('Failed to fetch brent price: ', e)))
 
   // fallback brent value if meduza returns undefined
   currency.brent = { current: brentPrice }
