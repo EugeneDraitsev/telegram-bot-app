@@ -64,6 +64,9 @@ package:
   patterns:
     - fonts/**
 
+build:
+  esbuild: false
+
 custom:
   cryptoRequestsBucketName: crypto-request-timestamp
   serverless-offline:
