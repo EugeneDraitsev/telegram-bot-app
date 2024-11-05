@@ -81,6 +81,9 @@ custom:
       - '@aws-sdk/client-s3'
       - '@aws-sdk/lib-dynamodb'
       - encoding
+    packagerOptions:
+      scripts:
+        - npm install --force --os=linux --cpu=arm64 -include=optional sharp
 
 resources:
   ${file(resources.yml)}
