@@ -7,14 +7,14 @@
     "@img/sharp-linux-arm64": "^0.33.5",
     "@img/sharp-linuxmusl-arm64": "^0.33.5",
     "polished": "^4.3.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "recharts": "^2.12.2",
-    "styled-components": "^6.1.8"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.13.3",
+    "styled-components": "^6.1.13"
   },
   "devDependencies": {
-    "@types/react": "^18.2.61",
-    "@types/react-dom": "^18.2.19"
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
   },
   "peerDependencies": {
     "sharp": "^0.33.5"

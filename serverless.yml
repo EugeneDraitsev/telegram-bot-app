@@ -7,7 +7,7 @@ provider:
   region: eu-central-1
   memorySize: 512
   timeout: 30
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   architecture: arm64
   environment:
     region: eu-central-1
@@ -72,7 +72,7 @@ custom:
   serverless-offline:
     httpPort: 4000
   esbuild:
-    target: node20
+    target: node22
     external:
       - sharp
     exclude:
@@ -80,7 +80,6 @@ custom:
       - '@aws-sdk/client-lambda'
       - '@aws-sdk/client-s3'
       - '@aws-sdk/lib-dynamodb'
-      - encoding
     packagerOptions:
       scripts:
         - npm install --force --os=linux --cpu=arm64 -include=optional sharp
