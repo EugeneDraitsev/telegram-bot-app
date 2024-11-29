@@ -1,4 +1,3 @@
-import { some, split, toLower } from 'lodash'
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 export const isLink = (text = '') => text.includes('https://')
@@ -13,14 +12,14 @@ export const checkCommand =
   (command: string) =>
   // biome-ignore lint: we have to enforce any type here due to the strange typing of the Telegraf library
   (text = ''): any =>
-    findCommand(toLower(text)) === toLower(command)
+    findCommand(text.toLowerCase()) === command.toLowerCase()
 
 export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
-  some(entities, (entity) => entity.type === 'bot_command')
+  entities.some((entity) => entity.type === 'bot_command')
 
 export const getParsedText = (text = '') => {
   if (text.startsWith('/')) {
-    return split(text, ' ').slice(1).join(' ')
+    return text.split(' ').slice(1).join(' ')
   }
   return text
 }

@@ -1,4 +1,4 @@
-import { padStart, sample } from 'lodash'
+import { sample } from '@tg-bot/common'
 
 const whDate = (): string => {
   // https://warhammer40k.fandom.com/wiki/Imperial_Dating_System
@@ -17,7 +17,7 @@ const whDate = (): string => {
   )
   const currentYear = date.getFullYear()
   const millenium = Math.floor(currentYear / 1000) + 1
-  return `0 ${padStart(String(yearFraction), 3, '0')} ${String(
+  return `0 ${String(yearFraction).padStart(3, '0')} ${String(
     currentYear,
   ).slice(1, 4)}\\.M${millenium}`
 }

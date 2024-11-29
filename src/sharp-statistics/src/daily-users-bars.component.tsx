@@ -1,4 +1,3 @@
-import { map, sumBy } from 'lodash'
 import { tint } from 'polished'
 import ReactDOMServer from 'react-dom/server'
 import { Bar, BarChart, Cell, LabelList, XAxis, YAxis } from 'recharts'
@@ -17,11 +16,11 @@ const getBarColor = (i: number, length: number) =>
   tint(i / (length * 1.3), '#4A90E2')
 
 interface DailyUsersBarsProps {
-  data: User[]
+  data: Array<User & { messages: number }>
 }
 
 export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
-  const allMessages = sumBy(data, 'messages')
+  const allMessages = data.reduce((acc, user) => acc + user.messages || 0, 0)
 
   return (
     <BarChart
@@ -41,8 +40,8 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
         isAnimationActive={false}
         xmlns="http://www.w3.org/2000/svg"
       >
-        {map(data, (_, i: number) => (
-          <Cell key={i} fill={getBarColor(i, data.length)} />
+        {data?.map((user, i: number) => (
+          <Cell key={user.id || i} fill={getBarColor(i, data.length)} />
         ))}
         <LabelList
           data={[]}
@@ -84,5 +83,6 @@ export const DailyUsersBars = ({ data }: DailyUsersBarsProps) => {
   )
 }
 
-export const getDailyUsersBarsSvg = (chatData: User[]): string =>
-  ReactDOMServer.renderToString(<DailyUsersBars data={chatData} />)
+export const getDailyUsersBarsSvg = (
+  chatData: Array<User & { messages: number }>,
+): string => ReactDOMServer.renderToString(<DailyUsersBars data={chatData} />)

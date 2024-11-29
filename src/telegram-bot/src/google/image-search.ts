@@ -1,12 +1,12 @@
-import { every, filter, get, includes, sample } from 'lodash'
+import { sample } from '@tg-bot/common'
 
 const googleApiKey = process.env.GOOGLE_API_KEY || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
-type Image = { mime: string }
+type Image = { mime: string; link: string; image: { thumbnailLink: string } }
 
 const filterMimeTypes = (item: Image): boolean =>
-  every(['ico', 'svg'], (x) => !includes(item.mime, x))
+  ['ico', 'svg'].every((type) => !item?.mime?.includes(type))
 
 export const searchImage = async (
   query: string,
@@ -22,10 +22,12 @@ export const searchImage = async (
     signal: AbortSignal.timeout(5_000),
   }).then((r) => r.json())
 
-  if (get(response, 'items.length') > 0) {
-    const image = sample(filter(response.items, filterMimeTypes))
-    const url = image.link
-    const tbUrl = image.image.thumbnailLink
+  const filteredItems = response?.items?.filter(filterMimeTypes) as Image[]
+
+  if (filteredItems?.length) {
+    const image = sample(filteredItems)
+    const url = image?.link ?? ''
+    const tbUrl = image?.image?.thumbnailLink ?? ''
 
     return { url, tbUrl }
   }

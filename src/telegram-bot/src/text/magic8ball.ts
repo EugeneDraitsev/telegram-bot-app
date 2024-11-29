@@ -1,4 +1,4 @@
-import { sample } from 'lodash'
+import { sample } from '@tg-bot/common'
 
 const STICKERS_IDS = [
   'BQADAgADYgADt7A3BoDZ58u5GNyPAg',

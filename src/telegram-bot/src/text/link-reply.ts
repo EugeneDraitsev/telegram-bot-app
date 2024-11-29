@@ -1,4 +1,4 @@
-import { sample } from 'lodash'
+import { sample } from '@tg-bot/common'
 
 export const APPRECIATIONS = [
   'Ух контент.',

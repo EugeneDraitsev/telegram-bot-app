@@ -1,12 +1,10 @@
-import { trim } from 'lodash'
-
 import { hasRussiansLetters } from '@tg-bot/common/utils'
 
-export const searchWiki = async (query: string): Promise<string> => {
+export const searchWiki = async (query = '') => {
   const lang = hasRussiansLetters(query) ? 'ru' : 'en'
   const baseUrl = `https://${lang}.wikipedia.org/w/api.php`
   const url = `${baseUrl}?action=opensearch&format=json&limit=1&namespace=0&search=${encodeURIComponent(
-    trim(query),
+    query.trim(),
   )}`
 
   try {

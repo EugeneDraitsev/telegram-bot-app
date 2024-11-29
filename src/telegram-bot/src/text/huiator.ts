@@ -1,5 +1,3 @@
-import { findIndex, map } from 'lodash'
-
 const consonants = ['бвгджзйклмнпрстфхчцшщ']
 const patterns = [
   new RegExp(`^[${consonants}]*[оеёэ]`, 'i'),
@@ -9,18 +7,21 @@ const patterns = [
 ]
 const mainPattern = new RegExp(`^[${consonants}]*.`, 'i')
 
-const capitalize = (capitalization: boolean[], word: string): string =>
-  map(word, (letter, index) =>
-    capitalization[index] ? letter.toUpperCase() : letter.toLowerCase(),
-  ).join('')
-
-const huifyWord = (word: string): string => {
-  if (word.length > 2) {
-    const capitalization = map(
-      word,
-      (letter) => letter === letter.toUpperCase(),
+const capitalize = (capitalization: boolean[], word = '') =>
+  word
+    .split('')
+    .map((letter, index) =>
+      capitalization[index] ? letter.toUpperCase() : letter.toLowerCase(),
     )
-    switch (findIndex(patterns, (pattern) => pattern.test(word))) {
+    .join('')
+
+const huifyWord = (word = '') => {
+  if (word.length > 2) {
+    const capitalization = word
+      .split('')
+      .map((letter) => letter === letter.toUpperCase())
+
+    switch (patterns.findIndex((pattern) => pattern.test(word))) {
       case 0:
         return capitalize(capitalization, word.replace(mainPattern, 'хуе'))
       case 1:

@@ -1,4 +1,4 @@
-import { compact, isEmpty, map, sample } from 'lodash'
+import { sample } from '@tg-bot/common'
 
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'
 const BASE_URL =
@@ -21,10 +21,11 @@ export async function searchYoutube(query: string): Promise<string> {
       )}&maxResults=${MAX_RESULTS}`,
     )
     const json = await response.json()
-    const videoIds = compact(
-      map(json.items, (item: YoutubeVideo) => item.id.videoId),
-    )
-    if (!isEmpty(videoIds)) {
+    const videoIds = json.items
+      ?.map((item: YoutubeVideo) => item?.id?.videoId)
+      ?.filter(Boolean)
+
+    if (videoIds?.length) {
       return `${RESULT_PREFIX}${sample(videoIds)}`
     }
     return NOT_FOUND_MESSAGE

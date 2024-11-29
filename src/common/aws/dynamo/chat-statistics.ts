@@ -1,4 +1,3 @@
-import { find, first, orderBy } from 'lodash'
 import type { Chat, User } from 'telegram-typings'
 
 import type { UserStat } from '../../types'
@@ -19,7 +18,7 @@ const getChatStatistic = async (
   }
 
   const result = await dynamoQuery(params)
-  return first(result.Items) as ChatStat
+  return result.Items?.[0] as ChatStat
 }
 
 export const getUsersList = async (
@@ -44,7 +43,7 @@ export const getFormattedChatStatistics = async (
 ): Promise<string> => {
   try {
     const result = await getChatStatistic(chat_id)
-    const stats = orderBy(result?.users, 'msgCount', 'desc')
+    const stats = result?.users?.sort((a, b) => b.msgCount - a.msgCount) || []
     const allMessagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
 
     const formattedUsers = stats.map((user) => {
@@ -76,7 +75,9 @@ export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
           chatInfo: chat,
         }
 
-    let userStatistic = find(statistics.users, { id: userInfo.id }) as UserStat
+    let userStatistic: UserStat | undefined = statistics.users?.find(
+      (x) => x.id === userInfo.id,
+    )
 
     if (!userStatistic) {
       userStatistic = {

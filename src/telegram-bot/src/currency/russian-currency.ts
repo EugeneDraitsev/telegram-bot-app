@@ -1,5 +1,3 @@
-import { includes, noop } from 'lodash'
-
 type Currency = {
   current: number
 }
@@ -21,7 +19,9 @@ export const getRussianCurrency = async (): Promise<string> => {
     signal: AbortSignal.timeout(timeout),
   })
     .then((x) => x.json())
-    .catch(noop)
+    .catch(() => {
+      console.error('Failed to fetch currency data from meduza')
+    })
 
   const brentPrice =
     currency?.brent?.current ||
@@ -49,7 +49,7 @@ export const getRussianCurrency = async (): Promise<string> => {
   )
 
   const currencyString = Object.keys(currency)
-    .filter((curr) => includes(currencyCodes, curr))
+    .filter((curr) => currencyCodes.includes(curr))
     .map((key) => formatRow(key, Number(currency[key].current), maxLength))
     .join('\n')
 

@@ -1,5 +1,4 @@
-import { getFile, getRoundedDate, saveFile } from '@tg-bot/common'
-import { round } from 'lodash'
+import { getFile, getRoundedDate, round, saveFile } from '@tg-bot/common'
 
 interface CoinMarketCurrency {
   symbol: string

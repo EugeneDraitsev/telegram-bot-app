@@ -1,8 +1,7 @@
-import { chain, groupBy, random } from 'lodash'
 import type { User } from 'telegram-typings'
 
 import type { ChatEvent } from '../../types'
-import { dynamoPutItem, dynamoQuery, invokeLambda } from '../../utils'
+import { dynamoPutItem, dynamoQuery, invokeLambda, random } from '../../utils'
 
 const BROADCAST_LAMBDA_NAME = `telegram-websockets-${process.env.stage}-broadcastStats`
 const BROADCAST_ENDPOINT =
@@ -44,9 +43,7 @@ export const saveEvent = async (
 
 const DAY = 1000 * 60 * 60 * 24
 
-export const get24hChatStats = async (
-  chatId: string | number,
-): Promise<User[]> => {
+export const get24hChatStats = async (chatId: string | number) => {
   const { Items } = await dynamoQuery({
     TableName: 'chat-events',
     KeyConditionExpression: 'chatId = :chatId AND #date > :date',
@@ -59,12 +56,19 @@ export const get24hChatStats = async (
 
   const data = Items as ChatEvent[]
 
-  const groupedMessages = groupBy(data, (x) => x.userInfo.id)
+  const groupedData =
+    data?.reduce(
+      (acc, x) => {
+        acc.set(x.userInfo.id, {
+          ...x.userInfo,
+          messages: (acc.get(x.userInfo.id)?.messages ?? 0) + 1,
+        })
+        return acc
+      },
+      new Map() as Map<number, User & { messages: number }>,
+    ) ?? new Map()
 
-  return chain(data)
-    .map((x) => x.userInfo)
-    .uniqBy('id')
-    .map((x) => ({ ...x, messages: groupedMessages[x.id].length }))
-    .orderBy('messages', 'desc')
-    .value()
+  return Array.from(groupedData.values()).sort(
+    (a, b) => b.messages - a.messages,
+  )
 }
