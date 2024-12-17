@@ -36,5 +36,8 @@
     "serverless-offline": "^14.4.0",
     "typescript": "^5.7.2"
   },
+  "resolutions": {
+    "whatwg-url": "^14.1.0"
+  },
   "workspaces": ["src/*"]
 }
