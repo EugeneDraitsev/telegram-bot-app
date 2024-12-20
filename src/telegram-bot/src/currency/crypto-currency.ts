@@ -74,7 +74,7 @@ const formatCoinMarketCapResult = (currencies: CoinMarketCurrency[]) => {
 const getPoloniexData = async (): Promise<string> => {
   const url = 'https://api.poloniex.com/markets/price'
   const currencyRates: PoloniexCurrency[] = await fetch(url, {
-    signal: AbortSignal.timeout(timeout),
+    signal: globalThis.AbortSignal.timeout(timeout),
   }).then((res) => res.json())
 
   const filteredCurrency = Object.keys(symbols).reduce(
@@ -132,7 +132,7 @@ const getCoinMarketCapData = async (): Promise<string> => {
     })
     const response = await fetch(`${url}?${params}`, {
       headers: { 'X-CMC_PRO_API_KEY': coinMarketCapApiKey },
-      signal: AbortSignal.timeout(timeout),
+      signal: globalThis.AbortSignal.timeout(timeout),
     }).then((res) => res.json())
 
     const currencies = response.data

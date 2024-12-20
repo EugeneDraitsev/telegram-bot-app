@@ -16,7 +16,7 @@ export const getRussianCurrency = async (): Promise<string> => {
   const brentUrl = 'https://oilprice.com/freewidgets/json_get_oilprices'
 
   const currency: Record<string, Currency> = await fetch(medusaUrl, {
-    signal: AbortSignal.timeout(timeout),
+    signal: globalThis.AbortSignal.timeout(timeout),
   })
     .then((x) => x.json())
     .catch(() => {
@@ -33,7 +33,7 @@ export const getRussianCurrency = async (): Promise<string> => {
       body: 'blend_id=46&period=2',
       method: 'POST',
       mode: 'cors',
-      signal: AbortSignal.timeout(timeout),
+      signal: globalThis.AbortSignal.timeout(timeout),
     })
       .then((x) => x.json())
       .then((x) => x?.last_price)

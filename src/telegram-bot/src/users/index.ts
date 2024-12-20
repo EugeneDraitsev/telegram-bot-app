@@ -1,7 +1,9 @@
-import type { Context, Telegraf } from 'telegraf'
+import { InputFile } from 'grammy'
+
+import type { ParseModeFlavor } from '@grammyjs/parse-mode'
+import type { Bot, Context } from 'grammy'
 
 import {
-  checkCommand,
   getChatName,
   getCommandData,
   getFormattedChatStatistics,
@@ -9,12 +11,12 @@ import {
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 
-const setupUsersCommands = (bot: Telegraf<Context>) => {
-  bot.hears(checkCommand('/z'), async (ctx) =>
+const setupUsersCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+  bot.command('z', async (ctx) =>
     ctx.reply(await getFormattedChatStatistics(ctx?.chat?.id ?? '')),
   )
 
-  bot.hears(checkCommand('/s'), async (ctx) => {
+  bot.command('s', async (ctx) => {
     const { replyId } = getCommandData(ctx.message)
     const chatName = getChatName(ctx?.chat)
     const chatId = ctx?.chat?.id ?? ''
@@ -26,10 +28,10 @@ const setupUsersCommands = (bot: Telegraf<Context>) => {
     )
 
     if (image) {
-      return ctx.replyWithPhoto(
-        { source: image, filename: 'stats.png' },
-        { reply_parameters: { message_id: replyId }, caption: message },
-      )
+      return ctx.replyWithPhoto(new InputFile(image, 'stats.png'), {
+        reply_parameters: { message_id: replyId },
+        caption: message,
+      })
     }
 
     return ctx.replyWithHTML(
@@ -40,7 +42,7 @@ const setupUsersCommands = (bot: Telegraf<Context>) => {
     )
   })
 
-  bot.hears(checkCommand('/all'), async (ctx) => {
+  bot.command('all', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await getUsersList(ctx.chat?.id ?? '', text), {
       reply_parameters: { message_id: replyId },

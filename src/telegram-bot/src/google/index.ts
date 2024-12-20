@@ -1,12 +1,13 @@
-import type { Context, Telegraf } from 'telegraf'
+import type { ParseModeFlavor } from '@grammyjs/parse-mode'
+import type { Bot, Context } from 'grammy'
 
-import { checkCommand, getCommandData } from '@tg-bot/common'
+import { getCommandData } from '@tg-bot/common'
 import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
 
-const setupGoogleCommands = (bot: Telegraf<Context>) => {
-  bot.hears(checkCommand('/g'), async (ctx) => {
+const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+  bot.command('g', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     try {
       const { url, tbUrl } = await searchImage(text)
@@ -31,56 +32,56 @@ const setupGoogleCommands = (bot: Telegraf<Context>) => {
     }
   })
 
-  bot.hears(checkCommand('/v'), async (ctx) => {
+  bot.command('v', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await searchYoutube(text), {
       reply_parameters: { message_id: replyId },
     })
   })
 
-  bot.hears(checkCommand('/t'), async (ctx) => {
+  bot.command('t', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text), {
       reply_parameters: { message_id: replyId },
     })
   })
 
-  bot.hears(checkCommand('/tb'), async (ctx) => {
+  bot.command('tb', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'be'), {
       reply_parameters: { message_id: replyId },
     })
   })
 
-  bot.hears(checkCommand('/tr'), async (ctx) => {
+  bot.command('tr', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'ru'), {
       reply_parameters: { message_id: replyId },
     })
   })
 
-  bot.hears(checkCommand('/tp'), async (ctx) => {
+  bot.command('tp', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'pl'), {
       reply_parameters: { message_id: replyId },
     })
   })
 
-  bot.hears(checkCommand('/ts'), async (ctx) => {
+  bot.command('ts', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'sv'), {
       reply_parameters: { message_id: replyId },
     })
   })
 
-  bot.hears(checkCommand('/td'), async (ctx) => {
+  bot.command('td', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'de'), {
       reply_parameters: { message_id: replyId },
     })
   })
 
-  bot.hears(checkCommand('/te'), async (ctx) => {
+  bot.command('te', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text, 'en'), {
       reply_parameters: { message_id: replyId },

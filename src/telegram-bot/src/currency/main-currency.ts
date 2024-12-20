@@ -21,7 +21,7 @@ const getBynRates = async () => {
     const BYN_RATES_URL =
       'https://mobile.bsb.by/api/v1/free-zone-management/exchange-rates/rates'
     const data: Data = await fetch(BYN_RATES_URL, {
-      signal: AbortSignal.timeout(timeout),
+      signal: globalThis.AbortSignal.timeout(timeout),
       method: 'POST',
       body: JSON.stringify({
         bankDepartmentId: 7,
@@ -63,7 +63,7 @@ const getExchangeRateData = async (
   })
 
   const ratesPromise = fetch(`${url}?${params}`, {
-    signal: AbortSignal.timeout(timeout),
+    signal: globalThis.AbortSignal.timeout(timeout),
   })
     .then((x) => x.json())
     .then((x) => x.rates)

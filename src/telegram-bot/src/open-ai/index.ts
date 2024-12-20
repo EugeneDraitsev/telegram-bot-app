@@ -1,9 +1,11 @@
 import OpenAi from 'openai'
-import type { Context, Telegraf } from 'telegraf'
 
-import { checkCommand, getCommandData, getImageBuffers } from '@tg-bot/common'
+import type { ParseModeFlavor } from '@grammyjs/parse-mode'
+import type { Bot, Context } from 'grammy'
 import type { ChatCompletionContentPart } from 'openai/resources'
 import type { Message } from 'telegram-typings'
+
+import { getCommandData, getImageBuffers } from '@tg-bot/common'
 
 const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
 const PROMPT_MISSING_ERROR = 'Prompt is required'
@@ -140,15 +142,20 @@ const generateReasoningCompletion = async (
   }
 }
 
-const setupMultimodalCommands = async (ctx: Context) => {
+const setupMultimodalCommands = async (ctx: ParseModeFlavor<Context>) => {
   const { combinedText, images, replyId } = getCommandData(
     ctx.message as Message,
   )
   const chatId = ctx?.chat?.id ?? ''
 
-  const imagesUrls = await Promise.all(
-    images?.map((image) => ctx.telegram.getFileLink(image.file_id)) ?? [],
+  const files = await Promise.all(
+    images?.map((image) => ctx.api.getFile(image.file_id)) ?? [],
   )
+
+  const imagesUrls = files.map((file) => {
+    return `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
+  })
+
   const imagesData = await getImageBuffers(imagesUrls)
 
   const message = await generateMultimodalCompletion(
@@ -170,8 +177,8 @@ const setupMultimodalCommands = async (ctx: Context) => {
     })
 }
 
-const setupOpenAiCommands = (bot: Telegraf<Context>) => {
-  bot.hears(checkCommand('/e'), async (ctx) => {
+const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+  bot.command('e', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 
@@ -188,18 +195,18 @@ const setupOpenAiCommands = (bot: Telegraf<Context>) => {
     }
   })
 
-  bot.on('photo', (ctx) => {
-    if (!checkCommand('/q')(ctx.message?.caption)) {
+  bot.on('message:photo', (ctx) => {
+    if (!ctx.message?.caption?.startsWith('/q')) {
       return
     }
     return setupMultimodalCommands(ctx)
   })
 
-  bot.hears(checkCommand('/q'), (ctx) => {
+  bot.command('q', (ctx) => {
     return setupMultimodalCommands(ctx)
   })
 
-  bot.hears(checkCommand('/o'), async (ctx) => {
+  bot.command('o', async (ctx) => {
     const { combinedText, replyId } = getCommandData(ctx.message)
     const chatId = ctx?.chat?.id ?? ''
 

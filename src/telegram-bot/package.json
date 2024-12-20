@@ -8,8 +8,9 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "openai": "^4.76.3",
-    "telegraf": "4.16.3"
+    "@grammyjs/parse-mode": "^1.10.0",
+    "grammy": "^1.33.0",
+    "openai": "^4.77.0"
   },
   "devDependencies": {
     "telegram-typings": "5.0.0"

@@ -1,6 +1,6 @@
-import type { Context, Telegraf } from 'telegraf'
+import type { ParseModeFlavor } from '@grammyjs/parse-mode'
+import type { Bot, Context } from 'grammy'
 
-import { checkCommand } from '@tg-bot/common'
 import { getCryptoCurrency } from './crypto-currency'
 import { getMainCurrencies } from './main-currency'
 import { getRussianCurrency } from './russian-currency'
@@ -10,8 +10,8 @@ const getError = (err: Error, from: string): string => {
   return `Can't fetch currency from ${from}\n`
 }
 
-const setupCurrencyCommands = (bot: Telegraf<Context>) => {
-  bot.hears(checkCommand('/c'), async (ctx) => {
+const setupCurrencyCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+  bot.command('c', async (ctx) => {
     const promises = [
       getMainCurrencies().catch((err) =>
         getError(err, 'ExchangeRate and Fixer'),

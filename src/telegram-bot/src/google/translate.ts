@@ -18,7 +18,7 @@ export const translate = async (
 
   try {
     const inputLanguage = await fetch(detectUrl, {
-      signal: AbortSignal.timeout(timeout),
+      signal: globalThis.AbortSignal.timeout(timeout),
       method: 'POST',
       body: JSON.stringify({ q: text }),
     })
@@ -31,7 +31,7 @@ export const translate = async (
       (inputLanguage === defaultTargetFromEn ? 'en' : defaultTargetFromEn)
 
     return fetch(translateUrl, {
-      signal: AbortSignal.timeout(timeout),
+      signal: globalThis.AbortSignal.timeout(timeout),
       method: 'POST',
       body: JSON.stringify({ q: text, target }),
     })

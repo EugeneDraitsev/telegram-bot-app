@@ -1,5 +1,8 @@
+import { hydrateReply } from '@grammyjs/parse-mode'
+import { Bot, type Context, webhookCallback } from 'grammy'
+
+import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
-import { Telegraf } from 'telegraf'
 import type { Chat, Message } from 'telegram-typings'
 
 import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
@@ -10,7 +13,16 @@ import setupOpenAiCommands from './open-ai'
 import setupTextCommands from './text'
 import setupUsersCommands from './users'
 
-const bot = new Telegraf(process.env.TOKEN as string)
+const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
+  client: {
+    // We accept the drawback of webhook replies for typing status.
+    canUseWebhookReply: (method) => method === 'sendChatAction',
+  },
+})
+
+bot.use(hydrateReply)
+
+const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 
 bot.use(async (ctx, next) => {
   const { chat } = ctx
@@ -40,11 +52,10 @@ bot.use(async (ctx, next) => {
 // <link> - random reply with 0.01% chance to links
 // /h <text?> - huyator
 // /y <text?> - yasnoficator
-// /dice <number?> - throw a dice
+// /dice <number?> - throw a die
 // /8 <text?> - magic 8 ball
 // /shrug - ¯\_(ツ)_/¯
 // /ps <text> - punto switcher
-// /za <text?> - make text more nazis
 setupTextCommands(bot)
 
 // /g <text> - search random image in google search
@@ -75,10 +86,18 @@ setupExternalApisCommands(bot)
 // /e <text> - generate image
 setupOpenAiCommands(bot)
 
-export const telegramBotHandler: APIGatewayProxyHandler = async (event) => {
+export const telegramBotHandler: APIGatewayProxyHandler = async (
+  event,
+  context,
+) => {
   try {
     const body = event.body ? JSON.parse(event.body) : event // Identify lambda call vs http event
-    await bot.handleUpdate(body)
+
+    await handleUpdate(
+      { body: event.body ?? '', headers: event.headers },
+      context,
+    )
+
     return { body: JSON.stringify({ body }), statusCode: 200 }
   } catch (e) {
     console.log(e)

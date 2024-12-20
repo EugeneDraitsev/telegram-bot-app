@@ -57,10 +57,10 @@ export const getWeather = async (location: string) => {
   try {
     const [infoForecast, infoNow] = await Promise.all([
       fetch(getWeatherUrlForecast(location), {
-        signal: AbortSignal.timeout(timeout),
+        signal: globalThis.AbortSignal.timeout(timeout),
       }).then((x) => x.json()),
       fetch(getWeatherUrlNow(location), {
-        signal: AbortSignal.timeout(timeout),
+        signal: globalThis.AbortSignal.timeout(timeout),
       }).then((x) => x.json()),
     ])
 

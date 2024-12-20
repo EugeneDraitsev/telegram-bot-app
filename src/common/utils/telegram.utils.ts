@@ -8,12 +8,6 @@ export const findCommand = (text = ''): string =>
     .replace(/ .*/, '')
     .replace(/@.*/, '')
 
-export const checkCommand =
-  (command: string) =>
-  // biome-ignore lint: we have to enforce any type here due to the strange typing of the Telegraf library
-  (text = ''): any =>
-    findCommand(text.toLowerCase()) === command.toLowerCase()
-
 export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
   entities.some((entity) => entity.type === 'bot_command')
 
@@ -29,13 +23,13 @@ export const getUserName = (user?: User | Chat) =>
   `${user?.first_name || ''} ${user?.last_name || ''}`.trim() ||
   String(user?.id ?? 'Unknown Chat')
 
-export const getCommandData = (message: Message) => {
-  const { message_id, reply_to_message } = message
-  const parsedText = getParsedText(message.text || message.caption)
+export const getCommandData = (message?: Message) => {
+  const { message_id, reply_to_message } = message ?? {}
+  const parsedText = getParsedText(message?.text || message?.caption)
 
   const replyId = parsedText
-    ? message_id
-    : (reply_to_message?.message_id ?? message_id)
+    ? message_id || 0
+    : (reply_to_message?.message_id ?? message_id ?? 0)
   const text =
     parsedText || reply_to_message?.text || reply_to_message?.caption || ''
   const messageText = parsedText
@@ -53,7 +47,7 @@ export const getCommandData = (message: Message) => {
   return { text, sticker, combinedText, images, replyId }
 }
 
-export async function getImageBuffers(imagesUrls: URL[]) {
+export async function getImageBuffers(imagesUrls: string[]) {
   const imagesData = await Promise.all(
     imagesUrls.map(async (url) => {
       try {

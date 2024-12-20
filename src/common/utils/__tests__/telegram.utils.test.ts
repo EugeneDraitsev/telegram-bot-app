@@ -1,7 +1,6 @@
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 import {
-  checkCommand,
   findCommand,
   getChatName,
   getCommandData,
@@ -55,14 +54,6 @@ describe('isLink', () => {
     expect(
       isLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.'),
     ).toBeTruthy()
-  })
-})
-
-describe('checkCommand', () => {
-  test('should returns function that properly identifies command', () => {
-    expect(checkCommand('/g')('/g blbalba')).toEqual(true)
-    expect(checkCommand('/test')('/g blbalba')).toEqual(false)
-    expect(checkCommand('/test')(undefined)).toEqual(false)
   })
 })
 
@@ -135,6 +126,7 @@ describe('getCommandData', () => {
     expect(getCommandData({ text: '', caption: '123123' } as Message)).toEqual({
       text: '123123',
       combinedText: '123123',
+      replyId: 0,
       images: [],
     })
   })
@@ -148,6 +140,7 @@ describe('getCommandData', () => {
     ).toEqual({
       text: '111',
       combinedText: '333\n111',
+      replyId: 0,
       images: [],
     })
   })
