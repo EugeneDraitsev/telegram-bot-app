@@ -49,7 +49,6 @@ bot.use(async (ctx, next) => {
   }
 })
 
-// <link> - random reply with 0.01% chance to links
 // /h <text?> - huyator
 // /y <text?> - yasnoficator
 // /dice <number?> - throw a die
@@ -82,8 +81,9 @@ setupUsersCommands(bot)
 // /f <text?> - get weather forecast
 setupExternalApisCommands(bot)
 
-// /q <text> - generate chat completion
+// /q <text | image-with-caption> - generate chat completion with 4o
 // /e <text> - generate image
+// /o <text> - generate chat completion with o1-mini
 setupOpenAiCommands(bot)
 
 export const telegramBotHandler: APIGatewayProxyHandler = async (
