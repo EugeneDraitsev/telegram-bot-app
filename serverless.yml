@@ -36,15 +36,20 @@ functions:
       - http:
           path: /
           method: post
+
+  currency-scheduler:
+    handler: src/telegram-bot/src/currency-scheduler.default
+    environment:
+      TOKEN: ${env:TOKEN}
+      FIXER_API_KEY: ${env:FIXER_API_KEY}
+      EXCHANGE_RATE_API_KEY: ${env:EXCHANGE_RATE_API_KEY}
+      COIN_MARKET_CAP_API_KEY: ${env:COIN_MARKET_CAP_API_KEY}
+      CRYPTO_REQUESTS_BUCKET_NAME: ${self:custom.cryptoRequestsBucketName}
+    events:
       - schedule:
           name: kabold-chat-event
           rate: cron(0 9,11,13,15,17 ? * MON-FRI *)
-          enabled: true
-          input:
-            message:
-              text: /c
-              chat:
-                id: -1001306676509.0
+
   sharp-statistics:
     handler: src/sharp-statistics/src/index.default
     environment:

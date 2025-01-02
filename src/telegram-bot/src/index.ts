@@ -86,19 +86,14 @@ setupExternalApisCommands(bot)
 // /o <text> - generate chat completion with o1-mini
 setupOpenAiCommands(bot)
 
-export const telegramBotHandler: APIGatewayProxyHandler = async (
-  event,
-  context,
-) => {
+const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {
-    const body = event.body ? JSON.parse(event.body) : event // Identify lambda call vs http event
-
     await handleUpdate(
       { body: event.body ?? '', headers: event.headers },
       context,
     )
 
-    return { body: JSON.stringify({ body }), statusCode: 200 }
+    return { body: JSON.stringify({ body: event.body ?? '' }), statusCode: 200 }
   } catch (e) {
     console.log(e)
     return {
