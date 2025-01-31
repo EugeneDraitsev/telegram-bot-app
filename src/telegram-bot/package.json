@@ -9,8 +9,8 @@
   "license": "MIT",
   "dependencies": {
     "@grammyjs/parse-mode": "^1.11.1",
-    "grammy": "^1.34.0",
-    "openai": "^4.79.4"
+    "grammy": "^1.34.1",
+    "openai": "^4.82.0"
   },
   "devDependencies": {
     "telegram-typings": "5.0.0"
