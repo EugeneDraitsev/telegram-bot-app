@@ -31,6 +31,7 @@ functions:
       COIN_MARKET_CAP_API_KEY: ${env:COIN_MARKET_CAP_API_KEY}
       OPENAI_API_KEY: ${env:OPENAI_API_KEY}
       OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
+      GEMINI_API_KEY: ${env:GEMINI_API_KEY}
       CRYPTO_REQUESTS_BUCKET_NAME: ${self:custom.cryptoRequestsBucketName}
     events:
       - http:

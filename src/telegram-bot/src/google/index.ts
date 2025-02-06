@@ -2,6 +2,7 @@ import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Bot, Context } from 'grammy'
 
 import { getCommandData } from '@tg-bot/common'
+import { generateCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
@@ -38,6 +39,29 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
       reply_parameters: { message_id: replyId },
     })
   })
+
+  bot.command('qq', async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    const chatId = ctx?.chat?.id ?? ''
+
+    const message = await generateCompletion(text, chatId)
+
+    return ctx
+      .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
+        reply_parameters: { message_id: replyId },
+      })
+      .catch((err) => {
+        console.error(err)
+        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+      })
+      .catch((err) => {
+        console.error(`Error (Gemini AI): ${err.message}`)
+      })
+  })
+
+  /*
+   Translate commands
+   */
 
   bot.command('t', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)

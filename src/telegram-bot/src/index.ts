@@ -83,7 +83,7 @@ setupExternalApisCommands(bot)
 
 // /q <text | image-with-caption> - generate chat completion with 4o
 // /e <text> - generate image
-// /o <text> - generate chat completion with o1-mini
+// /o <text> - generate chat completion with o3-mini
 setupOpenAiCommands(bot)
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
