@@ -18,6 +18,6 @@ export const geminiSystemInstructions = `
   ${systemInstructions}
   
   You also will be provided with chat history for last 24 hours (if available) in JSON format from telegram.
-  Try to mostly rely on more recent messages, but don't ignore older messages.
+  Try to mostly rely on more recent messages, but don't ignore older messages. Btw, you don't need to include them in your answer if you don't want to or if they are not relevant.
   It could contain a previous command to you (if message started with /, like /g, /q, /qq, /z etc.) and your previous responses  
 `
