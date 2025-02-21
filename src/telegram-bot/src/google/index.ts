@@ -62,7 +62,6 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
   /*
    Translate commands
    */
-
   bot.command('t', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await translate(text), {
