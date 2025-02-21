@@ -19,5 +19,5 @@ export const geminiSystemInstructions = `
   
   You also will be provided with chat history for last 24 hours (if available) in JSON format from telegram.
   It could contain a previous command to you (if message started with /, like /g, /q, /qq, /z etc.) and your previous responses
-  Try to rely mostly on more recent posts, but don't ignore older posts. By the way, you don't have to include them in your answer or quote them if you don't want to or if they're not relevant.  
+  Try to rely mostly on more recent posts, but don't ignore older posts. You *don't need* to include or quote history in your answers, just try to stay in context.
 `
