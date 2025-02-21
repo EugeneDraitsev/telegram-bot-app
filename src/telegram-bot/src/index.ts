@@ -13,6 +13,7 @@ import setupOpenAiCommands from './open-ai'
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
+import { isAiEnabledChat } from './utils'
 
 const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
   client: {
@@ -24,6 +25,24 @@ const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
 bot.use(hydrateReply)
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
+
+bot.use(async (ctx, next) => {
+  const originalReply = ctx.reply.bind(ctx)
+
+  ctx.reply = async (text, ...args) => {
+    const sentMessage = await originalReply(text, ...args)
+
+    if (isAiEnabledChat(sentMessage.chat.id)) {
+      saveMessage(sentMessage, sentMessage.chat.id).catch((error) =>
+        console.error('saveHistory error: ', error),
+      )
+    }
+
+    return sentMessage
+  }
+
+  await next()
+})
 
 bot.use(async (ctx, next) => {
   const { chat } = ctx
@@ -89,6 +108,11 @@ setupExternalApisCommands(bot)
 // /e <text> - generate image
 // /o <text> - generate chat completion with o3-mini
 setupOpenAiCommands(bot)
+
+bot.use((ctx, next) => {
+  console.log('ctx: ', ctx)
+  return next()
+})
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {
