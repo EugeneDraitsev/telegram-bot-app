@@ -52,9 +52,22 @@ export const generateCompletion = async (
       return DEFAULT_ERROR_MESSAGE
     }
 
-    return text
+    return cleanMessage(text)
   } catch (error) {
     console.log(error.message)
     return DEFAULT_ERROR_MESSAGE
   }
+}
+
+function cleanMessage(message: string) {
+  const userIdRegex = /^(\s*User ID: \d+ \(draiBot\):)+/
+  let cleanedMessage = message.replace(userIdRegex, '')
+
+  const timestampReplyRegex =
+    /\s*\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\] \[In reply to message ID: \d+\]$/
+  cleanedMessage = cleanedMessage.replace(timestampReplyRegex, '')
+
+  cleanedMessage = cleanedMessage.trim()
+
+  return cleanedMessage
 }
