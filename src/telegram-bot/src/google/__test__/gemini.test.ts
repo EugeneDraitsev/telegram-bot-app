@@ -86,4 +86,18 @@ describe('cleanMessage', () => {
     const expected = 'Hello\nWorld'
     expect(cleanMessage(messyMessage)).toBe(expected)
   })
+
+  test('should handle [] the message', () => {
+    const messyMessage =
+      'Фух, надеюсь, меня за это не забанят! 😬 [2/21/2025, 10:36:35 PM] [In reply to message ID: 1204836]'
+    const expected = 'Фух, надеюсь, меня за это не забанят! 😬'
+    expect(cleanMessage(messyMessage)).toBe(expected)
+  })
+
+  test('should handle [] in the message', () => {
+    const messyMessage =
+      'Więc dawaj, pytaj, чем могу служить? 😁 [2/21/2025, 10:48:59 PM]'
+    const expected = 'Więc dawaj, pytaj, чем могу служить? 😁'
+    expect(cleanMessage(messyMessage)).toBe(expected)
+  })
 })

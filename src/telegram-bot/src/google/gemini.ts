@@ -64,8 +64,7 @@ export function cleanMessage(message: string) {
   let cleanedMessage = message.replace(userIdRegex, '')
 
   const replyRegex =
-    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\] )?\[In reply to message ID: \d+\]\s*$/ // Исправлено:  (?:...)?
+    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID: \d+\])\s*$/
   cleanedMessage = cleanedMessage.replace(replyRegex, '')
-
   return cleanedMessage.trim()
 }
