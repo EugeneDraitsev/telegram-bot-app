@@ -59,15 +59,13 @@ export const generateCompletion = async (
   }
 }
 
-function cleanMessage(message: string) {
-  const userIdRegex = /^(\s*User ID: \d+ \(draiBot\):)+/
+export function cleanMessage(message: string) {
+  const userIdRegex = /^(\s*(USER|User ID): \d+ \([^)]*\): ?)+/
   let cleanedMessage = message.replace(userIdRegex, '')
 
-  const timestampReplyRegex =
-    /\s*\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\] \[In reply to message ID: \d+\]$/
-  cleanedMessage = cleanedMessage.replace(timestampReplyRegex, '')
+  const replyRegex =
+    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\] )?\[In reply to message ID: \d+\]\s*$/ // Исправлено:  (?:...)?
+  cleanedMessage = cleanedMessage.replace(replyRegex, '')
 
-  cleanedMessage = cleanedMessage.trim()
-
-  return cleanedMessage
+  return cleanedMessage.trim()
 }
