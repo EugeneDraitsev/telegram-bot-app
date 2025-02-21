@@ -16,6 +16,14 @@ describe('cleanMessage', () => {
     expect(cleanMessage(messyMessage)).toBe(expected)
   })
 
+  test('should remove single "User ID" prefix and timestamp/reply suffix', () => {
+    const messyMessage =
+      'USER:119677179 (ayankovsky): Я считаю, что лозунги политического характера могут вызывать разногласия и споры'
+    const expected =
+      'Я считаю, что лозунги политического характера могут вызывать разногласия и споры'
+    expect(cleanMessage(messyMessage)).toBe(expected)
+  })
+
   test('should remove only the timestamp/reply suffix', () => {
     const messyMessage =
       'Только одно вхождение. [2/22/2025, 1:23:45 AM] [In reply to message ID: 9876]'
@@ -83,6 +91,13 @@ describe('cleanMessage', () => {
   test('should handle newlines in the message', () => {
     const messyMessage =
       'USER: 123 (test):\nHello\nWorld [In reply to message ID: 123]'
+    const expected = 'Hello\nWorld'
+    expect(cleanMessage(messyMessage)).toBe(expected)
+  })
+
+  test('should handle [] in the message', () => {
+    const messyMessage =
+      'USER: 123 (test):\nHello\nWorld [In reply to message ID:123]'
     const expected = 'Hello\nWorld'
     expect(cleanMessage(messyMessage)).toBe(expected)
   })

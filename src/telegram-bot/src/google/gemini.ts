@@ -60,11 +60,11 @@ export const generateCompletion = async (
 }
 
 export function cleanMessage(message: string) {
-  const userIdRegex = /^(\s*(USER|User ID): \d+ \([^)]*\): ?)+/
+  const userIdRegex = /^(\s*(USER|User ID):\s*\d+ \([^)]*\): ?)+/
   let cleanedMessage = message.replace(userIdRegex, '')
 
   const replyRegex =
-    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID: \d+\])\s*$/
+    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID:\s*\d+\])\s*$/
   cleanedMessage = cleanedMessage.replace(replyRegex, '')
   return cleanedMessage.trim()
 }
