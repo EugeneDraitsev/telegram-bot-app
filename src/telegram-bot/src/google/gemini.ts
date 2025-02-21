@@ -1,11 +1,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+import { getHistory } from '../upstash'
 import {
   DEFAULT_ERROR_MESSAGE,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
-  isAllowedChat,
-  systemInstructions,
+  geminiSystemInstructions,
+  isAiEnabledChat,
 } from '../utils'
 
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
@@ -19,7 +20,7 @@ const generationConfig = {
 }
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.0-flash',
-  systemInstruction: systemInstructions,
+  systemInstruction: geminiSystemInstructions,
 })
 
 export const generateCompletion = async (
@@ -27,14 +28,16 @@ export const generateCompletion = async (
   chatId: string | number,
 ) => {
   try {
-    if (!isAllowedChat(chatId)) {
+    if (!isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
     if (!prompt) {
       return PROMPT_MISSING_ERROR
     }
 
+    const formattedHistory = await getHistory(chatId)
     const chatSession = model.startChat({
+      history: formattedHistory,
       generationConfig,
       tools: [
         {

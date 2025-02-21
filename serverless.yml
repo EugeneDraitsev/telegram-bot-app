@@ -32,6 +32,8 @@ functions:
       OPENAI_API_KEY: ${env:OPENAI_API_KEY}
       OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       GEMINI_API_KEY: ${env:GEMINI_API_KEY}
+      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
+      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
       CRYPTO_REQUESTS_BUCKET_NAME: ${self:custom.cryptoRequestsBucketName}
     events:
       - http:

@@ -32,4 +32,6 @@ jobs:
           COIN_MARKET_CAP_API_KEY: ${{secrets.COIN_MARKET_CAP_API_KEY}}
           OPENAI_API_KEY: ${{secrets.OPENAI_API_KEY}}
           OPENAI_CHAT_IDS: ${{secrets.OPENAI_CHAT_IDS}}
+          UPSTASH_REDIS_URL: ${{secrets.UPSTASH_REDIS_URL}}
+          UPSTASH_REDIS_TOKEN: ${{secrets.UPSTASH_REDIS_TOKEN}}
           GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY}}

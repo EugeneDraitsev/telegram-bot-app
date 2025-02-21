@@ -10,7 +10,7 @@ import {
   DEFAULT_ERROR_MESSAGE,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
-  isAllowedChat,
+  isAiEnabledChat,
   systemInstructions,
 } from '../utils'
 
@@ -19,7 +19,7 @@ const openai = new OpenAi({
 })
 
 const generateImage = async (prompt: string, chatId: string | number) => {
-  if (!isAllowedChat(chatId)) {
+  if (!isAiEnabledChat(chatId)) {
     throw new Error(NOT_ALLOWED_ERROR)
   }
   if (!prompt) {
@@ -48,7 +48,7 @@ const generateMultimodalCompletion = async (
   imagesData?: Buffer[],
 ) => {
   try {
-    if (!isAllowedChat(chatId)) {
+    if (!isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
     if (!prompt && !imagesData?.length) {
@@ -100,7 +100,7 @@ const generateReasoningCompletion = async (
   chatId: string | number,
 ) => {
   try {
-    if (!isAllowedChat(chatId)) {
+    if (!isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
     if (!prompt) {

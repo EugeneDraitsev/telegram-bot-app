@@ -11,6 +11,7 @@ import setupExternalApisCommands from './external-apis'
 import setupGoogleCommands from './google'
 import setupOpenAiCommands from './open-ai'
 import setupTextCommands from './text'
+import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
 
 const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
@@ -40,6 +41,9 @@ bot.use(async (ctx, next) => {
         ),
         saveEvent(message.from, chat?.id, command, message.date).catch(
           (error) => console.error('saveEvent error: ', error),
+        ),
+        saveMessage(message, chat?.id).catch((error) =>
+          console.error('saveHistory error: ', error),
         ),
         next?.(),
       ])
