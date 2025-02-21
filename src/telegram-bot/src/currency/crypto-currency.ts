@@ -155,7 +155,7 @@ export const getCryptoCurrency = async (): Promise<string> => {
   try {
     return getCoinMarketCapData()
   } catch (e) {
-    console.log('CoinMarketCap error: ', e)
+    console.error('CoinMarketCap error: ', e)
     return getPoloniexData()
   }
 }

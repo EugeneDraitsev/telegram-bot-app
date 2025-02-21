@@ -54,7 +54,7 @@ export const generateCompletion = async (
 
     return cleanMessage(text)
   } catch (error) {
-    console.log(error.message)
+    console.error('gemini generateCompletion error: ', error)
     return DEFAULT_ERROR_MESSAGE
   }
 }

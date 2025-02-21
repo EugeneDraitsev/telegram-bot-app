@@ -6,7 +6,7 @@ import { getMainCurrencies } from './main-currency'
 import { getRussianCurrency } from './russian-currency'
 
 const getError = (err: Error, from: string): string => {
-  console.log(err)
+  console.error(`Can't fetch currency from ${from}`, err)
   return `Can't fetch currency from ${from}\n`
 }
 

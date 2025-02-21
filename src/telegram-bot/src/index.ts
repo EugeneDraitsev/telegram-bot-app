@@ -109,11 +109,6 @@ setupExternalApisCommands(bot)
 // /o <text> - generate chat completion with o3-mini
 setupOpenAiCommands(bot)
 
-bot.use((ctx, next) => {
-  console.log('ctx: ', ctx)
-  return next()
-})
-
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {
     await handleUpdate(
@@ -123,7 +118,7 @@ const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
 
     return { body: JSON.stringify({ body: event.body ?? '' }), statusCode: 200 }
   } catch (e) {
-    console.log(e)
+    console.error('Bot handler error: ', e)
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),
       // we need to send 200 here to avoid issue with telegram attempts to resend you a message

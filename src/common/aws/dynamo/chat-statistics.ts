@@ -57,7 +57,7 @@ export const getFormattedChatStatistics = async (
             All messages: ${allMessagesCount.toLocaleString()}
             ${formattedUsers.join('\n')}`
   } catch (e) {
-    console.log(e)
+    console.error('Error while fetching statistic', e)
     return 'Error while fetching statistic'
   }
 }

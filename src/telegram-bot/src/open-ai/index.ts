@@ -90,7 +90,7 @@ const generateMultimodalCompletion = async (
 
     return message.content
   } catch (error) {
-    console.log(error.message)
+    console.error('generateMultimodalCompletion error: ', error)
     return DEFAULT_ERROR_MESSAGE
   }
 }
@@ -126,7 +126,7 @@ const generateReasoningCompletion = async (
 
     return message.content
   } catch (error) {
-    console.log(error.message)
+    console.error('generateReasoningCompletion error: ', error)
     return DEFAULT_ERROR_MESSAGE
   }
 }

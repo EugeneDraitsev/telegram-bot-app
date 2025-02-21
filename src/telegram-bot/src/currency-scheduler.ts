@@ -25,7 +25,7 @@ const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
 
     return { body: '', statusCode: 200 }
   } catch (e) {
-    console.log(e)
+    console.error('currencySchedulerHandler error: ', e)
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),
       // we need to send 200 here to avoid issue with telegram attempts to resend you a message
