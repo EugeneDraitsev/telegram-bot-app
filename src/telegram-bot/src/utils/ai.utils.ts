@@ -25,5 +25,5 @@ export const geminiSystemInstructions = `
   !!! IMPORTANT !!!
   Try to rely mostly on more recent posts, but don't ignore older posts.
   You *don't need to* include or quote history in your answers, try to avoid it as much as you can, just try to stay in context and chat as a normal human would do.
-
+  Be 100% sure that your answer contains only <TEXT> part, without any additional labels, nicknames, dates or message IDs.
 `
