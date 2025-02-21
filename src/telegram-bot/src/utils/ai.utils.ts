@@ -17,6 +17,7 @@ export const systemInstructions = `Instructions:
 export const geminiSystemInstructions = `
   ${systemInstructions}
   
-  You also will be provided with chat history for last 24 hours (if available) in JSON format from telegram
-  It could contain a previous command to you (if message started with /, like /q, /qq, /z) and you previous responses  
+  You also will be provided with chat history for last 24 hours (if available) in JSON format from telegram.
+  Try to mostly rely on more recent messages, but don't ignore older messages.
+  It could contain a previous command to you (if message started with /, like /g, /q, /qq, /z etc.) and your previous responses  
 `

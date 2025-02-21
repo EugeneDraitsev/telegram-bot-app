@@ -4,7 +4,6 @@ import { getHistory } from '../upstash'
 import {
   DEFAULT_ERROR_MESSAGE,
   NOT_ALLOWED_ERROR,
-  PROMPT_MISSING_ERROR,
   geminiSystemInstructions,
   isAiEnabledChat,
 } from '../utils'
@@ -31,9 +30,6 @@ export const generateCompletion = async (
     if (!isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
-    if (!prompt) {
-      return PROMPT_MISSING_ERROR
-    }
 
     const formattedHistory = await getHistory(chatId)
     const chatSession = model.startChat({
@@ -47,7 +43,9 @@ export const generateCompletion = async (
       ],
     })
 
-    const result = await chatSession.sendMessage(prompt)
+    const result = await chatSession.sendMessage(
+      prompt || 'Выдай любой комментарий на твой вкус по ситуации',
+    )
     const text = result.response.text()
 
     if (!text) {
