@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis'
 import type { Message } from 'telegram-typings'
 
+import { getUserName } from '@tg-bot/common'
 import { isAiEnabledChat } from '../utils'
 
 const redis = new Redis({
@@ -68,8 +69,9 @@ function getFormattedHistory(chatHistory: Message[]) {
       // 3. Add User/Chat Information
       if (message.from) {
         textContent += `User ID: ${message.from.id} `
-        if (message.from.first_name) {
-          textContent += `(${message.from.first_name}): `
+        const username = getUserName(message.from)
+        if (username) {
+          textContent += `(${username}): `
         }
       } else if (message.sender_chat) {
         textContent += `Chat ID: ${message.sender_chat.id} (${message.sender_chat.type}): `
