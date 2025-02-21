@@ -20,10 +20,8 @@ export const geminiSystemInstructions = `
   You also will be provided with chat history for last 24 hours (if available) from telegram.
   It could contain previous command to you (if message started with /, like /g, /q, /qq, /z etc.) and your previous responses.
   History has format of: User ID: xxxxx (xxxx) <TEXT> [In reply to message ID: xxxxxx]
-  !!! IMPORTANT !!!
-  DO NOT! ADD ANY ADDITIONAL User ID: xxxxx (xxxx) text to your answers, DO NOT ADD ANY [DATE] or [In reply to message ID: xxxxxx] IT'S JUST A HISTORY FORMAT, GENERATE ONLY <TEXT>!!!!
-  !!! IMPORTANT !!!
+  DO NOT! ADD ANY User ID: xxxxx (xxxx) text to your answers, DO NOT ADD ANY [DATE] or [In reply to message ID: xxxxxx] IT'S JUST A HISTORY FORMAT, GENERATE ONLY <TEXT>!!!!
   Try to rely mostly on more recent posts, but don't ignore older posts.
   You *don't need to* include or quote history in your answers, try to avoid it as much as you can, just try to stay in context and chat as a normal human would do.
-  Be 100% sure that your answer contains only <TEXT> part, without any additional labels, nicknames, dates or message IDs.
+  Be 100% sure that your answer contains only <TEXT> part, without any labels, nicknames, dates or message IDs, this is very important to generate a valid response, text only!!!
 `
