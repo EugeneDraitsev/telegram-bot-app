@@ -24,9 +24,6 @@ export const saveMessage = async (message: Message, chatId?: number) => {
     score: Date.now(),
     member: JSON.stringify(message),
   })
-
-  // Remove messages older than 24h
-  await redis.zremrangebyscore(key, 0, Date.now() - TTL_MS)
 }
 
 export const getHistory = async (chatId: string | number) => {
@@ -48,6 +45,20 @@ export const getHistory = async (chatId: string | number) => {
   } catch (error) {
     console.error('Error getting chat history:', error)
     return []
+  }
+}
+
+// Remove messages older than 24h
+export const clearOldMessages = async () => {
+  const keys = await redis.keys('chat-history:*')
+
+  for (const key of keys) {
+    await redis.zremrangebyscore(key, 0, Date.now() - TTL_MS)
+
+    const count = await redis.zcard(key)
+    if (count === 0) {
+      await redis.del(key)
+    }
   }
 }
 

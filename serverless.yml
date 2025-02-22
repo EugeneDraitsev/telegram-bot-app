@@ -51,7 +51,19 @@ functions:
     events:
       - schedule:
           name: currency-scheduler-event
+          enabled: ${env:ENABLE_SCHEDULING, true}
           rate: cron(0 9,11,13,15,17 ? * MON-FRI *)
+
+  redis-scheduler:
+    handler: src/telegram-bot/src/redis-scheduler.default
+    environment:
+      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
+      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
+    events:
+      - schedule:
+          name: redis-scheduler-event
+          enabled: ${env:ENABLE_SCHEDULING, true}
+          rate: rate(1 hour)
 
   sharp-statistics:
     handler: src/sharp-statistics/src/index.default
