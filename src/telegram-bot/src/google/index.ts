@@ -63,10 +63,11 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     })
   })
 
+  bot.command('q', setupMultimodalCommands)
   bot.command('qq', setupMultimodalCommands)
 
   bot.on('message:photo', (ctx) => {
-    if (!ctx.message?.caption?.startsWith('/qq')) {
+    if (!ctx.message?.caption?.startsWith('/q')) {
       return
     }
     return setupMultimodalCommands(ctx)
