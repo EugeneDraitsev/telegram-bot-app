@@ -61,9 +61,10 @@ export const generateMultimodalCompletion = async (
       ],
     })
 
-    const result = await chatSession.sendMessage(
-      prompt || 'Выдай любой комментарий на твой вкус по ситуации',
-    )
+    const result = await chatSession.sendMessage([
+      ...parts,
+      { text: prompt || 'Выдай любой комментарий на твой вкус по ситуации' },
+    ])
     const text = result.response.text()
 
     if (!text) {
