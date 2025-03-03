@@ -3,9 +3,8 @@ import OpenAi from 'openai'
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Bot, Context } from 'grammy'
 import type { ChatCompletionContentPart } from 'openai/resources'
-import type { Message } from 'telegram-typings'
 
-import { getCommandData, getImageBuffers } from '@tg-bot/common'
+import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
 import {
   DEFAULT_ERROR_MESSAGE,
   NOT_ALLOWED_ERROR,
@@ -132,20 +131,8 @@ const generateReasoningCompletion = async (
 }
 
 const setupMultimodalCommands = async (ctx: ParseModeFlavor<Context>) => {
-  const { combinedText, images, replyId } = getCommandData(
-    ctx.message as Message,
-  )
-  const chatId = ctx?.chat?.id ?? ''
-
-  const files = await Promise.all(
-    images?.map((image) => ctx.api.getFile(image.file_id)) ?? [],
-  )
-
-  const imagesUrls = files.map((file) => {
-    return `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
-  })
-
-  const imagesData = await getImageBuffers(imagesUrls)
+  const { combinedText, imagesData, chatId, replyId } =
+    await getMultimodalCommandData(ctx)
 
   const message = await generateMultimodalCompletion(
     combinedText,
@@ -191,9 +178,7 @@ const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     return setupMultimodalCommands(ctx)
   })
 
-  bot.command('q', (ctx) => {
-    return setupMultimodalCommands(ctx)
-  })
+  bot.command('q', setupMultimodalCommands)
 
   bot.command('o', async (ctx) => {
     const { combinedText, replyId } = getCommandData(ctx.message)

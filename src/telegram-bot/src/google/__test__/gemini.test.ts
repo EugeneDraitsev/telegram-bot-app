@@ -1,4 +1,58 @@
-import { cleanMessage } from '../gemini'
+import { cleanMessage, generateMultimodalCompletion } from '../gemini'
+
+jest.mock('@google/generative-ai', () => {
+  return {
+    GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
+      getGenerativeModel: jest.fn().mockImplementation(() => ({
+        generateContent: jest.fn().mockResolvedValue({
+          response: {
+            text: () => 'Mocked response from Gemini',
+          },
+        }),
+      })),
+    })),
+  }
+})
+
+describe('generateMultimodalCompletion', () => {
+  const mockChatId = '123456'
+  const mockText = 'Analyze this image'
+  const mockImageBuffer = Buffer.from('mock image data')
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  test('should handle text-only input', async () => {
+    const result = await generateMultimodalCompletion(mockText, mockChatId)
+    expect(result).toBe('Mocked response from Gemini')
+  })
+
+  test('should handle text with image', async () => {
+    const result = await generateMultimodalCompletion(mockText, mockChatId, [
+      mockImageBuffer,
+    ])
+    expect(result).toBe('Mocked response from Gemini')
+  })
+
+  test('should handle multiple images', async () => {
+    const result = await generateMultimodalCompletion(mockText, mockChatId, [
+      mockImageBuffer,
+      mockImageBuffer,
+    ])
+    expect(result).toBe('Mocked response from Gemini')
+  })
+
+  test('should return NOT_ALLOWED_ERROR for unauthorized chat', async () => {
+    const result = await generateMultimodalCompletion(mockText, '999999')
+    expect(result).toBe('Sorry, but you are not allowed to use this feature')
+  })
+
+  test('should return PROMPT_MISSING_ERROR when no input provided', async () => {
+    const result = await generateMultimodalCompletion('', mockChatId)
+    expect(result).toBe('Please provide a prompt or an image')
+  })
+})
 
 describe('cleanMessage', () => {
   test('should remove multiple "User ID" prefixes and timestamp/reply suffix', () => {
