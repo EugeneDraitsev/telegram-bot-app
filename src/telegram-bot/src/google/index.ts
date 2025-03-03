@@ -1,11 +1,34 @@
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Bot, Context } from 'grammy'
 
-import { getCommandData } from '@tg-bot/common'
-import { generateCompletion } from './gemini'
+import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
+import { generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
+
+const setupMultimodalCommands = async (ctx: ParseModeFlavor<Context>) => {
+  const { combinedText, imagesData, chatId, replyId } =
+    await getMultimodalCommandData(ctx)
+
+  const message = await generateMultimodalCompletion(
+    combinedText,
+    chatId,
+    imagesData,
+  )
+
+  return ctx
+    .replyWithMarkdownV2(message.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
+      reply_parameters: { message_id: replyId },
+    })
+    .catch((err) => {
+      console.error(err)
+      return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+    })
+    .catch((err) => {
+      console.error(`Error (Gemini AI): ${err.message}`)
+    })
+}
 
 const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
   bot.command('g', async (ctx) => {
@@ -40,23 +63,13 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     })
   })
 
-  bot.command('qq', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    const chatId = ctx?.chat?.id ?? ''
+  bot.command('qq', setupMultimodalCommands)
 
-    const message = await generateCompletion(text, chatId)
-
-    return ctx
-      .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
-        reply_parameters: { message_id: replyId },
-      })
-      .catch((err) => {
-        console.error(err)
-        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
-      })
-      .catch((err) => {
-        console.error(`Error (Gemini AI): ${err.message}`)
-      })
+  bot.on('message:photo', (ctx) => {
+    if (!ctx.message?.caption?.startsWith('/qq')) {
+      return
+    }
+    return setupMultimodalCommands(ctx)
   })
 
   /*

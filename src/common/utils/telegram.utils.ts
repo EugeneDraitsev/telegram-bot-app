@@ -1,3 +1,5 @@
+import type { ParseModeFlavor } from '@grammyjs/parse-mode'
+import type { Context } from 'grammy'
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 export const isLink = (text = '') => text.includes('https://')
@@ -45,6 +47,27 @@ export const getCommandData = (message?: Message) => {
   }
 
   return { text, sticker, combinedText, images, replyId }
+}
+
+export const getMultimodalCommandData = async (
+  ctx: ParseModeFlavor<Context>,
+) => {
+  const { combinedText, images, replyId } = getCommandData(
+    ctx.message as Message,
+  )
+  const chatId = ctx?.chat?.id ?? ''
+
+  const files = await Promise.all(
+    images?.map((image) => ctx.api.getFile(image.file_id)) ?? [],
+  )
+
+  const imagesUrls = files.map((file) => {
+    return `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
+  })
+
+  const imagesData = await getImageBuffers(imagesUrls)
+
+  return { combinedText, imagesData, replyId, chatId }
 }
 
 export async function getImageBuffers(imagesUrls: string[]) {
