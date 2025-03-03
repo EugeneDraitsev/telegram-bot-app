@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenerativeAI, type Tool } from '@google/generative-ai'
 
 import { getHistory } from '../upstash'
 import {
@@ -38,8 +38,7 @@ export const generateCompletion = async (
       tools: [
         {
           googleSearch: {},
-          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        } as any,
+        } as Tool,
       ],
     })
 
