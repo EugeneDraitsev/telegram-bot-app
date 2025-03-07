@@ -17,29 +17,29 @@ const openai = new OpenAi({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// const generateImage = async (prompt: string, chatId: string | number) => {
-//   if (!isAiEnabledChat(chatId)) {
-//     throw new Error(NOT_ALLOWED_ERROR)
-//   }
-//   if (!prompt) {
-//     throw new Error(PROMPT_MISSING_ERROR)
-//   }
-//
-//   const response = await openai.images.generate({
-//     model: 'dall-e-3',
-//     prompt,
-//     n: 1,
-//     size: '1024x1024',
-//   })
-//
-//   const { url } = response.data[0]
-//
-//   if (!url) {
-//     throw new Error(DEFAULT_ERROR_MESSAGE)
-//   }
-//
-//   return url
-// }
+const generateImage = async (prompt: string, chatId: string | number) => {
+  if (!isAiEnabledChat(chatId)) {
+    throw new Error(NOT_ALLOWED_ERROR)
+  }
+  if (!prompt) {
+    throw new Error(PROMPT_MISSING_ERROR)
+  }
+
+  const response = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt,
+    n: 1,
+    size: '1024x1024',
+  })
+
+  const { url } = response.data[0]
+
+  if (!url) {
+    throw new Error(DEFAULT_ERROR_MESSAGE)
+  }
+
+  return url
+}
 
 // const generateMultimodalCompletion = async (
 //   prompt: string,
@@ -154,22 +154,22 @@ const generateReasoningCompletion = async (
 // }
 
 const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
-  // bot.command('e', async (ctx) => {
-  //   const { text, replyId } = getCommandData(ctx.message)
-  //   const chatId = ctx?.chat?.id ?? ''
-  //
-  //   try {
-  //     const url = await generateImage(text, chatId)
-  //
-  //     return ctx.replyWithPhoto(url, {
-  //       reply_parameters: { message_id: replyId },
-  //     })
-  //   } catch (error) {
-  //     return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
-  //       reply_parameters: { message_id: replyId },
-  //     })
-  //   }
-  // })
+  bot.command('e', async (ctx) => {
+    const { text, replyId } = getCommandData(ctx.message)
+    const chatId = ctx?.chat?.id ?? ''
+
+    try {
+      const url = await generateImage(text, chatId)
+
+      return ctx.replyWithPhoto(url, {
+        reply_parameters: { message_id: replyId },
+      })
+    } catch (error) {
+      return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
+        reply_parameters: { message_id: replyId },
+      })
+    }
+  })
 
   // bot.on('message:photo', (ctx) => {
   //   if (!ctx.message?.caption?.startsWith('/q')) {
@@ -177,7 +177,7 @@ const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
   //   }
   //   return setupMultimodalCommands(ctx)
   // })
-  //
+
   // bot.command('q', setupMultimodalCommands)
 
   bot.command('o', async (ctx) => {
