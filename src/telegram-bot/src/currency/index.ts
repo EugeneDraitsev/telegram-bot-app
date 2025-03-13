@@ -10,10 +10,58 @@ const getError = (err: Error, from: string): string => {
   return `Can't fetch currency from ${from}\n`
 }
 
+export interface CurrenciesResponse {
+  readonly provider: string
+  readonly rates: {
+    readonly [currency: string]: number
+  }
+}
+
+const timeout = 5_000
+const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
+  try {
+    const url = 'http://api.exchangeratesapi.io/v1/latest'
+    const params = new URLSearchParams({
+      access_key: process.env.EXCHANGE_RATE_API_KEY || 'set_your_token',
+      format: '1',
+      base: 'EUR',
+    })
+
+    const rates = await fetch(`${url}?${params}`, {
+      signal: globalThis.AbortSignal.timeout(timeout),
+    })
+      .then((x) => x.json())
+      .then((x) => x.rates)
+
+    return { rates, provider: 'ExchangeRate' }
+  } catch (e) {
+    console.error('ExchangeRate API error', e)
+    const url = 'http://data.fixer.io/api/latest'
+    const params = new URLSearchParams({
+      access_key: process.env.FIXER_API_KEY || 'set_your_token',
+      format: '1',
+      base: 'EUR',
+    })
+
+    const rates = await fetch(`${url}?${params}`, {
+      signal: globalThis.AbortSignal.timeout(timeout),
+    })
+      .then((x) => x.json())
+      .then((x) => x.rates)
+
+    return { rates, provider: 'Fixer' }
+  }
+}
+
 export const getCurrencyMessage = async () => {
+  const currenciesRatesPromise = getCurrenciesRates()
   const promises = [
-    getMainCurrencies().catch((err) => getError(err, 'ExchangeRate and Fixer')),
-    getRussianCurrency().catch((err) => getError(err, 'meduza')),
+    getMainCurrencies(currenciesRatesPromise).catch((err) =>
+      getError(err, 'ExchangeRate and Fixer'),
+    ),
+    getRussianCurrency(currenciesRatesPromise).catch((err) =>
+      getError(err, 'ExchangeRate and Fixer'),
+    ),
     getCryptoCurrency().catch((err) => getError(err, 'poloniex')),
   ]
 

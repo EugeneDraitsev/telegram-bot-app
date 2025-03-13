@@ -1,5 +1,5 @@
-const fixerKey = process.env.FIXER_API_KEY || 'set_your_token'
-const exchangeRateKey = process.env.EXCHANGE_RATE_API_KEY || 'set_your_token'
+import type { CurrenciesResponse } from './index'
+
 const timeout = 10_000
 
 type Rate = {
@@ -51,24 +51,13 @@ const getBynRates = async () => {
   }
 }
 
-const getExchangeRateData = async (
-  url: string,
-  provider: string,
-  access_key: string,
-): Promise<string> => {
-  const params = new URLSearchParams({
-    access_key,
-    format: '1',
-    base: 'EUR',
-  })
-
-  const ratesPromise = fetch(`${url}?${params}`, {
-    signal: globalThis.AbortSignal.timeout(timeout),
-  })
-    .then((x) => x.json())
-    .then((x) => x.rates)
-
-  const [bynRates, rates] = await Promise.all([getBynRates(), ratesPromise])
+export const getMainCurrencies = async (
+  ratesPromise: Promise<CurrenciesResponse>,
+) => {
+  const [bynRates, { rates, provider }] = await Promise.all([
+    getBynRates(),
+    ratesPromise,
+  ])
 
   const ratesToDisplay = {
     '🇧🇾USD/BYN': Number(bynRates?.USD) || rates.BYN / rates.USD,
@@ -88,21 +77,4 @@ const getExchangeRateData = async (
     .join('\n')
 
   return `Курсы ${provider}:\n<pre>${ratesString}</pre>\n`
-}
-
-export const getMainCurrencies = async () => {
-  try {
-    const url = 'http://api.exchangeratesapi.io/v1/latest'
-    const provider = 'ExchangeRatesAPI'
-    return await getExchangeRateData(url, provider, exchangeRateKey)
-  } catch (e) {
-    console.error('ExchangeRate host error', e)
-    const url = 'http://data.fixer.io/api/latest'
-    const provider = 'fixer'
-
-    return getExchangeRateData(url, provider, fixerKey).catch((err) => {
-      console.error('Fixer API error', err)
-      throw err
-    })
-  }
 }
