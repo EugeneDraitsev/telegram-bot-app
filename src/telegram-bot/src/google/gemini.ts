@@ -16,17 +16,6 @@ import {
 
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 const genAI = new GoogleGenerativeAI(apiKey)
-const generationConfig = {
-  temperature: 1,
-  topP: 0.95,
-  topK: 40,
-  maxOutputTokens: 8192,
-  responseMimeType: 'text/plain',
-}
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
-  systemInstruction: geminiSystemInstructions,
-})
 
 export const generateMultimodalCompletion = async (
   prompt: string,
@@ -37,6 +26,11 @@ export const generateMultimodalCompletion = async (
     if (!isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      systemInstruction: geminiSystemInstructions,
+    })
 
     const parts = []
     for (const image of imagesData ?? []) {
@@ -51,7 +45,13 @@ export const generateMultimodalCompletion = async (
     const formattedHistory = await getHistory(chatId)
     const chatSession = model.startChat({
       history: formattedHistory,
-      generationConfig,
+      generationConfig: {
+        temperature: 1,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 8192,
+        responseMimeType: 'text/plain',
+      },
       tools: [
         {
           googleSearch: {},
