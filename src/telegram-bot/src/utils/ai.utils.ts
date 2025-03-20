@@ -25,3 +25,13 @@ export const geminiSystemInstructions = `
   Be 100% sure that your answer contains only <TEXT> part, without any labels, nicknames, dates or message IDs, this is very important to generate a valid response, text only!!!
   Also make sure you answer in the same language as the prompt.
 `
+
+export function cleanGeminiMessage(message: string) {
+  const userIdRegex = /^(\s*(USER|User ID):\s*\d+ \([^)]*\): ?)+/
+  let cleanedMessage = message.replace(userIdRegex, '')
+
+  const replyRegex =
+    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID:\s*\d+\])\s*$/
+  cleanedMessage = cleanedMessage.replace(replyRegex, '')
+  return cleanedMessage.trim()
+}

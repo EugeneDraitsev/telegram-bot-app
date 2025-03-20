@@ -1,10 +1,15 @@
-import { GoogleGenerativeAI, type Tool } from '@google/generative-ai'
+import {
+  GoogleGenerativeAI,
+  type ModelParams,
+  type Tool,
+} from '@google/generative-ai'
 
 import { getHistory } from '../upstash'
 import {
   DEFAULT_ERROR_MESSAGE,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
+  cleanGeminiMessage,
   geminiSystemInstructions,
   isAiEnabledChat,
 } from '../utils'
@@ -32,15 +37,8 @@ export const generateMultimodalCompletion = async (
     if (!isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
-    if (!prompt && !imagesData?.length) {
-      return PROMPT_MISSING_ERROR
-    }
 
     const parts = []
-    if (prompt) {
-      parts.push({ text: prompt })
-    }
-
     for (const image of imagesData ?? []) {
       parts.push({
         inlineData: {
@@ -71,19 +69,72 @@ export const generateMultimodalCompletion = async (
       return DEFAULT_ERROR_MESSAGE
     }
 
-    return cleanMessage(text)
+    return cleanGeminiMessage(text)
   } catch (error) {
     console.error('gemini generateMultimodalCompletion error: ', error)
     return DEFAULT_ERROR_MESSAGE
   }
 }
 
-export function cleanMessage(message: string) {
-  const userIdRegex = /^(\s*(USER|User ID):\s*\d+ \([^)]*\): ?)+/
-  let cleanedMessage = message.replace(userIdRegex, '')
+export async function generateImage(
+  prompt: string,
+  chatId: string | number,
+  imagesData?: Buffer[],
+) {
+  try {
+    if (!isAiEnabledChat(chatId)) {
+      return { text: NOT_ALLOWED_ERROR }
+    }
 
-  const replyRegex =
-    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID:\s*\d+\])\s*$/
-  cleanedMessage = cleanedMessage.replace(replyRegex, '')
-  return cleanedMessage.trim()
+    if (!prompt && !imagesData?.length) {
+      return { text: PROMPT_MISSING_ERROR }
+    }
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp-image-generation',
+      generationConfig: {
+        responseModalities: ['Text', 'Image'],
+      },
+    } as ModelParams)
+
+    const parts = []
+    for (const image of imagesData ?? []) {
+      parts.push({
+        inlineData: {
+          data: image.toString('base64'),
+          mimeType: 'image/jpeg',
+        },
+      })
+    }
+
+    const response = await model.generateContent([...parts, { text: prompt }])
+    const parsedResponse =
+      response.response.candidates?.[0].content.parts?.reduce(
+        (acc, candidate) => {
+          if (candidate.text) {
+            acc.text += `${candidate.text}\n`
+          }
+          if (candidate.inlineData) {
+            const imageData = candidate.inlineData.data
+            acc.image = Buffer.from(imageData, 'base64')
+          }
+          return acc
+        },
+        { text: '' } as { text: string; image?: Buffer },
+      )
+
+    if (!parsedResponse?.text && !parsedResponse?.image) {
+      console.error(
+        'Error empty gemini response:',
+        parsedResponse,
+        response.response.candidates?.[0].content.parts,
+      )
+      return { text: DEFAULT_ERROR_MESSAGE }
+    }
+
+    return parsedResponse
+  } catch (error) {
+    console.error('Error generating gemini image:', error)
+    return { text: DEFAULT_ERROR_MESSAGE }
+  }
 }

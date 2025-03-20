@@ -1,8 +1,8 @@
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
-import type { Bot, Context } from 'grammy'
+import { type Bot, type Context, InputFile } from 'grammy'
 
 import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
-import { generateMultimodalCompletion } from './gemini'
+import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
@@ -65,6 +65,28 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
 
   bot.command('q', setupMultimodalCommands)
   bot.command('qq', setupMultimodalCommands)
+
+  bot.command('e', async (ctx) => {
+    const { combinedText, imagesData, chatId, replyId } =
+      await getMultimodalCommandData(ctx)
+
+    const { image, text } = await generateImage(
+      combinedText,
+      chatId,
+      imagesData,
+    )
+
+    if (image) {
+      return ctx.replyWithPhoto(new InputFile(image), {
+        caption: text,
+        reply_parameters: { message_id: replyId },
+      })
+    }
+
+    return ctx.reply(text, {
+      reply_parameters: { message_id: replyId },
+    })
+  })
 
   bot.on('message:photo', (ctx) => {
     if (!ctx.message?.caption?.startsWith('/q')) {
