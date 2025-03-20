@@ -66,7 +66,7 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
   bot.command('q', setupMultimodalCommands)
   bot.command('qq', setupMultimodalCommands)
 
-  bot.command('e', async (ctx) => {
+  bot.command('ee', async (ctx) => {
     const { combinedText, imagesData, chatId, replyId } =
       await getMultimodalCommandData(ctx)
 
