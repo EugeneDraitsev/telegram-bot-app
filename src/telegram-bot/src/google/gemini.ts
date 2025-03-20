@@ -109,7 +109,7 @@ export async function generateImage(
 
     const response = await model.generateContent([...parts, { text: prompt }])
     const parsedResponse =
-      response.response.candidates?.[0].content.parts?.reduce(
+      response.response.candidates?.[0].content?.parts?.reduce(
         (acc, candidate) => {
           if (candidate.text) {
             acc.text += `${candidate.text}\n`
