@@ -18,7 +18,7 @@ const setupMultimodalCommands = async (ctx: ParseModeFlavor<Context>) => {
   )
 
   return ctx
-    .replyWithMarkdownV2(message.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
+    .replyWithMarkdownV2(message.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
       reply_parameters: { message_id: replyId },
     })
     .catch((err) => {
