@@ -29,7 +29,6 @@ jobs:
           YOUTUBE_TOKEN: ${{secrets.YOUTUBE_TOKEN}}
           FIXER_API_KEY: ${{secrets.FIXER_API_KEY}}
           EXCHANGE_RATE_API_KEY: ${{secrets.EXCHANGE_RATE_API_KEY}}
-          COIN_MARKET_CAP_API_KEY: ${{secrets.COIN_MARKET_CAP_API_KEY}}
           OPENAI_API_KEY: ${{secrets.OPENAI_API_KEY}}
           OPENAI_CHAT_IDS: ${{secrets.OPENAI_CHAT_IDS}}
           UPSTASH_REDIS_URL: ${{secrets.UPSTASH_REDIS_URL}}

@@ -1,14 +1,28 @@
-import { getFile, getRoundedDate, round, saveFile } from '@tg-bot/common'
+import { round } from '@tg-bot/common'
 
-interface CoinMarketCurrency {
-  symbol: string
-  quote: {
-    USD: {
-      price: number
-      percent_change_1h: number
-      percent_change_24h: number
-    }
-  }
+export interface OkxResponse {
+  code: string
+  msg: string
+  data: OkxSpotData[]
+}
+
+export interface OkxSpotData {
+  instType: string
+  instId: string
+  last: string
+  lastSz: string
+  askPx: string
+  askSz: string
+  bidPx: string
+  bidSz: string
+  open24h: string
+  high24h: string
+  low24h: string
+  volCcy24h: string
+  vol24h: string
+  ts: string
+  sodUtc0: string
+  sodUtc8: string
 }
 
 interface PoloniexCurrency {
@@ -20,10 +34,6 @@ interface PoloniexCurrency {
 }
 
 const timeout = 15000
-const coinMarketCapApiKey =
-  process.env.COIN_MARKET_CAP_API_KEY || 'set_your_token'
-const cryptoRequestsBucketName =
-  process.env.CRYPTO_REQUESTS_BUCKET_NAME || 'set_your_bucket_name'
 const symbols = { BTC: 2, ETH: 2, ADA: 3 }
 
 type Symbol = keyof typeof symbols
@@ -38,35 +48,6 @@ const formatCurrency = (value: string | number, fractionDigits = 2) =>
 
 const formatRow = (key: string, value: string, length = 10) => {
   return `${key}: ${value.padStart(length - key.length, ' ')}`
-}
-
-const formatCoinMarketCapResult = (currencies: CoinMarketCurrency[]) => {
-  const data = Object.keys(symbols).map((symbol) => {
-    const currency = currencies.find(
-      (c: CoinMarketCurrency) => c.symbol === symbol,
-    )
-
-    if (!currency) {
-      return ''
-    }
-
-    const { price, percent_change_24h } = currency.quote.USD
-    const isUp = percent_change_24h >= 0
-    const formattedPrice = formatCurrency(price, symbols[symbol as Symbol])
-
-    const priceChange = round(percent_change_24h, 2)
-
-    return [symbol, `${formattedPrice} (${isUp ? '+' : ''}${priceChange}%)`]
-  })
-
-  const maxLength = Math.max(
-    ...data.map(([key, value]) => value.length + key.length),
-  )
-  const result = data
-    .map(([key, value]) => formatRow(key, value, maxLength))
-    .join('\n')
-
-  return `Курсы криптовалют (coinMarketcap):\n<pre>${result}</pre>`
 }
 
 /* Main Functions */
@@ -114,48 +95,65 @@ const getPoloniexData = async (): Promise<string> => {
   return `Курсы криптовалют (poloniex):\n<pre>${resultString}</pre>`
 }
 
-const getCoinMarketCapData = async (): Promise<string> => {
-  const url =
-    'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
-  const roundedDate = String(getRoundedDate(5).valueOf())
-  const savedDataString = await getFile(
-    cryptoRequestsBucketName,
-    roundedDate,
-  ).catch(() => null)
-  const savedData = JSON.parse(savedDataString || '{}')
+const getOkxData = async () => {
+  const url = new URL('https://www.okx.com/api/v5/market/tickers')
+  url.searchParams.append('instType', 'SPOT')
 
-  if (!savedDataString) {
-    const params = new URLSearchParams({
-      start: '1',
-      limit: '100',
-      convert: 'USD',
-    })
-    const response = await fetch(`${url}?${params}`, {
-      headers: { 'X-CMC_PRO_API_KEY': coinMarketCapApiKey },
-      signal: globalThis.AbortSignal.timeout(timeout),
-    }).then((res) => res.json())
+  const response = await fetch(url, {
+    signal: globalThis.AbortSignal.timeout(timeout),
+  })
 
-    const currencies = response.data
-    const filteredCurrencies = currencies.filter(
-      (c: CoinMarketCurrency) => symbols[c.symbol as Symbol],
-    )
-    await saveFile(
-      cryptoRequestsBucketName,
-      roundedDate,
-      Buffer.from(JSON.stringify(filteredCurrencies)),
-    )
-
-    return formatCoinMarketCapResult(filteredCurrencies)
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`)
   }
 
-  return formatCoinMarketCapResult(savedData)
+  const { data }: OkxResponse = await response.json()
+
+  const filteredCurrency = Object.keys(symbols).reduce(
+    (acc, key) => {
+      const currencyData = data?.find((x) => x.instId === `${key}-USDT`)
+
+      if (currencyData) {
+        const formattedPrice = formatCurrency(
+          currencyData.last,
+          symbols[key as Symbol],
+        )
+
+        const priceChangePercent = round(
+          (Number.parseFloat(currencyData.last) /
+            Number.parseFloat(currencyData.open24h) -
+            1) *
+            100,
+          2,
+        )
+        const isUp = priceChangePercent >= 0
+        acc[key] =
+          `${formattedPrice} (${isUp ? '+' : ''}${priceChangePercent}%)`
+      }
+
+      return acc
+    },
+    {} as Record<string, string>,
+  )
+
+  const maxLength = Math.max(
+    ...Object.entries(filteredCurrency).map(
+      ([key, value]) => key.length + value.length,
+    ),
+  )
+
+  const resultString = Object.entries(filteredCurrency)
+    .map(([key, value]) => formatRow(key, value, maxLength))
+    .join('\n')
+
+  return `Курсы криптовалют (okx):\n<pre>${resultString}</pre>`
 }
 
 export const getCryptoCurrency = async (): Promise<string> => {
   try {
-    return getCoinMarketCapData()
+    return getOkxData()
   } catch (e) {
-    console.error('CoinMarketCap error: ', e)
+    console.error('OKX error: ', e)
     return getPoloniexData()
   }
 }

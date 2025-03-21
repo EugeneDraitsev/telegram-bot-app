@@ -16,10 +16,3 @@
   Resource:
     - arn:aws:dynamodb:*:*:table/chat-statistics
     - arn:aws:dynamodb:*:*:table/chat-events
-- Effect: Allow
-  Action:
-    - s3:PutObject
-    - s3:GetObject
-  Resource:
-    - arn:aws:s3:::${self:custom.cryptoRequestsBucketName}/*
-    - arn:aws:s3:::migration-checks-bucket/*
