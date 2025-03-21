@@ -10,9 +10,9 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "@grammyjs/parse-mode": "^1.11.1",
-    "@upstash/redis": "^1.34.5",
+    "@upstash/redis": "^1.34.6",
     "grammy": "^1.35.0",
-    "openai": "^4.86.2"
+    "openai": "^4.89.0"
   },
   "devDependencies": {
     "telegram-typings": "5.0.0"

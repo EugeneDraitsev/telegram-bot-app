@@ -34,13 +34,13 @@ export const dedent = (callSite: DedentInput, ...args: string[]) => {
 }
 
 export const normalize = (str: string) =>
-  str // lgtm[js/incomplete-multi-character-sanitization] lgtm[js/polynomial-redos]
-    .replace(/<(.|\n)*?>/g, '')
+  str
+    .replace(/<[^>]*?>/g, '')
     .replace(/\s\s+/g, ' ')
     .trim()
 
 export const sanitizeSvg = (html: string) =>
-  html.replace(/<(div|\/div)[^>]*>/g, '') // lgtm[js/polynomial-redos]
+  html.replace(/<(\/?div)[^>]*?>/g, '')
 
 export const unEscape = (htmlStr: string) =>
   htmlStr

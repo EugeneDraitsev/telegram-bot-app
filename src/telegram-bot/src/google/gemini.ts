@@ -43,6 +43,10 @@ export const generateMultimodalCompletion = async (
     }
 
     const formattedHistory = await getHistory(chatId)
+    if (formattedHistory[0].role === 'model') {
+      formattedHistory?.unshift({ role: 'user', parts: [{ text: '' }] })
+    }
+
     const chatSession = model.startChat({
       history: formattedHistory,
       generationConfig: {

@@ -141,7 +141,7 @@ const generateReasoningCompletion = async (
 //   )
 //
 //   return ctx
-//     .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
+//     .replyWithMarkdownV2(message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
 //       reply_parameters: { message_id: replyId },
 //     })
 //     .catch((err) => {
@@ -187,9 +187,10 @@ const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     const message = await generateReasoningCompletion(combinedText, chatId)
 
     return ctx
-      .replyWithMarkdownV2(message?.replace(/([-_\[\]()~>#+={}.!])/g, '\\$1'), {
-        reply_parameters: { message_id: replyId },
-      })
+      .replyWithMarkdownV2(
+        message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'),
+        { reply_parameters: { message_id: replyId } },
+      )
       .catch((err) => {
         console.error(err)
         return ctx.reply(message, { reply_parameters: { message_id: replyId } })
