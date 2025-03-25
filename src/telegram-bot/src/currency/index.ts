@@ -20,14 +20,9 @@ export interface CurrenciesResponse {
 const timeout = 5_000
 const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
   try {
-    const url = 'http://api.exchangeratesapi.io/v1/latest'
-    const params = new URLSearchParams({
-      access_key: process.env.EXCHANGE_RATE_API_KEY || 'set_your_token',
-      format: '1',
-      base: 'EUR',
-    })
+    const url = `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGE_RATE_API_KEY}/latest/EUR`
 
-    const response = await fetch(`${url}?${params}`, {
+    const response = await fetch(url, {
       signal: globalThis.AbortSignal.timeout(timeout),
     })
 
@@ -35,9 +30,9 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
       throw new Error(`ExchangeRate API error: ${response?.statusText}`)
     }
 
-    const { rates } = await response.json()
+    const { conversion_rates } = await response.json()
 
-    return { rates, provider: 'ExchangeRate' }
+    return { rates: conversion_rates, provider: 'ExchangeRate' }
   } catch (e) {
     console.error('ExchangeRate API error', e)
     const url = 'http://data.fixer.io/api/latest'
