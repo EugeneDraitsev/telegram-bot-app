@@ -27,11 +27,15 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
       base: 'EUR',
     })
 
-    const rates = await fetch(`${url}?${params}`, {
+    const response = await fetch(`${url}?${params}`, {
       signal: globalThis.AbortSignal.timeout(timeout),
     })
-      .then((x) => x.json())
-      .then((x) => x.rates)
+
+    if (!response?.ok) {
+      throw new Error(`ExchangeRate API error: ${response?.statusText}`)
+    }
+
+    const { rates } = await response.json()
 
     return { rates, provider: 'ExchangeRate' }
   } catch (e) {
@@ -43,11 +47,11 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
       base: 'EUR',
     })
 
-    const rates = await fetch(`${url}?${params}`, {
+    const response = await fetch(`${url}?${params}`, {
       signal: globalThis.AbortSignal.timeout(timeout),
     })
-      .then((x) => x.json())
-      .then((x) => x.rates)
+
+    const { rates } = await response.json()
 
     return { rates, provider: 'Fixer' }
   }
