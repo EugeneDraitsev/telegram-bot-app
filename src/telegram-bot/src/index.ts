@@ -13,7 +13,7 @@ import setupOpenAiCommands from './open-ai'
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
-import { isAiEnabledChat } from './utils'
+import { cleanGeminiMessage, isAiEnabledChat } from './utils'
 
 const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
   client: {
@@ -33,6 +33,7 @@ bot.use(async (ctx, next) => {
     const sentMessage = await originalReply(text, ...args)
 
     if (isAiEnabledChat(sentMessage.chat.id)) {
+      sentMessage.text = cleanGeminiMessage(sentMessage.text)
       saveMessage(sentMessage, sentMessage.chat.id).catch((error) =>
         console.error('saveHistory error: ', error),
       )
