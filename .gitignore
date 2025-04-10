@@ -35,3 +35,4 @@ config.ts
 .vscode
 package-lock.json
 .env
+scripts
