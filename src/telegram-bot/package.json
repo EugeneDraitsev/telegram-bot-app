@@ -11,8 +11,8 @@
     "@google/generative-ai": "^0.24.0",
     "@grammyjs/parse-mode": "^1.11.1",
     "@upstash/redis": "^1.34.7",
-    "grammy": "^1.35.1",
-    "openai": "^4.93.0"
+    "grammy": "^1.36.0",
+    "openai": "^4.94.0"
   },
   "devDependencies": {
     "telegram-typings": "5.0.0"
