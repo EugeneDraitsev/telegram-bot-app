@@ -2,9 +2,9 @@ import OpenAi from 'openai'
 
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Bot, Context } from 'grammy'
-// import type { ChatCompletionContentPart } from 'openai/resources'
+import type { ChatCompletionContentPart, ChatModel } from 'openai/resources'
 
-import { getCommandData } from '@tg-bot/common'
+import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
 import {
   DEFAULT_ERROR_MESSAGE,
   NOT_ALLOWED_ERROR,
@@ -41,79 +41,44 @@ const generateImage = async (prompt: string, chatId: string | number) => {
   return url
 }
 
-// const generateMultimodalCompletion = async (
-//   prompt: string,
-//   chatId: string | number,
-//   imagesData?: Buffer[],
-// ) => {
-//   try {
-//     if (!isAiEnabledChat(chatId)) {
-//       return NOT_ALLOWED_ERROR
-//     }
-//     if (!prompt && !imagesData?.length) {
-//       return PROMPT_MISSING_ERROR
-//     }
-//
-//     const content: ChatCompletionContentPart[] = [
-//       { type: 'text', text: prompt },
-//     ]
-//
-//     for (const image of imagesData ?? []) {
-//       content.push({
-//         type: 'image_url',
-//         image_url: {
-//           url: `data:image/jpeg;base64,${image.toString('base64')}`,
-//         },
-//       })
-//     }
-//
-//     const completion = await openai.chat.completions.create({
-//       model: 'gpt-4.1',
-//       messages: [
-//         {
-//           role: 'system',
-//           content: systemInstructions,
-//         },
-//         {
-//           role: 'user',
-//           content,
-//         },
-//       ],
-//       user: String(chatId),
-//     })
-//     const { message } = completion.choices[0]
-//
-//     if (!message?.content) {
-//       return DEFAULT_ERROR_MESSAGE
-//     }
-//
-//     return message.content
-//   } catch (error) {
-//     console.error('generateMultimodalCompletion error: ', error)
-//     return DEFAULT_ERROR_MESSAGE
-//   }
-// }
-
-const generateReasoningCompletion = async (
+const generateMultimodalCompletion = async (
   prompt: string,
   chatId: string | number,
+  model: ChatModel,
+  imagesData?: Buffer[],
 ) => {
   try {
     if (!isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
-    if (!prompt) {
+    if (!prompt && !imagesData?.length) {
       return PROMPT_MISSING_ERROR
     }
 
+    const content: ChatCompletionContentPart[] = [
+      { type: 'text', text: prompt },
+    ]
+
+    for (const image of imagesData ?? []) {
+      content.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:image/jpeg;base64,${image.toString('base64')}`,
+        },
+      })
+    }
+
     const completion = await openai.chat.completions.create({
-      model: 'o4-mini',
+      model,
       messages: [
         {
-          role: 'user',
+          role: 'system',
           content: systemInstructions,
         },
-        { role: 'user', content: prompt },
+        {
+          role: 'user',
+          content,
+        },
       ],
       user: String(chatId),
     })
@@ -125,33 +90,37 @@ const generateReasoningCompletion = async (
 
     return message.content
   } catch (error) {
-    console.error('generateReasoningCompletion error: ', error)
+    console.error('generateMultimodalCompletion error: ', error)
     return DEFAULT_ERROR_MESSAGE
   }
 }
 
-// const setupMultimodalCommands = async (ctx: ParseModeFlavor<Context>) => {
-//   const { combinedText, imagesData, chatId, replyId } =
-//     await getMultimodalCommandData(ctx)
-//
-//   const message = await generateMultimodalCompletion(
-//     combinedText,
-//     chatId,
-//     imagesData,
-//   )
-//
-//   return ctx
-//     .replyWithMarkdownV2(message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
-//       reply_parameters: { message_id: replyId },
-//     })
-//     .catch((err) => {
-//       console.error(err)
-//       return ctx.reply(message, { reply_parameters: { message_id: replyId } })
-//     })
-//     .catch((err) => {
-//       console.error(`Error (Open AI): ${err.message}`)
-//     })
-// }
+const setupMultimodalCommands = async (
+  ctx: ParseModeFlavor<Context>,
+  model: ChatModel = 'o4-mini',
+) => {
+  const { combinedText, imagesData, chatId, replyId } =
+    await getMultimodalCommandData(ctx)
+
+  const message = await generateMultimodalCompletion(
+    combinedText,
+    chatId,
+    model,
+    imagesData,
+  )
+
+  return ctx
+    .replyWithMarkdownV2(message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
+      reply_parameters: { message_id: replyId },
+    })
+    .catch((err) => {
+      console.error(err)
+      return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+    })
+    .catch((err) => {
+      console.error(`Error (Open AI): ${err.message}`)
+    })
+}
 
 const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
   bot.command('e', async (ctx) => {
@@ -171,34 +140,14 @@ const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     }
   })
 
-  // bot.on('message:photo', (ctx) => {
-  //   if (!ctx.message?.caption?.startsWith('/q')) {
-  //     return
-  //   }
-  //   return setupMultimodalCommands(ctx)
-  // })
-
-  // bot.command('q', setupMultimodalCommands)
-
-  bot.command('o', async (ctx) => {
-    const { combinedText, replyId } = getCommandData(ctx.message)
-    const chatId = ctx?.chat?.id ?? ''
-
-    const message = await generateReasoningCompletion(combinedText, chatId)
-
-    return ctx
-      .replyWithMarkdownV2(
-        message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'),
-        { reply_parameters: { message_id: replyId } },
-      )
-      .catch((err) => {
-        console.error(err)
-        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
-      })
-      .catch((err) => {
-        console.error(`Error (Open AI): ${err.message}`)
-      })
+  bot.on('message:photo', (ctx) => {
+    if (!ctx.message?.caption?.startsWith('/o')) {
+      return
+    }
+    return setupMultimodalCommands(ctx)
   })
+
+  bot.command('o', (ctx) => setupMultimodalCommands(ctx))
 }
 
 export default setupOpenAiCommands
