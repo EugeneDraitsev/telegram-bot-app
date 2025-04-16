@@ -19,10 +19,10 @@
     "deploy": "sls deploy"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.786.0",
-    "@aws-sdk/client-lambda": "^3.782.0",
-    "@aws-sdk/client-s3": "^3.782.0",
-    "@aws-sdk/lib-dynamodb": "^3.786.0",
+    "@aws-sdk/client-dynamodb": "^3.788.0",
+    "@aws-sdk/client-lambda": "^3.787.0",
+    "@aws-sdk/client-s3": "^3.787.0",
+    "@aws-sdk/lib-dynamodb": "^3.789.0",
     "sharp": "^0.34.1"
   },
   "devDependencies": {
@@ -30,7 +30,7 @@
     "@types/aws-lambda": "^8.10.149",
     "@types/jest": "^29.5.14",
     "esbuild": "^0.25.2",
-    "serverless": "^4.12.0",
+    "serverless": "^4.13.0",
     "serverless-esbuild": "^1.55.0",
     "serverless-offline": "^14.4.0",
     "typescript": "^5.8.3"

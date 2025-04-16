@@ -68,7 +68,7 @@ const generateImage = async (prompt: string, chatId: string | number) => {
 //     }
 //
 //     const completion = await openai.chat.completions.create({
-//       model: 'chatgpt-4o-latest',
+//       model: 'gpt-4.1',
 //       messages: [
 //         {
 //           role: 'system',
@@ -107,7 +107,7 @@ const generateReasoningCompletion = async (
     }
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
