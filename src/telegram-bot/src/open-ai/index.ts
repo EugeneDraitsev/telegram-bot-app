@@ -95,7 +95,7 @@ const generateMultimodalCompletion = async (
   }
 }
 
-const setupMultimodalCommands = async (
+export const setupMultimodalOpenAiCommands = async (
   ctx: ParseModeFlavor<Context>,
   model: ChatModel = 'o4-mini',
 ) => {
@@ -140,14 +140,7 @@ const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     }
   })
 
-  bot.on('message:photo', (ctx) => {
-    if (!ctx.message?.caption?.startsWith('/o')) {
-      return
-    }
-    return setupMultimodalCommands(ctx)
-  })
-
-  bot.command('o', (ctx) => setupMultimodalCommands(ctx))
+  bot.command('o', (ctx) => setupMultimodalOpenAiCommands(ctx))
 }
 
 export default setupOpenAiCommands

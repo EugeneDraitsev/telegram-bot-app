@@ -7,7 +7,9 @@ import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
 
-const setupMultimodalCommands = async (ctx: ParseModeFlavor<Context>) => {
+export const setupMultimodalGeminiCommands = async (
+  ctx: ParseModeFlavor<Context>,
+) => {
   const { combinedText, imagesData, chatId, replyId } =
     await getMultimodalCommandData(ctx)
 
@@ -63,8 +65,8 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     })
   })
 
-  bot.command('q', setupMultimodalCommands)
-  bot.command('qq', setupMultimodalCommands)
+  bot.command('q', setupMultimodalGeminiCommands)
+  bot.command('qq', setupMultimodalGeminiCommands)
 
   bot.command('ee', async (ctx) => {
     const { combinedText, imagesData, chatId, replyId } =
@@ -86,13 +88,6 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     return ctx.reply(text, {
       reply_parameters: { message_id: replyId },
     })
-  })
-
-  bot.on('message:photo', (ctx) => {
-    if (!ctx.message?.caption?.startsWith('/q')) {
-      return
-    }
-    return setupMultimodalCommands(ctx)
   })
 
   /*

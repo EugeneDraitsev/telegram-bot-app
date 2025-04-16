@@ -8,8 +8,8 @@ import type { Chat, Message } from 'telegram-typings'
 import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
 import setupCurrencyCommands from './currency'
 import setupExternalApisCommands from './external-apis'
-import setupGoogleCommands from './google'
-import setupOpenAiCommands from './open-ai'
+import setupGoogleCommands, { setupMultimodalGeminiCommands } from './google'
+import setupOpenAiCommands, { setupMultimodalOpenAiCommands } from './open-ai'
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
@@ -109,6 +109,17 @@ setupExternalApisCommands(bot)
 // /e <text> - generate image
 // /o <text> - generate chat completion with o3-mini
 setupOpenAiCommands(bot)
+
+bot.on('message:photo', (ctx) => {
+  if (ctx.message?.caption?.startsWith('/o')) {
+    return setupMultimodalGeminiCommands(ctx)
+  }
+  if (ctx.message?.caption?.startsWith('/q')) {
+    return setupMultimodalOpenAiCommands(ctx)
+  }
+
+  return
+})
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {
