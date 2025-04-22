@@ -1,8 +1,4 @@
-import {
-  GoogleGenerativeAI,
-  type ModelParams,
-  type Tool,
-} from '@google/generative-ai'
+import { type Content, GoogleGenAI, Modality } from '@google/genai'
 
 import { getHistory } from '../upstash'
 import {
@@ -15,7 +11,7 @@ import {
 } from '../utils'
 
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
-const genAI = new GoogleGenerativeAI(apiKey)
+const ai = new GoogleGenAI({ apiKey })
 
 export const generateMultimodalCompletion = async (
   prompt: string,
@@ -27,47 +23,44 @@ export const generateMultimodalCompletion = async (
       return NOT_ALLOWED_ERROR
     }
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      systemInstruction: geminiSystemInstructions,
-    })
+    const contents: Content[] = await getHistory(chatId)
 
-    const parts = []
+    // Add a placeholder for the first message if the first message is from the model
+    if (contents[0].role === 'model') {
+      contents?.unshift({ role: 'user', parts: [{ text: '' }] })
+    }
+
     for (const image of imagesData ?? []) {
-      parts.push({
-        inlineData: {
-          data: image.toString('base64'),
-          mimeType: 'image/jpeg',
-        },
+      contents.push({
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              data: image.toString('base64'),
+              mimeType: 'image/jpeg',
+            },
+          },
+        ],
       })
     }
 
-    const formattedHistory = await getHistory(chatId)
-    if (formattedHistory[0].role === 'model') {
-      formattedHistory?.unshift({ role: 'user', parts: [{ text: '' }] })
-    }
-
-    const chatSession = model.startChat({
-      history: formattedHistory,
-      generationConfig: {
-        temperature: 1,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-        responseMimeType: 'text/plain',
-      },
-      tools: [
-        {
-          googleSearch: {},
-        } as Tool,
+    contents.push({
+      role: 'user',
+      parts: [
+        { text: prompt || 'Выдай любой комментарий на твой вкус по ситуации' },
       ],
     })
 
-    const result = await chatSession.sendMessage([
-      ...parts,
-      { text: prompt || 'Выдай любой комментарий на твой вкус по ситуации' },
-    ])
-    const text = result.response.text()
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-preview-04-17',
+      config: {
+        systemInstruction: geminiSystemInstructions,
+        tools: [{ googleSearch: {} }],
+      },
+      contents,
+    })
+
+    const text = result.text
 
     if (!text) {
       return DEFAULT_ERROR_MESSAGE
@@ -94,44 +87,50 @@ export async function generateImage(
       return { text: PROMPT_MISSING_ERROR }
     }
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp-image-generation',
-      generationConfig: {
-        responseModalities: ['Text', 'Image'],
-      },
-    } as ModelParams)
-
-    const parts = []
+    const contents: Content[] = []
     for (const image of imagesData ?? []) {
-      parts.push({
-        inlineData: {
-          data: image.toString('base64'),
-          mimeType: 'image/jpeg',
-        },
+      contents.push({
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              data: image.toString('base64'),
+              mimeType: 'image/jpeg',
+            },
+          },
+        ],
       })
     }
 
-    const response = await model.generateContent([...parts, { text: prompt }])
-    const parsedResponse =
-      response.response.candidates?.[0].content?.parts?.reduce(
-        (acc, candidate) => {
-          if (candidate.text) {
-            acc.text += `${candidate.text}\n`
-          }
-          if (candidate.inlineData) {
-            const imageData = candidate.inlineData.data
-            acc.image = Buffer.from(imageData, 'base64')
-          }
-          return acc
-        },
-        { text: '' } as { text: string; image?: Buffer },
-      )
+    contents.push({ role: 'user', parts: [{ text: prompt }] })
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp-image-generation',
+      contents: contents,
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    })
+
+    const parsedResponse = response.candidates?.[0].content?.parts?.reduce(
+      (acc, candidate) => {
+        if (candidate.text) {
+          acc.text += `${candidate.text}\n`
+        }
+        if (candidate.inlineData?.data) {
+          const imageData = candidate.inlineData.data
+          acc.image = Buffer.from(imageData, 'base64')
+        }
+        return acc
+      },
+      { text: '' } as { text: string; image?: Buffer },
+    )
 
     if (!parsedResponse?.text && !parsedResponse?.image) {
       console.error(
         'Error empty gemini response:',
         parsedResponse,
-        response.response.candidates?.[0].content.parts,
+        response.candidates?.[0].content?.parts,
       )
       return { text: DEFAULT_ERROR_MESSAGE }
     }

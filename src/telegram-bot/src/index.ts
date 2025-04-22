@@ -82,13 +82,13 @@ bot.use(async (ctx, next) => {
 setupTextCommands(bot)
 
 // /g <text> - search random image in google search
-// /t <text> - translate text from detected language to russian / english (if source language is russian)
-// /tb <text> - translate text from detected language to belarusian
-// /tp <text> - translate text from detected language to polish
-// /ts <text> - translate text from detected language to swedish
-// /td <text> - translate text from detected language to deutsch
-// /tr <text> - translate text from detected language to russian
-// /te <text> - translate text from detected language to english
+// /t <text> - translate detected language to russian / english
+// /tb <text> - translate detected language to belarusian
+// /tp <text> - translate detected language to polish
+// /ts <text> - translate detected language to swedish
+// /td <text> - translate detected language to deutsch
+// /tr <text> - translate detected language to russian
+// /te <text> - translate detected language to english
 // /v <text> -  search random video in YouTube
 setupGoogleCommands(bot)
 
@@ -114,6 +114,7 @@ bot.on('message:photo', (ctx) => {
   if (ctx.message?.caption?.startsWith('/o')) {
     return setupMultimodalGeminiCommands(ctx)
   }
+
   if (ctx.message?.caption?.startsWith('/q')) {
     return setupMultimodalOpenAiCommands(ctx)
   }
