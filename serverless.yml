@@ -6,7 +6,7 @@ provider:
   stage: prod
   region: eu-central-1
   memorySize: 512
-  timeout: 60
+  timeout: 30
   runtime: nodejs22.x
   architecture: arm64
   environment:
@@ -19,6 +19,7 @@ provider:
 
 functions:
   telegram-bot:
+    timeout: 300
     handler: src/telegram-bot/index.default
     environment:
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
