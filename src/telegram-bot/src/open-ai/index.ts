@@ -2,7 +2,7 @@ import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import { type Bot, type Context, InputFile } from 'grammy'
 import type { ChatModel } from 'openai/resources'
 
-import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
+import { getMultimodalCommandData } from '@tg-bot/common'
 import { DEFAULT_ERROR_MESSAGE } from '../utils'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
 
@@ -35,11 +35,11 @@ export const setupMultimodalOpenAiCommands = async (
 
 const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
   bot.command('e', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    const chatId = ctx?.chat?.id ?? ''
+    const { combinedText, imagesData, chatId, replyId } =
+      await getMultimodalCommandData(ctx)
 
     try {
-      const image = await generateImage(text, chatId)
+      const image = await generateImage(combinedText, chatId, imagesData)
 
       return ctx.replyWithPhoto(
         typeof image === 'string' ? image : new InputFile(image),

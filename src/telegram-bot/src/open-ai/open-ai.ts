@@ -1,5 +1,6 @@
 import OpenAi from 'openai'
 import type { ChatCompletionContentPart, ChatModel } from 'openai/resources'
+import { type Uploadable, toFile } from 'openai/uploads'
 
 import {
   DEFAULT_ERROR_MESSAGE,
@@ -16,6 +17,7 @@ const openAi = new OpenAi({
 export const generateImage = async (
   prompt: string,
   chatId: string | number,
+  imagesData?: Buffer[],
 ) => {
   if (!isAiEnabledChat(chatId)) {
     throw new Error(NOT_ALLOWED_ERROR)
@@ -24,19 +26,36 @@ export const generateImage = async (
     throw new Error(PROMPT_MISSING_ERROR)
   }
 
-  const img = await openAi.images.generate({
-    model: 'gpt-image-1',
-    prompt,
-    n: 1,
-    size: '1024x1024',
-  })
+  let response: OpenAi.Images.ImagesResponse
 
-  if (img.data?.[0].b64_json) {
-    return Buffer.from(img.data?.[0].b64_json || '', 'base64')
+  if (imagesData?.length) {
+    const image: Uploadable[] = []
+    for (const imageData of imagesData) {
+      image.push(await toFile(imageData, 'image.jpg', { type: 'image/jpeg' }))
+    }
+
+    response = await openAi.images.edit({
+      prompt,
+      model: 'gpt-image-1',
+      image,
+      n: 1,
+      size: '1024x1024',
+    })
+  } else {
+    response = await openAi.images.generate({
+      prompt,
+      model: 'gpt-image-1',
+      n: 1,
+      size: '1024x1024',
+    })
   }
 
-  if (img.data?.[0].url) {
-    return img.data?.[0].url
+  if (response.data?.[0].b64_json) {
+    return Buffer.from(response.data?.[0].b64_json || '', 'base64')
+  }
+
+  if (response.data?.[0].url) {
+    return response.data?.[0].url
   }
 
   throw new Error(DEFAULT_ERROR_MESSAGE)
