@@ -1,7 +1,7 @@
 import OpenAi from 'openai'
 
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
-import type { Bot, Context } from 'grammy'
+import { type Bot, type Context, InputFile } from 'grammy'
 import type { ChatCompletionContentPart, ChatModel } from 'openai/resources'
 
 import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
@@ -25,20 +25,18 @@ const generateImage = async (prompt: string, chatId: string | number) => {
     throw new Error(PROMPT_MISSING_ERROR)
   }
 
-  const response = await openai.images.generate({
-    model: 'dall-e-3',
+  const img = await openai.images.generate({
+    model: 'gpt-image-1',
     prompt,
     n: 1,
     size: '1024x1024',
   })
 
-  const { url } = response.data[0]
-
-  if (!url) {
+  if (!img.data?.[0].b64_json) {
     throw new Error(DEFAULT_ERROR_MESSAGE)
   }
 
-  return url
+  return Buffer.from(img.data?.[0].b64_json || '', 'base64')
 }
 
 const generateMultimodalCompletion = async (
@@ -130,7 +128,7 @@ const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     try {
       const url = await generateImage(text, chatId)
 
-      return ctx.replyWithPhoto(url, {
+      return ctx.replyWithPhoto(new InputFile(url), {
         reply_parameters: { message_id: replyId },
       })
     } catch (error) {

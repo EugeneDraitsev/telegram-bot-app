@@ -29,7 +29,7 @@
     "@biomejs/biome": "^1.9.4",
     "@types/aws-lambda": "^8.10.149",
     "@types/jest": "^29.5.14",
-    "esbuild": "^0.25.2",
+    "esbuild": "^0.25.3",
     "serverless": "^4.14.1",
     "serverless-esbuild": "^1.55.0",
     "serverless-offline": "^14.4.0",
