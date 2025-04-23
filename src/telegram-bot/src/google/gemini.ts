@@ -137,7 +137,7 @@ export async function generateImage(
         parsedResponse,
         response.candidates?.[0].content?.parts,
       )
-      return { text: DEFAULT_ERROR_MESSAGE }
+      return { text: DEFAULT_ERROR_MESSAGE, image: null }
     }
 
     return parsedResponse

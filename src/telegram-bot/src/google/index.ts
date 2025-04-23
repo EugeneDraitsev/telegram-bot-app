@@ -72,20 +72,16 @@ const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
     const { combinedText, imagesData, chatId, replyId } =
       await getMultimodalCommandData(ctx)
 
-    const { image, text } = await generateImage(
-      combinedText,
-      chatId,
-      imagesData,
-    )
+    const response = await generateImage(combinedText, chatId, imagesData)
 
-    if (image) {
-      return ctx.replyWithPhoto(new InputFile(image), {
-        caption: text,
+    if (response.image) {
+      return ctx.replyWithPhoto(new InputFile(response.image), {
+        caption: response.text,
         reply_parameters: { message_id: replyId },
       })
     }
 
-    return ctx.reply(text, {
+    return ctx.reply(response.text, {
       reply_parameters: { message_id: replyId },
     })
   })
