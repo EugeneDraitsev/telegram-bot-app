@@ -6,7 +6,7 @@ provider:
   stage: prod
   region: eu-central-1
   memorySize: 512
-  timeout: 30
+  timeout: 60
   runtime: nodejs22.x
   architecture: arm64
   environment:
@@ -19,7 +19,7 @@ provider:
 
 functions:
   telegram-bot:
-    handler: src/telegram-bot/src/index.default
+    handler: src/telegram-bot/index.default
     environment:
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
       GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
@@ -39,7 +39,7 @@ functions:
           method: post
 
   currency-scheduler:
-    handler: src/telegram-bot/src/currency-scheduler.default
+    handler: src/telegram-bot/currency-scheduler.default
     environment:
       TOKEN: ${env:TOKEN}
       FIXER_API_KEY: ${env:FIXER_API_KEY}
@@ -51,7 +51,7 @@ functions:
           rate: cron(0 9,11,13,15,17 ? * MON-FRI *)
 
   redis-scheduler:
-    handler: src/telegram-bot/src/redis-scheduler.default
+    handler: src/telegram-bot/redis-scheduler.default
     environment:
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
@@ -62,7 +62,7 @@ functions:
           rate: rate(1 hour)
 
   sharp-statistics:
-    handler: src/sharp-statistics/src/index.default
+    handler: src/sharp-statistics/index.default
     environment:
       FONTCONFIG_PATH: './fonts'
     memorySize: 1536
