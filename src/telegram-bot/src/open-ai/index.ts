@@ -1,5 +1,5 @@
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
-import { InputFile, type Bot, type Context } from 'grammy'
+import { type Bot, type Context, InputFile } from 'grammy'
 import type { ChatModel } from 'openai/resources'
 
 import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'

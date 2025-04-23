@@ -13,7 +13,10 @@ const openai = new OpenAi({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-export const generateImage = async (prompt: string, chatId: string | number) => {
+export const generateImage = async (
+  prompt: string,
+  chatId: string | number,
+) => {
   if (!isAiEnabledChat(chatId)) {
     throw new Error(NOT_ALLOWED_ERROR)
   }

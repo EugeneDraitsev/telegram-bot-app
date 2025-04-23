@@ -109,7 +109,8 @@ export async function generateImage(
     contents.push({ role: 'user', parts: [{ text: prompt }] })
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp-image-generation',
+      // model: 'gemini-2.0-flash-exp-image-generation',
+      model: 'imagen-3.0-generate-002',
       contents: contents,
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
@@ -142,6 +143,6 @@ export async function generateImage(
     return parsedResponse
   } catch (error) {
     console.error('Error generating gemini image:', error)
-    return { text: DEFAULT_ERROR_MESSAGE }
+    return { text: error.mesage || DEFAULT_ERROR_MESSAGE }
   }
 }
