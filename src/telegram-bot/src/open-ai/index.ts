@@ -26,7 +26,7 @@ const generateImage = async (prompt: string, chatId: string | number) => {
   }
 
   const img = await openai.images.generate({
-    model: 'gpt-image-1',
+    model: 'dall-e-3',
     prompt,
     n: 1,
     size: '1024x1024',
