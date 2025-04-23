@@ -36,6 +36,7 @@ export const generateImage = async (
 
     response = await openAi.images.edit({
       prompt,
+      quality: 'low',
       model: 'gpt-image-1',
       image,
       n: 1,
@@ -44,6 +45,7 @@ export const generateImage = async (
   } else {
     response = await openAi.images.generate({
       prompt,
+      quality: 'low',
       model: 'gpt-image-1',
       n: 1,
       size: '1024x1024',
