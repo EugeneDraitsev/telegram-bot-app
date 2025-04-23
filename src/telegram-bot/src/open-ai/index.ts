@@ -132,6 +132,7 @@ const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
         reply_parameters: { message_id: replyId },
       })
     } catch (error) {
+      console.error(`Generate Image error (Open AI): ${error.message}`)
       return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
         reply_parameters: { message_id: replyId },
       })
