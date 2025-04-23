@@ -9,7 +9,7 @@ import {
   systemInstructions,
 } from '../utils'
 
-const openai = new OpenAi({
+const openAi = new OpenAi({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
@@ -24,8 +24,8 @@ export const generateImage = async (
     throw new Error(PROMPT_MISSING_ERROR)
   }
 
-  const img = await openai.images.generate({
-    model: 'dall-e-3',
+  const img = await openAi.images.generate({
+    model: 'gpt-image-1',
     prompt,
     n: 1,
     size: '1024x1024',
@@ -69,7 +69,7 @@ export const generateMultimodalCompletion = async (
       })
     }
 
-    const completion = await openai.chat.completions.create({
+    const completion = await openAi.chat.completions.create({
       model,
       messages: [
         {

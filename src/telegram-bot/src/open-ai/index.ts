@@ -4,7 +4,7 @@ import type { ChatModel } from 'openai/resources'
 
 import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
 import { DEFAULT_ERROR_MESSAGE } from '../utils'
-import { generateImage, generateMultimodalCompletion } from './openai'
+import { generateImage, generateMultimodalCompletion } from './open-ai'
 
 export const setupMultimodalOpenAiCommands = async (
   ctx: ParseModeFlavor<Context>,
