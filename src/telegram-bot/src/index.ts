@@ -24,9 +24,7 @@ const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
 
 bot.use(hydrateReply)
 
-const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
-  timeoutMilliseconds: 60_000,
-})
+const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 
 bot.use(async (ctx, next) => {
   const originalReply = ctx.reply.bind(ctx)
