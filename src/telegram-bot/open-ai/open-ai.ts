@@ -33,7 +33,7 @@ export const generateImage = async (
 
   let response: OpenAi.Images.ImagesResponse
 
-  if (imagesData?.length) {
+  if (imagesData?.length && model === 'gpt-image-1') {
     const image: Uploadable[] = []
     for (const imageData of imagesData) {
       image.push(await toFile(imageData, 'image.jpg', { type: 'image/jpeg' }))
@@ -41,7 +41,7 @@ export const generateImage = async (
 
     response = await openAi.images.edit({
       prompt,
-      quality: 'standard',
+      quality: 'medium',
       model,
       image,
       n: 1,
@@ -50,7 +50,7 @@ export const generateImage = async (
   } else {
     response = await openAi.images.generate({
       prompt,
-      quality: 'standard',
+      quality: model === 'gpt-image-1' ? 'medium' : 'standard',
       model,
       n: 1,
       size: '1024x1024',
