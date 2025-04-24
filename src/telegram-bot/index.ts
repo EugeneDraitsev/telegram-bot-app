@@ -9,7 +9,10 @@ import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
 import setupCurrencyCommands from './currency'
 import setupExternalApisCommands from './external-apis'
 import setupGoogleCommands, { setupMultimodalGeminiCommands } from './google'
-import setupOpenAiCommands, { setupMultimodalOpenAiCommands } from './open-ai'
+import setupOpenAiCommands, {
+  setupImageGenerationOpenAiCommands,
+  setupMultimodalOpenAiCommands,
+} from './open-ai'
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
@@ -117,6 +120,14 @@ bot.on('message:photo', (ctx) => {
 
   if (ctx.message?.caption?.startsWith('/q')) {
     return setupMultimodalOpenAiCommands(ctx)
+  }
+
+  if (ctx.message?.caption?.startsWith('/e')) {
+    return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3')
+  }
+
+  if (ctx.message?.caption?.startsWith('/ee')) {
+    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1')
   }
 
   return

@@ -1,5 +1,9 @@
 import OpenAi from 'openai'
-import type { ChatCompletionContentPart, ChatModel } from 'openai/resources'
+import type {
+  ChatCompletionContentPart,
+  ChatModel,
+  ImageModel,
+} from 'openai/resources'
 import { type Uploadable, toFile } from 'openai/uploads'
 
 import {
@@ -17,6 +21,7 @@ const openAi = new OpenAi({
 export const generateImage = async (
   prompt: string,
   chatId: string | number,
+  model: ImageModel,
   imagesData?: Buffer[],
 ) => {
   if (!isAiEnabledChat(chatId)) {
@@ -36,8 +41,8 @@ export const generateImage = async (
 
     response = await openAi.images.edit({
       prompt,
-      quality: 'low',
-      model: 'gpt-image-1',
+      quality: 'standard',
+      model,
       image,
       n: 1,
       size: '1024x1024',
@@ -45,8 +50,8 @@ export const generateImage = async (
   } else {
     response = await openAi.images.generate({
       prompt,
-      quality: 'low',
-      model: 'gpt-image-1',
+      quality: 'standard',
+      model,
       n: 1,
       size: '1024x1024',
     })
