@@ -122,12 +122,12 @@ bot.on('message:photo', (ctx) => {
     return setupMultimodalOpenAiCommands(ctx)
   }
 
-  if (ctx.message?.caption?.startsWith('/e')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3')
-  }
-
   if (ctx.message?.caption?.startsWith('/ee')) {
     return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1')
+  }
+
+  if (ctx.message?.caption?.startsWith('/e')) {
+    return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3')
   }
 
   return
