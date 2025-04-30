@@ -140,7 +140,10 @@ const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
       context,
     )
 
-    return { body: JSON.stringify({ body: event.body ?? '' }), statusCode: 200 }
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ body: event.body ?? '' }),
+    }
   } catch (e) {
     console.error('Bot handler error: ', e)
     return {
