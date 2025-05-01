@@ -21,7 +21,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.799.0",
     "@aws-sdk/client-lambda": "^3.799.0",
-    "@aws-sdk/client-s3": "^3.799.0",
+    "@aws-sdk/client-s3": "^3.800.0",
     "@aws-sdk/lib-dynamodb": "^3.799.0",
     "sharp": "^0.34.1"
   },
@@ -30,7 +30,7 @@
     "@types/aws-lambda": "^8.10.149",
     "@types/jest": "^29.5.14",
     "esbuild": "^0.25.3",
-    "serverless": "^4.14.1",
+    "serverless": "^4.14.2",
     "serverless-esbuild": "^1.55.0",
     "serverless-offline": "^14.4.0",
     "typescript": "^5.8.3"
