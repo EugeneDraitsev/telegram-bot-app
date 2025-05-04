@@ -64,6 +64,9 @@ functions:
 
   sharp-statistics:
     handler: src/sharp-statistics/index.default
+    package:
+      patterns:
+        - fonts/**
     environment:
       FONTCONFIG_PATH: './fonts'
     memorySize: 1536
@@ -78,8 +81,6 @@ plugins:
 
 package:
   individually: true
-  patterns:
-    - fonts/**
 
 build:
   esbuild: false

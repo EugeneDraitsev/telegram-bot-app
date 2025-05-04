@@ -4,12 +4,7 @@ import { Bot, type Context } from 'grammy'
 
 import { getCurrencyMessage } from './currency'
 
-const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
-  client: {
-    // We accept the drawback of webhook replies for typing status.
-    canUseWebhookReply: (method) => method === 'sendChatAction',
-  },
-})
+const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '')
 
 bot.use(hydrateReply)
 

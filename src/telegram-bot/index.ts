@@ -18,12 +18,7 @@ import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
 import { cleanGeminiMessage, isAiEnabledChat } from './utils'
 
-const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '', {
-  client: {
-    // We accept the drawback of webhook replies for typing status.
-    canUseWebhookReply: (method) => method === 'sendChatAction',
-  },
-})
+const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '')
 
 bot.use(hydrateReply)
 
