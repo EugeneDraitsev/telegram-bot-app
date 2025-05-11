@@ -54,10 +54,6 @@ export const generateMultimodalCompletion = async (
     const result = await ai.models.generateContent({
       model: 'gemini-2.5-flash-preview-04-17',
       config: {
-        temperature: 1,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
         systemInstruction: geminiSystemInstructions,
         tools: [{ googleSearch: {} }],
       },
