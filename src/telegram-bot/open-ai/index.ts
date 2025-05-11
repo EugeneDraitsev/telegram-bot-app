@@ -45,9 +45,7 @@ export const setupImageGenerationOpenAiCommands = async (
 
     return ctx.replyWithPhoto(
       typeof image === 'string' ? image : new InputFile(image),
-      {
-        reply_parameters: { message_id: replyId },
-      },
+      { reply_parameters: { message_id: replyId } },
     )
   } catch (error) {
     console.error(`Generate Image error (Open AI): ${error.message}`)
