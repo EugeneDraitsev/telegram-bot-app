@@ -1,14 +1,9 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es6",
-    "lib": ["ES2021.String", "es2018", "es6", "dom"],
+    "target": "ES2024",
     "moduleResolution": "node",
     "skipLibCheck": true,
     "rootDir": "./",
-    "outDir": "./dist",
-    "sourceMap": true,
-    "allowJs": true,
     "noImplicitAny": true,
     "noUnusedLocals": true,
     "noImplicitThis": true,
@@ -18,7 +13,5 @@
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
     "jsx": "react-jsx"
-  },
-  "exclude": ["node_modules", "build", "webpack"],
-  "types": ["typePatches"]
+  }
 }
