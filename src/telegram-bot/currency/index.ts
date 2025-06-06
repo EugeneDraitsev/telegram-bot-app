@@ -1,5 +1,4 @@
-import type { ParseModeFlavor } from '@grammyjs/parse-mode'
-import type { Bot, Context } from 'grammy'
+import type { Bot } from 'grammy'
 
 import { getCryptoCurrency } from './crypto-currency'
 import { getMainCurrencies } from './main-currency'
@@ -71,10 +70,10 @@ export const getCurrencyMessage = async () => {
   return result
 }
 
-const setupCurrencyCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+const setupCurrencyCommands = (bot: Bot) => {
   bot.command('c', async (ctx) => {
     const message = await getCurrencyMessage()
-    return ctx.replyWithHTML(message)
+    return ctx.reply(message, { parse_mode: 'HTML' })
   })
 }
 

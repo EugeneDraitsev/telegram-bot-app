@@ -1,7 +1,5 @@
-import { hydrateReply } from '@grammyjs/parse-mode'
-import { Bot, type Context, webhookCallback } from 'grammy'
+import { Bot, webhookCallback } from 'grammy'
 
-import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Chat, Message } from 'telegram-typings'
 
@@ -18,9 +16,7 @@ import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
 import { cleanGeminiMessage, isAiEnabledChat } from './utils'
 
-const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '')
-
-bot.use(hydrateReply)
+const bot = new Bot(process.env.TOKEN || '')
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 

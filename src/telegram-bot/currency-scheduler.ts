@@ -1,12 +1,10 @@
-import { type ParseModeFlavor, hydrateReply } from '@grammyjs/parse-mode'
+import { Bot } from 'grammy'
+
 import type { APIGatewayProxyHandler } from 'aws-lambda'
-import { Bot, type Context } from 'grammy'
 
 import { getCurrencyMessage } from './currency'
 
-const bot = new Bot<ParseModeFlavor<Context>>(process.env.TOKEN || '')
-
-bot.use(hydrateReply)
+const bot = new Bot(process.env.TOKEN || '')
 
 const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
   try {

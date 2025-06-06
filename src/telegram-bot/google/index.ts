@@ -1,4 +1,3 @@
-import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import { type Bot, type Context, InputFile } from 'grammy'
 
 import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
@@ -7,9 +6,7 @@ import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
 
-export const setupMultimodalGeminiCommands = async (
-  ctx: ParseModeFlavor<Context>,
-) => {
+export const setupMultimodalGeminiCommands = async (ctx: Context) => {
   const { combinedText, imagesData, chatId, replyId } =
     await getMultimodalCommandData(ctx)
 
@@ -20,8 +17,9 @@ export const setupMultimodalGeminiCommands = async (
   )
 
   return ctx
-    .replyWithMarkdownV2(message.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
+    .reply(message.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
       reply_parameters: { message_id: replyId },
+      parse_mode: 'MarkdownV2',
     })
     .catch((err) => {
       console.error(err)
@@ -32,7 +30,7 @@ export const setupMultimodalGeminiCommands = async (
     })
 }
 
-const setupGoogleCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+const setupGoogleCommands = (bot: Bot) => {
   bot.command('g', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     try {

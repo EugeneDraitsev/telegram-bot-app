@@ -1,4 +1,3 @@
-import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Context } from 'grammy'
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
@@ -49,9 +48,7 @@ export const getCommandData = (message?: Message) => {
   return { text, sticker, combinedText, images, replyId }
 }
 
-export const getMultimodalCommandData = async (
-  ctx: ParseModeFlavor<Context>,
-) => {
+export const getMultimodalCommandData = async (ctx: Context) => {
   const { combinedText, images, replyId } = getCommandData(
     ctx.message as Message,
   )

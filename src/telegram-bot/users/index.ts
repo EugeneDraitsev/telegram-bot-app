@@ -1,7 +1,6 @@
 import { InputFile } from 'grammy'
 
-import type { ParseModeFlavor } from '@grammyjs/parse-mode'
-import type { Bot, Context } from 'grammy'
+import type { Bot } from 'grammy'
 
 import {
   getChatName,
@@ -11,7 +10,7 @@ import {
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 
-const setupUsersCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+const setupUsersCommands = (bot: Bot) => {
   bot.command('z', async (ctx) =>
     ctx.reply(await getFormattedChatStatistics(ctx?.chat?.id ?? '')),
   )
@@ -34,10 +33,11 @@ const setupUsersCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
       })
     }
 
-    return ctx.replyWithHTML(
+    return ctx.reply(
       `${chatName} chat statistics: https://telegram-bot-ui.vercel.app/chat/${chatId}`,
       {
         reply_parameters: { message_id: replyId },
+        parse_mode: 'HTML',
       },
     )
   })

@@ -1,4 +1,3 @@
-import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import { type Bot, type Context, InputFile } from 'grammy'
 import type { ChatModel, ImageModel } from 'openai/resources'
 
@@ -7,7 +6,7 @@ import { DEFAULT_ERROR_MESSAGE } from '../utils'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
 
 export const setupMultimodalOpenAiCommands = async (
-  ctx: ParseModeFlavor<Context>,
+  ctx: Context,
   model: ChatModel = 'o4-mini',
 ) => {
   const { combinedText, imagesData, chatId, replyId } =
@@ -21,8 +20,9 @@ export const setupMultimodalOpenAiCommands = async (
   )
 
   return ctx
-    .replyWithMarkdownV2(message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
+    .reply(message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
       reply_parameters: { message_id: replyId },
+      parse_mode: 'MarkdownV2',
     })
     .catch((err) => {
       console.error(err)
@@ -34,7 +34,7 @@ export const setupMultimodalOpenAiCommands = async (
 }
 
 export const setupImageGenerationOpenAiCommands = async (
-  ctx: ParseModeFlavor<Context>,
+  ctx: Context,
   model: ImageModel = 'gpt-image-1',
 ) => {
   const { combinedText, imagesData, chatId, replyId } =
@@ -55,7 +55,7 @@ export const setupImageGenerationOpenAiCommands = async (
   }
 }
 
-const setupOpenAiCommands = (bot: Bot<ParseModeFlavor<Context>>) => {
+const setupOpenAiCommands = (bot: Bot) => {
   bot.command('e', (ctx) => setupImageGenerationOpenAiCommands(ctx, 'dall-e-3'))
   bot.command('ee', (ctx) => setupImageGenerationOpenAiCommands(ctx))
 
