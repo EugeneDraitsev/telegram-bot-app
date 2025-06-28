@@ -1,4 +1,5 @@
 import { type Bot, type Context, InputFile } from 'grammy'
+
 import type { ChatModel, ImageModel } from 'openai/resources'
 
 import { getMultimodalCommandData } from '@tg-bot/common'
@@ -20,7 +21,7 @@ export const setupMultimodalOpenAiCommands = async (
   )
 
   return ctx
-    .reply(message?.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
+    .reply(message?.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
       reply_parameters: { message_id: replyId },
       parse_mode: 'MarkdownV2',
     })

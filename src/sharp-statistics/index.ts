@@ -1,5 +1,6 @@
-import type { APIGatewayProxyHandler } from 'aws-lambda'
 import sharp from 'sharp'
+
+import type { APIGatewayProxyHandler } from 'aws-lambda'
 
 import { get24hChatStats, sanitizeSvg } from '@tg-bot/common'
 import { getDailyUsersBarsSvg } from './daily-users-bars.component'

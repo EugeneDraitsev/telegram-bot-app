@@ -2,12 +2,12 @@ import { type Content, GoogleGenAI, Modality } from '@google/genai'
 
 import { getHistory } from '../upstash'
 import {
-  DEFAULT_ERROR_MESSAGE,
-  NOT_ALLOWED_ERROR,
-  PROMPT_MISSING_ERROR,
   cleanGeminiMessage,
+  DEFAULT_ERROR_MESSAGE,
   geminiSystemInstructions,
   isAiEnabledChat,
+  NOT_ALLOWED_ERROR,
+  PROMPT_MISSING_ERROR,
 } from '../utils'
 
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'

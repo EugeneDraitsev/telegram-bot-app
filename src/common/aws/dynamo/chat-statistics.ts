@@ -33,7 +33,7 @@ export const getUsersList = async (
         .join(' ')
         .concat('\n') + query
     )
-  } catch (e) {
+  } catch (_e) {
     return 'Error while fetching users'
   }
 }

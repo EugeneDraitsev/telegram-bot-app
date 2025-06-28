@@ -2,6 +2,7 @@ import { tint } from 'polished'
 import ReactDOMServer from 'react-dom/server'
 import { Bar, BarChart, Cell, LabelList, XAxis, YAxis } from 'recharts'
 import styled from 'styled-components'
+
 import type { User } from 'telegram-typings'
 
 import { getUserName } from '@tg-bot/common/utils'

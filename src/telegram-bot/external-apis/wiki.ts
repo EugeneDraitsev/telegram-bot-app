@@ -11,7 +11,7 @@ export const searchWiki = async (query = '') => {
     const response = await fetch(url)
     const result = await response.json()
     return result[3][0] || `Failed to find article for term: ${query}`
-  } catch (e) {
+  } catch (_e) {
     return 'Wiki error'
   }
 }

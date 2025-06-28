@@ -20,11 +20,7 @@ const setupUsersCommands = (bot: Bot) => {
     const chatName = getChatName(ctx?.chat)
     const chatId = ctx?.chat?.id ?? ''
 
-    const { message, image } = await getDailyStatistics(
-      replyId,
-      chatId,
-      chatName,
-    )
+    const { message, image } = await getDailyStatistics(chatId, chatName)
 
     if (image) {
       return ctx.replyWithPhoto(new InputFile(image, 'stats.png'), {

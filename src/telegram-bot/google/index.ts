@@ -17,7 +17,7 @@ export const setupMultimodalGeminiCommands = async (ctx: Context) => {
   )
 
   return ctx
-    .reply(message.replace(/([\\-_\[\]()~>#+={}.!])/g, '\\$1'), {
+    .reply(message.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
       reply_parameters: { message_id: replyId },
       parse_mode: 'MarkdownV2',
     })

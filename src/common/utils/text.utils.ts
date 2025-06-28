@@ -13,7 +13,7 @@ type DedentInput = string | TemplateStringsArray
 export const dedent = (callSite: DedentInput, ...args: string[]) => {
   const format = (str: string): string => {
     let size = -1
-    return str.replace(/\n(\s+)/g, (m, m1) => {
+    return str.replace(/\n(\s+)/g, (_m, m1) => {
       if (size < 0) {
         size = m1.replace(/\t/g, '    ').length
       }

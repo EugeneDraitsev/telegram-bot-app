@@ -4,7 +4,6 @@ const FRONTEND_BASE_URL = 'https://telegram-bot-ui.vercel.app'
 const SHARP_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-statistics`
 
 export const getDailyStatistics = async (
-  replyId: number,
   chatId: string | number,
   chatName: string,
 ) => {
@@ -30,7 +29,7 @@ export const getDailyStatistics = async (
       image: imageBuffer,
       message: statisticsMessage,
     }
-  } catch (e) {
+  } catch (_e) {
     return {
       image: null,
       message: statisticsMessage,

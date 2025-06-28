@@ -7,7 +7,7 @@ export const puntoSwitcher = (text: string): string => {
   const isRussianText = hasRussiansLetters(text)
   return text
     .split('')
-    .map((char, index) =>
+    .map((char) =>
       isRussianText
         ? englishLayout[russianLayout.indexOf(char)] || char
         : russianLayout[englishLayout.indexOf(char)] || char,

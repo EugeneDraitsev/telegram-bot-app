@@ -1,16 +1,17 @@
 import OpenAi from 'openai'
+import { toFile, type Uploadable } from 'openai/uploads'
+
 import type {
   ChatCompletionContentPart,
   ChatModel,
   ImageModel,
 } from 'openai/resources'
-import { type Uploadable, toFile } from 'openai/uploads'
 
 import {
   DEFAULT_ERROR_MESSAGE,
+  isAiEnabledChat,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
-  isAiEnabledChat,
   systemInstructions,
 } from '../utils'
 

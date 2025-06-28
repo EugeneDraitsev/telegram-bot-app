@@ -95,7 +95,7 @@ export const getWeather = async (location: string) => {
               \nСегодня: ${dayTempHigh} / ${dayTempLow}, ${dayDescription} ${dayIcon}\
               \nЗавтра: ${nextDayTempHigh} / ${nextDayTempLow}, ${nextDayDescription} ${nextDayIcon}\
               \nПослезавтра: ${nextNextDayTempHigh} / ${nextNextDayTempLow}, ${nextNextDayDescription} ${nextNextDayIcon}`
-  } catch (e) {
+  } catch (_e) {
     return 'Неверно выбран населенный пункт'
   }
 }

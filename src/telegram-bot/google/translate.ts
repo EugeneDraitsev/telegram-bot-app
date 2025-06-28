@@ -37,7 +37,7 @@ export const translate = async (
     })
       .then((x) => x.json())
       .then((x) => unEscape(x.data.translations?.[0]?.translatedText))
-  } catch (e) {
+  } catch (_e) {
     return 'Error from translation service'
   }
 }

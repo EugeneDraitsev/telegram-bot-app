@@ -29,7 +29,7 @@ export async function searchYoutube(query: string): Promise<string> {
       return `${RESULT_PREFIX}${sample(videoIds)}`
     }
     return NOT_FOUND_MESSAGE
-  } catch (e) {
+  } catch (_e) {
     return NOT_FOUND_MESSAGE
   }
 }
