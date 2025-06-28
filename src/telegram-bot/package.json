@@ -8,10 +8,10 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@google/genai": "^1.4.0",
+    "@google/genai": "^1.7.0",
     "@upstash/redis": "^1.35.0",
     "grammy": "^1.36.3",
-    "openai": "^5.3.0"
+    "openai": "^5.8.2"
   },
   "devDependencies": {
     "telegram-typings": "5.0.0"
