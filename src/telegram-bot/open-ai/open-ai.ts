@@ -1,6 +1,5 @@
 import OpenAi from 'openai'
 import { toFile, type Uploadable } from 'openai/uploads'
-
 import type {
   ChatCompletionContentPart,
   ChatModel,

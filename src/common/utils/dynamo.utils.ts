@@ -4,7 +4,6 @@ import {
   PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb'
-
 import type { PutCommandInput, QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 
 const client = new DynamoDBClient({ region: process.env.region })

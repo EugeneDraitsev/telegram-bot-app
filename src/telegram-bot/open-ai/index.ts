@@ -1,5 +1,4 @@
 import { type Bot, type Context, InputFile } from 'grammy'
-
 import type { ChatModel, ImageModel } from 'openai/resources'
 
 import { getMultimodalCommandData } from '@tg-bot/common'

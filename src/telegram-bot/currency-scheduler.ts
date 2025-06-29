@@ -1,5 +1,4 @@
 import { Bot } from 'grammy'
-
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
 import { getCurrencyMessage } from './currency'

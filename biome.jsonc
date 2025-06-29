@@ -21,10 +21,8 @@
           "options": {
             "groups": [
               { "type": false, "source": [":BUN:", ":NODE:", ":PACKAGE:", ":PACKAGE_WITH_PROTOCOL:", "!@tg-bot/**"] },
-              ":BLANK_LINE:",
               { "type": true, "source": [":BUN:", ":NODE:", ":PACKAGE:", ":PACKAGE_WITH_PROTOCOL:", "!@tg-bot/**"] },
-              ":BLANK_LINE:",
-              ["@tg-bot/**"]
+              ":BLANK_LINE:"
             ]
           }
         }
