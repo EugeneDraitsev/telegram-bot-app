@@ -7,7 +7,7 @@ import { generateImage, generateMultimodalCompletion } from './open-ai'
 
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
-  model: ChatModel = 'o4-mini',
+  model: ChatModel = 'gpt-5-mini',
 ) => {
   const { combinedText, imagesData, chatId, replyId } =
     await getMultimodalCommandData(ctx)
