@@ -41,7 +41,7 @@ export async function generateImageDat1co(
         true_cfg_scale: options.true_cfg_scale ?? 4.0,
         num_inference_steps: options.num_inference_steps ?? 50,
         aspect_ratio: options.aspect_ratio ?? '1:1',
-        seed: options.seed ?? 6146463195, // undefined means random on provider side
+        seed: options.seed ?? Math.floor(Math.random() * 1000000000),
       },
     }
 
