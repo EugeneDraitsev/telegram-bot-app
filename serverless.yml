@@ -34,6 +34,7 @@ functions:
       GEMINI_API_KEY: ${env:GEMINI_API_KEY}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
+      DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
     events:
       - http:
           path: /

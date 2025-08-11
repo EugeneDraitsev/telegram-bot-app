@@ -4,6 +4,7 @@ import type { Chat, Message } from 'telegram-typings'
 
 import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
 import setupCurrencyCommands from './currency'
+import setupDat1coCommands from './dat1co'
 import setupExternalApisCommands from './external-apis'
 import setupGoogleCommands, { setupMultimodalGeminiCommands } from './google'
 import setupOpenAiCommands, {
@@ -102,6 +103,9 @@ setupExternalApisCommands(bot)
 // /e <text> - generate image
 // /o <text> - generate chat completion with o3-mini
 setupOpenAiCommands(bot)
+
+// /de <text> - generate image with dat1co
+setupDat1coCommands(bot)
 
 bot.on('message:photo', (ctx) => {
   if (ctx.message?.caption?.startsWith('/o')) {

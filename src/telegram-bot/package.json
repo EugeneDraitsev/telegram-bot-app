@@ -11,7 +11,7 @@
     "@google/genai": "^1.13.0",
     "@upstash/redis": "^1.35.3",
     "grammy": "^1.37.0",
-    "openai": "^5.12.1"
+    "openai": "^5.12.2"
   },
   "devDependencies": {
     "telegram-typings": "5.0.0"
