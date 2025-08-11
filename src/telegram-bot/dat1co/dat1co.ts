@@ -22,18 +22,18 @@ export async function generateImageDat1co(
   chatId: string | number,
   options: Dat1coOptions = {},
 ) {
+  if (!isAiEnabledChat(chatId)) {
+    throw new Error(NOT_ALLOWED_ERROR)
+  }
+  if (!prompt) {
+    throw new Error(PROMPT_MISSING_ERROR)
+  }
+
+  if (!apiKey) {
+    throw new Error('DAT1CO_API_KEY is not set')
+  }
+
   try {
-    if (!isAiEnabledChat(chatId)) {
-      throw new Error(NOT_ALLOWED_ERROR)
-    }
-    if (!prompt) {
-      throw new Error(PROMPT_MISSING_ERROR)
-    }
-
-    if (!apiKey) {
-      throw new Error('DAT1CO_API_KEY is not set')
-    }
-
     const body = {
       input: {
         prompt,
@@ -56,7 +56,7 @@ export async function generateImageDat1co(
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      throw new Error(text || DEFAULT_ERROR_MESSAGE)
+      throw new Error(text)
     }
 
     const data = await res.json()
