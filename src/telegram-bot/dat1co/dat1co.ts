@@ -40,7 +40,7 @@ export async function generateImageDat1co(
         neg_prompt: options.neg_prompt ?? '',
         true_cfg_scale: options.true_cfg_scale ?? 4.0,
         num_inference_steps: options.num_inference_steps ?? 50,
-        aspect_ratio: options.aspect_ratio ?? '16:9',
+        aspect_ratio: options.aspect_ratio ?? '1:1',
         seed: options.seed ?? 6146463195, // undefined means random on provider side
       },
     }
