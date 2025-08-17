@@ -22,7 +22,7 @@ export const getRussianCurrency = async (
     signal: globalThis.AbortSignal.timeout(timeout),
   })
     .then((x) => x.json())
-    .then((x) => x?.last_price)
+    .then((x) => x?.blend?.open)
     .catch((e) => console.error('Failed to fetch brent price: ', e))
 
   const [{ rates, provider }, brentPrice] = await Promise.all([
