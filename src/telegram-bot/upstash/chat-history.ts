@@ -135,7 +135,7 @@ function getFormattedHistory(chatHistory: Message[]) {
       // 9. Create the 'parts' object
       return {
         role: role,
-        parts: [{ text: textContent }],
+        parts: [{ text: JSON.stringify(message) }],
       }
     })
   } catch (error) {

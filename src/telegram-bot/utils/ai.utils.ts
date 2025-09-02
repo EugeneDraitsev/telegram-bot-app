@@ -5,7 +5,7 @@ export const NOT_ALLOWED_ERROR =
 
 const AI_ALLOWED_CHAT_IDS = process.env.OPENAI_CHAT_IDS?.split(',') ?? []
 
-export const isAiEnabledChat = (chatId: string | number) =>
+export const isAiEnabledChat = (chatId?: string | number) =>
   AI_ALLOWED_CHAT_IDS.includes(String(chatId))
 
 export const systemInstructions = `Instructions:
@@ -17,9 +17,8 @@ export const systemInstructions = `Instructions:
 export const geminiSystemInstructions = `
   ${systemInstructions}
   
-  You also will be provided with chat history for the last 24 hours (if available) from a telegram.
+  You also will be provided with chat history for the last 24 hours (if available) from a telegram in json format. You should respond just with text.
   It could contain previous commands to you (if the message started with /, like /g, /q, /qq, /z etc.) and your previous responses.
-  History has format of: User ID: xxxxx (xxxx) <TEXT> [In reply to message ID: xxxxxx]
   Try to rely mostly on more recent posts, but don't ignore older posts.
   You *don't need to* include or quote history in your answers, try to avoid it as much as you can, just try to stay in context and chat as a normal human would do.
   Also make sure you answer in the same language as the prompt.

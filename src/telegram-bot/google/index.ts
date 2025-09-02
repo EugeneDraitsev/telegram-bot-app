@@ -7,12 +7,12 @@ import { translate } from './translate'
 import { searchYoutube } from './youtube'
 
 export const setupMultimodalGeminiCommands = async (ctx: Context) => {
-  const { combinedText, imagesData, chatId, replyId } =
+  const { combinedText, imagesData, replyId } =
     await getMultimodalCommandData(ctx)
 
   const message = await generateMultimodalCompletion(
     combinedText,
-    chatId,
+    ctx.message,
     imagesData,
   )
 

@@ -1,4 +1,5 @@
 import { type Content, GoogleGenAI, Modality } from '@google/genai'
+import type { Message } from 'telegram-typings'
 
 import { getHistory } from '../upstash'
 import {
@@ -15,11 +16,12 @@ const ai = new GoogleGenAI({ apiKey })
 
 export const generateMultimodalCompletion = async (
   prompt: string,
-  chatId: string | number,
+  message?: Message,
   imagesData?: Buffer[],
 ) => {
   try {
-    if (!isAiEnabledChat(chatId)) {
+    const chatId = message?.chat?.id
+    if (!chatId || !isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
 
@@ -47,7 +49,12 @@ export const generateMultimodalCompletion = async (
     contents.push({
       role: 'user',
       parts: [
-        { text: prompt || 'Выдай любой комментарий на твой вкус по ситуации' },
+        {
+          text: JSON.stringify({
+            ...message,
+            text: prompt || 'Выдай любой комментарий на твой вкус по ситуации',
+          }),
+        },
       ],
     })
 
