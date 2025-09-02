@@ -109,6 +109,14 @@ describe('cleanGeminiMessage', () => {
     expect(cleanGeminiMessage(messyMessage)).toBe(expected)
   })
 
+  test('should handle [] the message', () => {
+    const messyMessage =
+      'и его \\"теорию двойного времени\\", а потом про \\"православный РЭБ\\"!'
+    const expected =
+      'и его "теорию двойного времени", а потом про "православный РЭБ"!'
+    expect(cleanGeminiMessage(messyMessage)).toBe(expected)
+  })
+
   test('should handle [] in the message', () => {
     const messyMessage =
       'Więc dawaj, pytaj, чем могу служить? 😁 [2/21/2025, 10:48:59 PM]'

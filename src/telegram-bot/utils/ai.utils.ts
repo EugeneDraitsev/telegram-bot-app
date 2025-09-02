@@ -31,5 +31,9 @@ export function cleanGeminiMessage(message: string) {
   const replyRegex =
     /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID:\s*\d+\])\s*$/
   cleanedMessage = cleanedMessage.replace(replyRegex, '')
+
+  // Unescape escaped double quotes: \" -> "
+  cleanedMessage = cleanedMessage.replace(/\\\"/g, '"')
+
   return cleanedMessage.trim()
 }
