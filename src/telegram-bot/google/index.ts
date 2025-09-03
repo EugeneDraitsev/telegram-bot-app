@@ -21,8 +21,7 @@ export const setupMultimodalGeminiCommands = async (ctx: Context) => {
       reply_parameters: { message_id: replyId },
       parse_mode: 'MarkdownV2',
     })
-    .catch((err) => {
-      console.error(err)
+    .catch((_e) => {
       return ctx.reply(message, { reply_parameters: { message_id: replyId } })
     })
     .catch((err) => {

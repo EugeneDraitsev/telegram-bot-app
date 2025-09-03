@@ -25,15 +25,31 @@ export const geminiSystemInstructions = `
 `
 
 export function cleanGeminiMessage(message: string) {
+  let parsedMessage: string
+  try {
+    parsedMessage = JSON.parse(message).text || message
+  } catch (_e) {
+    parsedMessage = message
+  }
+
   const userIdRegex = /^(\s*(USER|User ID):\s*\d+ \([^)]*\): ?)+/
-  let cleanedMessage = message.replace(userIdRegex, '')
+  let cleanedMessage = parsedMessage.replace(userIdRegex, '')
 
   const replyRegex =
     /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID:\s*\d+\])\s*$/
   cleanedMessage = cleanedMessage.replace(replyRegex, '')
 
-  // Unescape escaped double quotes: \" -> "
-  cleanedMessage = cleanedMessage.replace(/\\\"/g, '"')
+  // Unescape common escaped sequences
+  // \n -> newline, \r -> newline, \t -> space, \" -> "
+  cleanedMessage = cleanedMessage
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n')
+    .replace(/\\t/g, ' ')
+    // biome-ignore lint/complexity/noUselessEscapeInRegex: <>
+    .replace(/\\\"/g, '"')
+
+  // Normalize actual CRLF/CR to LF
+  cleanedMessage = cleanedMessage.replace(/\r\n?/g, '\n')
 
   return cleanedMessage.trim()
 }
