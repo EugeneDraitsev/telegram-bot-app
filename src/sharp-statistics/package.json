@@ -9,16 +9,16 @@
     "styled-components": "^6.1.19"
   },
   "devDependencies": {
-    "@types/react": "^19.1.12",
+    "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9"
   },
   "optionalDependencies": {
-    "@img/sharp-libvips-linux-arm64": "^1.2.1",
-    "@img/sharp-libvips-linuxmusl-arm64": "^1.2.1",
-    "@img/sharp-linux-arm64": "^0.34.3",
-    "@img/sharp-linuxmusl-arm64": "^0.34.3"
+    "@img/sharp-libvips-linux-arm64": "^1.2.3",
+    "@img/sharp-libvips-linuxmusl-arm64": "^1.2.3",
+    "@img/sharp-linux-arm64": "^0.34.4",
+    "@img/sharp-linuxmusl-arm64": "^0.34.4"
   },
   "peerDependencies": {
-    "sharp": "^0.34.1"
+    "sharp": "^0.34.4"
   }
 }

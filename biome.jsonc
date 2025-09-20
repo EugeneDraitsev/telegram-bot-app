@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space"
@@ -20,8 +20,26 @@
           "level": "on",
           "options": {
             "groups": [
-              { "type": false, "source": [":BUN:", ":NODE:", ":PACKAGE:", ":PACKAGE_WITH_PROTOCOL:", "!@tg-bot/**"] },
-              { "type": true, "source": [":BUN:", ":NODE:", ":PACKAGE:", ":PACKAGE_WITH_PROTOCOL:", "!@tg-bot/**"] },
+              {
+                "type": false,
+                "source": [
+                  ":BUN:",
+                  ":NODE:",
+                  ":PACKAGE:",
+                  ":PACKAGE_WITH_PROTOCOL:",
+                  "!@tg-bot/**"
+                ]
+              },
+              {
+                "type": true,
+                "source": [
+                  ":BUN:",
+                  ":NODE:",
+                  ":PACKAGE:",
+                  ":PACKAGE_WITH_PROTOCOL:",
+                  "!@tg-bot/**"
+                ]
+              },
               ":BLANK_LINE:"
             ]
           }

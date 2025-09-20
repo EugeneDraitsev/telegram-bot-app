@@ -19,18 +19,18 @@
     "deploy": "sls deploy"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.879.0",
-    "@aws-sdk/client-lambda": "^3.879.0",
-    "@aws-sdk/client-s3": "^3.879.0",
-    "@aws-sdk/lib-dynamodb": "^3.879.0",
-    "sharp": "^0.34.3"
+    "@aws-sdk/client-dynamodb": "^3.893.0",
+    "@aws-sdk/client-lambda": "^3.893.0",
+    "@aws-sdk/client-s3": "^3.893.0",
+    "@aws-sdk/lib-dynamodb": "^3.893.0",
+    "sharp": "^0.34.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.2",
+    "@biomejs/biome": "^2.2.4",
     "@types/aws-lambda": "^8.10.152",
     "@types/jest": "^30.0.0",
-    "esbuild": "^0.25.9",
-    "serverless": "^4.18.2",
+    "esbuild": "^0.25.10",
+    "serverless": "^4.19.1",
     "serverless-esbuild": "^1.55.1",
     "serverless-offline": "^14.4.0",
     "typescript": "^5.9.2"
