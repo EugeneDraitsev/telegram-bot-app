@@ -63,8 +63,17 @@ export const getMultimodalCommandData = async (ctx: Context) => {
   })
 
   const imagesData = await getImageBuffers(imagesUrls)
+  const parsedText = getParsedText(ctx.message?.text || ctx.message?.caption)
+  const command = findCommand(parsedText)
 
-  return { combinedText, imagesData, replyId, chatId }
+  return {
+    combinedText,
+    imagesData,
+    replyId,
+    chatId,
+    message: ctx.message,
+    command,
+  }
 }
 
 export async function getImageBuffers(imagesUrls: string[]) {

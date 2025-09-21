@@ -35,10 +35,30 @@ functions:
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
       DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
+      REPLY_WORKER_FUNCTION_NAME: ${self:service}-${self:provider.stage}-telegram-reply-worker
     events:
       - http:
           path: /
           method: post
+
+  telegram-reply-worker:
+    handler: src/telegram-bot/telegram-reply-worker.default
+    timeout: 300
+    memorySize: 1536
+    environment:
+      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
+      GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
+      OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
+      TOKEN: ${env:TOKEN}
+      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
+      FIXER_API_KEY: ${env:FIXER_API_KEY}
+      EXCHANGE_RATE_API_KEY: ${env:EXCHANGE_RATE_API_KEY}
+      OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
+      GEMINI_API_KEY: ${env:GEMINI_API_KEY}
+      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
+      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
+      DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default

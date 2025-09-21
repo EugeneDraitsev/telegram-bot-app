@@ -6,7 +6,10 @@ import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
 import setupCurrencyCommands from './currency'
 import setupDat1coCommands from './dat1co'
 import setupExternalApisCommands from './external-apis'
-import setupGoogleCommands, { setupMultimodalGeminiCommands } from './google'
+import setupGoogleCommands, {
+  setupImageGenerationGeminiCommands,
+  setupMultimodalGeminiCommands,
+} from './google'
 import setupOpenAiCommands, {
   setupImageGenerationOpenAiCommands,
   setupMultimodalOpenAiCommands,
@@ -84,7 +87,7 @@ setupTextCommands(bot)
 // /tr <text> - translate detected language to russian
 // /te <text> - translate detected language to english
 // /v <text> -  search random video in YouTube
-setupGoogleCommands(bot)
+setupGoogleCommands(bot, { deferredCommands: true })
 
 // /c - get currency rates
 setupCurrencyCommands(bot)
@@ -109,11 +112,11 @@ setupDat1coCommands(bot)
 
 bot.on('message:photo', (ctx) => {
   if (ctx.message?.caption?.startsWith('/o')) {
-    return setupMultimodalGeminiCommands(ctx)
+    return setupMultimodalOpenAiCommands(ctx)
   }
 
   if (ctx.message?.caption?.startsWith('/q')) {
-    return setupMultimodalOpenAiCommands(ctx)
+    return setupMultimodalGeminiCommands(ctx, true)
   }
 
   if (ctx.message?.caption?.startsWith('/ee')) {
@@ -122,6 +125,10 @@ bot.on('message:photo', (ctx) => {
 
   if (ctx.message?.caption?.startsWith('/e')) {
     return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3')
+  }
+
+  if (ctx.message?.caption?.startsWith('/ge')) {
+    return setupImageGenerationGeminiCommands(ctx, true)
   }
 
   return

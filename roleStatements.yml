@@ -5,6 +5,7 @@
   Resource:
     - arn:aws:lambda:*:*:telegram-websockets-prod-broadcastStats
     - arn:aws:lambda:*:*:telegram-*-sharp-statistics
+    - arn:aws:lambda:*:*:telegram-*-reply-worker
 - Effect: Allow
   Action:
     - dynamodb:Query

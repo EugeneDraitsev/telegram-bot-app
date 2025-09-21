@@ -1,35 +1,80 @@
 import { type Bot, type Context, InputFile } from 'grammy'
 
-import { getCommandData, getMultimodalCommandData } from '@tg-bot/common'
+import {
+  getCommandData,
+  getMultimodalCommandData,
+  invokeReplyLambda,
+} from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
 
-export const setupMultimodalGeminiCommands = async (ctx: Context) => {
-  const { combinedText, imagesData, replyId } =
-    await getMultimodalCommandData(ctx)
+export const setupMultimodalGeminiCommands = async (
+  ctx: Context,
+  deferredCommands = false,
+) => {
+  const commandData = await getMultimodalCommandData(ctx)
 
-  const message = await generateMultimodalCompletion(
-    combinedText,
-    ctx.message,
-    imagesData,
-  )
+  if (deferredCommands) {
+    // Don't wait for the response
+    invokeReplyLambda(commandData)
+    return
+  } else {
+    const { combinedText, imagesData, replyId } = commandData
+    const message = await generateMultimodalCompletion(
+      combinedText,
+      ctx.message,
+      imagesData,
+    )
 
-  return ctx
-    .reply(message.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
-      reply_parameters: { message_id: replyId },
-      parse_mode: 'MarkdownV2',
-    })
-    .catch((_e) => {
-      return ctx.reply(message, { reply_parameters: { message_id: replyId } })
-    })
-    .catch((err) => {
-      console.error(`Error (Gemini AI): ${err.message}`)
-    })
+    return ctx
+      .reply(message.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
+        reply_parameters: { message_id: replyId },
+        parse_mode: 'MarkdownV2',
+      })
+      .catch((_e) => {
+        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+      })
+      .catch((err) => {
+        console.error(`Error (Gemini AI): ${err.message}`)
+      })
+  }
 }
 
-const setupGoogleCommands = (bot: Bot) => {
+export const setupImageGenerationGeminiCommands = async (
+  ctx: Context,
+  deferredCommands = false,
+) => {
+  const commandData = await getMultimodalCommandData(ctx)
+  if (deferredCommands) {
+    // Don't wait for the response
+    invokeReplyLambda(commandData)
+    return
+  } else {
+    const response = await generateImage(
+      commandData.combinedText,
+      commandData.chatId,
+      commandData.imagesData,
+    )
+
+    if (response.image) {
+      return ctx.replyWithPhoto(new InputFile(response.image), {
+        caption: response.text,
+        reply_parameters: { message_id: commandData.replyId },
+      })
+    }
+
+    return ctx.reply(response.text, {
+      reply_parameters: { message_id: commandData.replyId },
+    })
+  }
+}
+
+const setupGoogleCommands = (
+  bot: Bot,
+  { deferredCommands } = { deferredCommands: false },
+) => {
   bot.command('g', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     try {
@@ -62,26 +107,16 @@ const setupGoogleCommands = (bot: Bot) => {
     })
   })
 
-  bot.command('q', setupMultimodalGeminiCommands)
-  bot.command('qq', setupMultimodalGeminiCommands)
+  bot.command('q', (ctx) =>
+    setupMultimodalGeminiCommands(ctx, deferredCommands),
+  )
+  bot.command('qq', (ctx) =>
+    setupMultimodalGeminiCommands(ctx, deferredCommands),
+  )
 
-  bot.command('ge', async (ctx) => {
-    const { combinedText, imagesData, chatId, replyId } =
-      await getMultimodalCommandData(ctx)
-
-    const response = await generateImage(combinedText, chatId, imagesData)
-
-    if (response.image) {
-      return ctx.replyWithPhoto(new InputFile(response.image), {
-        caption: response.text,
-        reply_parameters: { message_id: replyId },
-      })
-    }
-
-    return ctx.reply(response.text, {
-      reply_parameters: { message_id: replyId },
-    })
-  })
+  bot.command('ge', (ctx) =>
+    setupImageGenerationGeminiCommands(ctx, deferredCommands),
+  )
 
   /*
    Translate commands
