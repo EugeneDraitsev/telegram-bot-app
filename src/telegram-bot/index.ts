@@ -105,14 +105,14 @@ setupExternalApisCommands(bot)
 // /q <text | image-with-caption> - generate chat completion with 4o
 // /e <text> - generate image
 // /o <text> - generate chat completion with o3-mini
-setupOpenAiCommands(bot)
+setupOpenAiCommands(bot, { deferredCommands: true })
 
 // /de <text> - generate image with dat1co
-setupDat1coCommands(bot)
+setupDat1coCommands(bot, { deferredCommands: true })
 
 bot.on('message:photo', (ctx) => {
   if (ctx.message?.caption?.startsWith('/o')) {
-    return setupMultimodalOpenAiCommands(ctx)
+    return setupMultimodalOpenAiCommands(ctx, 'gpt-5-mini', true)
   }
 
   if (ctx.message?.caption?.startsWith('/q')) {
@@ -120,11 +120,11 @@ bot.on('message:photo', (ctx) => {
   }
 
   if (ctx.message?.caption?.startsWith('/ee')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1')
+    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1', true)
   }
 
   if (ctx.message?.caption?.startsWith('/e')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3')
+    return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', true)
   }
 
   if (ctx.message?.caption?.startsWith('/ge')) {

@@ -1,7 +1,9 @@
 import { Bot, webhookCallback } from 'grammy'
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 
+import setupDat1coCommands from './dat1co'
 import setupGoogleCommands from './google'
+import setupOpenAiCommands from './open-ai'
 
 const bot = new Bot(process.env.TOKEN || '')
 
@@ -18,8 +20,16 @@ const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
 // /td <text> - translate detected language to deutsch
 // /tr <text> - translate detected language to russian
 // /te <text> - translate detected language to english
-// /v <text> -  search random video in YouTube
+// /v <text> - search random video in YouTube
 setupGoogleCommands(bot, { deferredCommands: false })
+
+// /q <text | image-with-caption> - generate chat completion with 4o
+// /e <text> - generate image
+// /o <text> - generate chat completion with o3-mini
+setupOpenAiCommands(bot, { deferredCommands: false })
+
+// /de <text> - generate image with dat1co
+setupDat1coCommands(bot, { deferredCommands: false })
 
 const telegramReplyWorker: LambdaFunctionURLHandler = async (
   event,
