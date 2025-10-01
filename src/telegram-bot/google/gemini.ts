@@ -59,7 +59,7 @@ export const generateMultimodalCompletion = async (
     })
 
     const result = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+      model: 'gemini-2.5-flash',
       config: {
         systemInstruction: geminiSystemInstructions,
         tools: [{ googleSearch: {} }],
