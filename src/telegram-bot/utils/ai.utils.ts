@@ -67,15 +67,9 @@ export async function saveBotMessageMiddleware(
   ctx.reply = async (text, ...args) => {
     const sentMessage = await originalReply(text, ...args)
 
-    console.log(sentMessage.chat.id, isAiEnabledChat(sentMessage.chat.id))
-
     if (isAiEnabledChat(sentMessage.chat.id)) {
-      console.log(
-        'Saving bot message to history...',
-        JSON.stringify(sentMessage, null, 2),
-      )
       sentMessage.text = cleanGeminiMessage(sentMessage.text)
-      saveMessage(sentMessage, sentMessage.chat.id).catch((error) =>
+      await saveMessage(sentMessage, sentMessage.chat.id).catch((error) =>
         console.error('saveHistory error: ', error),
       )
     }

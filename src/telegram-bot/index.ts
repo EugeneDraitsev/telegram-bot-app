@@ -21,8 +21,6 @@ import { saveBotMessageMiddleware } from './utils'
 
 const bot = new Bot(process.env.TOKEN || '')
 
-const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
-
 bot.use(saveBotMessageMiddleware)
 
 bot.use(async (ctx, next) => {
@@ -116,6 +114,8 @@ bot.on('message:photo', (ctx) => {
 
   return
 })
+
+const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {
