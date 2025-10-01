@@ -8,6 +8,8 @@ import { saveBotMessageMiddleware } from './utils'
 
 const bot = new Bot(process.env.TOKEN || '')
 
+bot.use(saveBotMessageMiddleware)
+
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
   // 5 minutes timeout
   timeoutMilliseconds: 300_000,
@@ -31,8 +33,6 @@ setupOpenAiCommands(bot, { deferredCommands: false })
 
 // /de <text> - generate image with dat1co
 setupDat1coCommands(bot, { deferredCommands: false })
-
-bot.use(saveBotMessageMiddleware)
 
 const telegramReplyWorker: LambdaFunctionURLHandler = async (
   event,
