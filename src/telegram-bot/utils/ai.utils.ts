@@ -1,3 +1,7 @@
+import type { Context, NextFunction } from 'grammy'
+
+import { saveMessage } from '../upstash'
+
 export const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
 export const PROMPT_MISSING_ERROR = 'Prompt is required'
 export const NOT_ALLOWED_ERROR =
@@ -52,4 +56,26 @@ export function cleanGeminiMessage(message: string) {
   cleanedMessage = cleanedMessage.replace(/\r\n?/g, '\n')
 
   return cleanedMessage.trim()
+}
+
+export async function saveBotMessageMiddleware(
+  ctx: Context,
+  next: NextFunction,
+) {
+  const originalReply = ctx.reply.bind(ctx)
+
+  ctx.reply = async (text, ...args) => {
+    const sentMessage = await originalReply(text, ...args)
+
+    if (isAiEnabledChat(sentMessage.chat.id)) {
+      sentMessage.text = cleanGeminiMessage(sentMessage.text)
+      saveMessage(sentMessage, sentMessage.chat.id).catch((error) =>
+        console.error('saveHistory error: ', error),
+      )
+    }
+
+    return sentMessage
+  }
+
+  await next()
 }

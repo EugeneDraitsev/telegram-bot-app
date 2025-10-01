@@ -4,6 +4,7 @@ import type { LambdaFunctionURLHandler } from 'aws-lambda'
 import setupDat1coCommands from './dat1co'
 import setupGoogleCommands from './google'
 import setupOpenAiCommands from './open-ai'
+import { saveBotMessageMiddleware } from './utils'
 
 const bot = new Bot(process.env.TOKEN || '')
 
@@ -30,6 +31,8 @@ setupOpenAiCommands(bot, { deferredCommands: false })
 
 // /de <text> - generate image with dat1co
 setupDat1coCommands(bot, { deferredCommands: false })
+
+bot.use(saveBotMessageMiddleware)
 
 const telegramReplyWorker: LambdaFunctionURLHandler = async (
   event,

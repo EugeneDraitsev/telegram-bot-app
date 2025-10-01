@@ -17,30 +17,13 @@ import setupOpenAiCommands, {
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
-import { cleanGeminiMessage, isAiEnabledChat } from './utils'
+import { saveBotMessageMiddleware } from './utils'
 
 const bot = new Bot(process.env.TOKEN || '')
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 
-bot.use(async (ctx, next) => {
-  const originalReply = ctx.reply.bind(ctx)
-
-  ctx.reply = async (text, ...args) => {
-    const sentMessage = await originalReply(text, ...args)
-
-    if (isAiEnabledChat(sentMessage.chat.id)) {
-      sentMessage.text = cleanGeminiMessage(sentMessage.text)
-      saveMessage(sentMessage, sentMessage.chat.id).catch((error) =>
-        console.error('saveHistory error: ', error),
-      )
-    }
-
-    return sentMessage
-  }
-
-  await next()
-})
+bot.use(saveBotMessageMiddleware)
 
 bot.use(async (ctx, next) => {
   const { chat } = ctx
