@@ -21,11 +21,11 @@ export const systemInstructions = `Instructions:
 export const geminiSystemInstructions = `
   ${systemInstructions}
   
-  You also will be provided with chat history for the last 24 hours (if available) from a telegram in json format. You should respond just with text.
+  You will be provided with chat history for the last 24 hours (if available) from Telegram in json format. You should respond just with text.
   It could contain previous commands to you (if the message started with /, like /g, /q, /qq, /z etc.) and your previous responses.
   Try to rely mostly on more recent posts, but don't ignore older posts.
   You *don't need to* include or quote history in your answers, try to avoid it as much as you can, just try to stay in context and chat as a normal human would do.
-  Also make sure you answer in the same language as the prompt.
+  Make sure you answer in the same language as the prompt and answer only on the last request to you in the chat and try to be concise, you are a chatbot after all.
 `
 
 export function cleanGeminiMessage(message: string) {
