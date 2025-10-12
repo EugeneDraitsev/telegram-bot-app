@@ -6,11 +6,14 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "2.15.4",
+    "sharp": "^0.34.4",
     "styled-components": "^6.1.19"
   },
   "devDependencies": {
+    "@tg-bot/common": "^1.0.0",
     "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0"
+    "@types/react-dom": "^19.2.0",
+    "telegram-typings": "5.0.0"
   },
   "optionalDependencies": {
     "@img/sharp-libvips-linux-arm64": "^1.2.3",

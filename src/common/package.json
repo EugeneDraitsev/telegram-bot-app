@@ -2,5 +2,9 @@
   "name": "@tg-bot/common",
   "version": "1.0.0",
   "license": "MIT",
-  "sideEffects": false
+  "sideEffects": false,
+  "devDependencies": {
+    "grammy": "^1.38.2",
+    "telegram-typings": "5.0.0"
+  }
 }

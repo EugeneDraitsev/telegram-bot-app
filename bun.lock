@@ -8,7 +8,6 @@
         "@aws-sdk/client-lambda": "^3.901.0",
         "@aws-sdk/client-s3": "^3.901.0",
         "@aws-sdk/lib-dynamodb": "^3.902.0",
-        "sharp": "^0.34.4",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.2.5",
@@ -24,6 +23,10 @@
     "src/common": {
       "name": "@tg-bot/common",
       "version": "1.0.0",
+      "devDependencies": {
+        "grammy": "^1.38.2",
+        "telegram-typings": "5.0.0",
+      },
     },
     "src/sharp-statistics": {
       "name": "@tg-bot/sharp-statictics",
@@ -33,11 +36,14 @@
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "recharts": "2.15.4",
+        "sharp": "^0.34.4",
         "styled-components": "^6.1.19",
       },
       "devDependencies": {
+        "@tg-bot/common": "^1.0.0",
         "@types/react": "^19.2.0",
         "@types/react-dom": "^19.2.0",
+        "telegram-typings": "5.0.0",
       },
       "optionalDependencies": {
         "@img/sharp-libvips-linux-arm64": "^1.2.3",
@@ -54,6 +60,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@google/genai": "^1.22.0",
+        "@tg-bot/common": "^1.0.0",
         "@upstash/redis": "^1.35.4",
         "grammy": "^1.38.2",
         "openai": "^6.0.1",
