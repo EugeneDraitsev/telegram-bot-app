@@ -19,7 +19,12 @@ import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
 import { saveBotMessageMiddleware } from './utils'
 
-const bot = new Bot(process.env.TOKEN || '')
+const bot = new Bot(process.env.TOKEN || '', {
+  client: {
+    // biome-ignore lint/suspicious/noExplicitAny: <Grammy fetch typing is incorrect>
+    fetch: globalThis.fetch as any,
+  },
+})
 
 bot.use(saveBotMessageMiddleware)
 

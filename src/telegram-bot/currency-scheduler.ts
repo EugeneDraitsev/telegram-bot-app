@@ -3,7 +3,12 @@ import type { APIGatewayProxyHandler } from 'aws-lambda'
 
 import { getCurrencyMessage } from './currency'
 
-const bot = new Bot(process.env.TOKEN || '')
+const bot = new Bot(process.env.TOKEN || '', {
+  client: {
+    // biome-ignore lint/suspicious/noExplicitAny: <Grammy fetch typing is incorrect>
+    fetch: globalThis.fetch as any,
+  },
+})
 
 const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
   try {
