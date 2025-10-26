@@ -1,4 +1,4 @@
-import { Bot, webhookCallback } from 'grammy'
+import { webhookCallback } from 'grammy'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Chat, Message } from 'telegram-typings'
 
@@ -17,14 +17,9 @@ import setupOpenAiCommands, {
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
-import { saveBotMessageMiddleware } from './utils'
+import { createBot, saveBotMessageMiddleware } from './utils'
 
-const bot = new Bot(process.env.TOKEN || '', {
-  client: {
-    // biome-ignore lint/suspicious/noExplicitAny: <Grammy fetch typing is incorrect>
-    fetch: globalThis.fetch as any,
-  },
-})
+const bot = createBot()
 
 bot.use(saveBotMessageMiddleware)
 
