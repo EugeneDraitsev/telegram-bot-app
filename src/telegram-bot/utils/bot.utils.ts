@@ -1,9 +1,10 @@
 // Wrapper that sets `duplex: 'half'` whenever a request has a body
 import { Bot } from 'grammy'
 
+// biome-ignore lint/suspicious/noExplicitAny: <>
 const fetchWithDuplex: typeof fetch = (input: any, init: any = {}) => {
   // If there is a body and no duplex specified, set duplex to 'half'
-  if (init && init.body && typeof init.duplex === 'undefined') {
+  if (init?.body && typeof init.duplex === 'undefined') {
     init.duplex = 'half'
   }
   return fetch(input, init)
