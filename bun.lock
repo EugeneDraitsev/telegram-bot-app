@@ -53,7 +53,8 @@
       "name": "@tg-bot/chat-bot",
       "version": "1.0.0",
       "dependencies": {
-        "@google/genai": "1.27.0",
+        "@google/genai": "1.28.0",
+        "@toon-format/toon": "^0.7.1",
         "@upstash/redis": "^1.35.6",
         "grammy": "^1.38.3",
         "openai": "^6.7.0",
@@ -249,7 +250,7 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.11", "", { "os": "win32", "cpu": "x64" }, "sha512-D7Hpz6A2L4hzsRpPaCYkQnGOotdUpDzSGRIv9I+1ITdHROSFUWW95ZPZWQmGka1Fg7W3zFJowyn9WGwMJ0+KPA=="],
 
-    "@google/genai": ["@google/genai@1.27.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.20.1" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-sveeQqwyzO/U5kOjo3EflF1rf7v0ZGprrjPGmeT6V5u22IUTcA4wBFxW+q1n7hOX0M1iWR3944MImoNPOM+zsA=="],
+    "@google/genai": ["@google/genai@1.28.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.20.1" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-0pfZ1EWQsM9kINsL+mFKJvpzM6NRHS9t360S1MzKq4JtIwTj/RbsPpC/K5wpKiPy9PC+J+bsz/9gvaL51++KrA=="],
 
     "@grammyjs/types": ["@grammyjs/types@3.22.2", "", {}, "sha512-uu7DX2ezhnBPozL3bXHmwhLvaFsh59E4QyviNH4Cij7EdVekYrs6mCzeXsa2pDk30l3uXo7DBahlZLzTPtpYZg=="],
 
@@ -524,6 +525,8 @@
     "@tg-bot/common": ["@tg-bot/common@workspace:src/common"],
 
     "@tg-bot/sharp-statictics": ["@tg-bot/sharp-statictics@workspace:src/sharp-statistics"],
+
+    "@toon-format/toon": ["@toon-format/toon@0.7.1", "", {}, "sha512-HjHtGWEKuRoZuK3AsoLm773SbRO42Mmoss+lXwt/t689+4eKkfQGQIMxUgxabLSGgRXgCsgkIUoBjTTH988gMw=="],
 
     "@types/aws-lambda": ["@types/aws-lambda@8.10.156", "", {}, "sha512-LElQP+QliVWykC7OF8dNr04z++HJCMO2lF7k9HuKoSDARqhcjHq8MzbrRwujCSDeBHIlvaimbuY/tVZL36KXFQ=="],
 

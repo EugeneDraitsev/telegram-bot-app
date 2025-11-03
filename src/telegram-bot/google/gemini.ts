@@ -1,4 +1,5 @@
 import { type Content, GoogleGenAI, Modality } from '@google/genai'
+import { encode } from '@toon-format/toon'
 import type { Message } from 'telegram-typings'
 
 import { getHistory } from '../upstash'
@@ -50,7 +51,7 @@ export const generateMultimodalCompletion = async (
       role: 'user',
       parts: [
         {
-          text: JSON.stringify({
+          text: encode({
             ...message,
             text: prompt || 'Выдай любой комментарий на твой вкус по ситуации',
           }),
