@@ -1,4 +1,3 @@
-import { decode } from '@toon-format/toon'
 import type { Context, NextFunction } from 'grammy'
 
 import { saveMessage } from '../upstash'
@@ -33,13 +32,6 @@ export function cleanGeminiMessage(message: string) {
   let parsedMessage: string
   try {
     parsedMessage = JSON.parse(message).text || message
-  } catch (_e) {
-    parsedMessage = message
-  }
-
-  try {
-    // biome-ignore lint/suspicious/noExplicitAny: <>
-    parsedMessage = (decode(parsedMessage) as any)?.text || message
   } catch (_e) {
     parsedMessage = message
   }

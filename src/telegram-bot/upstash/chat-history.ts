@@ -1,4 +1,3 @@
-import { encode } from '@toon-format/toon'
 import { Redis } from '@upstash/redis'
 import type { Message } from 'telegram-typings'
 
@@ -68,7 +67,7 @@ function getFormattedHistory(chatHistory: Message[]) {
       const role = message.from?.is_bot ? 'model' : 'user'
       return {
         role: role,
-        parts: [{ text: encode(message) }],
+        parts: [{ text: JSON.stringify(message) }],
       }
     })
   } catch (error) {
