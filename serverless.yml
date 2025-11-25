@@ -111,6 +111,8 @@ custom:
     httpPort: 4000
   esbuild:
     target: node24
+    format: esm
+    outputFileExtension: .mjs
     external:
       - sharp
     exclude:
