@@ -12,15 +12,11 @@ export const setupMultimodalOpenAiCommands = async (
 ) => {
   const commandData = await getMultimodalCommandData(ctx)
   if (deferredCommands) {
-    console.log(JSON.stringify(commandData, null, 2))
     // Don't wait for the response
     invokeReplyLambda(commandData)
     return
   } else {
     const { combinedText, imagesData, chatId, replyId } = commandData
-    console.log(
-      JSON.stringify({ combinedText, imagesData, chatId, replyId }, null, 2),
-    )
 
     const message = await generateMultimodalCompletion(
       combinedText,
