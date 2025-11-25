@@ -110,9 +110,7 @@ custom:
   serverless-offline:
     httpPort: 4000
   esbuild:
-    target: node24
-    format: esm
-    outputFileExtension: .mjs
+    target: node22
     external:
       - sharp
     exclude:
