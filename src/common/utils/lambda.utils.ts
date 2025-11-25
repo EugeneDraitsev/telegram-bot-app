@@ -13,8 +13,6 @@ export const invokeLambda = (
     endpoint: isOffline && customEndpoint ? 'http://localhost:3002' : undefined,
   })
 
-  console.log(JSON.stringify(payload, null, 2))
-
   return lambda.send(
     new InvokeCommand({
       FunctionName: name,
