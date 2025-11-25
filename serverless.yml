@@ -110,7 +110,12 @@ custom:
   serverless-offline:
     httpPort: 4000
   esbuild:
-    target: node22
+    target: node24
+    platform: node
+    format: esm
+    outputFileExtension: .mjs
+    banner:
+      js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
     external:
       - sharp
     exclude:
