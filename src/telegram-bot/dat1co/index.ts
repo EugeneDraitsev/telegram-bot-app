@@ -1,4 +1,4 @@
-import { type Bot, type Context, InputFile } from 'grammy'
+import { type Bot, type Context, InputFile } from 'grammy/web'
 
 import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'
 import { DEFAULT_ERROR_MESSAGE } from '../utils'

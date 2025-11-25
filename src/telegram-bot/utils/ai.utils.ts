@@ -1,4 +1,4 @@
-import type { Context, NextFunction } from 'grammy'
+import type { Context, NextFunction } from 'grammy/web'
 
 import { saveMessage } from '../upstash'
 

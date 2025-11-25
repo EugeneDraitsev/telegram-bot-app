@@ -1,4 +1,4 @@
-import type { Context } from 'grammy'
+import type { Context } from 'grammy/web'
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 export const isLink = (text = '') => text.includes('https://')

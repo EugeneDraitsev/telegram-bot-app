@@ -1,5 +1,5 @@
 // Wrapper that sets `duplex: 'half'` whenever a request has a body
-import { Bot } from 'grammy'
+import { Bot } from 'grammy/web'
 
 // biome-ignore lint/suspicious/noExplicitAny: <>
 const fetchWithDuplex: typeof fetch = (input: any, init: any = {}) => {

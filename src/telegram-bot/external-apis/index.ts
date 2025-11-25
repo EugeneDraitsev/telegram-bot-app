@@ -1,4 +1,4 @@
-import type { Bot } from 'grammy'
+import type { Bot } from 'grammy/web'
 
 import { getCommandData } from '@tg-bot/common'
 import { getHoroscope } from './horoscope'

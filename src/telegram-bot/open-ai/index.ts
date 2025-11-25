@@ -1,4 +1,4 @@
-import { type Bot, type Context, InputFile } from 'grammy'
+import { type Bot, type Context, InputFile } from 'grammy/web'
 import type { ChatModel, ImageModel } from 'openai/resources'
 
 import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'

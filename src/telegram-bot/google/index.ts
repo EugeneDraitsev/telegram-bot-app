@@ -1,4 +1,4 @@
-import { type Bot, type Context, InputFile } from 'grammy'
+import { type Bot, type Context, InputFile } from 'grammy/web'
 
 import {
   getCommandData,

@@ -1,4 +1,4 @@
-import { webhookCallback } from 'grammy'
+import { webhookCallback } from 'grammy/web'
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 
 import setupDat1coCommands from './dat1co'

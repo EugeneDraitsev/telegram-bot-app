@@ -1,4 +1,4 @@
-import type { Bot } from 'grammy'
+import type { Bot } from 'grammy/web'
 
 import { getCryptoCurrency } from './crypto-currency'
 import { getMainCurrencies } from './main-currency'

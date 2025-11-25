@@ -1,5 +1,5 @@
-import { InputFile } from 'grammy'
-import type { Bot } from 'grammy'
+import { InputFile } from 'grammy/web'
+import type { Bot } from 'grammy/web'
 
 import {
   getChatName,

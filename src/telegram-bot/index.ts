@@ -1,4 +1,4 @@
-import { webhookCallback } from 'grammy'
+import { webhookCallback } from 'grammy/web'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Chat, Message } from 'telegram-typings'
 
