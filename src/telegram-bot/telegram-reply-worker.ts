@@ -2,8 +2,14 @@ import { webhookCallback } from 'grammy/web'
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 
 import setupDat1coCommands from './dat1co'
-import setupGoogleCommands from './google'
-import setupOpenAiCommands from './open-ai'
+import setupGoogleCommands, {
+  setupImageGenerationGeminiCommands,
+  setupMultimodalGeminiCommands,
+} from './google'
+import setupOpenAiCommands, {
+  setupImageGenerationOpenAiCommands,
+  setupMultimodalOpenAiCommands,
+} from './open-ai'
 import { createBot, saveBotMessageMiddleware } from './utils'
 
 const bot = createBot()
@@ -33,6 +39,30 @@ setupOpenAiCommands(bot, { deferredCommands: false })
 
 // /de <text> - generate image with dat1co
 setupDat1coCommands(bot, { deferredCommands: false })
+
+bot.on('message:photo', (ctx) => {
+  if (ctx.message?.caption?.startsWith('/o')) {
+    return setupMultimodalOpenAiCommands(ctx, 'gpt-5-mini', false)
+  }
+
+  if (ctx.message?.caption?.startsWith('/q')) {
+    return setupMultimodalGeminiCommands(ctx, false)
+  }
+
+  if (ctx.message?.caption?.startsWith('/ee')) {
+    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1', false)
+  }
+
+  if (ctx.message?.caption?.startsWith('/e')) {
+    return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', false)
+  }
+
+  if (ctx.message?.caption?.startsWith('/ge')) {
+    return setupImageGenerationGeminiCommands(ctx, false)
+  }
+
+  return
+})
 
 const telegramReplyWorker: LambdaFunctionURLHandler = async (
   event,
