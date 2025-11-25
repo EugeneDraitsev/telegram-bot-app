@@ -110,7 +110,7 @@ custom:
   serverless-offline:
     httpPort: 4000
   esbuild:
-    target: node22
+    target: node24
     external:
       - sharp
     exclude:
