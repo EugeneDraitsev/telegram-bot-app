@@ -114,6 +114,8 @@ custom:
     platform: node
     format: esm
     outputFileExtension: .mjs
+    banner:
+      js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
     external:
       - sharp
     exclude:
