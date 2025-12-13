@@ -7,6 +7,7 @@ import { generateImage, generateMultimodalCompletion } from './open-ai'
 
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
+  // @ts-ignore
   model: ChatModel = 'gpt-5-mini',
   deferredCommands = false,
 ) => {
@@ -42,6 +43,7 @@ export const setupMultimodalOpenAiCommands = async (
 
 export const setupImageGenerationOpenAiCommands = async (
   ctx: Context,
+  // @ts-ignore
   model: ImageModel = 'gpt-image-1',
   deferredCommands = false,
 ) => {
@@ -77,10 +79,12 @@ const setupOpenAiCommands = (
     setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', deferredCommands),
   )
   bot.command('ee', (ctx) =>
+    // @ts-ignore
     setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1', deferredCommands),
   )
 
   bot.command('o', (ctx) =>
+    // @ts-ignore
     setupMultimodalOpenAiCommands(ctx, 'gpt-5-mini', deferredCommands),
   )
 }

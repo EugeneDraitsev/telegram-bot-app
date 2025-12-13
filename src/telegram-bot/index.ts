@@ -93,6 +93,7 @@ setupDat1coCommands(bot, { deferredCommands: true })
 
 bot.on('message:photo', (ctx) => {
   if (ctx.message?.caption?.startsWith('/o')) {
+    // @ts-ignore
     return setupMultimodalOpenAiCommands(ctx, 'gpt-5-mini', true)
   }
 
@@ -101,6 +102,7 @@ bot.on('message:photo', (ctx) => {
   }
 
   if (ctx.message?.caption?.startsWith('/ee')) {
+    // @ts-ignore
     return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1', true)
   }
 

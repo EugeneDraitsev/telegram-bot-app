@@ -1,20 +1,62 @@
-# AWS serverless telegram bot 
-[![serverless](https://img.shields.io/badge/serveless-v4-blue)](http://www.serverless.com)
-[![Deploy Latest Master](https://github.com/EugeneDraitsev/telegram-bot-app/workflows/Deploy%20Latest%20Master/badge.svg)](https://github.com/EugeneDraitsev/telegram-bot-app/actions/workflows/deploy.yml)
-[![CodeQL status](https://github.com/EugeneDraitsev/telegram-bot-app/actions/workflows/codeql.yml/badge.svg?branch=master&event=push)](https://github.com/EugeneDraitsev/telegram-bot-app/actions/workflows/codeql.yml)
+# AWS SST Telegram Bot
 
-Serverless telegram bot based on [grammy](https://github.com/grammyjs/grammY) and [serverless framework](https://github.com/serverless/serverless)
+[![SST](https://img.shields.io/badge/SST-v3-orange)](https://sst.dev)
+[![Tanstack Start](https://img.shields.io/badge/Tanstack_Start-v1-blue)](https://tanstack.com/start)
 
-![demo](.github/cat.jpg)
+This project has been migrated from Serverless Framework v4 to **SST (Serverless Stack)**. It includes a backend Telegram bot and a frontend built with **Tanstack Start**.
 
+## Architecture
 
-## Bot Architecture
-![architecture](.github/architecture.png)
+*   **Backend**: SST (AWS Lambda, DynamoDB, EventBridge)
+*   **Frontend**: Tanstack Start (deployed via SST)
+*   **Language**: TypeScript
 
-#### Repositories from scheme:
+## Getting Started
 
-[telegram-bot-ui](https://github.com/EugeneDraitsev/telegram-bot-ui)
+### Prerequisites
 
-[telegram-bot-websockets](https://github.com/EugeneDraitsev/telegram-bot-websockets)
+*   Node.js (v20+)
+*   Bun (optional, but recommended for package management)
+*   AWS Credentials configured
 
+### Installation
 
+1.  Install dependencies:
+    ```bash
+    bun install
+    ```
+
+2.  Initialize the frontend:
+    ```bash
+    cd web
+    bun install
+    cd ..
+    ```
+
+### Development
+
+Start the local development environment (SST Ion):
+
+```bash
+bun run dev
+```
+
+This will start the SST Live Lambda environment and the Tanstack Start development server.
+
+### Deployment
+
+Deploy to AWS:
+
+```bash
+bun run deploy
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your secrets. SST will load these automatically in development. For production, use `sst secret set` or configured environment variables in your CI/CD.
+
+## Project Structure
+
+*   `src/`: Backend Lambda functions (Telegram bot, schedulers, image processing)
+*   `web/`: Tanstack Start frontend application
+*   `sst.config.ts`: Infrastructure as Code (SST configuration)
