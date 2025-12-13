@@ -8,37 +8,48 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "private": true,
+  "type": "module",
   "scripts": {
-    "start": "sls offline start --reloadHandler",
-    "build": "sls package",
+    "dev": "sst dev",
+    "deploy": "sst deploy",
     "tsc": "tsc --noEmit",
     "test": "bun test",
     "biome": "biome check ./src",
-    "biome:fix": "biome check ./src --fix --unsafe",
-    "logs": "sls logs -f telegram-bot -t",
-    "deploy": "sls deploy"
+    "biome:fix": "biome check ./src --fix --unsafe"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.943.0",
     "@aws-sdk/client-lambda": "^3.945.0",
     "@aws-sdk/client-s3": "^3.943.0",
     "@aws-sdk/lib-dynamodb": "^3.943.0",
-    "sharp": "^0.34.5"
+    "@google/genai": "^1.33.0",
+    "@upstash/redis": "^1.35.7",
+    "grammy": "^1.38.4",
+    "openai": "^4.71.0",
+    "polished": "^4.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0",
+    "sharp": "^0.34.5",
+    "styled-components": "^6.1.19"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.8",
     "@types/aws-lambda": "^8.10.159",
-    "@types/jest": "^30.0.0",
-    "esbuild": "^0.27.1",
-    "serverless": "^4.27.0",
-    "serverless-esbuild": "^1.56.1",
-    "serverless-offline": "^14.4.0",
-    "typescript": "^5.9.3"
+    "@types/bun": "latest",
+    "@types/node": "^20.12.7",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "aws-cdk-lib": "2.142.1",
+    "constructs": "10.3.0",
+    "sst": "^3.9.15",
+    "telegram-typings": "^5.0.0",
+    "typescript": "^5.4.5"
   },
-  "resolutions": {
-    "whatwg-url": "^15.1.0"
-  },
-  "workspaces": [
-    "src/*"
-  ]
+  "optionalDependencies": {
+    "@img/sharp-libvips-linux-arm64": "^1.2.4",
+    "@img/sharp-libvips-linuxmusl-arm64": "^1.2.4",
+    "@img/sharp-linux-arm64": "^0.34.5",
+    "@img/sharp-linuxmusl-arm64": "^0.34.5"
+  }
 }
