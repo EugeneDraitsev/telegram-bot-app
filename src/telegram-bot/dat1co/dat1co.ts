@@ -1,4 +1,6 @@
+import { getHistory } from '../upstash'
 import {
+  cleanGeminiMessage,
   DEFAULT_ERROR_MESSAGE,
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
@@ -6,6 +8,8 @@ import {
 } from '../utils'
 
 const DAT1CO_URL = 'https://api.dat1.co/api/v1/collection/qwen-image/invoke'
+const GEMMA_URL =
+  'https://api.dat1.co/api/v1/collection/gemma-3-12b/invoke-chat'
 
 const apiKey = process.env.DAT1CO_API_KEY || ''
 
@@ -15,6 +19,84 @@ type Dat1coOptions = {
   num_inference_steps?: number
   aspect_ratio?: string
   seed?: number
+}
+
+export async function generateGemmaCompletion(
+  prompt: string,
+  chatId: string | number,
+) {
+  if (!isAiEnabledChat(chatId)) {
+    return NOT_ALLOWED_ERROR
+  }
+  if (!prompt) {
+    return PROMPT_MISSING_ERROR
+  }
+
+  if (!apiKey) {
+    console.error('DAT1CO_API_KEY is not set')
+    return DEFAULT_ERROR_MESSAGE
+  }
+
+  try {
+    const history = await getHistory(chatId)
+    const messages = history.map((h) => {
+      let content = h.parts[0].text
+      try {
+        const msg = JSON.parse(content)
+        content = msg.text || msg.caption || content
+      } catch (_e) {
+        // ignore error
+      }
+      return {
+        role: h.role === 'model' ? 'assistant' : 'user',
+        content,
+      }
+    })
+
+    messages.push({
+      role: 'user',
+      content: prompt,
+    })
+
+    const body = {
+      messages,
+    }
+
+    const res = await fetch(GEMMA_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Dat1co API Error: ${res.status} ${text}`)
+    }
+
+    const data = await res.json()
+    // Assuming the response structure for chat invoke.
+    // Usually input: { messages: ... } -> output: { response: "text" } or similar.
+    // The image invoke returns { response: base64 }.
+    // If it's a standard chat invoke, it might be { output: "..." } or { result: "..." }
+    // or just the text if it's raw.
+    // But since it's a collection invoke, let's assume `response` field or look at the response.
+    // I will try to read `response` or `output` or `content`.
+
+    // Safest bet for these wrappers: data.response or data.output.
+    const responseText =
+      data.choices?.[0]?.message?.content ||
+      data.output ||
+      data.content ||
+      JSON.stringify(data)
+
+    return cleanGeminiMessage(responseText)
+  } catch (e) {
+    console.error('Error generating gemma completion with dat1co: ', e)
+    return DEFAULT_ERROR_MESSAGE
+  }
 }
 
 export async function generateImageDat1co(

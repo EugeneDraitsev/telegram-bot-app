@@ -4,7 +4,7 @@ import type { Chat, Message } from 'telegram-typings'
 
 import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
 import setupCurrencyCommands from './currency'
-import setupDat1coCommands from './dat1co'
+import setupDat1coCommands, { setupGemmaDat1coCommands } from './dat1co'
 import setupExternalApisCommands from './external-apis'
 import setupGoogleCommands, {
   setupImageGenerationGeminiCommands,
@@ -106,6 +106,10 @@ bot.on('message:photo', (ctx) => {
 
   if (ctx.message?.caption?.startsWith('/e')) {
     return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', true)
+  }
+
+  if (ctx.message?.caption?.startsWith('/gemma')) {
+    return setupGemmaDat1coCommands(ctx, true)
   }
 
   if (

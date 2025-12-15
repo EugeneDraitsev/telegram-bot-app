@@ -2,7 +2,35 @@ import { type Bot, type Context, InputFile } from 'grammy/web'
 
 import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'
 import { DEFAULT_ERROR_MESSAGE } from '../utils'
-import { generateImageDat1co } from './dat1co'
+import { generateGemmaCompletion, generateImageDat1co } from './dat1co'
+
+export const setupGemmaDat1coCommands = async (
+  ctx: Context,
+  deferredCommands = false,
+) => {
+  const commandData = await getMultimodalCommandData(ctx)
+
+  if (deferredCommands) {
+    // Don't wait for the response
+    invokeReplyLambda(commandData)
+    return
+  } else {
+    const { combinedText, chatId, replyId } = commandData
+    const message = await generateGemmaCompletion(combinedText, chatId)
+
+    return ctx
+      .reply(message.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
+        reply_parameters: { message_id: replyId },
+        parse_mode: 'MarkdownV2',
+      })
+      .catch((_e) => {
+        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+      })
+      .catch((err) => {
+        console.error(`Error (Gemma Dat1co): ${err.message}`)
+      })
+  }
+}
 
 export const setupImageGenerationDat1coCommands = async (
   ctx: Context,
@@ -40,6 +68,7 @@ const setupDat1coCommands = (
   bot.command('de', (ctx) =>
     setupImageGenerationDat1coCommands(ctx, deferredCommands),
   )
+  bot.command('gemma', (ctx) => setupGemmaDat1coCommands(ctx, deferredCommands))
 }
 
 export default setupDat1coCommands

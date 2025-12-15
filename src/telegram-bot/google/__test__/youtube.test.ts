@@ -1,6 +1,7 @@
 import { searchYoutube } from '../youtube'
 
-global.fetch = jest.fn()
+// biome-ignore lint/suspicious/noExplicitAny: <>
+global.fetch = jest.fn() as any
 const mockedFetch = fetch as jest.MockedFunction<typeof fetch>
 
 describe('searchYoutube', () => {

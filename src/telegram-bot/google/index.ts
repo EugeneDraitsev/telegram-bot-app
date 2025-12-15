@@ -120,10 +120,6 @@ const setupGoogleCommands = (
     setupImageGenerationGeminiCommands(ctx, deferredCommands),
   )
 
-  bot.command('gemma', (ctx) =>
-    setupMultimodalGeminiCommands(ctx, deferredCommands, 'gemma-3-12b-it'),
-  )
-
   /*
    Translate commands
    */

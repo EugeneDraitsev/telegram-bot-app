@@ -2,7 +2,7 @@
 import { Bot } from 'grammy/web'
 
 // biome-ignore lint/suspicious/noExplicitAny: <>
-const fetchWithDuplex: typeof fetch = (input: any, init: any = {}) => {
+const fetchWithDuplex = (input: any, init: any = {}) => {
   // If there is a body and no duplex specified, set duplex to 'half'
   if (init?.body && typeof init.duplex === 'undefined') {
     init.duplex = 'half'
