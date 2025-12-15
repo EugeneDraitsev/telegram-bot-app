@@ -1,7 +1,7 @@
 import { webhookCallback } from 'grammy/web'
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 
-import setupDat1coCommands from './dat1co'
+import setupDat1coCommands, { setupGemmaDat1coCommands } from './dat1co'
 import setupGoogleCommands, {
   setupImageGenerationGeminiCommands,
   setupMultimodalGeminiCommands,
@@ -57,7 +57,14 @@ bot.on('message:photo', (ctx) => {
     return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', false)
   }
 
-  if (ctx.message?.caption?.startsWith('/ge')) {
+  if (ctx.message?.caption?.startsWith('/gemma')) {
+    return setupGemmaDat1coCommands(ctx, false)
+  }
+
+  if (
+    ctx.message?.caption?.startsWith('/ge') &&
+    !ctx.message?.caption?.startsWith('/gemma')
+  ) {
     return setupImageGenerationGeminiCommands(ctx, false)
   }
 
