@@ -15,8 +15,12 @@ export const setupGemmaDat1coCommands = async (
     invokeReplyLambda(commandData)
     return
   } else {
-    const { combinedText, chatId, replyId } = commandData
-    const message = await generateGemmaCompletion(combinedText, chatId)
+    const { combinedText, imagesData, chatId, replyId } = commandData
+    const message = await generateGemmaCompletion(
+      combinedText,
+      chatId,
+      imagesData,
+    )
 
     return ctx
       .reply(message.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {

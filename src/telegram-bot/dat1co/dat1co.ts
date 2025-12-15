@@ -24,11 +24,12 @@ type Dat1coOptions = {
 export async function generateGemmaCompletion(
   prompt: string,
   chatId: string | number,
+  imagesData: Buffer[] = [],
 ) {
   if (!isAiEnabledChat(chatId)) {
     return NOT_ALLOWED_ERROR
   }
-  if (!prompt) {
+  if (!prompt && (!imagesData || imagesData.length === 0)) {
     return PROMPT_MISSING_ERROR
   }
 
@@ -53,9 +54,26 @@ export async function generateGemmaCompletion(
       }
     })
 
+    let userContent: any = prompt
+
+    if (imagesData && imagesData.length > 0) {
+      userContent = [
+        {
+          type: 'text',
+          text: prompt,
+        },
+        ...imagesData.map((image) => ({
+          type: 'image_url',
+          image_url: {
+            url: `data:image/jpeg;base64,${image.toString('base64')}`,
+          },
+        })),
+      ]
+    }
+
     messages.push({
       role: 'user',
-      content: prompt,
+      content: userContent,
     })
 
     const body = {
