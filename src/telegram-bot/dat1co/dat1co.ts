@@ -2,6 +2,7 @@ import { getHistory } from '../upstash'
 import {
   cleanGeminiMessage,
   DEFAULT_ERROR_MESSAGE,
+  geminiSystemInstructions,
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
@@ -40,19 +41,25 @@ export async function generateGemmaCompletion(
 
   try {
     const history = await getHistory(chatId)
-    const messages = history.map((h) => {
-      let content = h.parts[0].text
-      try {
-        const msg = JSON.parse(content)
-        content = msg.text || msg.caption || content
-      } catch (_e) {
-        // ignore error
-      }
-      return {
-        role: h.role === 'model' ? 'assistant' : 'user',
-        content,
-      }
-    })
+    const messages = [
+      ...history.map((h) => {
+        let content = h.parts[0].text
+        try {
+          const msg = JSON.parse(content)
+          content = msg.text || msg.caption || content
+        } catch (_e) {
+          // ignore error
+        }
+        return {
+          role: h.role === 'model' ? 'assistant' : 'user',
+          content,
+        }
+      }),
+      {
+        role: 'system',
+        content: geminiSystemInstructions,
+      },
+    ]
 
     let userContent: any = prompt
 
