@@ -13,6 +13,7 @@ import { searchYoutube } from './youtube'
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
   deferredCommands = false,
+  model: string = 'gemini-3-pro-preview',
 ) => {
   const commandData = await getMultimodalCommandData(ctx)
 
@@ -26,6 +27,7 @@ export const setupMultimodalGeminiCommands = async (
       combinedText,
       ctx.message,
       imagesData,
+      model,
     )
 
     return ctx
@@ -116,6 +118,10 @@ const setupGoogleCommands = (
 
   bot.command('ge', (ctx) =>
     setupImageGenerationGeminiCommands(ctx, deferredCommands),
+  )
+
+  bot.command('gemma', (ctx) =>
+    setupMultimodalGeminiCommands(ctx, deferredCommands, 'gemma-3-12b-it'),
   )
 
   /*

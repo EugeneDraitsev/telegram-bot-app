@@ -108,7 +108,10 @@ bot.on('message:photo', (ctx) => {
     return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', true)
   }
 
-  if (ctx.message?.caption?.startsWith('/ge')) {
+  if (
+    ctx.message?.caption?.startsWith('/ge') &&
+    !ctx.message?.caption?.startsWith('/gemma')
+  ) {
     return setupImageGenerationGeminiCommands(ctx, true)
   }
 

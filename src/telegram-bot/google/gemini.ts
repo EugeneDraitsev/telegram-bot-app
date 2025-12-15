@@ -18,6 +18,7 @@ export const generateMultimodalCompletion = async (
   prompt: string,
   message?: Message,
   imagesData?: Buffer[],
+  model: string = 'gemini-3-pro-preview',
 ) => {
   try {
     const chatId = message?.chat?.id
@@ -59,10 +60,14 @@ export const generateMultimodalCompletion = async (
     })
 
     const result = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model,
       config: {
-        systemInstruction: geminiSystemInstructions,
-        tools: [{ googleSearch: {} }],
+        ...(!model.includes('gemma')
+          ? {
+              tools: [{ googleSearch: {} }],
+              systemInstruction: geminiSystemInstructions,
+            }
+          : {}),
       },
       contents,
     })
