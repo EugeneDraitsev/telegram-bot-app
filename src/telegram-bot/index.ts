@@ -12,7 +12,6 @@ import setupGoogleCommands, {
 } from './google'
 import setupOpenAiCommands, {
   setupImageGenerationOpenAiCommands,
-  setupMultimodalOpenAiCommands,
 } from './open-ai'
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
@@ -59,6 +58,8 @@ bot.use(async (ctx, next) => {
 // /ps <text> - punto switcher
 setupTextCommands(bot)
 
+// /q /qq <text, image> - generate chat completion with gemini-3-flash-preview
+// /o <text, image> - generate chat completion with gemini-3-pro-preview
 // /g <text> - search random image in google search
 // /t <text> - translate detected language to russian / english
 // /tb <text> - translate detected language to belarusian
@@ -83,9 +84,7 @@ setupUsersCommands(bot)
 // /f <text?> - get weather forecast
 setupExternalApisCommands(bot)
 
-// /q <text | image-with-caption> - generate chat completion with 4o
-// /e <text> - generate image
-// /o <text> - generate chat completion with o3-mini
+// /e, /ee <text, image> - generate or edit images with gpt-image-1.5
 setupOpenAiCommands(bot, { deferredCommands: true })
 
 // /de <text> - generate image with dat1co
@@ -93,15 +92,11 @@ setupDat1coCommands(bot, { deferredCommands: true })
 
 bot.on('message:photo', (ctx) => {
   if (ctx.message?.caption?.startsWith('/o')) {
-    return setupMultimodalOpenAiCommands(ctx, 'gpt-5-mini', true)
+    return setupMultimodalGeminiCommands(ctx, true, 'gemini-3-pro-preview')
   }
 
   if (ctx.message?.caption?.startsWith('/q')) {
-    return setupMultimodalGeminiCommands(ctx, true)
-  }
-
-  if (ctx.message?.caption?.startsWith('/ee')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', true)
+    return setupMultimodalGeminiCommands(ctx, true, 'gemini-3-flash-preview')
   }
 
   if (ctx.message?.caption?.startsWith('/e')) {

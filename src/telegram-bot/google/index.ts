@@ -5,6 +5,7 @@ import {
   getMultimodalCommandData,
   invokeReplyLambda,
 } from '@tg-bot/common'
+import { getMediaGroupMessages } from '../utils'
 import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
@@ -13,9 +14,10 @@ import { searchYoutube } from './youtube'
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
   deferredCommands = false,
-  model: string = 'gemini-3-pro-preview',
+  model: string = 'gemini-3-flash-preview',
 ) => {
-  const commandData = await getMultimodalCommandData(ctx)
+  const extraMessages = await getMediaGroupMessages(ctx)
+  const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
     // Don't wait for the response
@@ -48,7 +50,8 @@ export const setupImageGenerationGeminiCommands = async (
   ctx: Context,
   deferredCommands = false,
 ) => {
-  const commandData = await getMultimodalCommandData(ctx)
+  const extraMessages = await getMediaGroupMessages(ctx)
+  const commandData = await getMultimodalCommandData(ctx, extraMessages)
   if (deferredCommands) {
     // Don't wait for the response
     invokeReplyLambda(commandData)
@@ -109,11 +112,20 @@ const setupGoogleCommands = (
     })
   })
 
-  bot.command('q', (ctx) =>
-    setupMultimodalGeminiCommands(ctx, deferredCommands),
+  bot.command(['q', 'qq'], (ctx) =>
+    setupMultimodalGeminiCommands(
+      ctx,
+      deferredCommands,
+      'gemini-3-flash-preview',
+    ),
   )
-  bot.command('qq', (ctx) =>
-    setupMultimodalGeminiCommands(ctx, deferredCommands),
+
+  bot.command('o', (ctx) =>
+    setupMultimodalGeminiCommands(
+      ctx,
+      deferredCommands,
+      'gemini-3-pro-preview',
+    ),
   )
 
   bot.command('ge', (ctx) =>

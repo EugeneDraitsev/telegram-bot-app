@@ -1,14 +1,15 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
 
 import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'
-import { DEFAULT_ERROR_MESSAGE } from '../utils'
+import { DEFAULT_ERROR_MESSAGE, getMediaGroupMessages } from '../utils'
 import { generateGemmaCompletion, generateImageDat1co } from './dat1co'
 
 export const setupGemmaDat1coCommands = async (
   ctx: Context,
   deferredCommands = false,
 ) => {
-  const commandData = await getMultimodalCommandData(ctx)
+  const extraMessages = await getMediaGroupMessages(ctx)
+  const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
     // Don't wait for the response

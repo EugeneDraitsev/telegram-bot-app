@@ -2,7 +2,7 @@ import { type Bot, type Context, InputFile } from 'grammy/web'
 import type { ChatModel, ImageModel } from 'openai/resources'
 
 import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'
-import { DEFAULT_ERROR_MESSAGE } from '../utils'
+import { DEFAULT_ERROR_MESSAGE, getMediaGroupMessages } from '../utils'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
 
 export const setupMultimodalOpenAiCommands = async (
@@ -10,7 +10,8 @@ export const setupMultimodalOpenAiCommands = async (
   model: ChatModel = 'gpt-5-mini',
   deferredCommands = false,
 ) => {
-  const commandData = await getMultimodalCommandData(ctx)
+  const extraMessages = await getMediaGroupMessages(ctx)
+  const commandData = await getMultimodalCommandData(ctx, extraMessages)
   if (deferredCommands) {
     // Don't wait for the response
     invokeReplyLambda(commandData)
@@ -45,7 +46,8 @@ export const setupImageGenerationOpenAiCommands = async (
   model: ImageModel = 'gpt-image-1.5',
   deferredCommands = false,
 ) => {
-  const commandData = await getMultimodalCommandData(ctx)
+  const extraMessages = await getMediaGroupMessages(ctx)
+  const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
     // Don't wait for the response

@@ -24,7 +24,10 @@ export const getUserName = (user?: User | Chat) =>
   `${user?.first_name || ''} ${user?.last_name || ''}`.trim() ||
   String(user?.id ?? 'Unknown Chat')
 
-export const getCommandData = (message?: Message) => {
+export const getCommandData = (
+  message?: Message,
+  extraMessages: Message[] = [],
+) => {
   const { message_id, reply_to_message } = message ?? {}
   const parsedText = getParsedText(message?.text || message?.caption)
 
@@ -38,7 +41,26 @@ export const getCommandData = (message?: Message) => {
   const combinedText =
     replyText && messageText ? `${replyText}\n${messageText}` : text
 
-  const images = (message?.photo ?? []).concat(reply_to_message?.photo ?? [])
+  const getLargestPhoto = (m?: Message) =>
+    (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
+
+  const messagePhoto = getLargestPhoto(message)
+  const replyPhoto = getLargestPhoto(reply_to_message)
+  const extraPhotos = extraMessages.map(getLargestPhoto)
+
+  const allImages = [messagePhoto, replyPhoto, ...extraPhotos].filter(
+    (image) => image,
+  )
+
+  // Deduplicate by file_unique_id
+  const uniqueImagesMap = new Map()
+  for (const img of allImages) {
+    if (!uniqueImagesMap.has(img.file_unique_id)) {
+      uniqueImagesMap.set(img.file_unique_id, img)
+    }
+  }
+  const images = Array.from(uniqueImagesMap.values())
+
   const sticker = reply_to_message?.sticker
 
   if (sticker) {
@@ -48,9 +70,13 @@ export const getCommandData = (message?: Message) => {
   return { text, sticker, combinedText, images, replyId }
 }
 
-export const getMultimodalCommandData = async (ctx: Context) => {
+export const getMultimodalCommandData = async (
+  ctx: Context,
+  extraMessages: Message[] = [],
+) => {
   const { combinedText, images, replyId } = getCommandData(
     ctx.message as Message,
+    extraMessages,
   )
   const chatId = ctx?.chat?.id ?? ''
 

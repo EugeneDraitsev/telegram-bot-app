@@ -8,7 +8,6 @@ import setupGoogleCommands, {
 } from './google'
 import setupOpenAiCommands, {
   setupImageGenerationOpenAiCommands,
-  setupMultimodalOpenAiCommands,
 } from './open-ai'
 import { createBot, saveBotMessageMiddleware } from './utils'
 
@@ -42,15 +41,11 @@ setupDat1coCommands(bot, { deferredCommands: false })
 
 bot.on('message:photo', (ctx) => {
   if (ctx.message?.caption?.startsWith('/o')) {
-    return setupMultimodalOpenAiCommands(ctx, 'gpt-5-mini', false)
+    return setupMultimodalGeminiCommands(ctx, false, 'gemini-3-pro-preview')
   }
 
   if (ctx.message?.caption?.startsWith('/q')) {
-    return setupMultimodalGeminiCommands(ctx, false)
-  }
-
-  if (ctx.message?.caption?.startsWith('/ee')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', false)
+    return setupMultimodalGeminiCommands(ctx, false, 'gemini-3-flash-preview')
   }
 
   if (ctx.message?.caption?.startsWith('/e')) {

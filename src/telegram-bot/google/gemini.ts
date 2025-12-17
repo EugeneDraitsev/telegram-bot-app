@@ -18,7 +18,7 @@ export const generateMultimodalCompletion = async (
   prompt: string,
   message?: Message,
   imagesData?: Buffer[],
-  model: string = 'gemini-3-pro-preview',
+  model: string = 'gemini-3-flash-preview',
 ) => {
   try {
     const chatId = message?.chat?.id

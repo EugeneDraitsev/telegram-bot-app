@@ -27,6 +27,16 @@ export const saveMessage = async (message: Message, chatId?: number) => {
 
 export const getHistory = async (chatId: string | number) => {
   try {
+    const rawMessages = await getRawHistory(chatId)
+    return getFormattedHistory(rawMessages)
+  } catch (error) {
+    console.error('Error getting chat history:', error)
+    return []
+  }
+}
+
+export const getRawHistory = async (chatId: string | number) => {
+  try {
     if (!isAiEnabledChat(chatId)) {
       return []
     }
@@ -40,9 +50,9 @@ export const getHistory = async (chatId: string | number) => {
       { byScore: true },
     )
 
-    return getFormattedHistory(rawMessages)
+    return rawMessages
   } catch (error) {
-    console.error('Error getting chat history:', error)
+    console.error('Error getting raw chat history:', error)
     return []
   }
 }

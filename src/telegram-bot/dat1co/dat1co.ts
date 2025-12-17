@@ -61,6 +61,7 @@ export async function generateGemmaCompletion(
       },
     ]
 
+    // biome-ignore lint/suspicious/noExplicitAny: <>
     let userContent: any = prompt
 
     if (imagesData && imagesData.length > 0) {

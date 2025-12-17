@@ -144,4 +144,56 @@ describe('getCommandData', () => {
       images: [],
     })
   })
+
+  it('should return only the largest photo from message and reply', () => {
+    const photo1 = [
+      { file_id: '1_small', width: 100, height: 100, file_unique_id: '1' },
+      { file_id: '1_big', width: 1000, height: 1000, file_unique_id: '1' },
+    ]
+    const photo2 = [
+      { file_id: '2_small', width: 100, height: 100, file_unique_id: '2' },
+      { file_id: '2_big', width: 1000, height: 1000, file_unique_id: '2' },
+    ]
+    const data = getCommandData({
+      text: 'test',
+      photo: photo1,
+      reply_to_message: { message_id: 123, photo: photo2 },
+    } as unknown as Message)
+
+    expect(data.images).toEqual([photo1[1], photo2[1]])
+  })
+
+  it('should include images from extraMessages', () => {
+    const photo1 = [
+      { file_id: '1', width: 100, height: 100, file_unique_id: 'u1' },
+    ]
+    const photo2 = [
+      { file_id: '2', width: 100, height: 100, file_unique_id: 'u2' },
+    ]
+    const extra = [{ message_id: 2, photo: photo2 }] as Message[]
+
+    const data = getCommandData(
+      { text: 'test', photo: photo1 } as Message,
+      extra,
+    )
+    expect(data.images).toHaveLength(2)
+    expect(data.images).toEqual(expect.arrayContaining([photo1[0], photo2[0]]))
+  })
+
+  it('should deduplicate images from extraMessages', () => {
+    const photo1 = [
+      { file_id: '1', width: 100, height: 100, file_unique_id: 'u1' },
+    ]
+    const photo2 = [
+      { file_id: '2', width: 100, height: 100, file_unique_id: 'u1' }, // Same unique id
+    ]
+    const extra = [{ message_id: 2, photo: photo2 }] as Message[]
+
+    const data = getCommandData(
+      { text: 'test', photo: photo1 } as Message,
+      extra,
+    )
+    expect(data.images).toHaveLength(1)
+    expect(data.images[0].file_unique_id).toEqual('u1')
+  })
 })
