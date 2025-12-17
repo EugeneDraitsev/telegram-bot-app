@@ -1,0 +1,25 @@
+import type { Context } from 'grammy/web'
+
+import { getCommandData } from '@tg-bot/common'
+import { getMediaGroupMessages } from './media-group.utils'
+
+export const handleDebugImages = async (ctx: Context) => {
+  const extraMessages = await getMediaGroupMessages(ctx)
+  const { images, text, combinedText, replyId } = getCommandData(
+    ctx.message,
+    extraMessages,
+  )
+
+  const imagesInfo = images
+    .map(
+      (img, i) =>
+        `${i + 1}. ${img.width}x${img.height} (id: ${img.file_id.slice(0, 10)}...)`,
+    )
+    .join('\n')
+
+  const response = `Text: ${text}\nCombined Text: ${combinedText}\n\nImages (${images.length}):\n${imagesInfo}`
+
+  return ctx.reply(response, {
+    reply_parameters: { message_id: replyId },
+  })
+}

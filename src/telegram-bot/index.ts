@@ -16,7 +16,7 @@ import setupOpenAiCommands, {
 import setupTextCommands from './text'
 import { saveMessage } from './upstash'
 import setupUsersCommands from './users'
-import { createBot, saveBotMessageMiddleware } from './utils'
+import { createBot, handleDebugImages, saveBotMessageMiddleware } from './utils'
 
 const bot = createBot()
 
@@ -91,6 +91,10 @@ setupOpenAiCommands(bot, { deferredCommands: true })
 setupDat1coCommands(bot, { deferredCommands: true })
 
 bot.on('message:photo', (ctx) => {
+  if (ctx.message?.caption?.startsWith('/debugImages')) {
+    return handleDebugImages(ctx)
+  }
+
   if (ctx.message?.caption?.startsWith('/o')) {
     return setupMultimodalGeminiCommands(ctx, true, 'gemini-3-pro-preview')
   }

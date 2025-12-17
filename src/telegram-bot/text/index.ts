@@ -1,7 +1,7 @@
 import type { Bot } from 'grammy/web'
 
 import { getCommandData } from '@tg-bot/common'
-import { getMediaGroupMessages } from '../utils'
+import { handleDebugImages } from '../utils'
 import { throwDice } from './dice'
 import { huify } from './huiator'
 import { getPrediction } from './magic8ball'
@@ -62,26 +62,7 @@ const setupTextCommands = (bot: Bot) => {
     })
   })
 
-  bot.command('debugImages', async (ctx) => {
-    const extraMessages = await getMediaGroupMessages(ctx)
-    const { images, text, combinedText, replyId } = getCommandData(
-      ctx.message,
-      extraMessages,
-    )
-
-    const imagesInfo = images
-      .map(
-        (img, i) =>
-          `${i + 1}. ${img.width}x${img.height} (id: ${img.file_id.slice(0, 10)}...)`,
-      )
-      .join('\n')
-
-    const response = `Text: ${text}\nCombined Text: ${combinedText}\n\nImages (${images.length}):\n${imagesInfo}`
-
-    return ctx.reply(response, {
-      reply_parameters: { message_id: replyId },
-    })
-  })
+  bot.command('debugImages', handleDebugImages)
 }
 
 export default setupTextCommands
