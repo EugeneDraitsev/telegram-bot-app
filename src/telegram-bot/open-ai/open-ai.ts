@@ -23,7 +23,7 @@ export const generateImage = async (
   chatId: string | number,
   model: ImageModel,
   imagesData?: Buffer[],
-) => {
+): Promise<{ image: string | Buffer; text?: string }> => {
   if (!isAiEnabledChat(chatId)) {
     throw new Error(NOT_ALLOWED_ERROR)
   }
@@ -33,7 +33,7 @@ export const generateImage = async (
 
   let response: OpenAi.Images.ImagesResponse
 
-  if (imagesData?.length && model === 'gpt-image-1') {
+  if (imagesData?.length && model === 'gpt-image-1.5') {
     const image: Uploadable[] = []
     for (const imageData of imagesData) {
       image.push(await toFile(imageData, 'image.jpg', { type: 'image/jpeg' }))
@@ -50,19 +50,24 @@ export const generateImage = async (
   } else {
     response = await openAi.images.generate({
       prompt,
-      quality: model === 'gpt-image-1' ? 'medium' : 'standard',
+      quality: model === 'gpt-image-1.5' ? 'medium' : 'standard',
       model,
       n: 1,
       size: '1024x1024',
     })
   }
 
+  const text = response.data?.[0].revised_prompt
+
   if (response.data?.[0].b64_json) {
-    return Buffer.from(response.data?.[0].b64_json || '', 'base64')
+    return {
+      image: Buffer.from(response.data?.[0].b64_json || '', 'base64'),
+      text,
+    }
   }
 
   if (response.data?.[0].url) {
-    return response.data?.[0].url
+    return { image: response.data?.[0].url, text }
   }
 
   throw new Error(DEFAULT_ERROR_MESSAGE)

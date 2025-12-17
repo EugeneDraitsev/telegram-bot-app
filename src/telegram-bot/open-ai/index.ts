@@ -42,7 +42,7 @@ export const setupMultimodalOpenAiCommands = async (
 
 export const setupImageGenerationOpenAiCommands = async (
   ctx: Context,
-  model: ImageModel = 'gpt-image-1',
+  model: ImageModel = 'gpt-image-1.5',
   deferredCommands = false,
 ) => {
   const commandData = await getMultimodalCommandData(ctx)
@@ -54,11 +54,19 @@ export const setupImageGenerationOpenAiCommands = async (
   } else {
     const { combinedText, imagesData, chatId, replyId } = commandData
     try {
-      const image = await generateImage(combinedText, chatId, model, imagesData)
+      const { image, text } = await generateImage(
+        combinedText,
+        chatId,
+        model,
+        imagesData,
+      )
 
       return ctx.replyWithPhoto(
         typeof image === 'string' ? image : new InputFile(image),
-        { reply_parameters: { message_id: replyId } },
+        {
+          reply_parameters: { message_id: replyId },
+          caption: text,
+        },
       )
     } catch (error) {
       console.error(`Generate Image error (Open AI): ${error.message}`)
@@ -74,10 +82,10 @@ const setupOpenAiCommands = (
   { deferredCommands } = { deferredCommands: false },
 ) => {
   bot.command('e', (ctx) =>
-    setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', deferredCommands),
+    setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', deferredCommands),
   )
   bot.command('ee', (ctx) =>
-    setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1', deferredCommands),
+    setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', deferredCommands),
   )
 
   bot.command('o', (ctx) =>

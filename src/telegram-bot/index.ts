@@ -101,11 +101,11 @@ bot.on('message:photo', (ctx) => {
   }
 
   if (ctx.message?.caption?.startsWith('/ee')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1', true)
+    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', true)
   }
 
   if (ctx.message?.caption?.startsWith('/e')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'dall-e-3', true)
+    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', true)
   }
 
   if (ctx.message?.caption?.startsWith('/gemma')) {
