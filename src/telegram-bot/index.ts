@@ -3,20 +3,9 @@ import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Chat, Message } from 'telegram-typings'
 
 import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
-import setupCurrencyCommands from './currency'
-import setupDat1coCommands, { setupGemmaDat1coCommands } from './dat1co'
-import setupExternalApisCommands from './external-apis'
-import setupGoogleCommands, {
-  setupImageGenerationGeminiCommands,
-  setupMultimodalGeminiCommands,
-} from './google'
-import setupOpenAiCommands, {
-  setupImageGenerationOpenAiCommands,
-} from './open-ai'
-import setupTextCommands from './text'
+import { setupAllCommands } from './setup-commands'
 import { saveMessage } from './upstash'
-import setupUsersCommands from './users'
-import { createBot, handleDebugImages, saveBotMessageMiddleware } from './utils'
+import { createBot, saveBotMessageMiddleware } from './utils'
 
 const bot = createBot()
 
@@ -50,76 +39,8 @@ bot.use(async (ctx, next) => {
   }
 })
 
-// /h <text?> - huyator
-// /y <text?> - yasnoficator
-// /dice <number?> - throw a die
-// /8 <text?> - magic 8 ball
-// /shrug - ¯\_(ツ)_/¯
-// /ps <text> - punto switcher
-setupTextCommands(bot)
-
-// /q /qq <text, image> - generate chat completion with gemini-3-flash-preview
-// /o <text, image> - generate chat completion with gemini-3-pro-preview
-// /g <text> - search random image in google search
-// /t <text> - translate detected language to russian / english
-// /tb <text> - translate detected language to belarusian
-// /tp <text> - translate detected language to polish
-// /ts <text> - translate detected language to swedish
-// /td <text> - translate detected language to deutsch
-// /tr <text> - translate detected language to russian
-// /te <text> - translate detected language to english
-// /v <text> -  search random video in YouTube
-setupGoogleCommands(bot, { deferredCommands: true })
-
-// /c - get currency rates
-setupCurrencyCommands(bot)
-
-// /z - get chat statistics for all time
-// /s - get chat statistics for last 24 hours
-// /all - ping all active users in chat
-setupUsersCommands(bot)
-
-// /w <text> - search wikipedia
-// /p <text> - get horoscope
-// /f <text?> - get weather forecast
-setupExternalApisCommands(bot)
-
-// /e, /ee <text, image> - generate or edit images with gpt-image-1.5
-setupOpenAiCommands(bot, { deferredCommands: true })
-
-// /de <text> - generate image with dat1co
-setupDat1coCommands(bot, { deferredCommands: true })
-
-bot.on('message:photo', (ctx) => {
-  if (ctx.message?.caption?.startsWith('/debugImages')) {
-    return handleDebugImages(ctx)
-  }
-
-  if (ctx.message?.caption?.startsWith('/o')) {
-    return setupMultimodalGeminiCommands(ctx, true, 'gemini-3-pro-preview')
-  }
-
-  if (ctx.message?.caption?.startsWith('/q')) {
-    return setupMultimodalGeminiCommands(ctx, true, 'gemini-3-flash-preview')
-  }
-
-  if (ctx.message?.caption?.startsWith('/e')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', true)
-  }
-
-  if (ctx.message?.caption?.startsWith('/gemma')) {
-    return setupGemmaDat1coCommands(ctx, true)
-  }
-
-  if (
-    ctx.message?.caption?.startsWith('/ge') &&
-    !ctx.message?.caption?.startsWith('/gemma')
-  ) {
-    return setupImageGenerationGeminiCommands(ctx, true)
-  }
-
-  return
-})
+// Setup all commands with deferred mode (async via Lambda)
+setupAllCommands(bot, true)
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 

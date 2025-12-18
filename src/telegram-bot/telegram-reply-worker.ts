@@ -1,69 +1,19 @@
 import { webhookCallback } from 'grammy/web'
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 
-import setupDat1coCommands, { setupGemmaDat1coCommands } from './dat1co'
-import setupGoogleCommands, {
-  setupImageGenerationGeminiCommands,
-  setupMultimodalGeminiCommands,
-} from './google'
-import setupOpenAiCommands, {
-  setupImageGenerationOpenAiCommands,
-} from './open-ai'
+import { setupAllCommands } from './setup-commands'
 import { createBot, saveBotMessageMiddleware } from './utils'
 
 const bot = createBot()
 
 bot.use(saveBotMessageMiddleware)
 
+// Setup all commands with sync mode (no Lambda deferral)
+setupAllCommands(bot, false)
+
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
   // 5 minutes timeout
   timeoutMilliseconds: 300_000,
-})
-
-// /g <text> - search random image in google search
-// /t <text> - translate detected language to russian / english
-// /tb <text> - translate detected language to belarusian
-// /tp <text> - translate detected language to polish
-// /ts <text> - translate detected language to swedish
-// /td <text> - translate detected language to deutsch
-// /tr <text> - translate detected language to russian
-// /te <text> - translate detected language to english
-// /v <text> - search random video in YouTube
-setupGoogleCommands(bot, { deferredCommands: false })
-
-// /q <text | image-with-caption> - generate chat completion with 4o
-// /e <text> - generate image
-// /o <text> - generate chat completion with o3-mini
-setupOpenAiCommands(bot, { deferredCommands: false })
-
-// /de <text> - generate image with dat1co
-setupDat1coCommands(bot, { deferredCommands: false })
-
-bot.on('message:photo', (ctx) => {
-  if (ctx.message?.caption?.startsWith('/o')) {
-    return setupMultimodalGeminiCommands(ctx, false, 'gemini-3-pro-preview')
-  }
-
-  if (ctx.message?.caption?.startsWith('/q')) {
-    return setupMultimodalGeminiCommands(ctx, false, 'gemini-3-flash-preview')
-  }
-
-  if (ctx.message?.caption?.startsWith('/e')) {
-    return setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', false)
-  }
-
-  if (ctx.message?.caption?.startsWith('/gemma')) {
-    return setupGemmaDat1coCommands(ctx, false)
-  }
-
-  if (
-    ctx.message?.caption?.startsWith('/ge') &&
-    !ctx.message?.caption?.startsWith('/gemma')
-  ) {
-    return setupImageGenerationGeminiCommands(ctx, false)
-  }
-
-  return
 })
 
 const telegramReplyWorker: LambdaFunctionURLHandler = async (

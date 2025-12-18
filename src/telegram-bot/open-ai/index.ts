@@ -89,10 +89,6 @@ const setupOpenAiCommands = (
   bot.command('ee', (ctx) =>
     setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', deferredCommands),
   )
-
-  bot.command('o', (ctx) =>
-    setupMultimodalOpenAiCommands(ctx, 'gpt-5-mini', deferredCommands),
-  )
 }
 
 export default setupOpenAiCommands

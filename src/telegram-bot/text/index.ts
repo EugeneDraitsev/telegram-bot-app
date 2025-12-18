@@ -1,7 +1,6 @@
 import type { Bot } from 'grammy/web'
 
 import { getCommandData } from '@tg-bot/common'
-import { handleDebugImages } from '../utils'
 import { throwDice } from './dice'
 import { huify } from './huiator'
 import { getPrediction } from './magic8ball'
@@ -61,8 +60,6 @@ const setupTextCommands = (bot: Bot) => {
       reply_parameters: { message_id: replyId },
     })
   })
-
-  bot.command('debugImages', handleDebugImages)
 }
 
 export default setupTextCommands

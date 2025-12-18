@@ -142,47 +142,23 @@ const setupGoogleCommands = (
     })
   })
 
-  bot.command('tb', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    return ctx.reply(await translate(text, 'be'), {
-      reply_parameters: { message_id: replyId },
-    })
-  })
+  const translateCommands = [
+    ['tb', 'be'],
+    ['tr', 'ru'],
+    ['tp', 'pl'],
+    ['ts', 'sv'],
+    ['td', 'de'],
+    ['te', 'en'],
+  ] as const
 
-  bot.command('tr', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    return ctx.reply(await translate(text, 'ru'), {
-      reply_parameters: { message_id: replyId },
+  for (const [cmd, lang] of translateCommands) {
+    bot.command(cmd, async (ctx) => {
+      const { text, replyId } = getCommandData(ctx.message)
+      return ctx.reply(await translate(text, lang), {
+        reply_parameters: { message_id: replyId },
+      })
     })
-  })
-
-  bot.command('tp', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    return ctx.reply(await translate(text, 'pl'), {
-      reply_parameters: { message_id: replyId },
-    })
-  })
-
-  bot.command('ts', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    return ctx.reply(await translate(text, 'sv'), {
-      reply_parameters: { message_id: replyId },
-    })
-  })
-
-  bot.command('td', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    return ctx.reply(await translate(text, 'de'), {
-      reply_parameters: { message_id: replyId },
-    })
-  })
-
-  bot.command('te', async (ctx) => {
-    const { text, replyId } = getCommandData(ctx.message)
-    return ctx.reply(await translate(text, 'en'), {
-      reply_parameters: { message_id: replyId },
-    })
-  })
+  }
 }
 
 export default setupGoogleCommands
