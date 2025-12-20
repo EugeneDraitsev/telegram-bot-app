@@ -8,7 +8,7 @@ import {
   PROMPT_MISSING_ERROR,
 } from '../utils'
 
-const DAT1CO_URL = 'https://api.dat1.co/api/v1/collection/qwen-image/invoke'
+const Z_IMAGE_URL = 'https://api.dat1.co/api/v1/collection/z-image-turbo/invoke'
 const GEMMA_URL =
   'https://api.dat1.co/api/v1/collection/gemma-3-12b/invoke-chat'
 
@@ -143,17 +143,15 @@ export async function generateImageDat1co(
 
   try {
     const body = {
-      input: {
-        prompt,
-        neg_prompt: options.neg_prompt ?? '',
-        true_cfg_scale: options.true_cfg_scale ?? 4.0,
-        num_inference_steps: options.num_inference_steps ?? 50,
-        aspect_ratio: options.aspect_ratio ?? '1:1',
-        seed: options.seed ?? Math.floor(Math.random() * 1000000000),
-      },
+      prompt,
+      neg_prompt: options.neg_prompt ?? '',
+      true_cfg_scale: options.true_cfg_scale ?? 4.0,
+      num_inference_steps: options.num_inference_steps ?? 50,
+      aspect_ratio: options.aspect_ratio ?? '1:1',
+      seed: options.seed ?? Math.floor(Math.random() * 1000000000),
     }
 
-    const res = await fetch(DAT1CO_URL, {
+    const res = await fetch(Z_IMAGE_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
