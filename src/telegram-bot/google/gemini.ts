@@ -29,7 +29,7 @@ export const generateMultimodalCompletion = async (
     const contents: Content[] = await getHistory(chatId)
 
     // Add a placeholder for the first message if the first message is from the model
-    if (contents[0].role === 'model') {
+    if (contents?.[0]?.role === 'model') {
       contents?.unshift({ role: 'user', parts: [{ text: '' }] })
     }
 
