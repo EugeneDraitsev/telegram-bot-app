@@ -1,4 +1,4 @@
-import { type Content, GoogleGenAI, Modality } from '@google/genai'
+import { GoogleGenAI } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
 import { getHistory } from '../upstash'
@@ -14,6 +14,14 @@ import {
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 const ai = new GoogleGenAI({ apiKey })
 
+type InteractionInput = {
+  role: 'user' | 'model'
+  content: Array<
+    | { type: 'text'; text: string }
+    | { type: 'image'; data: string; mime_type: string }
+  >
+}
+
 export const generateMultimodalCompletion = async (
   prompt: string,
   message?: Message,
@@ -26,31 +34,33 @@ export const generateMultimodalCompletion = async (
       return NOT_ALLOWED_ERROR
     }
 
-    const contents: Content[] = await getHistory(chatId)
+    const history: InteractionInput[] = await getHistory(chatId)
 
     // Add a placeholder for the first message if the first message is from the model
-    if (contents?.[0]?.role === 'model') {
-      contents?.unshift({ role: 'user', parts: [{ text: '' }] })
+    if (history?.[0]?.role === 'model') {
+      history?.unshift({ role: 'user', content: [{ type: 'text', text: '' }] })
     }
 
+    // Add images to history
     for (const image of imagesData ?? []) {
-      contents.push({
+      history.push({
         role: 'user',
-        parts: [
+        content: [
           {
-            inlineData: {
-              data: image.toString('base64'),
-              mimeType: 'image/jpeg',
-            },
+            type: 'image',
+            data: image.toString('base64'),
+            mime_type: 'image/jpeg',
           },
         ],
       })
     }
 
-    contents.push({
+    // Add current prompt
+    history.push({
       role: 'user',
-      parts: [
+      content: [
         {
+          type: 'text',
           text: JSON.stringify({
             ...message,
             text: prompt || 'Выдай любой комментарий на твой вкус по ситуации',
@@ -59,20 +69,19 @@ export const generateMultimodalCompletion = async (
       ],
     })
 
-    const result = await ai.models.generateContent({
+    const interaction = await ai.interactions.create({
       model,
-      config: {
-        ...(!model.includes('gemma')
-          ? {
-              tools: [{ googleSearch: {} }],
-              systemInstruction: geminiSystemInstructions,
-            }
-          : {}),
-      },
-      contents,
+      input: history,
+      ...(!model.includes('gemma')
+        ? {
+            tools: [{ type: 'google_search' }],
+            system_instruction: geminiSystemInstructions,
+          }
+        : {}),
     })
 
-    const text = result.text
+    const textOutput = interaction.outputs?.find((o) => o.type === 'text')
+    const text = textOutput?.text
 
     if (!text) {
       return DEFAULT_ERROR_MESSAGE
@@ -99,39 +108,39 @@ export async function generateImage(
       return { text: PROMPT_MISSING_ERROR }
     }
 
-    const contents: Content[] = []
+    // Get message history for context
+    const history: InteractionInput[] = await getHistory(chatId)
+
+    // Add images from the current request
     for (const image of imagesData ?? []) {
-      contents.push({
+      history.push({
         role: 'user',
-        parts: [
+        content: [
           {
-            inlineData: {
-              data: image.toString('base64'),
-              mimeType: 'image/jpeg',
-            },
+            type: 'image',
+            data: image.toString('base64'),
+            mime_type: 'image/jpeg',
           },
         ],
       })
     }
 
-    contents.push({ role: 'user', parts: [{ text: prompt }] })
+    // Add current prompt
+    history.push({ role: 'user', content: [{ type: 'text', text: prompt }] })
 
-    const response = await ai.models.generateContent({
+    const interaction = await ai.interactions.create({
       model: 'gemini-2.5-flash-image',
-      contents: contents,
-      config: {
-        responseModalities: [Modality.TEXT, Modality.IMAGE],
-      },
+      input: history,
+      response_modalities: ['image'],
     })
 
-    const parsedResponse = response.candidates?.[0].content?.parts?.reduce(
-      (acc, candidate) => {
-        if (candidate.text) {
-          acc.text += `${candidate.text}\n`
+    const parsedResponse = interaction.outputs?.reduce(
+      (acc, output) => {
+        if (output.type === 'text' && output.text) {
+          acc.text += `${output.text}\n`
         }
-        if (candidate.inlineData?.data) {
-          const imageData = candidate.inlineData.data
-          acc.image = Buffer.from(imageData, 'base64')
+        if (output.type === 'image' && output.data) {
+          acc.image = Buffer.from(output.data, 'base64')
         }
         return acc
       },
@@ -141,8 +150,7 @@ export async function generateImage(
     if (!parsedResponse?.text && !parsedResponse?.image) {
       console.error(
         'Error empty gemini response:',
-        parsedResponse,
-        response.candidates?.[0].content?.parts,
+        JSON.stringify({ parsedResponse, outputs: interaction.outputs }),
       )
       return { text: DEFAULT_ERROR_MESSAGE, image: null }
     }

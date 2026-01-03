@@ -43,7 +43,7 @@ export async function generateGemmaCompletion(
     const history = await getHistory(chatId)
     const messages = [
       ...history.map((h) => {
-        let content = h.parts[0].text
+        let content = h.content[0].text
         try {
           const msg = JSON.parse(content)
           content = msg.text || msg.caption || content

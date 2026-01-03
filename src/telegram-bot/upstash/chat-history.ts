@@ -76,8 +76,8 @@ function getFormattedHistory(chatHistory: Message[]) {
     return chatHistory?.map((message) => {
       const role = message.from?.is_bot ? 'model' : 'user'
       return {
-        role: role,
-        parts: [{ text: JSON.stringify(message) }],
+        role: role as 'user' | 'model',
+        content: [{ type: 'text' as const, text: JSON.stringify(message) }],
       }
     })
   } catch (error) {
