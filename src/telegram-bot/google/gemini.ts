@@ -109,7 +109,7 @@ export async function generateImage(
     }
 
     // Get message history for context
-    const history: InteractionInput[] = await getHistory(chatId)
+    const history: InteractionInput[] = [] // await getHistory(chatId)
 
     // Add images from the current request
     for (const image of imagesData ?? []) {
@@ -128,16 +128,6 @@ export async function generateImage(
     // Add current prompt
     if (prompt) {
       history.push({ role: 'user', content: [{ type: 'text', text: prompt }] })
-    }
-
-    // Keep the last 20 messages to fit a context window
-    if (history.length > 20) {
-      history.splice(0, history.length - 20)
-    }
-
-    // Add a placeholder for the first message if the first message is from the model (after trimming)
-    if (history?.[0]?.role === 'model') {
-      history.unshift({ role: 'user', content: [{ type: 'text', text: '' }] })
     }
 
     const interaction = await ai.interactions.create({
