@@ -128,6 +128,9 @@ export async function generateImage(
     // Add current prompt
     history.push({ role: 'user', content: [{ type: 'text', text: prompt }] })
 
+    // Keep the last 20 messages to fit a context window
+    history.splice(history.length - 20)
+
     const interaction = await ai.interactions.create({
       model: 'gemini-2.5-flash-image',
       input: history,
