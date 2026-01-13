@@ -111,6 +111,11 @@ export async function generateImage(
     // Get message history for context
     const history: InteractionInput[] = await getHistory(chatId)
 
+    // Add a placeholder for the first message if the first message is from the model
+    if (history?.[0]?.role === 'model') {
+      history?.unshift({ role: 'user', content: [{ type: 'text', text: '' }] })
+    }
+
     // Add images from the current request
     for (const image of imagesData ?? []) {
       history.push({
@@ -129,7 +134,9 @@ export async function generateImage(
     history.push({ role: 'user', content: [{ type: 'text', text: prompt }] })
 
     // Keep the last 10 messages to fit a context window
-    history.splice(history.length - 10)
+    if (history.length > 10) {
+      history.splice(0, history.length - 10)
+    }
 
     const interaction = await ai.interactions.create({
       model: 'gemini-2.5-flash-image',
