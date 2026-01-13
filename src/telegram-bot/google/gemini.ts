@@ -143,7 +143,7 @@ export async function generateImage(
     const interaction = await ai.interactions.create({
       model: 'gemini-2.5-flash-image',
       input: history,
-      response_modalities: ['image', 'text'],
+      response_modalities: ['image'],
     })
 
     const parsedResponse = interaction.outputs?.reduce(
