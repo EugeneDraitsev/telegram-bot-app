@@ -3,6 +3,8 @@ import type { Context, NextFunction } from 'grammy/web'
 import { saveMessage } from '../upstash'
 
 export const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
+export const EMPTY_RESPONSE_ERROR =
+  'Gemini returned empty response, please try again'
 export const PROMPT_MISSING_ERROR = 'Prompt is required'
 export const NOT_ALLOWED_ERROR =
   'OpenAI is not allowed for this chat. Contact @drrrrrrrr for details'

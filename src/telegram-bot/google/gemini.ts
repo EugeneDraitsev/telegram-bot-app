@@ -5,6 +5,7 @@ import { getHistory } from '../upstash'
 import {
   cleanGeminiMessage,
   DEFAULT_ERROR_MESSAGE,
+  EMPTY_RESPONSE_ERROR,
   geminiSystemInstructions,
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
@@ -130,31 +131,42 @@ export async function generateImage(
       history.push({ role: 'user', content: [{ type: 'text', text: prompt }] })
     }
 
-    const interaction = await ai.interactions.create({
-      model: 'gemini-2.5-flash-image',
-      input: history,
-      response_modalities: ['image'],
-    })
+    const maxRetries = 3
+    let parsedResponse: { text: string; image?: Buffer } | undefined
 
-    const parsedResponse = interaction.outputs?.reduce(
-      (acc, output) => {
-        if (output.type === 'text' && output.text) {
-          acc.text += `${output.text}\n`
-        }
-        if (output.type === 'image' && output.data) {
-          acc.image = Buffer.from(output.data, 'base64')
-        }
-        return acc
-      },
-      { text: '' } as { text: string; image?: Buffer },
-    )
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const interaction = await ai.interactions.create({
+        model: 'gemini-2.5-flash-image',
+        input: history,
+        response_modalities: ['image', 'text'],
+      })
 
-    if (!parsedResponse?.text && !parsedResponse?.image) {
-      console.error(
-        'Error empty gemini response:',
+      parsedResponse = interaction.outputs?.reduce(
+        (acc, output) => {
+          if (output.type === 'text' && output.text) {
+            acc.text += `${output.text}\n`
+          }
+          if (output.type === 'image' && output.data) {
+            acc.image = Buffer.from(output.data, 'base64')
+          }
+          return acc
+        },
+        { text: '' } as { text: string; image?: Buffer },
+      )
+
+      if (parsedResponse?.image) {
+        break
+      }
+
+      console.warn(
+        `Gemini image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
         JSON.stringify({ parsedResponse, outputs: interaction.outputs }),
       )
-      return { text: DEFAULT_ERROR_MESSAGE, image: null }
+    }
+
+    if (!parsedResponse?.text && !parsedResponse?.image) {
+      console.error('Error empty gemini response after all retries')
+      return { text: EMPTY_RESPONSE_ERROR, image: null }
     }
 
     return parsedResponse
