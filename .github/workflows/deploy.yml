@@ -23,7 +23,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
           SERVERLESS_ACCESS_KEY: ${{secrets.SERVERLESS_ACCESS_KEY}}
           GOOGLE_CX_TOKEN: ${{secrets.GOOGLE_CX_TOKEN}}
-          GOOGLE_API_KEY: ${{secrets.GOOGLE_API_KEY}}
+          COMMON_GOOGLE_API_KEY: ${{secrets.COMMON_GOOGLE_API_KEY}}
           OPEN_WEATHER_MAP_TOKEN: ${{secrets.OPEN_WEATHER_MAP_TOKEN}}
           TOKEN: ${{secrets.TOKEN}}
           YOUTUBE_TOKEN: ${{secrets.YOUTUBE_TOKEN}}

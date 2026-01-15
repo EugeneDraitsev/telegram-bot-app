@@ -23,7 +23,7 @@ functions:
     handler: src/telegram-bot/index.default
     environment:
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-      GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
+      COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
       TOKEN: ${env:TOKEN}
       YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
@@ -47,7 +47,7 @@ functions:
     memorySize: 1536
     environment:
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-      GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
+      COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
       TOKEN: ${env:TOKEN}
       YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}

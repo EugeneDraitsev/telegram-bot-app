@@ -1,6 +1,6 @@
 import { sample } from '@tg-bot/common'
 
-const googleApiKey = process.env.GOOGLE_API_KEY || 'set_your_token'
+const googleApiKey = process.env.COMMON_GOOGLE_API_KEY || 'set_your_token'
 const cxToken = process.env.GOOGLE_CX_TOKEN || 'set_your_token'
 
 type Image = { mime: string; link: string; image: { thumbnailLink: string } }

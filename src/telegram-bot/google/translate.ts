@@ -1,7 +1,7 @@
 import { unEscape } from '@tg-bot/common/utils'
 
 const timeout = 5_000
-const googleApiKey = process.env.GOOGLE_API_KEY || 'set_your_token'
+const googleApiKey = process.env.COMMON_GOOGLE_API_KEY || 'set_your_token'
 
 export const translate = async (
   text: string,
