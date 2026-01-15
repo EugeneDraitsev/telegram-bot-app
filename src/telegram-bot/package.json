@@ -8,7 +8,7 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@google/genai": "1.35.0",
+    "@google/genai": "1.36.0",
     "@upstash/redis": "^1.36.1",
     "grammy": "^1.39.2",
     "openai": "^6.16.0"
