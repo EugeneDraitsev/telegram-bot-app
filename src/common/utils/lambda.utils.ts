@@ -25,5 +25,9 @@ export const invokeLambda = (
 export const invokeReplyLambda = (payload: Record<string, any>) => {
   const replyWorkerFunctionName = process.env.REPLY_WORKER_FUNCTION_NAME || ''
 
-  return invokeLambda(replyWorkerFunctionName, payload, true)
+  // Remove imagesData from payload to avoid exceeding Lambda's 6MB payload limit.
+  // The worker lambda will re-fetch images from Telegram API when processing the command.
+  const { imagesData, ...payloadWithoutImages } = payload
+
+  return invokeLambda(replyWorkerFunctionName, payloadWithoutImages, true)
 }
