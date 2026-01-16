@@ -51,7 +51,7 @@ describe('invokeReplyLambda', () => {
     await invokeReplyLambda(payload)
 
     expect(capturedPayload).toBeDefined()
-    const parsedPayload = JSON.parse(capturedPayload?.toString())
+    const parsedPayload = JSON.parse(capturedPayload?.toString() ?? '')
 
     expect(parsedPayload).not.toHaveProperty('imagesData')
     expect(parsedPayload).toHaveProperty('combinedText', 'test text')
