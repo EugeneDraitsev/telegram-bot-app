@@ -1,4 +1,4 @@
-import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
+import { type InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
 import { invokeLambda, invokeReplyLambda } from '..'
 
@@ -39,7 +39,10 @@ describe('invokeReplyLambda', () => {
 
     const payload = {
       combinedText: 'test text',
-      imagesData: [Buffer.from('large image data 1'), Buffer.from('large image data 2')],
+      imagesData: [
+        Buffer.from('large image data 1'),
+        Buffer.from('large image data 2'),
+      ],
       replyId: 123,
       chatId: 456,
       message: { text: 'test' },
@@ -48,7 +51,7 @@ describe('invokeReplyLambda', () => {
     await invokeReplyLambda(payload)
 
     expect(capturedPayload).toBeDefined()
-    const parsedPayload = JSON.parse(capturedPayload!.toString())
+    const parsedPayload = JSON.parse(capturedPayload?.toString())
 
     expect(parsedPayload).not.toHaveProperty('imagesData')
     expect(parsedPayload).toHaveProperty('combinedText', 'test text')
