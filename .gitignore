@@ -36,3 +36,4 @@ config.ts
 package-lock.json
 .env
 scripts
+.output.txt

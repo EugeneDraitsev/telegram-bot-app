@@ -6,10 +6,10 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "2.15.4",
-    "styled-components": "^6.3.6"
+    "styled-components": "^6.3.8"
   },
   "devDependencies": {
-    "@types/react": "^19.2.8",
+    "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3"
   },
   "optionalDependencies": {
