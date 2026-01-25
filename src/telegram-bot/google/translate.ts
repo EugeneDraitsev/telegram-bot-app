@@ -30,13 +30,18 @@ export const translate = async (
       targetLanguage ||
       (inputLanguage === defaultTargetFromEn ? 'en' : defaultTargetFromEn)
 
-    return fetch(translateUrl, {
+    const translateResponse = await fetch(translateUrl, {
       signal: globalThis.AbortSignal.timeout(timeout),
       method: 'POST',
       body: JSON.stringify({ q: text, target }),
     })
-      .then((x) => x.json())
-      .then((x) => unEscape(x.data.translations?.[0]?.translatedText))
+    const translateData = await translateResponse.json()
+    const translatedText = translateData.data?.translations?.[0]?.translatedText
+    if (!translatedText) {
+      throw new Error('Empty translation response')
+    }
+
+    return unEscape(translatedText)
   } catch (_e) {
     return 'Error from translation service'
   }

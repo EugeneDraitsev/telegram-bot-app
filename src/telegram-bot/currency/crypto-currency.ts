@@ -151,7 +151,7 @@ const getOkxData = async () => {
 
 export const getCryptoCurrency = async (): Promise<string> => {
   try {
-    return getOkxData()
+    return await getOkxData()
   } catch (e) {
     console.error('OKX error: ', e)
     return getPoloniexData()

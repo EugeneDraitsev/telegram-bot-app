@@ -75,18 +75,31 @@ export const getMultimodalCommandData = async (
   extraMessages: Message[] = [],
 ) => {
   const { combinedText, images, replyId } = getCommandData(
-    ctx.message as Message,
+    ctx.message,
     extraMessages,
   )
   const chatId = ctx?.chat?.id ?? ''
 
-  const files = await Promise.all(
+  const fileResults = await Promise.allSettled(
     images?.map((image) => ctx.api.getFile(image.file_id)) ?? [],
   )
 
-  const imagesUrls = files.map((file) => {
-    return `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
-  })
+  const files: Array<{ file_path?: string }> = []
+  for (const result of fileResults) {
+    if (result.status === 'fulfilled') {
+      files.push(result.value as { file_path?: string })
+    } else {
+      console.warn('getFile error: ', result.reason)
+    }
+  }
+
+  const imagesUrls = files
+    .map((file) =>
+      file.file_path
+        ? `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
+        : undefined,
+    )
+    .filter((url): url is string => Boolean(url))
 
   const imagesData = await getImageBuffers(imagesUrls)
 

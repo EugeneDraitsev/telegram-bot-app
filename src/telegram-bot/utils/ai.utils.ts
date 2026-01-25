@@ -9,7 +9,10 @@ export const PROMPT_MISSING_ERROR = 'Prompt is required'
 export const NOT_ALLOWED_ERROR =
   'OpenAI is not allowed for this chat. Contact @drrrrrrrr for details'
 
-const AI_ALLOWED_CHAT_IDS = process.env.OPENAI_CHAT_IDS?.split(',') ?? []
+const AI_ALLOWED_CHAT_IDS = (process.env.OPENAI_CHAT_IDS ?? '')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean)
 
 export const isAiEnabledChat = (chatId?: string | number) =>
   AI_ALLOWED_CHAT_IDS.includes(String(chatId))
