@@ -1,8 +1,13 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
 import type { ChatModel, ImageModel } from 'openai/resources'
 
-import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'
-import { DEFAULT_ERROR_MESSAGE, getMediaGroupMessages } from '../utils'
+import {
+  DEFAULT_ERROR_MESSAGE,
+  formatTelegramMarkdownV2,
+  getMediaGroupMessages,
+  getMultimodalCommandData,
+  invokeReplyLambda,
+} from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
 
 export const setupMultimodalOpenAiCommands = async (
@@ -26,8 +31,10 @@ export const setupMultimodalOpenAiCommands = async (
       imagesData,
     )
 
+    const formatted = formatTelegramMarkdownV2(message || '')
+
     return ctx
-      .reply(message?.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
+      .reply(formatted, {
         reply_parameters: { message_id: replyId },
         parse_mode: 'MarkdownV2',
       })
@@ -63,11 +70,14 @@ export const setupImageGenerationOpenAiCommands = async (
         imagesData,
       )
 
+      const caption = text ? formatTelegramMarkdownV2(text) : undefined
+
       return ctx.replyWithPhoto(
         typeof image === 'string' ? image : new InputFile(image),
         {
           reply_parameters: { message_id: replyId },
-          caption: text,
+          caption,
+          parse_mode: caption ? 'MarkdownV2' : undefined,
         },
       )
     } catch (error) {

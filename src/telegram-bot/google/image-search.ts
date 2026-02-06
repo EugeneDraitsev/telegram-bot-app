@@ -1,3 +1,7 @@
+/**
+ * Google Image Search utilities
+ */
+
 import { sample } from '@tg-bot/common'
 
 const googleApiKey = process.env.COMMON_GOOGLE_API_KEY || 'set_your_token'

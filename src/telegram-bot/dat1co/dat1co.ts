@@ -1,12 +1,12 @@
-import { getHistory } from '../upstash'
 import {
   cleanGeminiMessage,
   DEFAULT_ERROR_MESSAGE,
   geminiSystemInstructions,
+  getHistory,
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
-} from '../utils'
+} from '@tg-bot/common'
 
 const Z_IMAGE_URL = 'https://api.dat1.co/api/v1/collection/z-image-turbo/invoke'
 const GEMMA_URL =

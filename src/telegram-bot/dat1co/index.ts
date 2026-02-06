@@ -1,7 +1,12 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
 
-import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'
-import { DEFAULT_ERROR_MESSAGE, getMediaGroupMessages } from '../utils'
+import {
+  DEFAULT_ERROR_MESSAGE,
+  formatTelegramMarkdownV2,
+  getMediaGroupMessages,
+  getMultimodalCommandData,
+  invokeReplyLambda,
+} from '@tg-bot/common'
 import { generateGemmaCompletion, generateImageDat1co } from './dat1co'
 
 export const setupGemmaDat1coCommands = async (
@@ -23,8 +28,10 @@ export const setupGemmaDat1coCommands = async (
       imagesData,
     )
 
+    const formatted = formatTelegramMarkdownV2(message)
+
     return ctx
-      .reply(message.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
+      .reply(formatted, {
         reply_parameters: { message_id: replyId },
         parse_mode: 'MarkdownV2',
       })

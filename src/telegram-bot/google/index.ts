@@ -1,11 +1,12 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
 
 import {
+  formatTelegramMarkdownV2,
   getCommandData,
+  getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
 } from '@tg-bot/common'
-import { getMediaGroupMessages } from '../utils'
 import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
@@ -32,8 +33,10 @@ export const setupMultimodalGeminiCommands = async (
       model,
     )
 
+    const formatted = formatTelegramMarkdownV2(message)
+
     return ctx
-      .reply(message.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
+      .reply(formatted, {
         reply_parameters: { message_id: replyId },
         parse_mode: 'MarkdownV2',
       })
@@ -64,14 +67,20 @@ export const setupImageGenerationGeminiCommands = async (
     )
 
     if (response.image) {
+      const caption = response.text
+        ? formatTelegramMarkdownV2(response.text)
+        : undefined
+
       return ctx.replyWithPhoto(new InputFile(response.image), {
-        caption: response.text,
+        caption,
+        parse_mode: caption ? 'MarkdownV2' : undefined,
         reply_parameters: { message_id: commandData.replyId },
       })
     }
 
-    return ctx.reply(response.text, {
+    return ctx.reply(formatTelegramMarkdownV2(response.text), {
       reply_parameters: { message_id: commandData.replyId },
+      parse_mode: 'MarkdownV2',
     })
   }
 }

@@ -1,0 +1,4 @@
+export const MAX_CAPTION_LENGTH = 1024
+export const MAX_TEXT_LENGTH = 4096
+export const TYPING_PING_INTERVAL_MS = 4000
+export const MAX_TOOL_ITERATIONS = 8

@@ -29,9 +29,6 @@ node_modules
 yarn-error.log
 coverage
 
-config.*
-config.json
-config.ts
 .vscode
 package-lock.json
 .env

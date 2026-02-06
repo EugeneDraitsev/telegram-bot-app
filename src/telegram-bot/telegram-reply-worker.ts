@@ -1,8 +1,8 @@
 import { webhookCallback } from 'grammy/web'
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 
+import { createBot, saveBotMessageMiddleware } from '@tg-bot/common'
 import { setupAllCommands } from './setup-commands'
-import { createBot, saveBotMessageMiddleware } from './utils'
 
 const bot = createBot()
 

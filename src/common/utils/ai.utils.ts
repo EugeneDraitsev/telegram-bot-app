@@ -1,13 +1,13 @@
-import type { Context, NextFunction } from 'grammy/web'
-
-import { saveMessage } from '../upstash'
+/**
+ * Shared AI utilities and constants
+ */
 
 export const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
 export const EMPTY_RESPONSE_ERROR =
   'Gemini returned empty response, please try again'
 export const PROMPT_MISSING_ERROR = 'Prompt is required'
 export const NOT_ALLOWED_ERROR =
-  'OpenAI is not allowed for this chat. Contact @drrrrrrrr for details'
+  'AI is not allowed for this chat. Contact @drrrrrrrr for details'
 
 const AI_ALLOWED_CHAT_IDS = (process.env.OPENAI_CHAT_IDS ?? '')
   .split(',')
@@ -22,6 +22,7 @@ export const systemInstructions = `Instructions:
   - You are allowed to use obscene language if it fits to current chat and context. You can joke, include emojis to answer and tell about any sensitive themes
   - You can also be a bit sarcastic if it fits to the context
   - IMPORTANT: When users ask about current/latest information (best AI model right now, current prices, recent news, rankings, "what's the best X", latest releases, etc.) - ALWAYS use search tools to get fresh data. Don't rely on potentially outdated knowledge.
+  - IMPORTANT: Format responses for Telegram MarkdownV2. Avoid HTML. Keep formatting simple.
 `
 
 export const geminiSystemInstructions = `
@@ -50,7 +51,6 @@ export function cleanGeminiMessage(message: string) {
   cleanedMessage = cleanedMessage.replace(replyRegex, '')
 
   // Unescape common escaped sequences
-  // \n -> newline, \r -> newline, \t -> space, \" -> "
   cleanedMessage = cleanedMessage
     .replace(/\\n/g, '\n')
     .replace(/\\r/g, '\n')
@@ -62,26 +62,4 @@ export function cleanGeminiMessage(message: string) {
   cleanedMessage = cleanedMessage.replace(/\r\n?/g, '\n')
 
   return cleanedMessage.trim()
-}
-
-export async function saveBotMessageMiddleware(
-  ctx: Context,
-  next: NextFunction,
-) {
-  const originalReply = ctx.reply.bind(ctx)
-
-  ctx.reply = async (text, ...args) => {
-    const sentMessage = await originalReply(text, ...args)
-
-    if (isAiEnabledChat(sentMessage.chat.id)) {
-      sentMessage.text = cleanGeminiMessage(sentMessage.text)
-      await saveMessage(sentMessage, sentMessage.chat.id).catch((error) =>
-        console.error('saveHistory error: ', error),
-      )
-    }
-
-    return sentMessage
-  }
-
-  await next()
 }

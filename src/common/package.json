@@ -2,5 +2,13 @@
   "name": "@tg-bot/common",
   "version": "1.0.0",
   "license": "MIT",
-  "sideEffects": false
+  "sideEffects": false,
+  "dependencies": {
+    "@upstash/redis": "^1.34.8",
+    "grammy": "^1.37.2",
+    "telegramify-markdown": "^1.3.2"
+  },
+  "devDependencies": {
+    "telegram-typings": "5.0.0"
+  }
 }

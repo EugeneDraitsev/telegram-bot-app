@@ -2,10 +2,17 @@ import { webhookCallback } from 'grammy/web'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Chat, Message } from 'telegram-typings'
 
-import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
+import {
+  createBot,
+  findCommand,
+  isAiEnabledChat,
+  saveBotMessageMiddleware,
+  saveEvent,
+  saveMessage,
+  updateStatistics,
+} from '@tg-bot/common'
+import { handleMessageWithAgent } from './agent'
 import { setupAllCommands } from './setup-commands'
-import { saveMessage } from './upstash'
-import { createBot, saveBotMessageMiddleware } from './utils'
 
 const bot = createBot()
 
@@ -41,6 +48,21 @@ bot.use(async (ctx, next) => {
 
 // Setup all commands with deferred mode (async via Lambda)
 setupAllCommands(bot, true)
+
+// Smart Agentic responses - bot autonomously decides what to do
+bot.on('message', async (ctx) => {
+  const message = ctx.message as Message
+  const chatId = ctx.chat?.id
+  const command = findCommand(message.text)
+
+  if (command || !chatId || !isAiEnabledChat(chatId)) {
+    return
+  }
+
+  handleMessageWithAgent(message, ctx).catch((error) =>
+    console.error('handleMessageWithAgent error: ', error),
+  )
+})
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 
