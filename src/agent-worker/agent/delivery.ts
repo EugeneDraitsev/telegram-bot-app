@@ -99,9 +99,10 @@ async function sendImage(params: {
   text: string
 }) {
   const rawCaption = params.text || params.image.caption || ''
+  const caption = formatCaption(rawCaption)
   const options = {
-    caption: formatCaption(rawCaption),
-    parse_mode: rawCaption ? 'MarkdownV2' : undefined,
+    caption,
+    parse_mode: caption ? 'MarkdownV2' : undefined,
     ...getReplyOptions(params.replyToMessageId),
   }
 

@@ -7,7 +7,7 @@ provider:
   region: eu-central-1
   memorySize: 512
   timeout: 30
-  runtime: nodejs22.x
+  runtime: nodejs24.x
   architecture: arm64
   environment:
     region: eu-central-1

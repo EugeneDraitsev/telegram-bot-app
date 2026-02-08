@@ -8,8 +8,6 @@ import type { Message } from 'telegram-typings'
 import { isAiEnabledChat } from '../utils'
 import { getRedisClient } from './client'
 
-const redis = getRedisClient()
-
 const ONE_HOUR = 60 * 60 * 1000
 const TTL_MS = 24 * ONE_HOUR
 const CHAT_HISTORY_REDIS_KEY = 'chat-history'
@@ -18,6 +16,7 @@ const CHAT_HISTORY_REDIS_KEY = 'chat-history'
  * Save a message to chat history
  */
 export const saveMessage = async (message: Message, chatId?: number) => {
+  const redis = getRedisClient()
   if (!redis || !chatId || !isAiEnabledChat(chatId)) {
     return
   }
@@ -36,6 +35,7 @@ export const saveMessage = async (message: Message, chatId?: number) => {
 export const getRawHistory = async (
   chatId: string | number,
 ): Promise<Message[]> => {
+  const redis = getRedisClient()
   try {
     if (!redis || !isAiEnabledChat(chatId)) {
       return []
@@ -117,6 +117,7 @@ export function formatHistoryForDisplay(
  * Remove messages older than 24h (used by scheduler)
  */
 export const clearOldMessages = async () => {
+  const redis = getRedisClient()
   if (!redis) {
     return
   }

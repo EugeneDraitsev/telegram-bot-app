@@ -3,7 +3,7 @@ import type { ForecastDay, WeatherData } from '../types'
 const WEATHER_TOKEN = process.env.OPEN_WEATHER_MAP_TOKEN || ''
 const TIMEOUT_MS = 5000
 
-const WIND_DIRECTIONS = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ', 'С']
+const WIND_DIRECTIONS = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ']
 
 const WEATHER_ICONS: Record<string, string> = {
   '01d': '☀️',

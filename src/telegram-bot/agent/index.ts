@@ -1,4 +1,4 @@
-import type { Context } from 'grammy'
+import type { Context } from 'grammy/web'
 import type { Message } from 'telegram-typings'
 
 import { invokeAgentLambda, isAgenticChatEnabled } from '@tg-bot/common'

@@ -24,13 +24,9 @@ import { webSearchTool } from './web-search.tool'
 // Context management
 export {
   addResponse,
-  clearToolContext,
   getCollectedResponses,
-  getToolContext,
   requireToolContext,
   runWithToolContext,
-  setToolContext,
-  type ToolContext,
 } from './context'
 // Individual tools
 export { createDynamicToolTool } from './create-dynamic-tool.tool'

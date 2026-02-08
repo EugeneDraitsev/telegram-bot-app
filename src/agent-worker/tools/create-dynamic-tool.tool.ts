@@ -4,7 +4,6 @@
  */
 
 import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
 
 import { getDynamicToolsRawByScope, saveDynamicToolsRaw } from '@tg-bot/common'
 import { logger } from '../logger'
@@ -13,14 +12,6 @@ import {
   type DynamicToolDefinition,
   dynamicToolDefinitionSchema,
 } from './dynamic-tools'
-
-const CREATE_SCOPE = z.enum(['chat', 'global'])
-
-const createDynamicToolInputSchema = dynamicToolDefinitionSchema.extend({
-  scope: CREATE_SCOPE.optional().describe(
-    'Where to store tool: chat (default) or global',
-  ),
-})
 
 const RESERVED_TOOL_NAMES = new Set<string>([
   'send_text',
@@ -61,8 +52,8 @@ function parseDynamicToolList(rawTools: unknown[]): DynamicToolDefinition[] {
 export const createDynamicToolTool = new DynamicStructuredTool({
   name: 'create_dynamic_tool',
   description:
-    'Create or update dynamic tool in Redis for current chat or global scope. Use only when the current user message explicitly asks for reusable automation.',
-  schema: createDynamicToolInputSchema,
+    'Create or update dynamic tool in Redis for current chat. Use only when the current user message explicitly asks for reusable automation.',
+  schema: dynamicToolDefinitionSchema,
   func: async (input) => {
     const { message } = requireToolContext()
     const chatId = message.chat?.id
@@ -70,8 +61,6 @@ export const createDynamicToolTool = new DynamicStructuredTool({
       return 'Error creating dynamic tool: Chat ID is missing'
     }
 
-    const scope = input.scope ?? 'chat'
-    const scopeId = scope === 'chat' ? chatId : undefined
     const definition: DynamicToolDefinition = {
       ...input,
       enabled: input.enabled ?? true,
@@ -82,7 +71,7 @@ export const createDynamicToolTool = new DynamicStructuredTool({
     }
 
     try {
-      const existingRawTools = await getDynamicToolsRawByScope(scopeId)
+      const existingRawTools = await getDynamicToolsRawByScope(chatId)
       const existingTools = parseDynamicToolList(existingRawTools)
 
       const mergedTools = uniqueByName([
@@ -90,7 +79,7 @@ export const createDynamicToolTool = new DynamicStructuredTool({
         definition,
       ])
 
-      const saved = await saveDynamicToolsRaw(mergedTools, scopeId)
+      const saved = await saveDynamicToolsRaw(mergedTools, chatId)
       if (!saved) {
         return 'Error creating dynamic tool: failed to save in Redis'
       }
@@ -98,20 +87,18 @@ export const createDynamicToolTool = new DynamicStructuredTool({
       logger.info(
         {
           chatId,
-          scope,
           toolName: definition.name,
           action: definition.action,
         },
         'Dynamic tool saved',
       )
 
-      return `Dynamic tool "${definition.name}" saved to ${scope} scope`
+      return `Dynamic tool "${definition.name}" saved to chat scope`
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
       logger.error(
         {
           chatId,
-          scope,
           toolName: definition.name,
           error,
         },
