@@ -6,6 +6,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
+import { getErrorMessage } from '@tg-bot/common'
 import { generateVoice } from '../services'
 import { addResponse, requireToolContext } from './context'
 
@@ -44,7 +45,7 @@ export const generateVoiceTool = new DynamicStructuredTool({
 
       return `Generated voice message (${voice}): "${normalizedText.slice(0, 50)}..."`
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
+      const errorMsg = getErrorMessage(error)
       return `Error generating voice: ${errorMsg}`
     }
   },

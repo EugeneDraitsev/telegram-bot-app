@@ -1,15 +1,3 @@
-/**
- * Agent Worker Lambda
- *
- * Handles async agent processing after quick filter passes.
- * Called from main handler via invokeAgentLambda pattern.
- *
- * New architecture:
- * - Tools are "pure" - they collect responses, don't send directly
- * - After agentic loop, all responses are sent together
- * - Independent from @tg-bot/common (uses own services)
- */
-
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 import type { Message } from 'telegram-typings'
 
@@ -22,7 +10,6 @@ import {
 import { runAgenticLoop } from './agent'
 import { getMessageLogMeta, logger } from './logger'
 
-// Minimal bot instance for sending messages
 const bot = createBot()
 bot.use(saveBotMessageMiddleware)
 

@@ -5,7 +5,11 @@
 
 import { DynamicStructuredTool } from '@langchain/core/tools'
 
-import { getDynamicToolsRawByScope, saveDynamicToolsRaw } from '@tg-bot/common'
+import {
+  getDynamicToolsRawByScope,
+  getErrorMessage,
+  saveDynamicToolsRaw,
+} from '@tg-bot/common'
 import { logger } from '../logger'
 import { requireToolContext } from './context'
 import {
@@ -95,7 +99,7 @@ export const createDynamicToolTool = new DynamicStructuredTool({
 
       return `Dynamic tool "${definition.name}" saved to chat scope`
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
+      const errorMsg = getErrorMessage(error)
       logger.error(
         {
           chatId,

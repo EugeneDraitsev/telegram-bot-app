@@ -6,6 +6,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
+import { getErrorMessage } from '@tg-bot/common'
 import { searchWeb } from '../services'
 import { addResponse, requireToolContext } from './context'
 
@@ -40,7 +41,7 @@ export const webSearchTool = new DynamicStructuredTool({
 
       return `Web search completed for: "${normalizedQuery}"`
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
+      const errorMsg = getErrorMessage(error)
       return `Error searching web: ${errorMsg}`
     }
   },

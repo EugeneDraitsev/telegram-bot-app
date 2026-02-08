@@ -7,7 +7,11 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
-import { formatHistoryForDisplay, getRawHistory } from '@tg-bot/common'
+import {
+  formatHistoryForDisplay,
+  getErrorMessage,
+  getRawHistory,
+} from '@tg-bot/common'
 import { requireToolContext } from './context'
 
 export const getHistoryTool = new DynamicStructuredTool({
@@ -35,7 +39,7 @@ export const getHistoryTool = new DynamicStructuredTool({
 
       return formatHistoryForDisplay(rawHistory, limitedCount)
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
+      const errorMsg = getErrorMessage(error)
       return `Error getting history: ${errorMsg}`
     }
   },

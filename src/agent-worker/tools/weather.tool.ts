@@ -6,7 +6,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
-import { formatWeatherText, getWeather } from '@tg-bot/common'
+import { formatWeatherText, getErrorMessage, getWeather } from '@tg-bot/common'
 import { addResponse, requireToolContext } from './context'
 
 export const weatherTool = new DynamicStructuredTool({
@@ -39,8 +39,7 @@ export const weatherTool = new DynamicStructuredTool({
 
       return `Got weather for ${weather.city}: ${weather.temperature}°C, ${weather.description}`
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : 'Weather fetch failed'
+      const errorMsg = getErrorMessage(error)
       return `Error getting weather: ${errorMsg}`
     }
   },

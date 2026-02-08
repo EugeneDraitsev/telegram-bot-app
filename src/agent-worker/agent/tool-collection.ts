@@ -1,5 +1,6 @@
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 
+import { getErrorMessage } from '@tg-bot/common'
 import { logger } from '../logger'
 import { getAgentTools, TOOL_NAMES } from '../tools'
 import type { AgentChatMessage } from '../types'
@@ -40,7 +41,7 @@ function toResultText(result: unknown): string {
 }
 
 function toErrorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return getErrorMessage(error)
 }
 
 function mergeTools(

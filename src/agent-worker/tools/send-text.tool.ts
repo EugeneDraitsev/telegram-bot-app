@@ -6,6 +6,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
+import { getErrorMessage } from '@tg-bot/common'
 import { generateText } from '../services'
 import { addResponse, requireToolContext } from './context'
 
@@ -38,7 +39,7 @@ export const sendTextTool = new DynamicStructuredTool({
       addResponse({ type: 'text', text })
       return `Added text response: "${text.slice(0, 100)}..."`
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
+      const errorMsg = getErrorMessage(error)
       return `Error: ${errorMsg}`
     }
   },

@@ -6,6 +6,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
+import { getErrorMessage } from '@tg-bot/common'
 import { searchImage } from '../services'
 import { addResponse, requireToolContext } from './context'
 
@@ -43,8 +44,7 @@ export const searchImageTool = new DynamicStructuredTool({
 
       return `Found image for: "${normalizedQuery}"`
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : 'Image not found'
+      const errorMsg = getErrorMessage(error)
       return `Error searching image: ${errorMsg}`
     }
   },

@@ -72,31 +72,3 @@ export interface ToolResult {
   message: string
   response?: AgentResponse
 }
-
-export interface ResponseCollector {
-  responses: AgentResponse[]
-  add(response: AgentResponse): void
-  hasResponses(): boolean
-  getAll(): AgentResponse[]
-  clear(): void
-}
-
-export function createResponseCollector(): ResponseCollector {
-  const responses: AgentResponse[] = []
-
-  return {
-    responses,
-    add(response: AgentResponse) {
-      responses.push(response)
-    },
-    hasResponses() {
-      return responses.length > 0
-    },
-    getAll() {
-      return [...responses]
-    },
-    clear() {
-      responses.length = 0
-    },
-  }
-}

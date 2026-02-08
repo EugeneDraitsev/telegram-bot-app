@@ -1,10 +1,6 @@
 import { InputFile } from 'grammy/web'
 
-import {
-  cleanGeminiMessage,
-  formatTelegramMarkdownV2,
-  saveBotReplyToHistory,
-} from '@tg-bot/common'
+import { cleanGeminiMessage, formatTelegramMarkdownV2 } from '@tg-bot/common'
 import { logger } from '../logger'
 import type {
   AgentResponse,
@@ -13,6 +9,12 @@ import type {
   VideoResponse,
 } from '../types'
 import { MAX_CAPTION_LENGTH, MAX_TEXT_LENGTH } from './config'
+
+interface DeliveryParams {
+  api: TelegramApi
+  chatId: number
+  replyToMessageId: number
+}
 
 interface DeliveryBundle {
   text: string
@@ -63,41 +65,21 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
   }
 }
 
-function saveHistoryBestEffort(sentMessage: unknown) {
-  void saveBotReplyToHistory(sentMessage).catch((error) =>
-    logger.warn({ error }, 'delivery.history_save_failed'),
-  )
-}
-
-async function sendText(params: {
-  api: TelegramApi
-  chatId: number
-  replyToMessageId: number
-  text: string
-}) {
+async function sendText(params: DeliveryParams & { text: string }) {
   const text = params.text.trim()
   if (!text) {
     return
   }
 
-  const sentMessage = await params.api.sendMessage(
-    params.chatId,
-    formatText(text),
-    {
-      parse_mode: 'MarkdownV2',
-      ...getReplyOptions(params.replyToMessageId),
-    },
-  )
-  saveHistoryBestEffort(sentMessage)
+  await params.api.sendMessage(params.chatId, formatText(text), {
+    parse_mode: 'MarkdownV2',
+    ...getReplyOptions(params.replyToMessageId),
+  })
 }
 
-async function sendImage(params: {
-  api: TelegramApi
-  chatId: number
-  replyToMessageId: number
-  image: ImageResponse
-  text: string
-}) {
+async function sendImage(
+  params: DeliveryParams & { image: ImageResponse; text: string },
+) {
   const rawCaption = params.text || params.image.caption || ''
   const caption = formatCaption(rawCaption)
   const options = {
@@ -107,37 +89,24 @@ async function sendImage(params: {
   }
 
   if (params.image.buffer) {
-    const sentMessage = await params.api.sendPhoto(
+    await params.api.sendPhoto(
       params.chatId,
       new InputFile(params.image.buffer),
       options,
     )
-    saveHistoryBestEffort(sentMessage)
     return
   }
 
   if (!params.image.url) {
-    await sendText({
-      api: params.api,
-      chatId: params.chatId,
-      replyToMessageId: params.replyToMessageId,
-      text: rawCaption,
-    })
+    await sendText({ ...params, text: rawCaption })
     return
   }
 
   try {
-    const sentMessage = await params.api.sendPhoto(
-      params.chatId,
-      params.image.url,
-      options,
-    )
-    saveHistoryBestEffort(sentMessage)
+    await params.api.sendPhoto(params.chatId, params.image.url, options)
   } catch {
     await sendText({
-      api: params.api,
-      chatId: params.chatId,
-      replyToMessageId: params.replyToMessageId,
+      ...params,
       text: rawCaption
         ? `${rawCaption}\n\n${params.image.url}`
         : params.image.url,
@@ -145,77 +114,47 @@ async function sendImage(params: {
   }
 }
 
-async function sendVideo(params: {
-  api: TelegramApi
-  chatId: number
-  replyToMessageId: number
-  video: VideoResponse
-  text: string
-}) {
+async function sendVideo(
+  params: DeliveryParams & { video: VideoResponse; text: string },
+) {
   const messageText = params.text
     ? `${params.text}\n\n${params.video.url}`
     : params.video.caption?.trim()
       ? `${params.video.caption.trim()}\n\n${params.video.url}`
       : params.video.url
 
-  await sendText({
-    api: params.api,
-    chatId: params.chatId,
-    replyToMessageId: params.replyToMessageId,
-    text: messageText,
-  })
+  await sendText({ ...params, text: messageText })
 }
 
-async function sendVoice(params: {
-  api: TelegramApi
-  chatId: number
-  replyToMessageId: number
-  voice: Buffer
-}) {
-  const sentMessage = await params.api.sendVoice(
+async function sendVoice(params: DeliveryParams & { voice: Buffer }) {
+  await params.api.sendVoice(
     params.chatId,
     new InputFile(params.voice, 'voice.opus'),
     getReplyOptions(params.replyToMessageId),
   )
-  saveHistoryBestEffort(sentMessage)
 }
 
-export async function sendResponses(params: {
-  responses: AgentResponse[]
-  chatId: number
-  replyToMessageId: number
-  api: TelegramApi
-}): Promise<void> {
+export async function sendResponses(
+  params: DeliveryParams & { responses: AgentResponse[] },
+): Promise<void> {
   if (params.responses.length === 0) {
     return
   }
 
   const bundle = collectBundle(params.responses)
+  const base: DeliveryParams = {
+    api: params.api,
+    chatId: params.chatId,
+    replyToMessageId: params.replyToMessageId,
+  }
 
   try {
     if (bundle.image) {
-      await sendImage({
-        api: params.api,
-        chatId: params.chatId,
-        replyToMessageId: params.replyToMessageId,
-        image: bundle.image,
-        text: bundle.text,
-      })
+      await sendImage({ ...base, image: bundle.image, text: bundle.text })
     } else if (bundle.video) {
-      await sendVideo({
-        api: params.api,
-        chatId: params.chatId,
-        replyToMessageId: params.replyToMessageId,
-        video: bundle.video,
-        text: bundle.text,
-      })
+      await sendVideo({ ...base, video: bundle.video, text: bundle.text })
     } else {
-      await sendText({
-        api: params.api,
-        chatId: params.chatId,
-        replyToMessageId: params.replyToMessageId,
-        text: bundle.text,
-      })
+      await sendText({ ...base, text: bundle.text })
     }
   } catch (error) {
     logger.error({ error, chatId: params.chatId }, 'delivery.primary_failed')
@@ -226,12 +165,7 @@ export async function sendResponses(params: {
   }
 
   try {
-    await sendVoice({
-      api: params.api,
-      chatId: params.chatId,
-      replyToMessageId: params.replyToMessageId,
-      voice: bundle.voice,
-    })
+    await sendVoice({ ...base, voice: bundle.voice })
   } catch (error) {
     logger.error({ error, chatId: params.chatId }, 'delivery.secondary_failed')
   }

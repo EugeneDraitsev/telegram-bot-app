@@ -3,6 +3,8 @@
  * Independent implementation for agent-worker
  */
 
+import { sample } from '@tg-bot/common'
+
 const googleApiKey = process.env.COMMON_GOOGLE_API_KEY || ''
 const cxToken = process.env.GOOGLE_CX_TOKEN || ''
 
@@ -15,13 +17,6 @@ interface GoogleImage {
 interface SearchResult {
   url: string
   thumbnailUrl: string
-}
-
-/**
- * Pick a random element from array
- */
-function sample<T>(array: T[]): T {
-  return array[Math.floor(Math.random() * array.length)]
 }
 
 /**

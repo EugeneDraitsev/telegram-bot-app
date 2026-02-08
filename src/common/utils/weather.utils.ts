@@ -34,7 +34,7 @@ interface OpenWeatherCurrentResponse {
   weather: Array<{ description: string; icon: string }>
 }
 
-interface OpenWeatherForecastItem {
+export interface OpenWeatherForecastItem {
   dt: number
   main: { temp_min: number; temp_max: number }
   weather: Array<{ description: string; icon: string }>
@@ -65,11 +65,11 @@ function getWeatherIcon(iconCode: string): string {
   return WEATHER_ICONS[iconCode.toLowerCase()] || '🌡'
 }
 
-function getWindDirection(degrees: number): string {
+export function getWindDirection(degrees: number): string {
   return WIND_DIRECTIONS[Math.round(degrees / 45) % 8]
 }
 
-function buildThreeDayForecast(
+export function buildThreeDayForecast(
   forecastItems: OpenWeatherForecastItem[],
   timezoneOffsetSeconds = 0,
 ): ForecastDay[] {

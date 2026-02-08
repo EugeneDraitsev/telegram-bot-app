@@ -1,16 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Message } from 'telegram-typings'
 
-import {
-  type AgentResponse,
-  createResponseCollector,
-  type ResponseCollector,
-} from '../types'
+import type { AgentResponse } from '../types'
 
 interface ToolContext {
   message: Message
   imagesData?: Buffer[]
-  collector: ResponseCollector
+  responses: AgentResponse[]
 }
 
 const contextStorage = new AsyncLocalStorage<ToolContext>()
@@ -24,11 +20,11 @@ export function requireToolContext(): ToolContext {
 }
 
 export function addResponse(response: AgentResponse): void {
-  requireToolContext().collector.add(response)
+  requireToolContext().responses.push(response)
 }
 
 export function getCollectedResponses(): AgentResponse[] {
-  return contextStorage.getStore()?.collector.getAll() ?? []
+  return [...(contextStorage.getStore()?.responses ?? [])]
 }
 
 export async function runWithToolContext<T>(
@@ -36,8 +32,5 @@ export async function runWithToolContext<T>(
   imagesData: Buffer[] | undefined,
   callback: () => Promise<T>,
 ): Promise<T> {
-  return contextStorage.run(
-    { message, imagesData, collector: createResponseCollector() },
-    callback,
-  )
+  return contextStorage.run({ message, imagesData, responses: [] }, callback)
 }

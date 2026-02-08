@@ -1,7 +1,11 @@
 import type { Context } from 'grammy/web'
 import type { Message } from 'telegram-typings'
 
-import { invokeAgentLambda, isAgenticChatEnabled } from '@tg-bot/common'
+import {
+  getLargestPhoto,
+  invokeAgentLambda,
+  isAgenticChatEnabled,
+} from '@tg-bot/common'
 import { quickFilter } from './quick-filter'
 
 export interface AgentPayload {
@@ -9,13 +13,10 @@ export interface AgentPayload {
   imageFileIds?: string[]
 }
 
-const getLargestPhotoFileId = (msg?: Message) =>
-  (msg?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]?.file_id
-
 function collectImageFileIds(message: Message): string[] {
   const ids = [
-    getLargestPhotoFileId(message),
-    getLargestPhotoFileId(message.reply_to_message),
+    getLargestPhoto(message)?.file_id,
+    getLargestPhoto(message.reply_to_message)?.file_id,
     message.reply_to_message?.sticker?.file_id,
   ].filter((id): id is string => Boolean(id))
 

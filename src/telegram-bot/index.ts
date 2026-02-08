@@ -61,6 +61,8 @@ bot.on('message', async (ctx) => {
     return
   }
 
+  // We intentionally don't await handleMessageWithAgent so we can return 200 to Telegram
+  // as fast as possible (under 10 seconds) to prevent message duplication from webhook retries.
   handleMessageWithAgent(message, ctx).catch((error) =>
     console.error('handleMessageWithAgent error: ', error),
   )

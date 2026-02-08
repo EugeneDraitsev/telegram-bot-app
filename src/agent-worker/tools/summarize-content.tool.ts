@@ -1,6 +1,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
+import { getErrorMessage } from '@tg-bot/common'
 import { summarizeContent } from '../services'
 import { addResponse, requireToolContext } from './context'
 
@@ -27,7 +28,7 @@ export const summarizeContentTool = new DynamicStructuredTool({
       addResponse({ type: 'text', text })
       return `Summarized: ${target}`
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+      const message = getErrorMessage(error)
       return `Error summarizing content: ${message}`
     }
   },
