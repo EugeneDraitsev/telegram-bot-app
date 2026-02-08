@@ -59,9 +59,7 @@ function mergeTools(
 }
 
 function bindCollectionModel(tools: DynamicStructuredTool[]) {
-  return chatModel.bindTools(
-    tools.filter((tool) => tool.name !== TOOL_NAMES.SEND_TEXT),
-  )
+  return chatModel.bindTools(tools)
 }
 
 export function buildCollectionMessages(params: {

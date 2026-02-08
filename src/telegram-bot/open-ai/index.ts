@@ -31,16 +31,21 @@ export const setupMultimodalOpenAiCommands = async (
       imagesData,
     )
 
-    const formatted = formatTelegramMarkdownV2(message || '')
+    const normalizedMessage = message?.trim() || ''
+    const replyText = normalizedMessage
+      ? formatTelegramMarkdownV2(normalizedMessage)
+      : DEFAULT_ERROR_MESSAGE
 
     return ctx
-      .reply(formatted, {
+      .reply(replyText, {
         reply_parameters: { message_id: replyId },
-        parse_mode: 'MarkdownV2',
+        parse_mode: normalizedMessage ? 'MarkdownV2' : undefined,
       })
       .catch((err) => {
         console.error(err)
-        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
+        return ctx.reply(normalizedMessage || DEFAULT_ERROR_MESSAGE, {
+          reply_parameters: { message_id: replyId },
+        })
       })
       .catch((err) => {
         console.error(`Error (Open AI): ${err.message}`)

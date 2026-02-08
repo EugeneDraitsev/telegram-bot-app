@@ -35,6 +35,9 @@ export const invokeReplyLambda = (payload: Record<string, any>) => {
 // biome-ignore lint: we can pass any payload here
 export const invokeAgentLambda = (payload: Record<string, any>) => {
   const agentWorkerFunctionName = process.env.AGENT_WORKER_FUNCTION_NAME || ''
+  if (!agentWorkerFunctionName) {
+    throw new Error('AGENT_WORKER_FUNCTION_NAME is not set')
+  }
 
   // Remove imagesData from payload to avoid exceeding Lambda's 6MB payload limit.
   // The worker lambda will re-fetch images from Telegram API when processing.

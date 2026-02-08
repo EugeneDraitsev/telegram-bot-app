@@ -22,25 +22,30 @@ bot.use(saveBotMessageMiddleware)
 const commandRegistry = setupAllCommands(bot, true)
 
 bot.use(async (ctx, next) => {
-  const { chat } = ctx
+  const chatFromCtx = ctx.chat
   const message = ctx.message as Message
-  if (chat && message) {
+  if (chatFromCtx && message) {
     const command = isRegisteredCommandMessage(message, commandRegistry)
       ? findCommand(message.text || message.caption)
       : ''
-    const chat = await ctx
+    const chatInfo = await ctx
       .getChat()
       .catch((error) => console.error('getChat error: ', error))
 
     try {
       await Promise.all([
-        updateStatistics(message.from, chat as Chat).catch((error) =>
-          console.error('updateStatistics error: ', error),
+        updateStatistics(message.from, (chatInfo || chatFromCtx) as Chat).catch(
+          (error) => console.error('updateStatistics error: ', error),
         ),
-        saveEvent(message.from, chat?.id, command, message.date).catch(
+        saveEvent(
+          message.from,
+          chatInfo?.id || chatFromCtx.id,
+          command,
+          message.date,
+        ).catch(
           (error) => console.error('saveEvent error: ', error),
         ),
-        saveMessage(message, chat?.id).catch((error) =>
+        saveMessage(message, chatInfo?.id || chatFromCtx.id).catch((error) =>
           console.error('saveHistory error: ', error),
         ),
         next?.(),
