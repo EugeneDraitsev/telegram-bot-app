@@ -42,9 +42,7 @@ bot.use(async (ctx, next) => {
           chatInfo?.id || chatFromCtx.id,
           command,
           message.date,
-        ).catch(
-          (error) => console.error('saveEvent error: ', error),
-        ),
+        ).catch((error) => console.error('saveEvent error: ', error)),
         saveMessage(message, chatInfo?.id || chatFromCtx.id).catch((error) =>
           console.error('saveHistory error: ', error),
         ),
