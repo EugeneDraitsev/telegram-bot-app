@@ -31,8 +31,8 @@ function parseDynamicToolsPayload(value: unknown): unknown[] {
   }
 
   if (
+    value &&
     typeof value === 'object' &&
-    value !== null &&
     'tools' in value &&
     Array.isArray((value as { tools: unknown[] }).tools)
   ) {
@@ -67,23 +67,27 @@ function parseDynamicToolsPayload(value: unknown): unknown[] {
 export async function getDynamicToolsRaw(
   chatId?: string | number,
 ): Promise<unknown[]> {
+  const [globalData, chatData] = await Promise.all([
+    getDynamicToolsRawByScope(),
+    chatId === undefined
+      ? Promise.resolve([])
+      : getDynamicToolsRawByScope(chatId),
+  ])
+
+  return [...globalData, ...chatData]
+}
+
+export async function getDynamicToolsRawByScope(
+  scope?: string | number,
+): Promise<unknown[]> {
   const redis = getRedisClient()
   if (!redis) {
     return []
   }
 
   try {
-    const [globalData, chatData] = await Promise.all([
-      redis.get<unknown>(getDynamicToolsKey()),
-      chatId === undefined
-        ? Promise.resolve(undefined)
-        : redis.get<unknown>(getDynamicToolsKey(chatId)),
-    ])
-
-    return [
-      ...parseDynamicToolsPayload(globalData),
-      ...parseDynamicToolsPayload(chatData),
-    ]
+    const rawData = await redis.get<unknown>(getDynamicToolsKey(scope))
+    return parseDynamicToolsPayload(rawData)
   } catch (error) {
     console.error('Error getting dynamic tools:', error)
     return []

@@ -1,5 +1,6 @@
 import type { Bot } from 'grammy/web'
 
+import { installCommandRegistry } from './command-registry'
 import setupCurrencyCommands from './currency'
 import setupDat1coCommands from './dat1co'
 import setupExternalApisCommands from './external-apis'
@@ -15,6 +16,8 @@ import setupUsersCommands from './users'
  * @param deferredCommands - If true, long-running commands are executed asynchronously via Lambda
  */
 export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
+  const commandRegistry = installCommandRegistry(bot)
+
   // /h <text?> - huyator
   // /y <text?> - yasnoficator
   // /dice <number?> - throw a die
@@ -54,4 +57,6 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
 
   // Photo message handler for multimodal commands
   bot.on('message:photo', (ctx) => handlePhotoMessage(ctx, deferredCommands))
+
+  return commandRegistry
 }

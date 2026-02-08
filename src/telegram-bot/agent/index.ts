@@ -1,18 +1,7 @@
-/**
- * Smart Agentic Bot with autonomous tool calling.
- *
- * Architecture (2-level with async processing):
- * 1. Quick Filter (cheap model) - decides ENGAGE or IGNORE (sync, fast)
- * 2. Agent Worker Lambda (async) - runs agentic loop with tools
- *
- * After quick filter passes, we invoke Lambda async and return 200 OK immediately.
- * This ensures Telegram doesn't timeout waiting for response.
- */
-
 import type { Context } from 'grammy'
 import type { Message } from 'telegram-typings'
 
-import { findCommand, invokeAgentLambda } from '@tg-bot/common'
+import { invokeAgentLambda, isAgenticChatEnabled } from '@tg-bot/common'
 import { quickFilter } from './quick-filter'
 
 export interface AgentPayload {
@@ -39,10 +28,11 @@ function collectImageFileIds(message: Message): string[] {
  */
 export async function handleMessageWithAgent(
   message: Message,
-  _ctx: Context,
+  ctx: Context,
   imagesData?: Buffer[],
 ): Promise<void> {
-  if (findCommand(message.text)) {
+  const chatId = message.chat?.id
+  if (!chatId || !(await isAgenticChatEnabled(chatId))) {
     return
   }
 
@@ -52,6 +42,12 @@ export async function handleMessageWithAgent(
   if (!passedQuickFilter) {
     return
   }
+
+  void ctx.api
+    .setMessageReaction(chatId, message.message_id, [
+      { type: 'emoji', emoji: '👀' },
+    ])
+    .catch(() => undefined)
 
   // Step 2: Invoke agent worker Lambda async (don't wait for response)
   // This returns immediately, allowing us to send 200 OK to Telegram

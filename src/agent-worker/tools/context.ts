@@ -23,6 +23,19 @@ export interface ToolContext {
 
 let currentContext: ToolContext | null = null
 
+export async function runWithToolContext<T>(
+  message: Message,
+  imagesData: Buffer[] | undefined,
+  callback: () => Promise<T>,
+): Promise<T> {
+  setToolContext(message, imagesData)
+  try {
+    return await callback()
+  } finally {
+    clearToolContext()
+  }
+}
+
 /**
  * Set the current tool context
  */

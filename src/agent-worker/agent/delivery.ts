@@ -5,6 +5,7 @@ import {
   formatTelegramMarkdownV2,
   saveBotReplyToHistory,
 } from '@tg-bot/common'
+import { logger } from '../logger'
 import type {
   AgentResponse,
   ImageResponse,
@@ -13,207 +14,169 @@ import type {
 } from '../types'
 import { MAX_CAPTION_LENGTH, MAX_TEXT_LENGTH } from './config'
 
-interface DeliveryContext {
-  api: TelegramApi
-  chatId: number
-  replyToMessageId: number
-}
-
-interface DeliveryState {
-  mergedText: string
+interface DeliveryBundle {
+  text: string
   image: ImageResponse | null
   video: VideoResponse | null
-  voiceBuffer: Buffer | null
-  videoNoteBuffer: Buffer | null
+  voice: Buffer | null
 }
 
 function getReplyOptions(replyToMessageId: number) {
   return { reply_parameters: { message_id: replyToMessageId } }
 }
 
-function normalizeText(rawText: string): string {
-  return rawText.trim().slice(0, MAX_TEXT_LENGTH)
+function formatText(text: string): string {
+  return formatTelegramMarkdownV2(text.trim().slice(0, MAX_TEXT_LENGTH))
 }
 
-function formatCaption(caption: string | undefined): string | undefined {
-  const normalized = caption?.trim()
+function formatCaption(text?: string): string | undefined {
+  const normalized = text?.trim()
   if (!normalized) {
     return undefined
   }
-
   return formatTelegramMarkdownV2(normalized.slice(0, MAX_CAPTION_LENGTH))
 }
 
-function buildVideoText(video: VideoResponse, mergedText: string): string {
-  if (mergedText) {
-    const separatorLength = 2
-    const maxPrefixLength = MAX_TEXT_LENGTH - video.url.length - separatorLength
-    const prefix = mergedText.slice(0, Math.max(maxPrefixLength, 0))
-    return `${prefix}\n\n${video.url}`.trim()
-  }
-
-  if (video.caption?.trim()) {
-    return `${video.caption.trim()}\n\n${video.url}`
-  }
-
-  return video.url
-}
-
-function collectDeliveryState(responses: AgentResponse[]): DeliveryState {
+function collectBundle(responses: AgentResponse[]): DeliveryBundle {
   const textParts: string[] = []
   let image: ImageResponse | null = null
   let video: VideoResponse | null = null
-  let voiceBuffer: Buffer | null = null
-  let videoNoteBuffer: Buffer | null = null
+  let voice: Buffer | null = null
 
   for (const response of responses) {
-    switch (response.type) {
-      case 'text':
-        textParts.push(cleanGeminiMessage(response.text))
-        break
-      case 'image':
-        image = response
-        break
-      case 'video':
-        video = response
-        break
-      case 'voice':
-        voiceBuffer = response.buffer
-        break
-      case 'video_note':
-        videoNoteBuffer = response.buffer
-        break
+    if (response.type === 'text') {
+      textParts.push(cleanGeminiMessage(response.text))
+    } else if (response.type === 'image') {
+      image = response
+    } else if (response.type === 'video') {
+      video = response
+    } else if (response.type === 'voice') {
+      voice = response.buffer
     }
   }
 
   return {
-    mergedText: textParts.join('\n\n').trim(),
+    text: textParts.join('\n\n').trim(),
     image,
     video,
-    voiceBuffer,
-    videoNoteBuffer,
+    voice,
   }
 }
 
-async function sendAndSave(sentMessagePromise: Promise<unknown>) {
-  const sentMessage = await sentMessagePromise
-  await saveBotReplyToHistory(sentMessage)
-}
-
-async function sendFormattedText(context: DeliveryContext, text: string) {
-  const normalizedText = normalizeText(text)
-  if (!normalizedText) {
-    return
-  }
-
-  const formatted = formatTelegramMarkdownV2(normalizedText)
-
-  await sendAndSave(
-    context.api.sendMessage(context.chatId, formatted, {
-      parse_mode: 'MarkdownV2',
-      ...getReplyOptions(context.replyToMessageId),
-    }),
+function saveHistoryBestEffort(sentMessage: unknown) {
+  void saveBotReplyToHistory(sentMessage).catch((error) =>
+    logger.warn({ error }, 'delivery.history_save_failed'),
   )
 }
 
-async function sendImage(context: DeliveryContext, state: DeliveryState) {
-  const image = state.image
-  if (!image) {
+async function sendText(params: {
+  api: TelegramApi
+  chatId: number
+  replyToMessageId: number
+  text: string
+}) {
+  const text = params.text.trim()
+  if (!text) {
     return
   }
 
-  const rawCaption = state.mergedText || image.caption || ''
-  const caption = formatCaption(rawCaption)
-  const photoOptions = {
-    caption,
-    parse_mode: caption ? 'MarkdownV2' : undefined,
-    ...getReplyOptions(context.replyToMessageId),
+  const sentMessage = await params.api.sendMessage(
+    params.chatId,
+    formatText(text),
+    {
+      parse_mode: 'MarkdownV2',
+      ...getReplyOptions(params.replyToMessageId),
+    },
+  )
+  saveHistoryBestEffort(sentMessage)
+}
+
+async function sendImage(params: {
+  api: TelegramApi
+  chatId: number
+  replyToMessageId: number
+  image: ImageResponse
+  text: string
+}) {
+  const rawCaption = params.text || params.image.caption || ''
+  const options = {
+    caption: formatCaption(rawCaption),
+    parse_mode: rawCaption ? 'MarkdownV2' : undefined,
+    ...getReplyOptions(params.replyToMessageId),
   }
 
-  if (image.buffer) {
-    await sendAndSave(
-      context.api.sendPhoto(
-        context.chatId,
-        new InputFile(image.buffer),
-        photoOptions,
-      ),
+  if (params.image.buffer) {
+    const sentMessage = await params.api.sendPhoto(
+      params.chatId,
+      new InputFile(params.image.buffer),
+      options,
     )
+    saveHistoryBestEffort(sentMessage)
     return
   }
 
-  if (!image.url) {
-    if (rawCaption) {
-      await sendFormattedText(context, rawCaption)
-    }
+  if (!params.image.url) {
+    await sendText({
+      api: params.api,
+      chatId: params.chatId,
+      replyToMessageId: params.replyToMessageId,
+      text: rawCaption,
+    })
     return
   }
 
   try {
-    await sendAndSave(
-      context.api.sendPhoto(context.chatId, image.url, photoOptions),
+    const sentMessage = await params.api.sendPhoto(
+      params.chatId,
+      params.image.url,
+      options,
     )
+    saveHistoryBestEffort(sentMessage)
   } catch {
-    const fallbackText = rawCaption
-      ? `${rawCaption}\n\n${image.url}`
-      : image.url
-    await sendFormattedText(context, fallbackText)
+    await sendText({
+      api: params.api,
+      chatId: params.chatId,
+      replyToMessageId: params.replyToMessageId,
+      text: rawCaption
+        ? `${rawCaption}\n\n${params.image.url}`
+        : params.image.url,
+    })
   }
 }
 
-async function sendVideo(context: DeliveryContext, state: DeliveryState) {
-  if (!state.video) {
-    return
-  }
+async function sendVideo(params: {
+  api: TelegramApi
+  chatId: number
+  replyToMessageId: number
+  video: VideoResponse
+  text: string
+}) {
+  const messageText = params.text
+    ? `${params.text}\n\n${params.video.url}`
+    : params.video.caption?.trim()
+      ? `${params.video.caption.trim()}\n\n${params.video.url}`
+      : params.video.url
 
-  await sendFormattedText(
-    context,
-    buildVideoText(state.video, state.mergedText),
+  await sendText({
+    api: params.api,
+    chatId: params.chatId,
+    replyToMessageId: params.replyToMessageId,
+    text: messageText,
+  })
+}
+
+async function sendVoice(params: {
+  api: TelegramApi
+  chatId: number
+  replyToMessageId: number
+  voice: Buffer
+}) {
+  const sentMessage = await params.api.sendVoice(
+    params.chatId,
+    new InputFile(params.voice, 'voice.opus'),
+    getReplyOptions(params.replyToMessageId),
   )
-}
-
-async function sendPrimaryResponse(
-  context: DeliveryContext,
-  state: DeliveryState,
-) {
-  if (state.image) {
-    await sendImage(context, state)
-    return
-  }
-
-  if (state.video) {
-    await sendVideo(context, state)
-    return
-  }
-
-  if (state.mergedText) {
-    await sendFormattedText(context, state.mergedText)
-  }
-}
-
-async function sendSecondaryResponse(
-  context: DeliveryContext,
-  state: DeliveryState,
-) {
-  if (state.voiceBuffer) {
-    await sendAndSave(
-      context.api.sendVoice(context.chatId, new InputFile(state.voiceBuffer), {
-        ...getReplyOptions(context.replyToMessageId),
-      }),
-    )
-    return
-  }
-
-  if (state.videoNoteBuffer) {
-    await sendAndSave(
-      context.api.sendVideoNote(
-        context.chatId,
-        new InputFile(state.videoNoteBuffer),
-        {
-          ...getReplyOptions(context.replyToMessageId),
-        },
-      ),
-    )
-  }
+  saveHistoryBestEffort(sentMessage)
 }
 
 export async function sendResponses(params: {
@@ -226,22 +189,49 @@ export async function sendResponses(params: {
     return
   }
 
-  const state = collectDeliveryState(params.responses)
-  const context: DeliveryContext = {
-    api: params.api,
-    chatId: params.chatId,
-    replyToMessageId: params.replyToMessageId,
+  const bundle = collectBundle(params.responses)
+
+  try {
+    if (bundle.image) {
+      await sendImage({
+        api: params.api,
+        chatId: params.chatId,
+        replyToMessageId: params.replyToMessageId,
+        image: bundle.image,
+        text: bundle.text,
+      })
+    } else if (bundle.video) {
+      await sendVideo({
+        api: params.api,
+        chatId: params.chatId,
+        replyToMessageId: params.replyToMessageId,
+        video: bundle.video,
+        text: bundle.text,
+      })
+    } else {
+      await sendText({
+        api: params.api,
+        chatId: params.chatId,
+        replyToMessageId: params.replyToMessageId,
+        text: bundle.text,
+      })
+    }
+  } catch (error) {
+    logger.error({ error, chatId: params.chatId }, 'delivery.primary_failed')
+  }
+
+  if (!bundle.voice) {
+    return
   }
 
   try {
-    await sendPrimaryResponse(context, state)
+    await sendVoice({
+      api: params.api,
+      chatId: params.chatId,
+      replyToMessageId: params.replyToMessageId,
+      voice: bundle.voice,
+    })
   } catch (error) {
-    console.error('[Agent] Error sending primary response:', error)
-  }
-
-  try {
-    await sendSecondaryResponse(context, state)
-  } catch (error) {
-    console.error('[Agent] Error sending secondary response:', error)
+    logger.error({ error, chatId: params.chatId }, 'delivery.secondary_failed')
   }
 }

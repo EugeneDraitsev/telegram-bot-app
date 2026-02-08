@@ -16,10 +16,11 @@ import type { Message } from 'telegram-typings'
 import {
   createBot,
   getImageBuffers,
+  isAgenticChatEnabled,
   saveBotMessageMiddleware,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
-import { clearToolContext } from './tools'
+import { getMessageLogMeta, logger } from './logger'
 
 // Minimal bot instance for sending messages
 const bot = createBot()
@@ -39,7 +40,7 @@ async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
 
   const token = process.env.TOKEN
   if (!token) {
-    console.warn('[AgentWorker] TOKEN is not configured, cannot fetch images')
+    logger.warn('TOKEN is not configured, cannot fetch images')
     return []
   }
 
@@ -64,14 +65,41 @@ async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
 }
 
 const agentWorker: LambdaFunctionURLHandler = async (event) => {
+  const startedAt = Date.now()
   try {
     const payload = event as unknown as AgentWorkerPayload
     const { message, imagesData, imageFileIds } = payload
 
     if (!message?.chat?.id) {
-      console.error('[AgentWorker] Invalid payload - no message or chat id')
+      logger.error(
+        {
+          reason: 'missing_message_chat_id',
+        },
+        'worker.invalid_payload',
+      )
       return { statusCode: 200, body: 'Invalid payload' }
     }
+
+    const messageMeta = getMessageLogMeta(message)
+    if (!(await isAgenticChatEnabled(message.chat.id))) {
+      logger.info(
+        {
+          ...messageMeta,
+          reason: 'chat_not_enabled',
+        },
+        'worker.skipped',
+      )
+      return { statusCode: 200, body: 'Skipped' }
+    }
+
+    logger.info(
+      {
+        ...messageMeta,
+        hasInlineImages: Boolean(imagesData?.length),
+        imageFileIdsCount: imageFileIds?.length ?? 0,
+      },
+      'worker.start',
+    )
 
     // Decode images if present in payload, otherwise fetch by Telegram file ids.
     const decodedImages = imagesData?.map((base64) =>
@@ -84,13 +112,25 @@ const agentWorker: LambdaFunctionURLHandler = async (event) => {
 
     // Run the agentic loop with bot API
     await runAgenticLoop(message, bot.api, effectiveImages)
+    logger.info(
+      {
+        ...messageMeta,
+        durationMs: Date.now() - startedAt,
+        imageCount: effectiveImages?.length ?? 0,
+      },
+      'worker.done',
+    )
 
     return { statusCode: 200, body: 'OK' }
   } catch (error) {
-    console.error('[AgentWorker] Error:', error)
+    logger.error(
+      {
+        durationMs: Date.now() - startedAt,
+        error,
+      },
+      'worker.failed',
+    )
     return { statusCode: 200, body: 'Error' }
-  } finally {
-    clearToolContext()
   }
 }
 

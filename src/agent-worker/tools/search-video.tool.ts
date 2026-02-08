@@ -1,36 +1,48 @@
 /**
- * Tool for searching YouTube videos
- * Pure tool - adds response to collector, doesn't send directly
+ * Tool for finding video links with grounded web search.
+ * Uses generic web search instead of direct YouTube API.
  */
 
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
-import { searchWeb, searchYoutube } from '../services'
+import { searchWeb } from '../services'
 import { addResponse, requireToolContext } from './context'
 
-const YOUTUBE_URL_REGEX =
-  /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[A-Za-z0-9_-]+(?:[&?][^\s]*)?|youtu\.be\/[A-Za-z0-9_-]+(?:\?[^\s]*)?)/i
+const URL_REGEX = /https?:\/\/[^\s<>)"\]}]+/i
 
-function extractYoutubeUrl(text: string): string | null {
-  const match = text.match(YOUTUBE_URL_REGEX)
-  return match?.[0] ?? null
+function extractFirstUrl(text: string): string | null {
+  const match = text.match(URL_REGEX)
+  if (!match) {
+    return null
+  }
+
+  const rawUrl = match[0].trim()
+  const sanitized = rawUrl.replace(/[.,;:!?]+$/, '')
+  return sanitized || null
+}
+
+function buildVideoSearchPrompt(query: string): string {
+  return [
+    'Find one relevant video URL for this request.',
+    'Prefer YouTube. If unavailable, use another direct video page URL.',
+    'Return only one full URL and a very short title.',
+    `Query: ${query}`,
+  ].join('\n')
 }
 
 export const searchVideoTool = new DynamicStructuredTool({
   name: 'search_video',
   description:
-    'Search for a YouTube video and send the link. Use when user asks for a video, clip, tutorial, music video, or any video content. Uses YouTube API first and falls back to web search.',
+    'Find a relevant video link on the web. Use when user asks for a video, clip, tutorial, music video, or stream.',
   schema: z.object({
     query: z
       .string()
-      .describe(
-        'Search query for finding the video. Be specific about what kind of video.',
-      ),
+      .describe('Search query for finding the video. Be specific.'),
     comment: z
       .string()
       .optional()
-      .describe('Optional comment to send along with the video link'),
+      .describe('Optional comment to send with the found video link'),
   }),
   func: async ({ query, comment }) => {
     requireToolContext()
@@ -41,38 +53,27 @@ export const searchVideoTool = new DynamicStructuredTool({
         return 'Error searching video: Query cannot be empty'
       }
 
-      const result = await searchYoutube(normalizedQuery)
-
-      if (result) {
-        addResponse({
-          type: 'video',
-          url: result.url,
-          caption: comment?.trim() || undefined,
-        })
-
-        return `Found video: "${result.title}" - ${result.url}`
-      }
-
-      const webFallbackText = await searchWeb(
-        `Find one relevant YouTube video for query: ${normalizedQuery}. Return direct YouTube URL and very short title.`,
+      const searchResult = await searchWeb(
+        buildVideoSearchPrompt(normalizedQuery),
         'brief',
       )
-      const fallbackUrl = extractYoutubeUrl(webFallbackText)
+      const videoUrl = extractFirstUrl(searchResult)
 
-      if (fallbackUrl) {
+      if (!videoUrl) {
         addResponse({
-          type: 'video',
-          url: fallbackUrl,
-          caption: comment?.trim() || undefined,
+          type: 'text',
+          text: searchResult,
         })
-        return `Found video via web fallback: ${fallbackUrl}`
+        return 'No direct video URL found, added web search answer as text'
       }
 
       addResponse({
-        type: 'text',
-        text: webFallbackText,
+        type: 'video',
+        url: videoUrl,
+        caption: comment?.trim() || undefined,
       })
-      return `No direct YouTube link found, added web search answer`
+
+      return `Found video URL: ${videoUrl}`
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Search failed'
       return `Error searching video: ${errorMsg}`

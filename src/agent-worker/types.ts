@@ -31,11 +31,6 @@ export interface TelegramApi {
     voice: unknown,
     options?: { reply_parameters?: { message_id: number } },
   ) => Promise<unknown>
-  sendVideoNote: (
-    chatId: number,
-    videoNote: unknown,
-    options?: { reply_parameters?: { message_id: number } },
-  ) => Promise<unknown>
   sendChatAction?: (
     chatId: number,
     action: 'typing' | 'upload_photo' | 'upload_video' | 'record_voice',
@@ -66,17 +61,11 @@ export interface VoiceResponse {
   buffer: Buffer
 }
 
-export interface VideoNoteResponse {
-  type: 'video_note'
-  buffer: Buffer
-}
-
 export type AgentResponse =
   | TextResponse
   | ImageResponse
   | VideoResponse
   | VoiceResponse
-  | VideoNoteResponse
 
 export interface ToolResult {
   success: boolean

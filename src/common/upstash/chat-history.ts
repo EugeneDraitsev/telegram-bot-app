@@ -5,7 +5,7 @@
 
 import type { Message } from 'telegram-typings'
 
-import { isAiEnabledChat } from '../utils/ai.utils'
+import { isAiEnabledChat } from '../utils'
 import { getRedisClient } from './client'
 
 const redis = getRedisClient()
@@ -111,23 +111,6 @@ export function formatHistoryForDisplay(
   })
 
   return `Recent ${limited.length} messages:\n${formatted.join('\n')}`
-}
-
-/**
- * Format history for AI context (used by agent-worker)
- */
-export function formatHistoryForContext(
-  messages: Message[],
-  limit = 15,
-): Array<{ role: string; content: string }> {
-  return messages.slice(-limit).map((msg) => {
-    const role = msg.from?.is_bot ? 'Bot' : msg.from?.first_name || 'User'
-    const text = msg.text || msg.caption || '[media]'
-    return {
-      role: 'user',
-      content: `[${role}]: ${text.slice(0, 300)}`,
-    }
-  })
 }
 
 /**

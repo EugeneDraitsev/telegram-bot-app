@@ -7,7 +7,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
-import { formatHistoryForDisplay, getRawHistory } from '../services'
+import { formatHistoryForDisplay, getRawHistory } from '@tg-bot/common'
 import { requireToolContext } from './context'
 
 export const getHistoryTool = new DynamicStructuredTool({

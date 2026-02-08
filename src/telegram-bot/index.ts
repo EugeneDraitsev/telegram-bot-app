@@ -5,24 +5,29 @@ import type { Chat, Message } from 'telegram-typings'
 import {
   createBot,
   findCommand,
-  isAiEnabledChat,
   saveBotMessageMiddleware,
   saveEvent,
   saveMessage,
   updateStatistics,
 } from '@tg-bot/common'
 import { handleMessageWithAgent } from './agent'
+import { isRegisteredCommandMessage } from './command-registry'
 import { setupAllCommands } from './setup-commands'
 
 const bot = createBot()
 
 bot.use(saveBotMessageMiddleware)
 
+// Setup all commands with deferred mode (async via Lambda)
+const commandRegistry = setupAllCommands(bot, true)
+
 bot.use(async (ctx, next) => {
   const { chat } = ctx
   const message = ctx.message as Message
   if (chat && message) {
-    const command = findCommand(message.text)
+    const command = isRegisteredCommandMessage(message, commandRegistry)
+      ? findCommand(message.text || message.caption)
+      : ''
     const chat = await ctx
       .getChat()
       .catch((error) => console.error('getChat error: ', error))
@@ -46,16 +51,13 @@ bot.use(async (ctx, next) => {
   }
 })
 
-// Setup all commands with deferred mode (async via Lambda)
-setupAllCommands(bot, true)
-
 // Smart Agentic responses - bot autonomously decides what to do
 bot.on('message', async (ctx) => {
   const message = ctx.message as Message
   const chatId = ctx.chat?.id
-  const command = findCommand(message.text)
+  const isCommand = isRegisteredCommandMessage(message, commandRegistry)
 
-  if (command || !chatId || !isAiEnabledChat(chatId)) {
+  if (isCommand || !chatId) {
     return
   }
 

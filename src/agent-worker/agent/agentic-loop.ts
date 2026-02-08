@@ -1,20 +1,13 @@
-/**
- * Agentic loop for async worker:
- * 1) Collect data/media with tools
- * 2) Compose one final text answer
- * 3) Send merged response to Telegram
- */
-
 import type { Message } from 'telegram-typings'
 
-import { formatHistoryForContext, getRawHistory } from '../services'
+import { getMessageLogMeta, logger } from '../logger'
 import {
-  clearToolContext,
   getAgentTools,
   getCollectedResponses,
-  setToolContext,
+  runWithToolContext,
+  TOOL_NAMES,
 } from '../tools'
-import type { AgentChatMessage, AgentResponse, TelegramApi } from '../types'
+import type { AgentResponse, TelegramApi } from '../types'
 import { buildContextBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { composeFinalText } from './final-text'
@@ -26,76 +19,112 @@ export async function runAgenticLoop(
   api: TelegramApi,
   imagesData?: Buffer[],
 ): Promise<void> {
+  const startedAt = Date.now()
   const chatId = message.chat?.id
   if (!chatId) {
-    console.error('[Agent] No chat ID')
+    logger.error({ reason: 'missing_chat_id' }, 'loop.invalid_input')
     return
   }
 
+  const messageMeta = getMessageLogMeta(message)
+  logger.info(messageMeta, 'loop.start')
+
   const stopTyping = startTyping(api, chatId)
-  setToolContext(message, imagesData)
 
   try {
-    const [rawHistory, tools] = await Promise.all([
-      getRawHistory(chatId).catch(() => []),
-      getAgentTools(chatId).catch((error) => {
-        console.error('[Agent] Failed to load tools:', error)
+    await runWithToolContext(message, imagesData, async () => {
+      const tools = await getAgentTools(chatId).catch((error) => {
+        logger.error({ chatId, error }, 'tools.load_failed')
         return []
-      }),
-    ])
-    const historyContext = formatHistoryForContext(
-      rawHistory,
-    ) as AgentChatMessage[]
+      })
 
-    const textContent = message.text || message.caption || ''
-    const hasImages = !!imagesData?.length || !!message.photo?.length
-    const contextBlock = buildContextBlock(message, textContent, hasImages)
-    const collectionMessages = buildCollectionMessages({
-      historyContext,
-      contextBlock,
-      textContent,
-    })
+      const textContent = message.text || message.caption || ''
+      const hasImages = !!imagesData?.length || !!message.photo?.length
+      const contextBlock = buildContextBlock(message, textContent, hasImages)
+      const collectionMessages = buildCollectionMessages({
+        contextBlock,
+        textContent,
+      })
 
-    const { toolNotes, shouldSkip } = await runToolCollection({
-      messages: collectionMessages,
-      tools,
-    })
+      const { toolNotes, shouldSkip } = await runToolCollection({
+        messages: collectionMessages,
+        tools,
+        chatId,
+      })
 
-    if (shouldSkip) {
-      return
-    }
+      if (shouldSkip) {
+        logger.info(
+          {
+            ...messageMeta,
+            reason: TOOL_NAMES.DO_NOTHING,
+          },
+          'loop.skipped',
+        )
+        return
+      }
 
-    const { textDrafts, mediaResponses } = splitResponses(
-      getCollectedResponses(),
-    )
-    const finalText = await composeFinalText({
-      historyContext,
-      contextBlock,
-      textContent,
-      toolNotes,
-      textDrafts,
-      hasMedia: mediaResponses.length > 0,
-    })
+      const { textDrafts, mediaResponses } = splitResponses(
+        getCollectedResponses(),
+      )
 
-    const responsesToSend: AgentResponse[] = [...mediaResponses]
-    if (finalText.trim()) {
-      responsesToSend.push({ type: 'text', text: finalText })
-    }
+      const composeStartedAt = Date.now()
+      const finalText = await composeFinalText({
+        contextBlock,
+        textContent,
+        toolNotes,
+        textDrafts,
+        hasMedia: mediaResponses.length > 0,
+      })
+      const composeDurationMs = Date.now() - composeStartedAt
 
-    if (responsesToSend.length === 0) {
-      return
-    }
+      const responsesToSend: AgentResponse[] = [...mediaResponses]
+      if (finalText.trim()) {
+        responsesToSend.push({ type: 'text', text: finalText })
+      }
 
-    await sendResponses({
-      responses: responsesToSend,
-      chatId,
-      replyToMessageId: message.message_id,
-      api,
+      if (responsesToSend.length === 0) {
+        logger.info(
+          {
+            ...messageMeta,
+            composeDurationMs,
+            durationMs: Date.now() - startedAt,
+          },
+          'loop.no_response',
+        )
+        return
+      }
+
+      const deliveryStartedAt = Date.now()
+      await sendResponses({
+        responses: responsesToSend,
+        chatId,
+        replyToMessageId: message.message_id,
+        api,
+      })
+
+      logger.info(
+        {
+          ...messageMeta,
+          durationMs: Date.now() - startedAt,
+          composeDurationMs,
+          deliveryDurationMs: Date.now() - deliveryStartedAt,
+          responseCount: responsesToSend.length,
+          mediaCount: mediaResponses.length,
+          hasFinalText: Boolean(finalText.trim()),
+        },
+        'loop.done',
+      )
     })
   } catch (error) {
-    console.error('[Agent] Loop error:', error)
+    logger.error(
+      {
+        ...messageMeta,
+        durationMs: Date.now() - startedAt,
+        error,
+      },
+      'loop.failed',
+    )
   } finally {
     stopTyping()
-    clearToolContext()
   }
 }

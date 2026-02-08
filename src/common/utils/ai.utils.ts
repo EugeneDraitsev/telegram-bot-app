@@ -27,7 +27,7 @@ export const systemInstructions = `Instructions:
 
 export const geminiSystemInstructions = `
   ${systemInstructions}
-  
+
   You will be provided with chat history for the last 24 hours (if available) from Telegram in JSON format. You should respond just with text.
   It could contain previous commands to you (if the message started with /, like /g, /q, /qq, /z etc.) and your previous responses.
   Try to rely mostly on more recent posts, please.
@@ -35,20 +35,54 @@ export const geminiSystemInstructions = `
   Make sure you answer in the same language as the prompt and answer only on the last request to you in the chat and try to be concise, you are a chatbot after all.
 `
 
-export function cleanGeminiMessage(message: string) {
-  let parsedMessage: string
+const USER_PREFIX_REGEX =
+  /^\s*(?:USER|User ID)\s*:\s*\d+\s*\([^)\r\n]*\)\s*:\s*/i
+const REPLY_SUFFIX_REGEX = /\[In reply to message ID:\s*\d+\]\s*$/i
+const TIMESTAMP_SUFFIX_REGEX =
+  /\[\d{1,4}\/\d{1,2}\/\d{1,4},\s*\d{1,2}:\d{1,2}:\d{1,2}\s*(?:AM|PM)\]\s*$/i
+
+function extractTextPayload(message: string): string {
   try {
-    parsedMessage = JSON.parse(message).text || message
-  } catch (_e) {
-    parsedMessage = message
+    const parsed = JSON.parse(message) as { text?: unknown }
+    return typeof parsed.text === 'string' ? parsed.text : message
+  } catch {
+    return message
   }
+}
 
-  const userIdRegex = /^(\s*(USER|User ID):\s*\d+ \([^)]*\): ?)+/
-  let cleanedMessage = parsedMessage.replace(userIdRegex, '')
+function removeUserPrefixes(input: string): string {
+  let cleaned = input
 
-  const replyRegex =
-    /\s*(?:\[\d+\/\d+\/\d+, \d+:\d+:\d+ [AP]M\]\s*(?:\[In reply to message ID: \d+\])?|\[In reply to message ID:\s*\d+\])\s*$/
-  cleanedMessage = cleanedMessage.replace(replyRegex, '')
+  while (true) {
+    const match = cleaned.match(USER_PREFIX_REGEX)
+    if (!match) {
+      return cleaned
+    }
+
+    cleaned = cleaned.slice(match[0].length)
+  }
+}
+
+function removeTrailingMetadata(input: string): string {
+  let cleaned = input
+
+  while (true) {
+    const trimmed = cleaned.trimEnd()
+    if (REPLY_SUFFIX_REGEX.test(trimmed)) {
+      cleaned = trimmed.replace(REPLY_SUFFIX_REGEX, '')
+      continue
+    }
+    if (TIMESTAMP_SUFFIX_REGEX.test(trimmed)) {
+      cleaned = trimmed.replace(TIMESTAMP_SUFFIX_REGEX, '')
+      continue
+    }
+    return trimmed
+  }
+}
+
+export function cleanGeminiMessage(message: string) {
+  let cleanedMessage = removeUserPrefixes(extractTextPayload(message))
+  cleanedMessage = removeTrailingMetadata(cleanedMessage)
 
   // Unescape common escaped sequences
   cleanedMessage = cleanedMessage

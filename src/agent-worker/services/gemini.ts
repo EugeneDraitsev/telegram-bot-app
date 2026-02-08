@@ -5,8 +5,11 @@
 
 import { GoogleGenAI } from '@google/genai'
 
+import { logger } from '../logger'
+
 const apiKey = process.env.GEMINI_API_KEY || ''
 const ai = new GoogleGenAI({ apiKey })
+const OPENAI_TTS_TIMEOUT_MS = 15_000
 
 type WebSearchResponseFormat = 'brief' | 'detailed' | 'list'
 
@@ -25,7 +28,7 @@ const SYSTEM_INSTRUCTIONS = `Ты - умный и весёлый бот-помо
 export async function generateText(
   prompt: string,
   useGroundedSearch = false,
-  model = 'gemini-2.5-flash',
+  model = 'gemini-3-flash-preview',
 ): Promise<string> {
   if (!apiKey) {
     throw new Error('Gemini API key not configured')
@@ -137,8 +140,12 @@ export async function generateImage(
       break
     }
 
-    console.warn(
-      `Gemini image generation attempt ${attempt}/${MAX_RETRIES} - no image`,
+    logger.warn(
+      {
+        attempt,
+        maxRetries: MAX_RETRIES,
+      },
+      'Gemini image generation returned no image',
     )
   }
 
@@ -164,6 +171,7 @@ export async function generateVoice(
 
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
+    signal: AbortSignal.timeout(OPENAI_TTS_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${openaiKey}`,
       'Content-Type': 'application/json',

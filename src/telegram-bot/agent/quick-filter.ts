@@ -46,13 +46,14 @@ export async function quickFilter(
   message: Message,
   imagesData?: Buffer[],
 ): Promise<boolean> {
-  // Skip commands - they have their own handlers
-  if (message.text?.startsWith('/')) {
-    return false
-  }
-
   // Get text content from message or caption
   const textContent = message.text || message.caption || ''
+  const normalizedText = textContent.trimStart()
+
+  // Unknown slash-command should be treated as direct bot request
+  if (normalizedText.startsWith('/')) {
+    return true
+  }
 
   // Skip very short messages without images
   if (textContent.length < 3 && !imagesData?.length) {

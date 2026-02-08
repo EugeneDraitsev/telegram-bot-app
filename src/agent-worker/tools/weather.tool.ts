@@ -6,7 +6,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
-import { formatWeatherText, getWeather } from '../services'
+import { formatWeatherText, getWeather } from '@tg-bot/common'
 import { addResponse, requireToolContext } from './context'
 
 export const weatherTool = new DynamicStructuredTool({

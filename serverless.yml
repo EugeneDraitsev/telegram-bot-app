@@ -75,8 +75,6 @@ functions:
       GEMINI_API_KEY: ${env:GEMINI_API_KEY}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
-      ENABLE_VIDEO_NOTE_TOOL: ${env:ENABLE_VIDEO_NOTE_TOOL, false}
-      ENABLE_DYNAMIC_TOOLS: ${env:ENABLE_DYNAMIC_TOOLS, true}
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default
@@ -127,6 +125,8 @@ build:
 custom:
   serverless-offline:
     httpPort: 4000
+    useChildProcesses: true
+    reloadHandler: true
   esbuild:
     target: node24
     platform: node

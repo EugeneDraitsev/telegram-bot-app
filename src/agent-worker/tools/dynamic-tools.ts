@@ -1,15 +1,23 @@
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
-import { getDynamicToolsRaw } from '@tg-bot/common'
-import { formatWeatherText, getWeather, searchWeb } from '../services'
+import {
+  formatWeatherText,
+  getDynamicToolsRaw,
+  getWeather,
+} from '@tg-bot/common'
+import { searchWeb } from '../services'
 import { addResponse, requireToolContext } from './context'
 
 const MAX_DYNAMIC_TOOLS = 16
 
-const DYNAMIC_ACTIONS = z.enum(['send_text', 'web_search', 'get_weather'])
+export const DYNAMIC_ACTIONS = z.enum([
+  'send_text',
+  'web_search',
+  'get_weather',
+])
 
-const dynamicToolDefinitionSchema = z.object({
+export const dynamicToolDefinitionSchema = z.object({
   name: z
     .string()
     .trim()
@@ -21,7 +29,7 @@ const dynamicToolDefinitionSchema = z.object({
   enabled: z.boolean().optional(),
 })
 
-type DynamicToolDefinition = z.infer<typeof dynamicToolDefinitionSchema>
+export type DynamicToolDefinition = z.infer<typeof dynamicToolDefinitionSchema>
 
 function buildPrompt(template: string | undefined, input: string): string {
   const normalizedInput = input.trim()
@@ -116,7 +124,7 @@ export async function loadDynamicTools(
   chatId: number | undefined,
   reservedNames: Set<string>,
 ): Promise<DynamicStructuredTool[]> {
-  if (process.env.ENABLE_DYNAMIC_TOOLS === 'false' || !chatId) {
+  if (!chatId) {
     return []
   }
 
