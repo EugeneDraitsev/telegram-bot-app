@@ -47,8 +47,8 @@ function parseDynamicToolsPayload(value: unknown): unknown[] {
       }
 
       if (
+        parsed &&
         typeof parsed === 'object' &&
-        parsed !== null &&
         'tools' in parsed &&
         Array.isArray((parsed as { tools: unknown[] }).tools)
       ) {
