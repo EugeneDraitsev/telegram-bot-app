@@ -9,16 +9,6 @@ import { z } from 'zod'
 import type { Message } from 'telegram-typings'
 
 /**
- * Cheap model for quick filtering (low cost, fast)
- */
-const createCheapModelWithTools = () =>
-  new ChatGoogleGenerativeAI({
-    model: 'gemini-2.0-flash-lite',
-    apiKey: process.env.GEMINI_API_KEY,
-    temperature: 0,
-  }).bindTools(filterTools)
-
-/**
  * Filter tools for quick classification
  */
 const filterTools = [
@@ -37,6 +27,16 @@ const filterTools = [
     func: async () => ({ shouldEngage: false }),
   }),
 ]
+
+/**
+ * Cheap model for quick filtering (low cost, fast)
+ */
+const createCheapModelWithTools = () =>
+  new ChatGoogleGenerativeAI({
+    model: 'gemini-2.0-flash-lite',
+    apiKey: process.env.GEMINI_API_KEY,
+    temperature: 0,
+  }).bindTools(filterTools)
 
 let cheapModelWithTools: ReturnType<
   ChatGoogleGenerativeAI['bindTools']

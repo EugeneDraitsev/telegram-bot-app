@@ -5,13 +5,11 @@ import {
   createBot,
   getImageBuffers,
   isAgenticChatEnabled,
-  saveBotMessageMiddleware,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
 import { getMessageLogMeta, logger } from './logger'
 
 const bot = createBot()
-bot.use(saveBotMessageMiddleware)
 
 export interface AgentWorkerPayload {
   message: Message

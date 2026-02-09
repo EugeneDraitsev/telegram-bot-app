@@ -1,6 +1,10 @@
 import { InputFile } from 'grammy/web'
 
-import { cleanGeminiMessage, formatTelegramMarkdownV2 } from '@tg-bot/common'
+import {
+  cleanGeminiMessage,
+  formatTelegramMarkdownV2,
+  saveBotReplyToHistory,
+} from '@tg-bot/common'
 import { logger } from '../logger'
 import type {
   AgentResponse,
@@ -77,10 +81,15 @@ async function sendText(params: DeliveryParams & { text: string }) {
     return
   }
 
-  await params.api.sendMessage(params.chatId, formatText(text), {
-    parse_mode: 'MarkdownV2',
-    ...getReplyOptions(params.replyToMessageId),
-  })
+  const sentMessage = await params.api.sendMessage(
+    params.chatId,
+    formatText(text),
+    {
+      parse_mode: 'MarkdownV2',
+      ...getReplyOptions(params.replyToMessageId),
+    },
+  )
+  await saveBotReplyToHistory(sentMessage)
 }
 
 async function sendImage(
@@ -95,11 +104,12 @@ async function sendImage(
   }
 
   if (params.image.buffer) {
-    await params.api.sendPhoto(
+    const sentMessage = await params.api.sendPhoto(
       params.chatId,
       new InputFile(params.image.buffer),
       options,
     )
+    await saveBotReplyToHistory(sentMessage)
     return
   }
 
@@ -109,7 +119,12 @@ async function sendImage(
   }
 
   try {
-    await params.api.sendPhoto(params.chatId, params.image.url, options)
+    const sentMessage = await params.api.sendPhoto(
+      params.chatId,
+      params.image.url,
+      options,
+    )
+    await saveBotReplyToHistory(sentMessage)
   } catch {
     await sendText({
       ...params,
@@ -144,7 +159,12 @@ async function sendAnimation(
   }
 
   try {
-    await params.api.sendAnimation(params.chatId, params.animation.url, options)
+    const sentMessage = await params.api.sendAnimation(
+      params.chatId,
+      params.animation.url,
+      options,
+    )
+    await saveBotReplyToHistory(sentMessage)
   } catch {
     await sendText({
       ...params,
@@ -156,11 +176,12 @@ async function sendAnimation(
 }
 
 async function sendVoice(params: DeliveryParams & { voice: Buffer }) {
-  await params.api.sendVoice(
+  const sentMessage = await params.api.sendVoice(
     params.chatId,
     new InputFile(params.voice, 'voice.opus'),
     getReplyOptions(params.replyToMessageId),
   )
+  await saveBotReplyToHistory(sentMessage)
 }
 
 export async function sendResponses(
