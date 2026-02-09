@@ -26,6 +26,7 @@
       "name": "@tg-bot/agent-worker",
       "version": "1.0.0",
       "dependencies": {
+        "@giphy/js-fetch-api": "^5.7.0",
         "@google/genai": "^1.40.0",
         "@langchain/core": "^1.1.19",
         "@langchain/google-genai": "^2.1.15",
@@ -290,6 +291,12 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.27.3", "", { "os": "win32", "cpu": "ia32" }, "sha512-QLKSFeXNS8+tHW7tZpMtjlNb7HKau0QDpwm49u0vUp9y1WOF+PEzkU84y9GqYaAVW8aH8f3GcBck26jh54cX4Q=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.27.3", "", { "os": "win32", "cpu": "x64" }, "sha512-4uJGhsxuptu3OcpVAzli+/gWusVGwZZHTlS63hh++ehExkVT8SgiEf7/uC/PclrPPkLhZqGgCTjd0VWLo6xMqA=="],
+
+    "@giphy/js-fetch-api": ["@giphy/js-fetch-api@5.7.0", "", { "dependencies": { "@giphy/js-types": "*", "@giphy/js-util": "*" } }, "sha512-5W8j7QUEnWRhW2KKlRhwHNCz0HwUeW0SlFryKFrqzE5XB8kjoAwZ2GvwtLNnkpjN0cniLE+bSGAzMKcL5Bt5Vg=="],
+
+    "@giphy/js-types": ["@giphy/js-types@5.1.0", "", {}, "sha512-BZYCDtYNRR7cUWkbDLB4wmm3qmWMsVCQdUiBNOfmZ3yAazCgygKJoDI/5Rq4CK5MBaOc5LVdF8viC2WtoBdaPA=="],
+
+    "@giphy/js-util": ["@giphy/js-util@5.2.0", "", { "dependencies": { "@giphy/js-types": "*", "uuid": "^9.0.0" } }, "sha512-Qt7pGh2cqiNmXLeWAgb459wK8+BuMLtIxTfg4ZksnPHPsLthiHT9hhzs2QhqUh7Pp/HOq+Cbv2etGDfnq+xiKA=="],
 
     "@google/genai": ["@google/genai@1.40.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "protobufjs": "^7.5.4", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.25.2" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-fhIww8smT0QYRX78qWOiz/nIQhHMF5wXOrlXvj33HBrz3vKDBb+wibLcEmTA+L9dmPD4KmfNr7UF3LDQVTXNjA=="],
 
@@ -1428,6 +1435,8 @@
     "@aws-crypto/util/@aws-sdk/types": ["@aws-sdk/types@3.968.0", "", { "dependencies": { "@smithy/types": "^4.11.0", "tslib": "^2.6.2" } }, "sha512-Wuumj/1cuiuXTMdHmvH88zbEl+5Pw++fOFQuMCF4yP0R+9k1lwX8rVst+oy99xaxtdluJZXrsccoZoA67ST1Ow=="],
 
     "@aws-crypto/util/@smithy/util-utf8": ["@smithy/util-utf8@2.3.0", "", { "dependencies": { "@smithy/util-buffer-from": "^2.2.0", "tslib": "^2.6.2" } }, "sha512-R8Rdn8Hy72KKcebgLiv8jQcQkXoLMOGGv5uI1/k0l+snqkOzQ1R0ChUBCxWMlBsFMekWjq0wRudIweFs7sKT5A=="],
+
+    "@giphy/js-util/uuid": ["uuid@9.0.1", "", { "bin": { "uuid": "dist/bin/uuid" } }, "sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA=="],
 
     "@jest/types/chalk": ["chalk@4.1.2", "", { "dependencies": { "ansi-styles": "^4.1.0", "supports-color": "^7.1.0" } }, "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA=="],
 

@@ -31,24 +31,27 @@ export const generateImage = async (
     throw new Error(PROMPT_MISSING_ERROR)
   }
 
-  let response: OpenAi.Images.ImagesResponse
+  const maxRetries = 3
+  let lastError: Error | undefined
 
-  if (imagesData?.length && model === 'gpt-image-1.5') {
-    const image: Uploadable[] = []
-    for (const imageData of imagesData) {
-      image.push(await toFile(imageData, 'image.jpg', { type: 'image/jpeg' }))
+  const requestImage = async (): Promise<OpenAi.Images.ImagesResponse> => {
+    if (imagesData?.length && model === 'gpt-image-1.5') {
+      const image: Uploadable[] = []
+      for (const imageData of imagesData) {
+        image.push(await toFile(imageData, 'image.jpg', { type: 'image/jpeg' }))
+      }
+
+      return openAi.images.edit({
+        prompt,
+        quality: 'medium',
+        model,
+        image,
+        n: 1,
+        size: '1024x1024',
+      })
     }
 
-    response = await openAi.images.edit({
-      prompt,
-      quality: 'medium',
-      model,
-      image,
-      n: 1,
-      size: '1024x1024',
-    })
-  } else {
-    response = await openAi.images.generate({
+    return openAi.images.generate({
       prompt,
       quality: model === 'gpt-image-1.5' ? 'medium' : 'standard',
       model,
@@ -57,20 +60,47 @@ export const generateImage = async (
     })
   }
 
-  const text = response.data?.[0].revised_prompt
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await requestImage()
+      const imageData = response.data?.[0]
+      const text = imageData?.revised_prompt
 
-  if (response.data?.[0].b64_json) {
-    return {
-      image: Buffer.from(response.data?.[0].b64_json || '', 'base64'),
-      text,
+      if (imageData?.b64_json) {
+        return {
+          image: Buffer.from(imageData.b64_json, 'base64'),
+          text,
+        }
+      }
+
+      if (imageData?.url) {
+        return { image: imageData.url, text }
+      }
+
+      console.warn(
+        `OpenAI image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
+        JSON.stringify({
+          hasB64: Boolean(imageData?.b64_json),
+          hasUrl: Boolean(imageData?.url),
+          revised_prompt: imageData?.revised_prompt,
+        }),
+      )
+    } catch (error) {
+      lastError = error as Error
+      console.warn(
+        `OpenAI image generation attempt ${attempt}/${maxRetries} failed`,
+        error instanceof Error ? error.message : error,
+      )
     }
   }
 
-  if (response.data?.[0].url) {
-    return { image: response.data?.[0].url, text }
+  if (lastError) {
+    console.error('OpenAI image generation failed after all retries', lastError)
+    throw new Error(lastError.message || DEFAULT_ERROR_MESSAGE)
   }
 
-  throw new Error(DEFAULT_ERROR_MESSAGE)
+  console.error('OpenAI image generation failed after all retries - empty response')
+  throw new Error('OpenAI returned empty response, please try again')
 }
 
 export const generateMultimodalCompletion = async (
