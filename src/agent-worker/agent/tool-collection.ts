@@ -159,24 +159,27 @@ export async function runToolCollection(params: {
       try {
         // biome-ignore lint/suspicious/noExplicitAny: tool args come from model
         const toolResult = await (tool as any).invoke(toolCall.args)
-        roundNotes.push(`${toolCall.name}: ${toResultText(toolResult)}`)
+        const resultText = toResultText(toolResult)
+        roundNotes.push(`${toolCall.name}: ${resultText}`)
         executedCount++
         logger.info(
           {
             chatId,
             iteration,
             tool: toolCall.name,
+            result: resultText,
           },
           'tool.done',
         )
       } catch (error) {
-        roundNotes.push(`${toolCall.name}: Error - ${toErrorText(error)}`)
+        const errorText = toErrorText(error)
+        roundNotes.push(`${toolCall.name}: Error - ${errorText}`)
         logger.error(
           {
             chatId,
             iteration,
             tool: toolCall.name,
-            error,
+            error: errorText,
           },
           'tool.failed',
         )

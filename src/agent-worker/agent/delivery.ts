@@ -4,6 +4,7 @@ import { cleanGeminiMessage, formatTelegramMarkdownV2 } from '@tg-bot/common'
 import { logger } from '../logger'
 import type {
   AgentResponse,
+  AnimationResponse,
   ImageResponse,
   TelegramApi,
   VideoResponse,
@@ -20,6 +21,7 @@ interface DeliveryBundle {
   text: string
   image: ImageResponse | null
   video: VideoResponse | null
+  animation: AnimationResponse | null
   voice: Buffer | null
 }
 
@@ -43,6 +45,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
   const textParts: string[] = []
   let image: ImageResponse | null = null
   let video: VideoResponse | null = null
+  let animation: AnimationResponse | null = null
   let voice: Buffer | null = null
 
   for (const response of responses) {
@@ -52,6 +55,8 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
       image = response
     } else if (response.type === 'video') {
       video = response
+    } else if (response.type === 'animation') {
+      animation = response
     } else if (response.type === 'voice') {
       voice = response.buffer
     }
@@ -61,6 +66,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     text: textParts.join('\n\n').trim(),
     image,
     video,
+    animation,
     voice,
   }
 }
@@ -126,6 +132,29 @@ async function sendVideo(
   await sendText({ ...params, text: messageText })
 }
 
+async function sendAnimation(
+  params: DeliveryParams & { animation: AnimationResponse; text: string },
+) {
+  const rawCaption = params.text || params.animation.caption || ''
+  const caption = formatCaption(rawCaption)
+  const options = {
+    caption,
+    parse_mode: caption ? 'MarkdownV2' : undefined,
+    ...getReplyOptions(params.replyToMessageId),
+  }
+
+  try {
+    await params.api.sendAnimation(params.chatId, params.animation.url, options)
+  } catch {
+    await sendText({
+      ...params,
+      text: rawCaption
+        ? `${rawCaption}\n\n${params.animation.url}`
+        : params.animation.url,
+    })
+  }
+}
+
 async function sendVoice(params: DeliveryParams & { voice: Buffer }) {
   await params.api.sendVoice(
     params.chatId,
@@ -149,7 +178,13 @@ export async function sendResponses(
   }
 
   try {
-    if (bundle.image) {
+    if (bundle.animation) {
+      await sendAnimation({
+        ...base,
+        animation: bundle.animation,
+        text: bundle.text,
+      })
+    } else if (bundle.image) {
       await sendImage({ ...base, image: bundle.image, text: bundle.text })
     } else if (bundle.video) {
       await sendVideo({ ...base, video: bundle.video, text: bundle.text })

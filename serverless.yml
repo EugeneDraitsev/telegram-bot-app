@@ -7,7 +7,7 @@ provider:
   region: eu-central-1
   memorySize: 512
   timeout: 30
-  runtime: nodejs24.x
+  runtime: nodejs22.x
   architecture: arm64
   environment:
     region: eu-central-1
@@ -73,6 +73,7 @@ functions:
       OPENAI_API_KEY: ${env:OPENAI_API_KEY}
       OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       GEMINI_API_KEY: ${env:GEMINI_API_KEY}
+      GIPHY_API_KEY: ${env:GIPHY_API_KEY}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
 

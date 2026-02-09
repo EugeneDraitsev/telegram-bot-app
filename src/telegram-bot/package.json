@@ -8,13 +8,13 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@google/genai": "1.39.0",
-    "@langchain/core": "^1.1.18",
-    "@langchain/google-genai": "^2.1.14",
-    "@langchain/langgraph": "^1.1.2",
-    "@upstash/redis": "^1.36.1",
+    "@google/genai": "1.40.0",
+    "@langchain/core": "^1.1.19",
+    "@langchain/google-genai": "^2.1.15",
+    "@langchain/langgraph": "^1.1.4",
+    "@upstash/redis": "^1.36.2",
     "grammy": "^1.39.3",
-    "openai": "^6.17.0",
+    "openai": "^6.18.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

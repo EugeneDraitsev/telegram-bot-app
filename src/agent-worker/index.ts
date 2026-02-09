@@ -1,4 +1,4 @@
-import type { LambdaFunctionURLHandler } from 'aws-lambda'
+import type { Handler } from 'aws-lambda'
 import type { Message } from 'telegram-typings'
 
 import {
@@ -51,11 +51,10 @@ async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
   return getImageBuffers(urls)
 }
 
-const agentWorker: LambdaFunctionURLHandler = async (event) => {
+const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   const startedAt = Date.now()
   try {
-    const payload = event as unknown as AgentWorkerPayload
-    const { message, imagesData, imageFileIds } = payload
+    const { message, imagesData, imageFileIds } = event
 
     if (!message?.chat?.id) {
       logger.error(

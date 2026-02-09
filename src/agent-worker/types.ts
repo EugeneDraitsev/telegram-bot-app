@@ -31,6 +31,15 @@ export interface TelegramApi {
     voice: unknown,
     options?: { reply_parameters?: { message_id: number } },
   ) => Promise<unknown>
+  sendAnimation: (
+    chatId: number,
+    animation: unknown,
+    options?: {
+      caption?: string
+      parse_mode?: string
+      reply_parameters?: { message_id: number }
+    },
+  ) => Promise<unknown>
   sendChatAction?: (
     chatId: number,
     action: 'typing' | 'upload_photo' | 'upload_video' | 'record_voice',
@@ -56,6 +65,12 @@ export interface VideoResponse {
   caption?: string
 }
 
+export interface AnimationResponse {
+  type: 'animation'
+  url: string
+  caption?: string
+}
+
 export interface VoiceResponse {
   type: 'voice'
   buffer: Buffer
@@ -65,6 +80,7 @@ export type AgentResponse =
   | TextResponse
   | ImageResponse
   | VideoResponse
+  | AnimationResponse
   | VoiceResponse
 
 export interface ToolResult {

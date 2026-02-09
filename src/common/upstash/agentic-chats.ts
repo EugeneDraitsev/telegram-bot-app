@@ -3,19 +3,15 @@ import { getRedisClient } from './client'
 
 const AGENTIC_CHAT_CONFIG_KEY = 'bot-config:agentic-chats'
 
-export async function getAgenticChatIds(): Promise<string[]> {
+export async function getAgenticChatIds() {
   const redis = getRedisClient()
   if (!redis) {
     return []
   }
 
   try {
-    const raw = await redis.get<string>(AGENTIC_CHAT_CONFIG_KEY)
-    if (!raw) {
-      return []
-    }
-
-    return (JSON.parse(raw) as { chatIds?: string[] }).chatIds ?? []
+    const chatIds = await redis.get<string[]>(AGENTIC_CHAT_CONFIG_KEY)
+    return chatIds || []
   } catch {
     return []
   }

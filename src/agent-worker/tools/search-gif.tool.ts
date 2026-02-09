@@ -1,69 +1,53 @@
 /**
- * Tool for finding direct gif/mp4/webm links for memes/reactions.
+ * Tool for finding GIFs via Giphy SDK.
+ * Requires GIPHY_API_KEY environment variable.
  */
 
+import { GiphyFetch } from '@giphy/js-fetch-api'
 import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
+import type { IGif } from '@giphy/js-types'
 
-import { getErrorMessage } from '@tg-bot/common'
-import { searchWeb } from '../services'
+import { getErrorMessage, sample } from '@tg-bot/common'
 import { addResponse, requireToolContext } from './context'
 
-const DIRECT_MEDIA_URL_REGEX =
-  /https?:\/\/[^\s<>)"\]}]+?\.(?:gif|mp4|webm)(?:\?[^\s<>)"\]}]*)?/i
+const GIPHY_RESULTS_LIMIT = 20
 
-function extractDirectMediaUrl(text: string): string | null {
-  const match = text.match(DIRECT_MEDIA_URL_REGEX)
-  if (!match?.[0]) {
-    return null
+let giphyClient: GiphyFetch | null = null
+
+export function getGiphyClient(): GiphyFetch {
+  const apiKey = process.env.GIPHY_API_KEY
+  if (!apiKey) {
+    throw new Error('Giphy API key not configured')
   }
-
-  const url = match[0].trim().replace(/[.,;:!?]+$/, '')
-  return url || null
-}
-
-function buildGifSearchPrompt(
-  query: string,
-  source: 'giphy' | 'tenor' | 'any',
-) {
-  const sourceHint =
-    source === 'any' ? 'Prefer Giphy or Tenor.' : `Use ${source} if possible.`
-
-  return [
-    'Find one direct GIF/MP4/WebM media file URL for this request.',
-    'Return exactly one direct media URL ending with .gif, .mp4, or .webm.',
-    'Do not return page URLs.',
-    sourceHint,
-    `Query: ${query}`,
-  ].join('\n')
-}
-
-function hasDirectMediaExtension(url: string): boolean {
-  return /\.(gif|mp4|webm)(?:\?|$)/i.test(url)
-}
-
-async function isReachableMediaUrl(url: string): Promise<boolean> {
-  const signal = AbortSignal.timeout(5000)
-
-  try {
-    const headResponse = await fetch(url, {
-      method: 'HEAD',
-      redirect: 'follow',
-      signal,
-    })
-    if (!headResponse.ok) {
-      return false
-    }
-
-    const contentType = headResponse.headers.get('content-type') || ''
-    return (
-      contentType.toLowerCase().startsWith('video/') ||
-      contentType.toLowerCase().includes('gif') ||
-      hasDirectMediaExtension(url)
-    )
-  } catch {
-    return false
+  if (!giphyClient) {
+    giphyClient = new GiphyFetch(apiKey)
   }
+  return giphyClient
+}
+
+export function getMediaUrl(gif: IGif): string | null {
+  const images = gif.images
+  return (
+    images?.original_mp4?.mp4 ||
+    images?.original?.mp4 ||
+    images?.original?.url ||
+    images?.downsized?.url ||
+    images?.fixed_height?.url ||
+    null
+  )
+}
+
+export async function searchGiphyGif(query: string): Promise<string | null> {
+  const gf = getGiphyClient()
+  const { data } = await gf.search(query, {
+    limit: GIPHY_RESULTS_LIMIT,
+    rating: 'g',
+    lang: 'en',
+  })
+
+  const picked = sample(data ?? [])
+  return picked ? getMediaUrl(picked) : null
 }
 
 export const searchGifTool = new DynamicStructuredTool({
@@ -71,13 +55,9 @@ export const searchGifTool = new DynamicStructuredTool({
   description:
     'Find a direct gif/mp4/webm media URL for reactions or short loops.',
   schema: z.object({
-    query: z.string().describe('Search query for gif/meme/reaction media'),
-    source: z
-      .enum(['giphy', 'tenor', 'any'])
-      .optional()
-      .describe('Preferred source. Default: any'),
+    query: z.string().describe('Search query for gif/meme/reaction'),
   }),
-  func: async ({ query, source = 'any' }) => {
+  func: async ({ query }) => {
     requireToolContext()
 
     const normalizedQuery = query.trim()
@@ -86,26 +66,17 @@ export const searchGifTool = new DynamicStructuredTool({
     }
 
     try {
-      const result = await searchWeb(
-        buildGifSearchPrompt(normalizedQuery, source),
-        'brief',
-      )
-      const mediaUrl = extractDirectMediaUrl(result)
+      const mediaUrl = await searchGiphyGif(normalizedQuery)
 
       if (!mediaUrl) {
-        addResponse({ type: 'text', text: result })
-        return 'No direct media URL found, added search result as text'
-      }
-      if (!(await isReachableMediaUrl(mediaUrl))) {
-        addResponse({ type: 'text', text: result })
-        return 'Found media URL is unreachable, added search result as text'
+        return 'No GIF found for this query'
       }
 
       addResponse({
-        type: 'video',
+        type: 'animation',
         url: mediaUrl,
       })
-      return `Found gif media URL: ${mediaUrl}`
+      return `Found GIF: ${mediaUrl}`
     } catch (error) {
       const errorMsg = getErrorMessage(error)
       return `Error searching gif: ${errorMsg}`

@@ -1,12 +1,11 @@
 import { Redis } from '@upstash/redis'
 
-const redisUrl = process.env.UPSTASH_REDIS_URL
-const redisToken = process.env.UPSTASH_REDIS_TOKEN
-
 let redisClient: Redis | null = null
 
 export function isUpstashConfigured(): boolean {
-  return Boolean(redisUrl && redisToken)
+  return Boolean(
+    process.env.UPSTASH_REDIS_URL && process.env.UPSTASH_REDIS_TOKEN,
+  )
 }
 
 export function getRedisClient(): Redis | null {
@@ -19,8 +18,8 @@ export function getRedisClient(): Redis | null {
   }
 
   redisClient = new Redis({
-    url: redisUrl || '',
-    token: redisToken || '',
+    url: process.env.UPSTASH_REDIS_URL || '',
+    token: process.env.UPSTASH_REDIS_TOKEN || '',
   })
 
   return redisClient

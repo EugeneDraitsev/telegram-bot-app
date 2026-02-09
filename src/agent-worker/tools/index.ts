@@ -7,6 +7,7 @@
 
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 
+import { animateGifTool } from './animate-gif.tool'
 import { createDynamicToolTool } from './create-dynamic-tool.tool'
 import { doNothingTool } from './do-nothing.tool'
 import { loadDynamicTools } from './dynamic-tools'
@@ -31,6 +32,7 @@ export {
 
 // Individual tools
 export {
+  animateGifTool,
   createDynamicToolTool,
   doNothingTool,
   generateImageTool,
@@ -52,6 +54,7 @@ export const TOOL_NAMES = {
   GENERATE_IMAGE: 'generate_or_edit_image',
   SEARCH_VIDEO: 'search_video',
   SEARCH_GIF: 'search_gif',
+  ANIMATE_TEXT: 'animate_text',
   GENERATE_VOICE: 'generate_voice',
   GET_WEATHER: 'get_weather',
   WEB_SEARCH: 'web_search',
@@ -67,6 +70,7 @@ const baseAgentTools: DynamicStructuredTool[] = [
   generateImageTool,
   searchVideoTool,
   searchGifTool,
+  animateGifTool,
   generateVoiceTool,
   weatherTool,
   webSearchTool,
