@@ -1,16 +1,16 @@
 import { GoogleGenAI } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
-import { getHistory } from '../upstash'
 import {
   cleanGeminiMessage,
   DEFAULT_ERROR_MESSAGE,
   EMPTY_RESPONSE_ERROR,
   geminiSystemInstructions,
+  getHistory,
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
-} from '../utils'
+} from '@tg-bot/common'
 
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 const ai = new GoogleGenAI({ apiKey })

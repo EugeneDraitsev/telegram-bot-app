@@ -1,7 +1,7 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
+import { createBot } from '@tg-bot/common'
 import { getCurrencyMessage } from './currency'
-import { createBot } from './utils'
 
 const bot = createBot()
 

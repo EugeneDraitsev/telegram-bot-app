@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import { clearOldMessages } from './upstash'
+import { clearOldMessages } from '@tg-bot/common'
 
 const redisSchedulerHandler: APIGatewayProxyHandler = async () => {
   try {

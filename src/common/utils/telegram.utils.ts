@@ -41,9 +41,6 @@ export const getCommandData = (
   const combinedText =
     replyText && messageText ? `${replyText}\n${messageText}` : text
 
-  const getLargestPhoto = (m?: Message) =>
-    (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
-
   const messagePhoto = getLargestPhoto(message)
   const replyPhoto = getLargestPhoto(reply_to_message)
   const extraPhotos = extraMessages.map(getLargestPhoto)
@@ -69,6 +66,9 @@ export const getCommandData = (
 
   return { text, sticker, combinedText, images, replyId }
 }
+
+export const getLargestPhoto = (m?: Message) =>
+  (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
 
 export const getMultimodalCommandData = async (
   ctx: Context,

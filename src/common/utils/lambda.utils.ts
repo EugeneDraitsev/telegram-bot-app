@@ -21,13 +21,25 @@ export const invokeLambda = (
   )
 }
 
+// Remove imagesData from payload to avoid exceeding Lambda's 6MB payload limit.
+// The worker lambda will re-fetch images from Telegram API when processing.
+// biome-ignore lint: we can pass any payload here
+const stripLargeFields = (payload: Record<string, any>) => {
+  const { imagesData, ...rest } = payload
+  return rest
+}
+
 // biome-ignore lint: we can pass any payload here
 export const invokeReplyLambda = (payload: Record<string, any>) => {
   const replyWorkerFunctionName = process.env.REPLY_WORKER_FUNCTION_NAME || ''
+  return invokeLambda(replyWorkerFunctionName, stripLargeFields(payload), true)
+}
 
-  // Remove imagesData from payload to avoid exceeding Lambda's 6MB payload limit.
-  // The worker lambda will re-fetch images from Telegram API when processing the command.
-  const { imagesData, ...payloadWithoutImages } = payload
-
-  return invokeLambda(replyWorkerFunctionName, payloadWithoutImages, true)
+// biome-ignore lint: we can pass any payload here
+export const invokeAgentLambda = (payload: Record<string, any>) => {
+  const agentWorkerFunctionName = process.env.AGENT_WORKER_FUNCTION_NAME || ''
+  if (!agentWorkerFunctionName) {
+    throw new Error('AGENT_WORKER_FUNCTION_NAME is not set')
+  }
+  return invokeLambda(agentWorkerFunctionName, stripLargeFields(payload), true)
 }

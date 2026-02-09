@@ -2,33 +2,48 @@ import { webhookCallback } from 'grammy/web'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Chat, Message } from 'telegram-typings'
 
-import { findCommand, saveEvent, updateStatistics } from '@tg-bot/common'
+import {
+  createBot,
+  findCommand,
+  saveBotMessageMiddleware,
+  saveEvent,
+  saveMessage,
+  updateStatistics,
+} from '@tg-bot/common'
+import { handleMessageWithAgent } from './agent'
+import { isRegisteredCommandMessage } from './command-registry'
 import { setupAllCommands } from './setup-commands'
-import { saveMessage } from './upstash'
-import { createBot, saveBotMessageMiddleware } from './utils'
 
 const bot = createBot()
 
 bot.use(saveBotMessageMiddleware)
 
+// Setup all commands with deferred mode (async via Lambda)
+const commandRegistry = setupAllCommands(bot, true)
+
 bot.use(async (ctx, next) => {
-  const { chat } = ctx
+  const chatFromCtx = ctx.chat
   const message = ctx.message as Message
-  if (chat && message) {
-    const command = findCommand(message.text)
-    const chat = await ctx
+  if (chatFromCtx && message) {
+    const command = isRegisteredCommandMessage(message, commandRegistry)
+      ? findCommand(message.text || message.caption)
+      : ''
+    const chatInfo = await ctx
       .getChat()
       .catch((error) => console.error('getChat error: ', error))
 
     try {
       await Promise.all([
-        updateStatistics(message.from, chat as Chat).catch((error) =>
-          console.error('updateStatistics error: ', error),
+        updateStatistics(message.from, (chatInfo || chatFromCtx) as Chat).catch(
+          (error) => console.error('updateStatistics error: ', error),
         ),
-        saveEvent(message.from, chat?.id, command, message.date).catch(
-          (error) => console.error('saveEvent error: ', error),
-        ),
-        saveMessage(message, chat?.id).catch((error) =>
+        saveEvent(
+          message.from,
+          chatInfo?.id || chatFromCtx.id,
+          command,
+          message.date,
+        ).catch((error) => console.error('saveEvent error: ', error)),
+        saveMessage(message, chatInfo?.id || chatFromCtx.id).catch((error) =>
           console.error('saveHistory error: ', error),
         ),
         next?.(),
@@ -39,8 +54,22 @@ bot.use(async (ctx, next) => {
   }
 })
 
-// Setup all commands with deferred mode (async via Lambda)
-setupAllCommands(bot, true)
+// Smart Agentic responses - bot autonomously decides what to do
+bot.on('message', async (ctx) => {
+  const message = ctx.message as Message
+  const chatId = ctx.chat?.id
+  const isCommand = isRegisteredCommandMessage(message, commandRegistry)
+
+  if (isCommand || !chatId) {
+    return
+  }
+
+  // We intentionally don't await handleMessageWithAgent so we can return 200 to Telegram
+  // as fast as possible (under 10 seconds) to prevent message duplication from webhook retries.
+  handleMessageWithAgent(message, ctx).catch((error) =>
+    console.error('handleMessageWithAgent error: ', error),
+  )
+})
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 

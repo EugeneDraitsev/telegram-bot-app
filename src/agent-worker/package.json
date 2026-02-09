@@ -1,0 +1,21 @@
+{
+  "name": "@tg-bot/agent-worker",
+  "version": "1.0.0",
+  "license": "MIT",
+  "sideEffects": false,
+  "dependencies": {
+    "@giphy/js-fetch-api": "^5.7.0",
+    "@google/genai": "^1.40.0",
+    "@langchain/core": "^1.1.19",
+    "@langchain/google-genai": "^2.1.15",
+    "@upstash/redis": "^1.36.2",
+    "grammy": "^1.37.2",
+    "openai": "^6.18.0",
+    "pino": "^10.3.0",
+    "sharp": "^0.34.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "telegram-typings": "5.0.0"
+  }
+}

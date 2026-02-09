@@ -1,6 +1,6 @@
 import { type InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
-import { invokeLambda, invokeReplyLambda } from '..'
+import { invokeAgentLambda, invokeLambda, invokeReplyLambda } from '..'
 
 describe('invokeLambda', () => {
   test('should call lambda with provided options', async () => {
@@ -58,5 +58,25 @@ describe('invokeReplyLambda', () => {
     expect(parsedPayload).toHaveProperty('replyId', 123)
     expect(parsedPayload).toHaveProperty('chatId', 456)
     expect(parsedPayload).toHaveProperty('message')
+  })
+})
+
+describe('invokeAgentLambda', () => {
+  const originalEnv = process.env
+
+  afterEach(() => {
+    process.env = originalEnv
+    jest.restoreAllMocks()
+  })
+
+  test('should throw clear error when function name is missing', () => {
+    process.env = { ...originalEnv, AGENT_WORKER_FUNCTION_NAME: '' }
+
+    expect(() =>
+      invokeAgentLambda({
+        chatId: 123,
+        message: { text: 'hello' },
+      }),
+    ).toThrow('AGENT_WORKER_FUNCTION_NAME is not set')
   })
 })

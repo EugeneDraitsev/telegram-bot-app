@@ -12,7 +12,7 @@ import {
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
   systemInstructions,
-} from '../utils'
+} from '@tg-bot/common'
 
 const openAi = new OpenAi({
   apiKey: process.env.OPENAI_API_KEY,

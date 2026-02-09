@@ -7,15 +7,14 @@ provider:
   region: eu-central-1
   memorySize: 512
   timeout: 30
-  runtime: nodejs24.x
+  runtime: ${self:custom.runtimeByStage.${sls:stage}, 'nodejs24.x'}
   architecture: arm64
   environment:
     region: eu-central-1
     stage: ${sls:stage}
   iam:
     role:
-      statements:
-        ${file(roleStatements.yml)}
+      statements: ${file(roleStatements.yml)}
 
 functions:
   telegram-bot:
@@ -36,6 +35,7 @@ functions:
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
       DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
       REPLY_WORKER_FUNCTION_NAME: ${self:service}-${self:provider.stage}-telegram-reply-worker
+      AGENT_WORKER_FUNCTION_NAME: ${self:service}-${self:provider.stage}-telegram-agent-worker
     events:
       - http:
           path: /
@@ -59,6 +59,23 @@ functions:
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
       DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
+
+  telegram-agent-worker:
+    handler: src/agent-worker/index.default
+    timeout: 300
+    memorySize: 1536
+    environment:
+      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
+      COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
+      OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
+      TOKEN: ${env:TOKEN}
+      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
+      OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
+      GEMINI_API_KEY: ${env:GEMINI_API_KEY}
+      GIPHY_API_KEY: ${env:GIPHY_API_KEY}
+      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
+      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default
@@ -89,7 +106,7 @@ functions:
       patterns:
         - fonts/**
     environment:
-      FONTCONFIG_PATH: './fonts'
+      FONTCONFIG_PATH: "./fonts"
     memorySize: 1536
     events:
       - http:
@@ -107,10 +124,16 @@ build:
   esbuild: false
 
 custom:
+  runtimeByStage:
+    local: nodejs22.x
+  esbuildTargetByStage:
+    local: node22
   serverless-offline:
     httpPort: 4000
+    useChildProcesses: true
+    reloadHandler: true
   esbuild:
-    target: node24
+    target: ${self:custom.esbuildTargetByStage.${sls:stage}, 'node24'}
     platform: node
     format: esm
     outputFileExtension: .mjs
@@ -119,14 +142,12 @@ custom:
     external:
       - sharp
     exclude:
-      - '@aws-sdk/client-dynamodb'
-      - '@aws-sdk/client-lambda'
-      - '@aws-sdk/client-s3'
-      - '@aws-sdk/lib-dynamodb'
+      - "@aws-sdk/client-dynamodb"
+      - "@aws-sdk/client-lambda"
+      - "@aws-sdk/client-s3"
+      - "@aws-sdk/lib-dynamodb"
     packagerOptions:
       scripts:
         - npm install --force --os=linux --cpu=arm64 -include=optional sharp
 
-resources:
-  ${file(resources.yml)}
-
+resources: ${file(resources.yml)}

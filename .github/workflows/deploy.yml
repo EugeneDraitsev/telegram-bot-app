@@ -35,3 +35,4 @@ jobs:
           UPSTASH_REDIS_TOKEN: ${{secrets.UPSTASH_REDIS_TOKEN}}
           GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY}}
           DAT1CO_API_KEY: ${{secrets.DAT1CO_API_KEY}}
+          GIPHY_API_KEY: ${{secrets.GIPHY_API_KEY}}

@@ -1,8 +1,13 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
 import type { ChatModel, ImageModel } from 'openai/resources'
 
-import { getMultimodalCommandData, invokeReplyLambda } from '@tg-bot/common'
-import { DEFAULT_ERROR_MESSAGE, getMediaGroupMessages } from '../utils'
+import {
+  DEFAULT_ERROR_MESSAGE,
+  formatTelegramMarkdownV2,
+  getMediaGroupMessages,
+  getMultimodalCommandData,
+  invokeReplyLambda,
+} from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
 
 export const setupMultimodalOpenAiCommands = async (
@@ -16,29 +21,36 @@ export const setupMultimodalOpenAiCommands = async (
     // Don't wait for the response
     invokeReplyLambda(commandData)
     return
-  } else {
-    const { combinedText, imagesData, chatId, replyId } = commandData
-
-    const message = await generateMultimodalCompletion(
-      combinedText,
-      chatId,
-      model,
-      imagesData,
-    )
-
-    return ctx
-      .reply(message?.replace(/([\\-_[\]()~>#+={}.!])/g, '\\$1'), {
-        reply_parameters: { message_id: replyId },
-        parse_mode: 'MarkdownV2',
-      })
-      .catch((err) => {
-        console.error(err)
-        return ctx.reply(message, { reply_parameters: { message_id: replyId } })
-      })
-      .catch((err) => {
-        console.error(`Error (Open AI): ${err.message}`)
-      })
   }
+
+  const { combinedText, imagesData, chatId, replyId } = commandData
+
+  const message = await generateMultimodalCompletion(
+    combinedText,
+    chatId,
+    model,
+    imagesData,
+  )
+
+  const normalizedMessage = message?.trim() || ''
+  const replyText = normalizedMessage
+    ? formatTelegramMarkdownV2(normalizedMessage)
+    : DEFAULT_ERROR_MESSAGE
+
+  return ctx
+    .reply(replyText, {
+      reply_parameters: { message_id: replyId },
+      parse_mode: normalizedMessage ? 'MarkdownV2' : undefined,
+    })
+    .catch((err) => {
+      console.error(err)
+      return ctx.reply(normalizedMessage || DEFAULT_ERROR_MESSAGE, {
+        reply_parameters: { message_id: replyId },
+      })
+    })
+    .catch((err) => {
+      console.error(`Error (Open AI): ${err.message}`)
+    })
 }
 
 export const setupImageGenerationOpenAiCommands = async (
@@ -53,29 +65,32 @@ export const setupImageGenerationOpenAiCommands = async (
     // Don't wait for the response
     invokeReplyLambda(commandData)
     return
-  } else {
-    const { combinedText, imagesData, chatId, replyId } = commandData
-    try {
-      const { image, text } = await generateImage(
-        combinedText,
-        chatId,
-        model,
-        imagesData,
-      )
+  }
 
-      return ctx.replyWithPhoto(
-        typeof image === 'string' ? image : new InputFile(image),
-        {
-          reply_parameters: { message_id: replyId },
-          caption: text,
-        },
-      )
-    } catch (error) {
-      console.error(`Generate Image error (Open AI): ${error.message}`)
-      return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
+  const { combinedText, imagesData, chatId, replyId } = commandData
+  try {
+    const { image, text } = await generateImage(
+      combinedText,
+      chatId,
+      model,
+      imagesData,
+    )
+
+    const caption = text ? formatTelegramMarkdownV2(text) : undefined
+
+    return ctx.replyWithPhoto(
+      typeof image === 'string' ? image : new InputFile(image),
+      {
         reply_parameters: { message_id: replyId },
-      })
-    }
+        caption,
+        parse_mode: caption ? 'MarkdownV2' : undefined,
+      },
+    )
+  } catch (error) {
+    console.error(`Generate Image error (Open AI): ${error.message}`)
+    return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
+      reply_parameters: { message_id: replyId },
+    })
   }
 }
 

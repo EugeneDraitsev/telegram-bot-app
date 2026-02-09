@@ -1,3 +1,7 @@
+/**
+ * YouTube search utilities
+ */
+
 import { sample } from '@tg-bot/common'
 
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'
