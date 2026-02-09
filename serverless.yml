@@ -7,7 +7,7 @@ provider:
   region: eu-central-1
   memorySize: 512
   timeout: 30
-  runtime: nodejs22.x
+  runtime: ${self:custom.runtimeByStage.${sls:stage}, 'nodejs24.x'}
   architecture: arm64
   environment:
     region: eu-central-1
@@ -124,12 +124,16 @@ build:
   esbuild: false
 
 custom:
+  runtimeByStage:
+    local: nodejs22.x
+  esbuildTargetByStage:
+    local: node22
   serverless-offline:
     httpPort: 4000
     useChildProcesses: true
     reloadHandler: true
   esbuild:
-    target: node24
+    target: ${self:custom.esbuildTargetByStage.${sls:stage}, 'node24'}
     platform: node
     format: esm
     outputFileExtension: .mjs

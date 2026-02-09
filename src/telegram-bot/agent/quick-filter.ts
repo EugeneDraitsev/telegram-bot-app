@@ -11,11 +11,12 @@ import type { Message } from 'telegram-typings'
 /**
  * Cheap model for quick filtering (low cost, fast)
  */
-export const cheapModel = new ChatGoogleGenerativeAI({
-  model: 'gemini-2.0-flash-lite',
-  apiKey: process.env.GEMINI_API_KEY,
-  temperature: 0,
-})
+const createCheapModelWithTools = () =>
+  new ChatGoogleGenerativeAI({
+    model: 'gemini-2.0-flash-lite',
+    apiKey: process.env.GEMINI_API_KEY,
+    temperature: 0,
+  }).bindTools(filterTools)
 
 /**
  * Filter tools for quick classification
@@ -37,7 +38,16 @@ const filterTools = [
   }),
 ]
 
-const cheapModelWithTools = cheapModel.bindTools(filterTools)
+let cheapModelWithTools: ReturnType<
+  ChatGoogleGenerativeAI['bindTools']
+> | null = null
+
+const getCheapModelWithTools = () => {
+  if (!cheapModelWithTools) {
+    cheapModelWithTools = createCheapModelWithTools()
+  }
+  return cheapModelWithTools
+}
 
 /**
  * Quick filter using cheap model to decide ENGAGE or IGNORE
@@ -86,7 +96,7 @@ Context:
 - Has media: ${hasMedia}
 - Message: "${textContent}"`
 
-    const result = await cheapModelWithTools.invoke([
+    const result = await getCheapModelWithTools().invoke([
       { role: 'system', content: systemPrompt },
       { role: 'human', content: textContent || '[media without text]' },
     ])

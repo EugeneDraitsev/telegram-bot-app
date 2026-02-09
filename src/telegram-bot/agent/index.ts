@@ -57,7 +57,11 @@ export async function handleMessageWithAgent(
     imageFileIds: collectImageFileIds(message),
   }
 
-  invokeAgentLambda(payload)
+  try {
+    invokeAgentLambda(payload)
+  } catch (error) {
+    console.error('Failed to invoke agent Lambda', error)
+  }
 
   // Return immediately - worker will handle the response
 }

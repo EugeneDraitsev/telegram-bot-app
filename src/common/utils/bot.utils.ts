@@ -38,6 +38,11 @@ function parseChatId(message: Message): number | null {
     return rawId
   }
 
+  if (typeof rawId === 'bigint') {
+    const parsed = Number(rawId)
+    return Number.isSafeInteger(parsed) ? parsed : null
+  }
+
   if (typeof rawId === 'string') {
     const parsed = Number(rawId)
     return Number.isFinite(parsed) ? parsed : null
