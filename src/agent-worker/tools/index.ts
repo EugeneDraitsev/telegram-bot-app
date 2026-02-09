@@ -61,8 +61,6 @@ export const TOOL_NAMES = {
   DO_NOTHING: 'do_nothing',
 } as const
 
-const ENABLE_DYNAMIC_TOOL_CREATION_TOOL = true
-
 const baseAgentTools: DynamicStructuredTool[] = [
   sendTextTool,
   searchImageTool,
@@ -74,7 +72,7 @@ const baseAgentTools: DynamicStructuredTool[] = [
   webSearchTool,
   summarizeContentTool,
   getHistoryTool,
-  ...(ENABLE_DYNAMIC_TOOL_CREATION_TOOL ? [createDynamicToolTool] : []),
+  createDynamicToolTool,
   doNothingTool,
 ]
 
