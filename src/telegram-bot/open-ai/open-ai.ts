@@ -99,7 +99,9 @@ export const generateImage = async (
     throw new Error(lastError.message || DEFAULT_ERROR_MESSAGE)
   }
 
-  console.error('OpenAI image generation failed after all retries - empty response')
+  console.error(
+    'OpenAI image generation failed after all retries - empty response',
+  )
   throw new Error('OpenAI returned empty response, please try again')
 }
 
