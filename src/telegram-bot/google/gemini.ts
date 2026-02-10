@@ -39,7 +39,10 @@ export const generateMultimodalCompletion = async (
 
     // Add a placeholder for the first message if the first message is from the model
     if (history?.[0]?.role === 'model') {
-      history?.unshift({ role: 'user', content: [{ type: 'text', text: '' }] })
+      history?.unshift({
+        role: 'user',
+        content: [{ type: 'text', text: '...' }],
+      })
     }
 
     // Add images to history
@@ -91,6 +94,10 @@ export const generateMultimodalCompletion = async (
     return cleanGeminiMessage(text)
   } catch (error) {
     console.error('gemini generateMultimodalCompletion error: ', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (errorMessage.includes('Missing text in content of type text')) {
+      return EMPTY_RESPONSE_ERROR
+    }
     return DEFAULT_ERROR_MESSAGE
   }
 }

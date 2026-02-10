@@ -9,7 +9,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "sls offline start",
+    "start": "sls offline start --stage local",
     "build": "sls package",
     "tsc": "tsc --noEmit",
     "test": "bun test",
