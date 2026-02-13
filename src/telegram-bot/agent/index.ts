@@ -58,7 +58,7 @@ export async function handleMessageWithAgent(
   }
 
   try {
-    invokeAgentLambda(payload)
+    await invokeAgentLambda(payload)
   } catch (error) {
     console.error('Failed to invoke agent Lambda', error)
   }

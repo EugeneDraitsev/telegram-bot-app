@@ -64,9 +64,11 @@ bot.on('message', async (ctx) => {
     return
   }
 
-  // We intentionally don't await handleMessageWithAgent so we can return 200 to Telegram
-  // as fast as possible (under 10 seconds) to prevent message duplication from webhook retries.
-  handleMessageWithAgent(message, ctx).catch((error) =>
+  // handleMessageWithAgent invokes the agent Lambda with InvocationType: 'Event',
+  // so AWS returns 202 instantly and the actual processing happens async.
+  // We MUST await here to ensure the Lambda API call completes before
+  // the execution context freezes (otherwise the invocation "sticks" until next message).
+  await handleMessageWithAgent(message, ctx).catch((error) =>
     console.error('handleMessageWithAgent error: ', error),
   )
 })
