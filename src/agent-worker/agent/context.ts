@@ -42,6 +42,18 @@ export function buildContextBlock(
   return lines.join('\n')
 }
 
+export function buildMemoryBlock(
+  chatMemory: string,
+  globalMemory: string,
+): string {
+  const lines = ['MEMORY:']
+
+  lines.push(`- Chat memory:\n${chatMemory || '(empty)'}`)
+  lines.push(`- Global memory:\n${globalMemory || '(empty)'}`)
+
+  return lines.join('\n')
+}
+
 export function splitResponses(responses: AgentResponse[]) {
   const textDrafts: string[] = []
   const mediaResponses: AgentResponse[] = []

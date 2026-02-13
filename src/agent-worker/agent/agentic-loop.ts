@@ -1,5 +1,6 @@
 import type { Message } from 'telegram-typings'
 
+import { getChatMemory, getGlobalMemory } from '@tg-bot/common'
 import { getMessageLogMeta, logger } from '../logger'
 import {
   getAgentTools,
@@ -8,7 +9,7 @@ import {
   TOOL_NAMES,
 } from '../tools'
 import type { AgentResponse, TelegramApi } from '../types'
-import { buildContextBlock, splitResponses } from './context'
+import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { composeFinalText } from './final-text'
 import { buildCollectionMessages, runToolCollection } from './tool-collection'
@@ -41,8 +42,16 @@ export async function runAgenticLoop(
       const textContent = message.text || message.caption || ''
       const hasImages = !!imagesData?.length || !!message.photo?.length
       const contextBlock = buildContextBlock(message, textContent, hasImages)
+
+      const [chatMemory, globalMemory] = await Promise.all([
+        getChatMemory(chatId).catch(() => ''),
+        getGlobalMemory().catch(() => ''),
+      ])
+      const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
+
       const collectionMessages = buildCollectionMessages({
         contextBlock,
+        memoryBlock,
         textContent,
       })
 
@@ -70,6 +79,7 @@ export async function runAgenticLoop(
       const composeStartedAt = Date.now()
       const finalText = await composeFinalText({
         contextBlock,
+        memoryBlock,
         textContent,
         toolNotes,
         textDrafts,

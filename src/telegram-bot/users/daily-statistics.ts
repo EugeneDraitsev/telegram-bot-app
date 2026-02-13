@@ -10,8 +10,9 @@ export const getDailyStatistics = async (
   const statisticsMessage = `24h ${chatName} chat statistics: ${FRONTEND_BASE_URL}/chat/${chatId}`
 
   try {
-    const sharpResponse = await invokeLambda(SHARP_LAMBDA_NAME, {
-      queryStringParameters: { chatId },
+    const sharpResponse = await invokeLambda({
+      name: SHARP_LAMBDA_NAME,
+      payload: { queryStringParameters: { chatId } },
     })
 
     if (sharpResponse.FunctionError) {

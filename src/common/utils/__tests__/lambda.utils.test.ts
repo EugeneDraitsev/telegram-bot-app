@@ -3,15 +3,95 @@ import { type InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 import { invokeAgentLambda, invokeLambda, invokeReplyLambda } from '..'
 
 describe('invokeLambda', () => {
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
   test('should call lambda with provided options', async () => {
     jest
       .spyOn(LambdaClient.prototype, 'send')
       .mockImplementation(() => 'lambda response!!')
 
-    const options = {
-      FunctionName: `screenshot-service-${process.env.stage}-png`,
-    }
-    expect(await invokeLambda('name', options)).toEqual('lambda response!!')
+    expect(
+      await invokeLambda({
+        name: 'my-function',
+        payload: { key: 'value' },
+      }),
+    ).toEqual('lambda response!!')
+  })
+
+  test('should set InvocationType to Event when async is true', async () => {
+    let capturedCommand: InvokeCommand | undefined
+
+    jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation((command: InvokeCommand) => {
+        capturedCommand = command
+        return Promise.resolve('ok')
+      })
+
+    await invokeLambda({
+      name: 'my-function',
+      payload: { data: 'test' },
+      async: true,
+    })
+
+    expect(capturedCommand?.input.InvocationType).toBe('Event')
+  })
+
+  test('should not set InvocationType when async is false', async () => {
+    let capturedCommand: InvokeCommand | undefined
+
+    jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation((command: InvokeCommand) => {
+        capturedCommand = command
+        return Promise.resolve('ok')
+      })
+
+    await invokeLambda({
+      name: 'my-function',
+      payload: { data: 'test' },
+    })
+
+    expect(capturedCommand?.input.InvocationType).toBeUndefined()
+  })
+
+  test('should use custom endpoint when offline and customEndpoint is true', async () => {
+    const originalEnv = process.env
+    process.env = { ...originalEnv, IS_OFFLINE: 'true' }
+
+    const clientSpy = jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation(() => Promise.resolve('ok'))
+
+    await invokeLambda({
+      name: 'my-function',
+      payload: {},
+      customEndpoint: true,
+    })
+
+    expect(clientSpy).toHaveBeenCalled()
+    process.env = originalEnv
+  })
+
+  test('should serialize payload as JSON buffer', async () => {
+    let capturedCommand: InvokeCommand | undefined
+
+    jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation((command: InvokeCommand) => {
+        capturedCommand = command
+        return Promise.resolve('ok')
+      })
+
+    const payload = { chatId: 123, text: 'hello' }
+    await invokeLambda({ name: 'fn', payload })
+
+    const decoded = JSON.parse(
+      Buffer.from(capturedCommand?.input.Payload as Buffer).toString(),
+    )
+    expect(decoded).toEqual(payload)
   })
 })
 
@@ -59,6 +139,22 @@ describe('invokeReplyLambda', () => {
     expect(parsedPayload).toHaveProperty('chatId', 456)
     expect(parsedPayload).toHaveProperty('message')
   })
+
+  test('should invoke lambda with async mode', async () => {
+    let capturedCommand: InvokeCommand | undefined
+
+    jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation((command: InvokeCommand) => {
+        capturedCommand = command
+        return Promise.resolve('ok')
+      })
+
+    await invokeReplyLambda({ text: 'test' })
+
+    expect(capturedCommand?.input.InvocationType).toBe('Event')
+    expect(capturedCommand?.input.FunctionName).toBe('test-worker')
+  })
 })
 
 describe('invokeAgentLambda', () => {
@@ -78,5 +174,32 @@ describe('invokeAgentLambda', () => {
         message: { text: 'hello' },
       }),
     ).toThrow('AGENT_WORKER_FUNCTION_NAME is not set')
+  })
+
+  test('should invoke lambda with async mode and strip imagesData', async () => {
+    process.env = { ...originalEnv, AGENT_WORKER_FUNCTION_NAME: 'agent-worker' }
+
+    let capturedCommand: InvokeCommand | undefined
+
+    jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation((command: InvokeCommand) => {
+        capturedCommand = command
+        return Promise.resolve('ok')
+      })
+
+    await invokeAgentLambda({
+      message: { text: 'hello' },
+      imagesData: [Buffer.from('image')],
+    })
+
+    expect(capturedCommand?.input.InvocationType).toBe('Event')
+    expect(capturedCommand?.input.FunctionName).toBe('agent-worker')
+
+    const parsed = JSON.parse(
+      Buffer.from(capturedCommand?.input.Payload as Buffer).toString(),
+    )
+    expect(parsed).not.toHaveProperty('imagesData')
+    expect(parsed).toHaveProperty('message')
   })
 })

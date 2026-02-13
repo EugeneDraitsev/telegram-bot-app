@@ -64,18 +64,25 @@ function bindCollectionModel(tools: DynamicStructuredTool[]) {
 
 export function buildCollectionMessages(params: {
   contextBlock: string
+  memoryBlock?: string
   textContent: string
 }): AgentChatMessage[] {
-  const { contextBlock, textContent } = params
+  const { contextBlock, memoryBlock, textContent } = params
+
+  const systemParts = [
+    agentSystemInstructions,
+    TOOL_COLLECTION_RULES,
+    contextBlock,
+  ]
+
+  if (memoryBlock) {
+    systemParts.push(memoryBlock)
+  }
 
   return [
     {
       role: 'system',
-      content: `${agentSystemInstructions}
-
-${TOOL_COLLECTION_RULES}
-
-${contextBlock}`,
+      content: systemParts.join('\n\n'),
     },
     {
       role: 'human',

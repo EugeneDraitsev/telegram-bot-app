@@ -7,23 +7,31 @@ const COMPOSE_TIMEOUT_MS = 30_000
 
 export async function composeFinalText(params: {
   contextBlock: string
+  memoryBlock?: string
   textContent: string
   toolNotes: string[]
   textDrafts: string[]
   hasMedia: boolean
 }): Promise<string> {
-  const { contextBlock, textContent, toolNotes, textDrafts, hasMedia } = params
+  const {
+    contextBlock,
+    memoryBlock,
+    textContent,
+    toolNotes,
+    textDrafts,
+    hasMedia,
+  } = params
 
   // If we only have media and no text drafts, no need for an extra model call.
   if (hasMedia && textDrafts.length === 0) {
     return ''
   }
 
-  const finalSystemPrompt = `${systemInstructions}
-
-${FINAL_RESPONSE_RULES}
-
-${contextBlock}`
+  const systemParts = [systemInstructions, FINAL_RESPONSE_RULES, contextBlock]
+  if (memoryBlock) {
+    systemParts.push(memoryBlock)
+  }
+  const finalSystemPrompt = systemParts.join('\n\n')
 
   const finalPrompt = [
     `User message: "${textContent || '[User sent media without text]'}"`,

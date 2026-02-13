@@ -1,11 +1,19 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
-export const invokeLambda = (
-  name: string,
+interface InvokeLambdaOptions {
+  name: string
   // biome-ignore lint: we can pass any payload here
-  payload: Record<string, any>,
+  payload: Record<string, any>
+  customEndpoint?: boolean
+  async?: boolean
+}
+
+export const invokeLambda = ({
+  name,
+  payload,
   customEndpoint = false,
-) => {
+  async: isAsync = false,
+}: InvokeLambdaOptions) => {
   const isOffline = process.env.IS_OFFLINE === 'true'
 
   const lambda = new LambdaClient({
@@ -17,6 +25,7 @@ export const invokeLambda = (
     new InvokeCommand({
       FunctionName: name,
       Payload: Buffer.from(JSON.stringify(payload)),
+      ...(isAsync ? { InvocationType: 'Event' } : {}),
     }),
   )
 }
@@ -32,7 +41,12 @@ const stripLargeFields = (payload: Record<string, any>) => {
 // biome-ignore lint: we can pass any payload here
 export const invokeReplyLambda = (payload: Record<string, any>) => {
   const replyWorkerFunctionName = process.env.REPLY_WORKER_FUNCTION_NAME || ''
-  return invokeLambda(replyWorkerFunctionName, stripLargeFields(payload), true)
+  return invokeLambda({
+    name: replyWorkerFunctionName,
+    payload: stripLargeFields(payload),
+    customEndpoint: true,
+    async: true,
+  })
 }
 
 // biome-ignore lint: we can pass any payload here
@@ -41,5 +55,10 @@ export const invokeAgentLambda = (payload: Record<string, any>) => {
   if (!agentWorkerFunctionName) {
     throw new Error('AGENT_WORKER_FUNCTION_NAME is not set')
   }
-  return invokeLambda(agentWorkerFunctionName, stripLargeFields(payload), true)
+  return invokeLambda({
+    name: agentWorkerFunctionName,
+    payload: stripLargeFields(payload),
+    customEndpoint: true,
+    async: true,
+  })
 }

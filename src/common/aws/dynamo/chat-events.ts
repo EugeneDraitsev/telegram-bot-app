@@ -36,7 +36,10 @@ export const saveEvent = async (
 
     await Promise.all([
       dynamoPutItem(params),
-      invokeLambda(BROADCAST_LAMBDA_NAME, broadcastLambdaPayload),
+      invokeLambda({
+        name: BROADCAST_LAMBDA_NAME,
+        payload: broadcastLambdaPayload,
+      }),
     ])
   }
 }

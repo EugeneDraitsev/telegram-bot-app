@@ -14,6 +14,7 @@ import { loadDynamicTools } from './dynamic-tools'
 import { generateImageTool } from './generate-image.tool'
 import { generateVoiceTool } from './generate-voice.tool'
 import { getHistoryTool } from './get-history.tool'
+import { getMemoryTool, updateMemoryTool } from './memory.tool'
 import { searchGifTool } from './search-gif.tool'
 import { searchImageTool } from './search-image.tool'
 import { searchVideoTool } from './search-video.tool'
@@ -38,12 +39,14 @@ export {
   generateImageTool,
   generateVoiceTool,
   getHistoryTool,
+  getMemoryTool,
   loadDynamicTools,
   searchGifTool,
   searchImageTool,
   searchVideoTool,
   sendTextTool,
   summarizeContentTool,
+  updateMemoryTool,
   weatherTool,
   webSearchTool,
 }
@@ -60,6 +63,8 @@ export const TOOL_NAMES = {
   WEB_SEARCH: 'web_search',
   SUMMARIZE_CONTENT: 'summarize_content',
   GET_HISTORY: 'get_chat_history',
+  GET_MEMORY: 'get_memory',
+  UPDATE_MEMORY: 'update_memory',
   CREATE_DYNAMIC_TOOL: 'create_dynamic_tool',
   DO_NOTHING: 'do_nothing',
 } as const
@@ -76,6 +81,8 @@ const baseAgentTools: DynamicStructuredTool[] = [
   webSearchTool,
   summarizeContentTool,
   getHistoryTool,
+  getMemoryTool,
+  updateMemoryTool,
   createDynamicToolTool,
   doNothingTool,
 ]
