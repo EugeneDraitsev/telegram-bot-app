@@ -9,7 +9,9 @@ import { logger } from '../logger'
 import type {
   AgentResponse,
   AnimationResponse,
+  DiceResponse,
   ImageResponse,
+  StickerResponse,
   TelegramApi,
   VideoResponse,
 } from '../types'
@@ -27,6 +29,8 @@ interface DeliveryBundle {
   video: VideoResponse | null
   animation: AnimationResponse | null
   voice: Buffer | null
+  sticker: StickerResponse | null
+  dice: DiceResponse | null
 }
 
 function getReplyOptions(replyToMessageId: number) {
@@ -51,6 +55,8 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
   let video: VideoResponse | null = null
   let animation: AnimationResponse | null = null
   let voice: Buffer | null = null
+  let sticker: StickerResponse | null = null
+  let dice: DiceResponse | null = null
 
   for (const response of responses) {
     if (response.type === 'text') {
@@ -63,6 +69,10 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
       animation = response
     } else if (response.type === 'voice') {
       voice = response.buffer
+    } else if (response.type === 'sticker') {
+      sticker = response
+    } else if (response.type === 'dice') {
+      dice = response
     }
   }
 
@@ -72,6 +82,8 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     video,
     animation,
     voice,
+    sticker,
+    dice,
   }
 }
 
@@ -184,6 +196,26 @@ async function sendVoice(params: DeliveryParams & { voice: Buffer }) {
   await saveBotReplyToHistory(sentMessage)
 }
 
+async function sendSticker(
+  params: DeliveryParams & { sticker: StickerResponse },
+) {
+  const sentMessage = await params.api.sendSticker(
+    params.chatId,
+    params.sticker.fileId,
+    getReplyOptions(params.replyToMessageId),
+  )
+  await saveBotReplyToHistory(sentMessage)
+}
+
+async function sendDice(params: DeliveryParams & { dice: DiceResponse }) {
+  const sentMessage = await params.api.sendDice(
+    params.chatId,
+    params.dice.emoji,
+    getReplyOptions(params.replyToMessageId),
+  )
+  await saveBotReplyToHistory(sentMessage)
+}
+
 export async function sendResponses(
   params: DeliveryParams & { responses: AgentResponse[] },
 ): Promise<void> {
@@ -199,7 +231,17 @@ export async function sendResponses(
   }
 
   try {
-    if (bundle.animation) {
+    if (bundle.dice) {
+      await sendDice({ ...base, dice: bundle.dice })
+      if (bundle.text) {
+        await sendText({ ...base, text: bundle.text })
+      }
+    } else if (bundle.sticker) {
+      await sendSticker({ ...base, sticker: bundle.sticker })
+      if (bundle.text) {
+        await sendText({ ...base, text: bundle.text })
+      }
+    } else if (bundle.animation) {
       await sendAnimation({
         ...base,
         animation: bundle.animation,

@@ -2,7 +2,9 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import type { Message } from 'telegram-typings'
 
 import * as memory from '@tg-bot/common'
-import { quickFilter } from '../quick-filter'
+import { type BotInfo, quickFilter } from '../quick-filter'
+
+const OUR_BOT: BotInfo = { id: 123456, username: 'testbot' }
 
 type ToolCall = { name: string }
 type InvokeResult = { tool_calls?: ToolCall[] }
@@ -47,14 +49,47 @@ describe('quickFilter', () => {
     expect(mockInvoke).not.toHaveBeenCalled()
   })
 
-  test('returns true for reply to bot', async () => {
+  test('returns true for reply to OUR bot', async () => {
     const message = {
       text: 'okay',
-      reply_to_message: { from: { is_bot: true } },
+      reply_to_message: { from: { is_bot: true, id: OUR_BOT.id } },
     } as Message
 
-    await expect(quickFilter(message)).resolves.toEqual(true)
+    await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
+      true,
+    )
     expect(mockInvoke).not.toHaveBeenCalled()
+  })
+
+  test('returns false for reply to ANOTHER bot', async () => {
+    const message = {
+      text: 'okay',
+      reply_to_message: { from: { is_bot: true, id: 999999 } },
+    } as Message
+
+    await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
+      false,
+    )
+    expect(mockInvoke).not.toHaveBeenCalled()
+  })
+
+  test('returns false when mentioning another bot', async () => {
+    const message = { text: 'hey @otherbot check this' } as Message
+
+    await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
+      false,
+    )
+    expect(mockInvoke).not.toHaveBeenCalled()
+  })
+
+  test('does not ignore when mentioning OUR bot', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+    const message = { text: 'hey @testbot check this' } as Message
+
+    await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
+      true,
+    )
+    expect(mockInvoke).toHaveBeenCalled()
   })
 
   test('returns true when model picks engage tool', async () => {

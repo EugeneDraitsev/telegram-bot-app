@@ -1,6 +1,7 @@
 import type { Bot } from 'grammy/web'
 
 import { installCommandRegistry } from './command-registry'
+import { setupAgenticConfig } from './configuration-commands'
 import setupCurrencyCommands from './currency'
 import setupDat1coCommands from './dat1co'
 import setupExternalApisCommands from './external-apis'
@@ -54,6 +55,9 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /de <text> - generate image with dat1co
   // /gemma <text, image> - generate with Gemma model
   setupDat1coCommands(bot, { deferredCommands })
+
+  // /toggle - enable/disable agentic bot for the chat
+  setupAgenticConfig(bot)
 
   // Photo message handler for multimodal commands
   bot.on('message:photo', (ctx) => handlePhotoMessage(ctx, deferredCommands))

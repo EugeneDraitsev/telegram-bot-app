@@ -40,6 +40,16 @@ export interface TelegramApi {
       reply_parameters?: { message_id: number }
     },
   ) => Promise<unknown>
+  sendSticker: (
+    chatId: number,
+    sticker: string,
+    options?: { reply_parameters?: { message_id: number } },
+  ) => Promise<unknown>
+  sendDice: (
+    chatId: number,
+    emoji: string,
+    options?: { reply_parameters?: { message_id: number } },
+  ) => Promise<unknown>
   sendChatAction?: (
     chatId: number,
     action: 'typing' | 'upload_photo' | 'upload_video' | 'record_voice',
@@ -76,12 +86,24 @@ export interface VoiceResponse {
   buffer: Buffer
 }
 
+export interface StickerResponse {
+  type: 'sticker'
+  fileId: string
+}
+
+export interface DiceResponse {
+  type: 'dice'
+  emoji: string
+}
+
 export type AgentResponse =
   | TextResponse
   | ImageResponse
   | VideoResponse
   | AnimationResponse
   | VoiceResponse
+  | StickerResponse
+  | DiceResponse
 
 export interface ToolResult {
   success: boolean

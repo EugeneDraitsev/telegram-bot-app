@@ -6,7 +6,7 @@ import {
   invokeAgentLambda,
   isAgenticChatEnabled,
 } from '@tg-bot/common'
-import { quickFilter } from './quick-filter'
+import { type BotInfo, quickFilter } from './quick-filter'
 
 export interface AgentPayload {
   message: Message
@@ -37,8 +37,13 @@ export async function handleMessageWithAgent(
     return
   }
 
+  // Get bot info for smart filtering
+  const botInfo: BotInfo | undefined = ctx.me
+    ? { id: ctx.me.id, username: ctx.me.username }
+    : undefined
+
   // Step 1: Quick filter (cheap model) - this is fast
-  const passedQuickFilter = await quickFilter(message, imagesData)
+  const passedQuickFilter = await quickFilter(message, imagesData, botInfo)
 
   if (!passedQuickFilter) {
     return

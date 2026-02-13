@@ -10,6 +10,11 @@ import type { Message } from 'telegram-typings'
 
 import { getChatMemory, getGlobalMemory } from '@tg-bot/common'
 
+export interface BotInfo {
+  id: number
+  username?: string
+}
+
 /**
  * Filter tools for quick classification
  */
@@ -52,11 +57,28 @@ const getCheapModelWithTools = () => {
 }
 
 /**
+ * Check if message mentions another bot (not ours)
+ */
+function mentionsOtherBot(text: string, ourBotUsername?: string): boolean {
+  // Find all @username mentions that look like bots (ending with 'bot')
+  const botMentionRegex = /@(\w+bot)\b/gi
+  const matches = text.match(botMentionRegex)
+  if (!matches) return false
+
+  const ourUsername = ourBotUsername?.toLowerCase()
+  return matches.some((mention) => {
+    const username = mention.slice(1).toLowerCase() // remove @
+    return username !== ourUsername
+  })
+}
+
+/**
  * Quick filter using cheap model to decide ENGAGE or IGNORE
  */
 export async function quickFilter(
   message: Message,
   imagesData?: Buffer[],
+  botInfo?: BotInfo,
 ): Promise<boolean> {
   // Get text content from message or caption
   const textContent = message.text || message.caption || ''
@@ -72,9 +94,20 @@ export async function quickFilter(
     return false
   }
 
-  // Direct reply to bot - always engage
-  if (message.reply_to_message?.from?.is_bot) {
-    return true
+  // Direct reply to OUR bot - always engage
+  // If replying to another bot - skip
+  const replyFrom = message.reply_to_message?.from
+  if (replyFrom?.is_bot) {
+    if (botInfo?.id && replyFrom.id === botInfo.id) {
+      return true
+    }
+    // Reply to another bot - ignore
+    return false
+  }
+
+  // Message mentions another bot (not ours) - ignore
+  if (mentionsOtherBot(textContent, botInfo?.username)) {
+    return false
   }
 
   try {
@@ -103,6 +136,7 @@ ENGAGE if:
 
 IGNORE (default) if:
 - Normal conversation between users
+- Message mentions or replies to ANOTHER bot (not this one)
 - Spam or gibberish
 - Unsure - when in doubt, ignore
 
