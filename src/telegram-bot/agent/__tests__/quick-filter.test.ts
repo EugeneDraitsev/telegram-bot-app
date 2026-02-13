@@ -1,6 +1,7 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import type { Message } from 'telegram-typings'
 
+import * as memory from '@tg-bot/common'
 import { quickFilter } from '../quick-filter'
 
 type ToolCall = { name: string }
@@ -27,6 +28,8 @@ afterAll(() => {
 
 beforeEach(() => {
   mockInvoke.mockReset()
+  jest.spyOn(memory, 'getChatMemory').mockResolvedValue('')
+  jest.spyOn(memory, 'getGlobalMemory').mockResolvedValue('')
 })
 
 describe('quickFilter', () => {
@@ -82,5 +85,39 @@ describe('quickFilter', () => {
 
     await expect(quickFilter(message)).resolves.toEqual(false)
     consoleSpy.mockRestore()
+  })
+
+  test('includes chat and global memory in system prompt', async () => {
+    jest.spyOn(memory, 'getChatMemory').mockResolvedValue('user likes cats')
+    jest.spyOn(memory, 'getGlobalMemory').mockResolvedValue('bot is friendly')
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+
+    const message = {
+      text: 'hey bot',
+      chat: { id: 123 },
+    } as unknown as Message
+
+    await quickFilter(message)
+
+    const calls = mockInvoke.mock.calls[0] as { content: string }[][]
+    const systemPrompt = calls[0][0].content
+    expect(systemPrompt).toContain('user likes cats')
+    expect(systemPrompt).toContain('bot is friendly')
+  })
+
+  test('fetches memory for the correct chat id', async () => {
+    const getChatMemorySpy = jest
+      .spyOn(memory, 'getChatMemory')
+      .mockResolvedValue('')
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'ignore' }] })
+
+    const message = {
+      text: 'hello there',
+      chat: { id: 456 },
+    } as unknown as Message
+
+    await quickFilter(message)
+
+    expect(getChatMemorySpy).toHaveBeenCalledWith(456)
   })
 })

@@ -8,6 +8,8 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { z } from 'zod'
 import type { Message } from 'telegram-typings'
 
+import { getChatMemory, getGlobalMemory } from '@tg-bot/common'
+
 /**
  * Filter tools for quick classification
  */
@@ -76,7 +78,20 @@ export async function quickFilter(
   }
 
   try {
+    const chatId = message.chat?.id
+    const [chatMemory, globalMemory] = await Promise.all([
+      chatId ? getChatMemory(chatId) : Promise.resolve(''),
+      getGlobalMemory(),
+    ])
+
     const hasMedia = !!imagesData?.length || !!message.photo?.length
+    const memoryBlock =
+      chatMemory || globalMemory
+        ? `\nBot memory (use to better understand context):
+${chatMemory ? `- Chat memory: ${chatMemory}` : ''}
+${globalMemory ? `- Global memory: ${globalMemory}` : ''}`
+        : ''
+
     const systemPrompt = `You are a quick filter for a Telegram group chat bot. Decide if the bot should engage with this message.
 
 ENGAGE if:
@@ -84,6 +99,7 @@ ENGAGE if:
 - Message is a reply to the bot's previous message
 - User is clearly asking the bot something
 - Message has media (photo/image) with caption mentioning the bot
+- Message is relevant to something the bot remembers from memory
 
 IGNORE (default) if:
 - Normal conversation between users
@@ -94,7 +110,7 @@ Context:
 - From: ${message.from?.first_name || 'Unknown'}
 - Is reply to bot: ${message.reply_to_message?.from?.is_bot || false}
 - Has media: ${hasMedia}
-- Message: "${textContent}"`
+- Message: "${textContent}"${memoryBlock}`
 
     const result = await getCheapModelWithTools().invoke([
       { role: 'system', content: systemPrompt },
