@@ -1,4 +1,30 @@
-import { cleanGeminiMessage } from './ai.utils'
+import { cleanGeminiMessage, isAiEnabledChat } from './ai.utils'
+
+/**
+ * Tests for isAiEnabledChat.
+ * Note: AI_ALLOWED_CHAT_IDS is loaded at module import time from process.env.OPENAI_CHAT_IDS.
+ * These tests verify the function logic using whatever OPENAI_CHAT_IDS is set in the test environment.
+ */
+describe('isAiEnabledChat', () => {
+  // These tests don't rely on specific env values - they test edge cases
+  test('returns false for undefined chatId', () => {
+    expect(isAiEnabledChat(undefined)).toBe(false)
+  })
+
+  test('returns false for empty string chatId', () => {
+    expect(isAiEnabledChat('')).toBe(false)
+  })
+
+  test('returns boolean for any numeric chatId', () => {
+    // Function should always return a boolean, regardless of whether chat is allowed
+    expect(typeof isAiEnabledChat(12345)).toBe('boolean')
+    expect(typeof isAiEnabledChat(-999)).toBe('boolean')
+  })
+
+  test('returns boolean for string chatId', () => {
+    expect(typeof isAiEnabledChat('12345')).toBe('boolean')
+  })
+})
 
 describe('cleanGeminiMessage', () => {
   test('should remove multiple "User ID" prefixes and timestamp/reply suffix', () => {

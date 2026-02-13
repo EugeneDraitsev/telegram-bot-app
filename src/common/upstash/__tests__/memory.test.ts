@@ -47,8 +47,10 @@ describe('getChatMemory', () => {
   })
 
   test('should return empty string on error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockGet.mockRejectedValue(new Error('redis down'))
     expect(await getChatMemory(123)).toBe('')
+    consoleSpy.mockRestore()
   })
 })
 
@@ -85,8 +87,10 @@ describe('setChatMemory', () => {
   })
 
   test('should return false on redis error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockSet.mockRejectedValue(new Error('redis down'))
     expect(await setChatMemory(456, 'content')).toBe(false)
+    consoleSpy.mockRestore()
   })
 })
 
@@ -104,8 +108,10 @@ describe('getGlobalMemory', () => {
   })
 
   test('should return empty string on error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockGet.mockRejectedValue(new Error('redis down'))
     expect(await getGlobalMemory()).toBe('')
+    consoleSpy.mockRestore()
   })
 })
 
@@ -142,8 +148,10 @@ describe('setGlobalMemory', () => {
   })
 
   test('should return false on redis error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockSet.mockRejectedValue(new Error('redis down'))
     expect(await setGlobalMemory('content')).toBe(false)
+    consoleSpy.mockRestore()
   })
 })
 
