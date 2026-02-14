@@ -127,16 +127,17 @@ ${globalMemory ? `- Global memory: ${globalMemory}` : ''}`
 
     const systemPrompt = `You are a quick filter for a Telegram group chat bot. Decide if the bot should engage with this message.
 
-ENGAGE if:
-- Message mentions the bot ("бот", "ботик", "ботяра", "bot", "ботан", etc)
-- Message is a reply to the bot's previous message
-- User is clearly asking the bot something
-- Message has media (photo/image) with caption mentioning the bot
-- Message is relevant to something the bot remembers from memory
+ENGAGE only if:
+- Message explicitly mentions the bot by name/username ("бот", "ботик", @username, etc.)
+- Message is a direct reply to the bot's previous message
+- Message uses a bot command (starts with /) or clearly addresses the bot with a direct request
+- Message has media with a caption explicitly mentioning the bot
+- Message is relevant to something the bot remembers from memory AND the user addresses the bot
 
 IGNORE (default) if:
-- Normal conversation between users
+- Normal conversation between users, even if it's a question
 - Message mentions or replies to ANOTHER bot (not this one)
+- Vague or generic requests not addressed to the bot
 - Spam or gibberish
 - Unsure - when in doubt, ignore
 

@@ -109,6 +109,22 @@ describe('toggleAgenticChat', () => {
     ])
   })
 
+  test('should not dedupe other chats when enabling', async () => {
+    mockIsAiEnabledChat.mockReturnValue(true)
+    mockGet.mockResolvedValue(['123', '123', '456'])
+    mockSet.mockResolvedValue('OK')
+
+    const result = await toggleAgenticChat(999)
+
+    expect(result).toEqual({ enabled: true })
+    expect(mockSet).toHaveBeenCalledWith('bot-config:agentic-chats', [
+      '123',
+      '123',
+      '456',
+      '999',
+    ])
+  })
+
   test('should remove chat from Redis when disabling', async () => {
     mockIsAiEnabledChat.mockReturnValue(true)
     mockGet.mockResolvedValue(['123', '456'])

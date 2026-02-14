@@ -55,8 +55,10 @@ export async function toggleAgenticChat(
       return { enabled: false }
     }
 
-    // Enable: add to list
-    const newList = [...chatIds, chatIdStr]
+    // Enable: add to list only if missing
+    const newList = chatIds.includes(chatIdStr)
+      ? chatIds
+      : [...chatIds, chatIdStr]
     await redis.set(AGENTIC_CHAT_CONFIG_KEY, newList)
     return { enabled: true }
   } catch (error) {
