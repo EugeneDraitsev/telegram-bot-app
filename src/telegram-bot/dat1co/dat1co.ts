@@ -12,7 +12,9 @@ const Z_IMAGE_URL = 'https://api.dat1.co/api/v1/collection/z-image-turbo/invoke'
 const GEMMA_URL =
   'https://api.dat1.co/api/v1/collection/gemma-3-12b/invoke-chat'
 
-const apiKey = process.env.DAT1CO_API_KEY || ''
+function getDat1coApiKey() {
+  return process.env.DAT1CO_API_KEY || ''
+}
 
 type Dat1coOptions = {
   neg_prompt?: string
@@ -27,6 +29,8 @@ export async function generateGemmaCompletion(
   chatId: string | number,
   imagesData: Buffer[] = [],
 ) {
+  const apiKey = getDat1coApiKey()
+
   if (!isAiEnabledChat(chatId)) {
     return NOT_ALLOWED_ERROR
   }
@@ -130,6 +134,8 @@ export async function generateImageDat1co(
   chatId: string | number,
   options: Dat1coOptions = {},
 ) {
+  const apiKey = getDat1coApiKey()
+
   if (!isAiEnabledChat(chatId)) {
     throw new Error(NOT_ALLOWED_ERROR)
   }
