@@ -14,9 +14,21 @@ import {
   systemInstructions,
 } from '@tg-bot/common'
 
-const openAi = new OpenAi({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+let openAiClient: OpenAi | null = null
+
+function getOpenAiClient(): OpenAi {
+  if (openAiClient) {
+    return openAiClient
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not set')
+  }
+
+  openAiClient = new OpenAi({ apiKey })
+  return openAiClient
+}
 
 export const generateImage = async (
   prompt: string,
@@ -30,6 +42,8 @@ export const generateImage = async (
   if (!prompt) {
     throw new Error(PROMPT_MISSING_ERROR)
   }
+
+  const openAi = getOpenAiClient()
 
   const maxRetries = 3
   let lastError: Error | undefined
@@ -118,6 +132,8 @@ export const generateMultimodalCompletion = async (
     if (!prompt && !imagesData?.length) {
       return PROMPT_MISSING_ERROR
     }
+
+    const openAi = getOpenAiClient()
 
     const content: ChatCompletionContentPart[] = [
       { type: 'text', text: prompt },
