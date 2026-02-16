@@ -1,4 +1,4 @@
-import { sample } from '@tg-bot/common'
+import { formatTelegramMarkdownV2, sample } from '@tg-bot/common'
 
 const whDate = (): string => {
   // https://warhammer40k.fandom.com/wiki/Imperial_Dating_System
@@ -48,7 +48,7 @@ export const yasnyfy = (text: string): string => {
   ]
 
   const formattedYear = YEARS[year as Year]?.() ?? year
-  const quotedText = text ? `\n\\>${text}` : ''
+  const quotedText = text ? `\n\\>${formatTelegramMarkdownV2(text)}` : ''
 
   if (month === 3 && day === 1) {
     return `\n\\>1 Апреля ${String(year).slice(2)} года${quotedText}\nЯсно😐`
