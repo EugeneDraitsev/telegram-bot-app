@@ -48,7 +48,9 @@ export const yasnyfy = (text: string): string => {
   ]
 
   const formattedYear = YEARS[year as Year]?.() ?? year
-  const quotedText = text ? `\n\\>${formatTelegramMarkdownV2(text)}` : ''
+  const quotedText = text
+    ? `\n\\>${formatTelegramMarkdownV2(text).replace(/\n$/, '')}`
+    : ''
 
   if (month === 3 && day === 1) {
     return `\n\\>1 Апреля ${String(year).slice(2)} года${quotedText}\nЯсно😐`
