@@ -56,10 +56,7 @@ export function extractMentions(text: string): string[] {
   return [...mentions]
 }
 
-export function mentionsOurBot(
-  text: string,
-  ourBotUsername?: string,
-): boolean {
+export function mentionsOurBot(text: string, ourBotUsername?: string): boolean {
   const normalizedOurUsername = normalizeMention(ourBotUsername)
   if (!normalizedOurUsername) {
     return false
@@ -73,7 +70,9 @@ export function mentionsAnotherAccount(
   ourBotUsername?: string,
 ): boolean {
   const normalizedOurUsername = normalizeMention(ourBotUsername)
-  return extractMentions(text).some((mention) => mention !== normalizedOurUsername)
+  return extractMentions(text).some(
+    (mention) => mention !== normalizedOurUsername,
+  )
 }
 
 export function hasBotAddressSignal(
