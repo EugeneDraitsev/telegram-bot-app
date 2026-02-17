@@ -21,10 +21,17 @@ const setupTextCommands = (bot: Bot) => {
   bot.command('y', (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     const yasno = yasnyfy(text)
-    return ctx.reply(yasno, {
-      reply_parameters: { message_id: replyId },
-      parse_mode: 'MarkdownV2',
-    })
+    const plainText = yasno.replace(/\\([*_[\]()~`>#+\-=|{}.!])/g, '$1')
+    return ctx
+      .reply(yasno, {
+        reply_parameters: { message_id: replyId },
+        parse_mode: 'MarkdownV2',
+      })
+      .catch(() =>
+        ctx.reply(plainText, {
+          reply_parameters: { message_id: replyId },
+        }),
+      )
   })
 
   bot.command('dice', (ctx) => {
