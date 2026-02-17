@@ -1,6 +1,10 @@
 import type { Message } from 'telegram-typings'
 
-import { getChatMemory, getGlobalMemory } from '@tg-bot/common'
+import {
+  type BotIdentity,
+  getChatMemory,
+  getGlobalMemory,
+} from '@tg-bot/common'
 import { getMessageLogMeta, logger } from '../logger'
 import {
   getAgentTools,
@@ -12,6 +16,7 @@ import type { AgentResponse, TelegramApi } from '../types'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { composeFinalText } from './final-text'
+import { shouldRespondAfterRecheck } from './reply-gate'
 import { buildCollectionMessages, runToolCollection } from './tool-collection'
 import { startTyping } from './typing'
 
@@ -19,6 +24,7 @@ export async function runAgenticLoop(
   message: Message,
   api: TelegramApi,
   imagesData?: Buffer[],
+  botInfo?: BotIdentity,
 ): Promise<void> {
   const startedAt = Date.now()
   const chatId = message.chat?.id
@@ -34,20 +40,38 @@ export async function runAgenticLoop(
 
   try {
     await runWithToolContext(message, imagesData, async () => {
-      const tools = await getAgentTools(chatId).catch((error) => {
-        logger.error({ chatId, error }, 'tools.load_failed')
-        return []
-      })
-
       const textContent = message.text || message.caption || ''
       const hasImages = !!imagesData?.length || !!message.photo?.length
-      const contextBlock = buildContextBlock(message, textContent, hasImages)
 
       const [chatMemory, globalMemory] = await Promise.all([
         getChatMemory(chatId).catch(() => ''),
         getGlobalMemory().catch(() => ''),
       ])
       const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
+      const shouldRespond = await shouldRespondAfterRecheck({
+        message,
+        textContent,
+        hasImages,
+        memoryBlock,
+        botInfo,
+      })
+      if (!shouldRespond) {
+        logger.info(
+          {
+            ...messageMeta,
+            reason: 'final_reply_gate',
+          },
+          'loop.skipped',
+        )
+        return
+      }
+
+      const tools = await getAgentTools(chatId).catch((error) => {
+        logger.error({ chatId, error }, 'tools.load_failed')
+        return []
+      })
+
+      const contextBlock = buildContextBlock(message, textContent, hasImages)
 
       const collectionMessages = buildCollectionMessages({
         contextBlock,

@@ -11,6 +11,7 @@ import { type BotInfo, quickFilter } from './quick-filter'
 export interface AgentPayload {
   message: Message
   imageFileIds?: string[]
+  botInfo?: BotInfo
 }
 
 function collectImageFileIds(message: Message): string[] {
@@ -60,6 +61,7 @@ export async function handleMessageWithAgent(
   const payload: AgentPayload = {
     message,
     imageFileIds: collectImageFileIds(message),
+    botInfo,
   }
 
   try {

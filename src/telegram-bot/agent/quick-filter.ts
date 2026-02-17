@@ -8,7 +8,16 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { z } from 'zod'
 import type { Message } from 'telegram-typings'
 
-import { getChatMemory, getGlobalMemory } from '@tg-bot/common'
+import {
+  getChatMemory,
+  getGlobalMemory,
+  hasDirectRequestToBot,
+  hasExplicitRequestSignal,
+  isReplyToAnotherBot,
+  isReplyToOurBot,
+  mentionsAnotherAccount,
+  mentionsOurBot,
+} from '@tg-bot/common'
 
 export interface BotInfo {
   id: number
@@ -22,14 +31,14 @@ const filterTools = [
   new DynamicStructuredTool({
     name: 'engage',
     description:
-      'The message requires a response from the bot. Use when the message is directed at the bot or needs attention.',
+      'The message requires a response from the bot. Use only for explicit direct requests to this bot.',
     schema: z.object({}),
     func: async () => ({ shouldEngage: true }),
   }),
   new DynamicStructuredTool({
     name: 'ignore',
     description:
-      'Ignore the message. Use for normal user conversations not directed at the bot, spam, or when unsure. This is the DEFAULT.',
+      'Ignore the message. This is the default and preferred action unless direct request criteria are clearly met.',
     schema: z.object({}),
     func: async () => ({ shouldEngage: false }),
   }),
@@ -57,22 +66,6 @@ const getCheapModelWithTools = () => {
 }
 
 /**
- * Check if message mentions another bot (not ours)
- */
-function mentionsOtherBot(text: string, ourBotUsername?: string): boolean {
-  // Find all @username mentions that look like bots (ending with 'bot')
-  const botMentionRegex = /@(\w+bot)\b/gi
-  const matches = text.match(botMentionRegex)
-  if (!matches) return false
-
-  const ourUsername = ourBotUsername?.toLowerCase()
-  return matches.some((mention) => {
-    const username = mention.slice(1).toLowerCase() // remove @
-    return username !== ourUsername
-  })
-}
-
-/**
  * Quick filter using cheap model to decide ENGAGE or IGNORE
  */
 export async function quickFilter(
@@ -80,33 +73,42 @@ export async function quickFilter(
   imagesData?: Buffer[],
   botInfo?: BotInfo,
 ): Promise<boolean> {
-  // Get text content from message or caption
   const textContent = message.text || message.caption || ''
   const normalizedText = textContent.trimStart()
 
-  // Unknown slash-command should be treated as direct bot request
+  // Slash commands are always an explicit bot request.
   if (normalizedText.startsWith('/')) {
     return true
   }
 
-  // Skip very short messages without images
+  // Skip very short messages without images.
   if (textContent.length < 3 && !imagesData?.length) {
     return false
   }
 
-  // Direct reply to OUR bot - always engage
-  // If replying to another bot - skip
-  const replyFrom = message.reply_to_message?.from
-  if (replyFrom?.is_bot) {
-    if (botInfo?.id && replyFrom.id === botInfo.id) {
-      return true
-    }
-    // Reply to another bot - ignore
+  const replyingToOurBot = isReplyToOurBot(message, botInfo?.id)
+  if (isReplyToAnotherBot(message, botInfo?.id)) {
     return false
   }
 
-  // Message mentions another bot (not ours) - ignore
-  if (mentionsOtherBot(textContent, botInfo?.username)) {
+  const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
+  const hasAnotherMention = mentionsAnotherAccount(
+    textContent,
+    botInfo?.username,
+  )
+
+  // Mentioning another account is allowed only if our bot is also explicitly mentioned.
+  if (hasAnotherMention && !hasOurMention) {
+    return false
+  }
+
+  // Hard gate: message must be explicitly addressed to the bot with a clear request.
+  const hasDirectRequest = hasDirectRequestToBot({
+    text: textContent,
+    isReplyToOurBot: replyingToOurBot,
+    ourBotUsername: botInfo?.username,
+  })
+  if (!hasDirectRequest) {
     return false
   }
 
@@ -120,30 +122,30 @@ export async function quickFilter(
     const hasMedia = !!imagesData?.length || !!message.photo?.length
     const memoryBlock =
       chatMemory || globalMemory
-        ? `\nBot memory (use to better understand context):
-${chatMemory ? `- Chat memory: ${chatMemory}` : ''}
-${globalMemory ? `- Global memory: ${globalMemory}` : ''}`
+        ? `\nBot memory (for context only):\n${chatMemory ? `- Chat memory: ${chatMemory}` : ''}\n${globalMemory ? `- Global memory: ${globalMemory}` : ''}`
         : ''
 
-    const systemPrompt = `You are a quick filter for a Telegram group chat bot. Decide if the bot should engage with this message.
+    const systemPrompt = `You are a strict quick filter for a Telegram group bot.
+Default decision is IGNORE.
 
-ENGAGE only if:
-- Message explicitly mentions the bot by name/username ("бот", "ботик", @username, etc.)
-- Message is a direct reply to the bot's previous message
-- Message uses a bot command (starts with /) or clearly addresses the bot with a direct request
-- Message has media with a caption explicitly mentioning the bot
-- Message is relevant to something the bot remembers from memory AND the user addresses the bot
+ENGAGE only if ALL conditions are true:
+- User directly addresses THIS bot (reply to this bot OR bot name/username is present)
+- User clearly asks for an action or answer
+- If another account is mentioned, THIS bot is also explicitly mentioned and requested
 
-IGNORE (default) if:
-- Normal conversation between users, even if it's a question
-- Message mentions or replies to ANOTHER bot (not this one)
-- Vague or generic requests not addressed to the bot
-- Spam or gibberish
-- Unsure - when in doubt, ignore
+IGNORE in all other cases:
+- Normal chat between users
+- Mention of another bot/person without explicit mention of THIS bot
+- Reply to this bot without explicit request
+- Ambiguous, vague, or uncertain messages
+- If unsure, ignore
 
 Context:
 - From: ${message.from?.first_name || 'Unknown'}
-- Is reply to bot: ${message.reply_to_message?.from?.is_bot || false}
+- Is reply to OUR bot: ${replyingToOurBot}
+- Mentions OUR bot: ${hasOurMention}
+- Mentions other account: ${hasAnotherMention}
+- Has explicit request signal: ${hasExplicitRequestSignal(textContent)}
 - Has media: ${hasMedia}
 - Message: "${textContent}"${memoryBlock}`
 

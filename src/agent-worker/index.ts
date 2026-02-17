@@ -2,6 +2,7 @@ import type { Handler } from 'aws-lambda'
 import type { Message } from 'telegram-typings'
 
 import {
+  type BotIdentity,
   createBot,
   getImageBuffers,
   isAgenticChatEnabled,
@@ -15,6 +16,7 @@ export interface AgentWorkerPayload {
   message: Message
   imagesData?: string[] // base64 encoded images
   imageFileIds?: string[]
+  botInfo?: BotIdentity
 }
 
 const TELEGRAM_FILE_BASE_URL = 'https://api.telegram.org/file/bot'
@@ -52,7 +54,7 @@ async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
 const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   const startedAt = Date.now()
   try {
-    const { message, imagesData, imageFileIds } = event
+    const { message, imagesData, imageFileIds, botInfo } = event
 
     if (!message?.chat?.id) {
       logger.error(
@@ -95,7 +97,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     const effectiveImages = fetchedImages.length > 0 ? fetchedImages : undefined
 
     // Run the agentic loop with bot API
-    await runAgenticLoop(message, bot.api, effectiveImages)
+    await runAgenticLoop(message, bot.api, effectiveImages, botInfo)
     logger.info(
       {
         ...messageMeta,
