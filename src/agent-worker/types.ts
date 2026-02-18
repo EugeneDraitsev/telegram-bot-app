@@ -54,6 +54,11 @@ export interface TelegramApi {
     chatId: number,
     action: 'typing' | 'upload_photo' | 'upload_video' | 'record_voice',
   ) => Promise<unknown>
+  setMessageReaction?: (
+    chatId: number,
+    messageId: number,
+    reaction: unknown[],
+  ) => Promise<unknown>
 }
 
 export interface TextResponse {

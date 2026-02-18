@@ -36,7 +36,7 @@ export async function runAgenticLoop(
   const messageMeta = getMessageLogMeta(message)
   logger.info(messageMeta, 'loop.start')
 
-  const stopTyping = startTyping(api, chatId)
+  let stopTyping: (() => void) | undefined
 
   try {
     await runWithToolContext(message, imagesData, async () => {
@@ -68,10 +68,12 @@ export async function runAgenticLoop(
 
       // Set reaction only after reply-gate confirms we will respond
       void api
-        .setMessageReaction(chatId, message.message_id, [
+        .setMessageReaction?.(chatId, message.message_id, [
           { type: 'emoji', emoji: '👀' },
         ])
         .catch(() => undefined)
+
+      stopTyping = startTyping(api, chatId)
 
       const tools = await getAgentTools(chatId).catch((error) => {
         logger.error({ chatId, error }, 'tools.load_failed')
@@ -173,6 +175,6 @@ export async function runAgenticLoop(
       logger.error({ chatId, sendError }, 'loop.error_reply_failed')
     }
   } finally {
-    stopTyping()
+    stopTyping?.()
   }
 }
