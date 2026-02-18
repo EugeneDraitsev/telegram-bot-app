@@ -62,8 +62,7 @@ describe('quickFilter', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
-  test('runs model for reply to OUR bot with explicit request', async () => {
-    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+  test('returns true for explicit request in reply to OUR bot without model call', async () => {
     const message = {
       text: 'answer please',
       reply_to_message: { from: { is_bot: true, id: OUR_BOT.id } },
@@ -72,7 +71,7 @@ describe('quickFilter', () => {
     await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
       true,
     )
-    expect(mockInvoke).toHaveBeenCalled()
+    expect(mockInvoke).not.toHaveBeenCalled()
   })
 
   test('returns false for reply to ANOTHER bot', async () => {

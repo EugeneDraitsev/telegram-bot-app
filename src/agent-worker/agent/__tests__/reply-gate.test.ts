@@ -91,6 +91,23 @@ describe('shouldRespondAfterRecheck', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
+  test('returns true for explicit request in reply to our bot without model call', async () => {
+    const message = {
+      text: 'а что если на молоко есть изжога?',
+      reply_to_message: { from: { is_bot: true, id: OUR_BOT.id } },
+    } as Message
+
+    await expect(
+      shouldRespondAfterRecheck({
+        message,
+        textContent: 'а что если на молоко есть изжога?',
+        hasImages: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toEqual(true)
+    expect(mockInvoke).not.toHaveBeenCalled()
+  })
+
   test('returns false for non-addressed request', async () => {
     const message = { text: 'can you help?' } as Message
 

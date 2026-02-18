@@ -77,6 +77,11 @@ export async function shouldRespondAfterRecheck(params: {
     return false
   }
 
+  // Deterministic fast path for explicit follow-up requests in reply to us.
+  if (replyingToOurBot && hasExplicitRequestSignal(textContent)) {
+    return true
+  }
+
   try {
     const systemPrompt = `You are the FINAL reply gate for a Telegram group bot.
 

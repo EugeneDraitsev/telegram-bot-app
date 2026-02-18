@@ -98,7 +98,17 @@ export function isReplyToOurBot(message: Message, botId?: number): boolean {
 
 export function isReplyToAnotherBot(message: Message, botId?: number): boolean {
   const replyFrom = message.reply_to_message?.from
-  return Boolean(replyFrom?.is_bot && (!botId || replyFrom.id !== botId))
+  if (!replyFrom?.is_bot) {
+    return false
+  }
+
+  // If bot identity is unknown, we cannot reliably classify "another" bot.
+  // Let higher-level logic decide based on mentions/request signals.
+  if (!botId) {
+    return false
+  }
+
+  return replyFrom.id !== botId
 }
 
 export function hasDirectRequestToBot(params: {

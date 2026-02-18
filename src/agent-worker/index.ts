@@ -20,6 +20,29 @@ export interface AgentWorkerPayload {
 }
 
 const TELEGRAM_FILE_BASE_URL = 'https://api.telegram.org/file/bot'
+let cachedBotInfo: BotIdentity | undefined
+
+async function resolveBotInfo(
+  incomingBotInfo?: BotIdentity,
+): Promise<BotIdentity | undefined> {
+  if (incomingBotInfo?.id) {
+    cachedBotInfo = incomingBotInfo
+    return incomingBotInfo
+  }
+
+  if (cachedBotInfo?.id) {
+    return cachedBotInfo
+  }
+
+  try {
+    const me = await bot.api.getMe()
+    cachedBotInfo = { id: me.id, username: me.username }
+    return cachedBotInfo
+  } catch (error) {
+    logger.warn({ error }, 'worker.bot_info_unavailable')
+    return incomingBotInfo
+  }
+}
 
 async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
   const uniqueIds = [...new Set((fileIds ?? []).filter(Boolean))]
@@ -95,9 +118,10 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       ? decodedImages
       : await fetchImagesByFileIds(imageFileIds)
     const effectiveImages = fetchedImages.length > 0 ? fetchedImages : undefined
+    const effectiveBotInfo = await resolveBotInfo(botInfo)
 
     // Run the agentic loop with bot API
-    await runAgenticLoop(message, bot.api, effectiveImages, botInfo)
+    await runAgenticLoop(message, bot.api, effectiveImages, effectiveBotInfo)
     logger.info(
       {
         ...messageMeta,

@@ -14,6 +14,28 @@ export interface AgentPayload {
   botInfo?: BotInfo
 }
 
+let cachedBotInfo: BotInfo | undefined
+
+async function resolveBotInfo(ctx: Context): Promise<BotInfo | undefined> {
+  if (cachedBotInfo) {
+    return cachedBotInfo
+  }
+
+  if (ctx.me) {
+    cachedBotInfo = { id: ctx.me.id, username: ctx.me.username }
+    return cachedBotInfo
+  }
+
+  try {
+    const me = await ctx.api.getMe()
+    cachedBotInfo = { id: me.id, username: me.username }
+    return cachedBotInfo
+  } catch (error) {
+    console.error('Failed to resolve bot info', error)
+    return undefined
+  }
+}
+
 function collectImageFileIds(message: Message): string[] {
   const ids = [
     getLargestPhoto(message)?.file_id,
@@ -38,10 +60,8 @@ export async function handleMessageWithAgent(
     return
   }
 
-  // Get bot info for smart filtering
-  const botInfo: BotInfo | undefined = ctx.me
-    ? { id: ctx.me.id, username: ctx.me.username }
-    : undefined
+  // Resolve bot identity so reply detection works reliably for plain follow-ups.
+  const botInfo = await resolveBotInfo(ctx)
 
   // Step 1: Quick filter (cheap model) - this is fast
   const passedQuickFilter = await quickFilter(message, imagesData, botInfo)
