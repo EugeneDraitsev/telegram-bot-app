@@ -73,7 +73,8 @@ describe('shouldRespondAfterRecheck', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
-  test('returns false for reply to our bot without explicit request', async () => {
+  test('runs model for reply to our bot without explicit request marker', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'ignore' }] })
     const message = {
       text: 'ok',
       reply_to_message: { from: { is_bot: true, id: OUR_BOT.id } },
@@ -87,7 +88,7 @@ describe('shouldRespondAfterRecheck', () => {
         botInfo: OUR_BOT,
       }),
     ).resolves.toEqual(false)
-    expect(mockInvoke).not.toHaveBeenCalled()
+    expect(mockInvoke).toHaveBeenCalled()
   })
 
   test('returns false for non-addressed request', async () => {

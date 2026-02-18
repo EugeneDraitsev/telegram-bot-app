@@ -50,12 +50,6 @@ export async function handleMessageWithAgent(
     return
   }
 
-  void ctx.api
-    .setMessageReaction(chatId, message.message_id, [
-      { type: 'emoji', emoji: '👀' },
-    ])
-    .catch(() => undefined)
-
   // Step 2: Invoke agent worker Lambda async (don't wait for response)
   // This returns immediately, allowing us to send 200 OK to Telegram
   const payload: AgentPayload = {

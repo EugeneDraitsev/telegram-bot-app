@@ -4,7 +4,7 @@ import type { Message } from 'telegram-typings'
 
 import {
   type BotIdentity,
-  hasDirectRequestToBot,
+  hasBotAddressSignal,
   hasExplicitRequestSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
@@ -71,12 +71,9 @@ export async function shouldRespondAfterRecheck(params: {
   }
 
   const replyingToOurBot = isReplyToOurBot(message, botInfo?.id)
-  const hasDirectRequest = hasDirectRequestToBot({
-    text: textContent,
-    isReplyToOurBot: replyingToOurBot,
-    ourBotUsername: botInfo?.username,
-  })
-  if (!hasDirectRequest) {
+  const addressedToBot =
+    replyingToOurBot || hasBotAddressSignal(textContent, botInfo?.username)
+  if (!addressedToBot) {
     return false
   }
 

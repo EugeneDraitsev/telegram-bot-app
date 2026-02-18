@@ -66,6 +66,13 @@ export async function runAgenticLoop(
         return
       }
 
+      // Set reaction only after reply-gate confirms we will respond
+      void api
+        .setMessageReaction(chatId, message.message_id, [
+          { type: 'emoji', emoji: '👀' },
+        ])
+        .catch(() => undefined)
+
       const tools = await getAgentTools(chatId).catch((error) => {
         logger.error({ chatId, error }, 'tools.load_failed')
         return []
@@ -158,6 +165,13 @@ export async function runAgenticLoop(
       },
       'loop.failed',
     )
+    try {
+      await api.sendMessage(chatId, 'Что-то пошло не так 😵', {
+        reply_parameters: { message_id: message.message_id },
+      })
+    } catch (sendError) {
+      logger.error({ chatId, sendError }, 'loop.error_reply_failed')
+    }
   } finally {
     stopTyping()
   }
