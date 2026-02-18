@@ -49,16 +49,17 @@ describe('quickFilter', () => {
     expect(mockInvoke).not.toHaveBeenCalled()
   })
 
-  test('returns false for reply to OUR bot without explicit request', async () => {
+  test('runs model for reply to OUR bot even without explicit request marker', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
     const message = {
-      text: 'ok',
+      text: 'как дела',
       reply_to_message: { from: { is_bot: true, id: OUR_BOT.id } },
     } as Message
 
     await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
-      false,
+      true,
     )
-    expect(mockInvoke).not.toHaveBeenCalled()
+    expect(mockInvoke).toHaveBeenCalled()
   })
 
   test('runs model for reply to OUR bot with explicit request', async () => {
@@ -107,13 +108,14 @@ describe('quickFilter', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
-  test('returns false for OUR mention without explicit request', async () => {
-    const message = { text: 'hey @testbot' } as Message
+  test('runs model for bot word address without explicit request marker', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+    const message = { text: 'ботик как дела' } as Message
 
     await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
-      false,
+      true,
     )
-    expect(mockInvoke).not.toHaveBeenCalled()
+    expect(mockInvoke).toHaveBeenCalled()
   })
 
   test('does not ignore explicit request addressed to OUR bot', async () => {

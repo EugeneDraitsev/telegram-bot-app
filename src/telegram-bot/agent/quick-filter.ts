@@ -11,7 +11,7 @@ import type { Message } from 'telegram-typings'
 import {
   getChatMemory,
   getGlobalMemory,
-  hasDirectRequestToBot,
+  hasBotAddressSignal,
   hasExplicitRequestSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
@@ -102,13 +102,10 @@ export async function quickFilter(
     return false
   }
 
-  // Hard gate: message must be explicitly addressed to the bot with a clear request.
-  const hasDirectRequest = hasDirectRequestToBot({
-    text: textContent,
-    isReplyToOurBot: replyingToOurBot,
-    ourBotUsername: botInfo?.username,
-  })
-  if (!hasDirectRequest) {
+  // If the message is addressed to the bot (mention, bot word, or reply), let the LLM decide.
+  const addressedToBot =
+    replyingToOurBot || hasBotAddressSignal(textContent, botInfo?.username)
+  if (!addressedToBot) {
     return false
   }
 
