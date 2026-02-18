@@ -20,14 +20,14 @@ const replyGateTools = [
   new DynamicStructuredTool({
     name: 'engage',
     description:
-      'Allow bot response only when the user explicitly and directly asks THIS bot.',
+      'The message is addressed to the bot and contains something meaningful.',
     schema: z.object({}),
     func: async () => ({ shouldEngage: true }),
   }),
   new DynamicStructuredTool({
     name: 'ignore',
     description:
-      'Ignore by default. Use unless explicit direct request criteria are clearly satisfied.',
+      'Ignore the message. Use for clear noise: spam, meaningless characters, or messages clearly not meant for the bot.',
     schema: z.object({}),
     func: async () => ({ shouldEngage: false }),
   }),
@@ -79,17 +79,19 @@ export async function shouldRespondAfterRecheck(params: {
 
   try {
     const systemPrompt = `You are the FINAL reply gate for a Telegram group bot.
-Default decision is IGNORE.
+
+IMPORTANT: The message has ALREADY been verified as addressed to THIS bot (by name, username, or reply). Your job is only to filter out clear noise.
 
 You must call exactly one tool:
-- engage: only if this is an explicit direct request to THIS bot
-- ignore: in every other case
+- engage: when the user says anything meaningful to the bot (questions, requests, greetings, commands, conversation)
+- ignore: only for clear noise (spam, meaningless characters, message clearly not meant for the bot)
 
-Strict rules:
-- Mention of another account is allowed only when THIS bot is also explicitly mentioned
-- Reply to this bot without explicit request => ignore
-- Casual chat, commentary, reactions, emojis, acknowledgements => ignore
-- If uncertain, choose ignore
+Rules:
+- If user addresses the bot and says ANYTHING meaningful — engage
+- Greetings, "how are you", requests to draw/tell/help — engage
+- If another account is mentioned but THIS bot is also mentioned — engage
+- Pure spam, random characters, single emoji without context — ignore
+- If uncertain but message is addressed to the bot — engage
 
 Context:
 - Is reply to OUR bot: ${replyingToOurBot}

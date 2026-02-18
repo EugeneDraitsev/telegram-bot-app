@@ -31,14 +31,14 @@ const filterTools = [
   new DynamicStructuredTool({
     name: 'engage',
     description:
-      'The message requires a response from the bot. Use only for explicit direct requests to this bot.',
+      'The message is addressed to the bot and contains something meaningful. This is the default for addressed messages.',
     schema: z.object({}),
     func: async () => ({ shouldEngage: true }),
   }),
   new DynamicStructuredTool({
     name: 'ignore',
     description:
-      'Ignore the message. This is the default and preferred action unless direct request criteria are clearly met.',
+      'Ignore the message. Use only for clear noise: spam, meaningless characters, or messages clearly not meant for the bot.',
     schema: z.object({}),
     func: async () => ({ shouldEngage: false }),
   }),
@@ -122,20 +122,18 @@ export async function quickFilter(
         ? `\nBot memory (for context only):\n${chatMemory ? `- Chat memory: ${chatMemory}` : ''}\n${globalMemory ? `- Global memory: ${globalMemory}` : ''}`
         : ''
 
-    const systemPrompt = `You are a strict quick filter for a Telegram group bot.
-Default decision is IGNORE.
+    const systemPrompt = `You are a quick filter for a Telegram group bot.
 
-ENGAGE only if ALL conditions are true:
-- User directly addresses THIS bot (reply to this bot OR bot name/username is present)
-- User clearly asks for an action or answer
-- If another account is mentioned, THIS bot is also explicitly mentioned and requested
+ENGAGE only if:
+- Message mentions the bot ("бот", "ботик", "ботяра", "bot", "ботан", etc) and IT MAKES SENSE that the user is talking to the bot (not just mentioning it in third person)
+- Message is a reply to the bot's previous message and IT MAKES SENSE that the user is asking the bot something (draw, tell, help, explain, etc.). Don't reply on "great job" or something like that.
+- User is clearly asking the bot something
+- Message has media (photo/image) with caption mentioning the bot
 
-IGNORE in all other cases:
-- Normal chat between users
-- Mention of another bot/person without explicit mention of THIS bot
-- Reply to this bot without explicit request
-- Ambiguous, vague, or uncertain messages
-- If unsure, ignore
+IGNORE (default) if:
+- The message is clearly NOT meant for the bot (talking about the bot in third person to someone else)
+- Pure spam or meaningless characters
+- Unsure - when in doubt, ignore
 
 Context:
 - From: ${message.from?.first_name || 'Unknown'}
