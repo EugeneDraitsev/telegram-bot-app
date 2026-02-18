@@ -126,12 +126,12 @@ export async function quickFilter(
 
 ENGAGE only if:
 - Message mentions the bot ("бот", "ботик", "ботяра", "bot", "ботан", etc) and IT MAKES SENSE that the user is talking to the bot (not just mentioning it in third person)
-- Message is a reply to the bot's previous message and IT MAKES SENSE that the user is asking the bot something (draw, tell, help, explain, etc.). Don't reply on "great job" or something like that.
+- Message is a reply to the bot's previous message and IT MAKES SENSE that the user is asking the bot about clarification or asking something to do (draw, tell, help, explain, etc.). Don't reply on "great job" or something like that.
 - User is clearly asking the bot something
 - Message has media (photo/image) with caption mentioning the bot
 
 IGNORE (default) if:
-- The message is clearly NOT meant for the bot (talking about the bot in third person to someone else)
+- The message is clearly NOT meant for the bot to answer
 - Pure spam or meaningless characters
 - Unsure - when in doubt, ignore
 
