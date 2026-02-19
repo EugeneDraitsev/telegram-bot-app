@@ -34,8 +34,8 @@ functions:
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
       DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
-      REPLY_WORKER_FUNCTION_NAME: ${self:service}-${self:provider.stage}-telegram-reply-worker
-      AGENT_WORKER_FUNCTION_NAME: ${self:service}-${self:provider.stage}-telegram-agent-worker
+      REPLY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-reply-worker
+      AGENT_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-agent-worker
     events:
       - http:
           path: /

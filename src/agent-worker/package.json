@@ -5,9 +5,9 @@
   "sideEffects": false,
   "dependencies": {
     "@giphy/js-fetch-api": "^5.7.0",
-    "@google/genai": "^1.41.0",
-    "@langchain/core": "^1.1.24",
-    "@langchain/google-genai": "^2.1.18",
+    "@google/genai": "^1.42.0",
+    "@langchain/core": "^1.1.26",
+    "@langchain/google-genai": "^2.1.19",
     "@upstash/redis": "^1.36.2",
     "grammy": "^1.40.0",
     "openai": "^6.22.0",
