@@ -3,7 +3,6 @@ import type { User } from 'telegram-typings'
 import type { ChatEvent } from '../../types'
 import { dynamoPutItem, dynamoQuery, invokeLambda, random } from '../../utils'
 
-const BROADCAST_LAMBDA_NAME = `telegram-websockets-${process.env.stage}-broadcastStats`
 const BROADCAST_ENDPOINT =
   '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod'
 
@@ -34,13 +33,17 @@ export const saveEvent = async (
       },
     }
 
-    await Promise.all([
-      dynamoPutItem(params),
+    const promises: Promise<any>[] = [dynamoPutItem(params)]
+
+    const stage = process.env.IS_OFFLINE === 'true' ? 'prod' : process.env.stage
+    promises.push(
       invokeLambda({
-        name: BROADCAST_LAMBDA_NAME,
+        name: `telegram-websockets-${stage}-broadcastStats`,
         payload: broadcastLambdaPayload,
       }),
-    ])
+    )
+
+    await Promise.all(promises)
   }
 }
 

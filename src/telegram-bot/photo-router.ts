@@ -17,7 +17,7 @@ const photoRoutes: PhotoRoute[] = [
   {
     prefix: '/o',
     handler: (ctx, deferred) =>
-      setupMultimodalGeminiCommands(ctx, deferred, 'gemini-3-pro-preview'),
+      setupMultimodalGeminiCommands(ctx, deferred, 'gemini-3.1-pro-preview'),
   },
   {
     prefix: '/q',

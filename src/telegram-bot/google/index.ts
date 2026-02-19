@@ -133,7 +133,7 @@ const setupGoogleCommands = (
     setupMultimodalGeminiCommands(
       ctx,
       deferredCommands,
-      'gemini-3-pro-preview',
+      'gemini-3.1-pro-preview',
     ),
   )
 
