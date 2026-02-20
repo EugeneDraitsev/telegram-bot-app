@@ -21,33 +21,40 @@ bot.use(saveBotMessageMiddleware)
 // Setup all commands with deferred mode (async via Lambda)
 const commandRegistry = setupAllCommands(bot, true)
 
+async function trackActivity(
+  message: Message,
+  chatFromCtx: Chat,
+  chatInfo?: Chat,
+) {
+  const command = isRegisteredCommandMessage(message, commandRegistry)
+    ? findCommand(message.text || message.caption)
+    : ''
+
+  await Promise.allSettled([
+    updateStatistics(message.from, (chatInfo || chatFromCtx) as Chat),
+    saveEvent(
+      message.from,
+      chatInfo?.id || chatFromCtx.id,
+      command,
+      message.date,
+    ),
+    saveMessage(message, chatInfo?.id || chatFromCtx.id),
+  ]).catch((error) => console.error('Tracking error: ', error))
+}
+
 bot.use(async (ctx, next) => {
   const chatFromCtx = ctx.chat
   const message = ctx.message as Message
   if (chatFromCtx && message) {
-    const command = isRegisteredCommandMessage(message, commandRegistry)
-      ? findCommand(message.text || message.caption)
-      : ''
     const chatInfo = await ctx
       .getChat()
       .catch((error) => console.error('getChat error: ', error))
 
+    // Fire and forget tracking to not block the request
+    void trackActivity(message, chatFromCtx, chatInfo as Chat)
+
     try {
-      await Promise.all([
-        updateStatistics(message.from, (chatInfo || chatFromCtx) as Chat).catch(
-          (error) => console.error('updateStatistics error: ', error),
-        ),
-        saveEvent(
-          message.from,
-          chatInfo?.id || chatFromCtx.id,
-          command,
-          message.date,
-        ).catch((error) => console.error('saveEvent error: ', error)),
-        saveMessage(message, chatInfo?.id || chatFromCtx.id).catch((error) =>
-          console.error('saveHistory error: ', error),
-        ),
-        next?.(),
-      ])
+      if (next) await next()
     } catch (error) {
       console.error('Root error: ', error)
     }

@@ -111,14 +111,10 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     )
 
     const effectiveBotInfo = await resolveBotInfo(botInfo)
-    const decodedImages = imagesData?.map((base64) =>
-      Buffer.from(base64, 'base64'),
-    )
-    // Decode images if present in payload, otherwise fetch by Telegram file ids.
-    const fetchedImages = decodedImages?.length
-      ? decodedImages
+    // Decode base64 images, fallback to fetching from Telegram
+    const effectiveImages = imagesData?.length
+      ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
       : await fetchImagesByFileIds(imageFileIds)
-    const effectiveImages = fetchedImages.length > 0 ? fetchedImages : undefined
 
     // Run the agentic loop with bot API
     await runAgenticLoop(message, bot.api, effectiveImages, effectiveBotInfo)

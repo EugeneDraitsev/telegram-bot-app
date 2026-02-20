@@ -9,7 +9,6 @@ import { setupImageGenerationOpenAiCommands } from './open-ai'
 
 type PhotoRoute = {
   prefix: string
-  excludePrefix?: string
   handler: (ctx: Context, deferredCommands: boolean) => Promise<unknown>
 }
 
@@ -35,7 +34,6 @@ const photoRoutes: PhotoRoute[] = [
   },
   {
     prefix: '/ge',
-    excludePrefix: '/gemma',
     handler: (ctx, deferred) =>
       setupImageGenerationGeminiCommands(ctx, deferred),
   },
@@ -49,11 +47,13 @@ export const handlePhotoMessage = (
 
   if (!caption) return undefined
 
-  for (const route of photoRoutes) {
+  // Sort by prefix length descending to match the longest prefix first (e.g. /gemma before /ge)
+  const sortedRoutes = [...photoRoutes].sort(
+    (a, b) => b.prefix.length - a.prefix.length,
+  )
+
+  for (const route of sortedRoutes) {
     if (caption.startsWith(route.prefix)) {
-      if (route.excludePrefix && caption.startsWith(route.excludePrefix)) {
-        continue
-      }
       return route.handler(ctx, deferredCommands)
     }
   }
