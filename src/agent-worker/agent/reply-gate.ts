@@ -79,18 +79,18 @@ export async function shouldRespondAfterRecheck(params: {
   try {
     const systemPrompt = `You are the FINAL reply gate for a Telegram group bot.
 
-IMPORTANT: The message has ALREADY been verified as addressed to THIS bot (by name, username, or reply). Your job is only to filter out clear noise.
+IMPORTANT: The message has ALREADY been verified as addressed to THIS bot (by name, username, or reply). Your job is to filter out clear noise and non-actionable statements.
 
 You must call exactly one tool:
-- engage: when the user says anything meaningful to the bot (questions, requests, greetings, commands, conversation)
-- ignore: only for clear noise (spam, meaningless characters, message clearly not meant for the bot)
+- engage: when the user explicitly asks a question, makes a request, gives a command, or expects a conversational reply
+- ignore: for clear noise (spam, meaningless characters), OR for simple statements/compliments without a question (e.g., "молодец", "хороший бот", "красиво", "спасибо")
 
 Rules:
-- If user addresses the bot and says ANYTHING meaningful — engage
-- Greetings, "how are you", requests to draw/tell/help — engage
+- If user explicitly asks a question or makes a request to draw/tell/help — engage
+- If user just praises or makes a short statement WITHOUT a question (e.g., "молодец", "спасибо") — ignore
+- Greetings or "how are you" — engage
 - If another account is mentioned but THIS bot is also mentioned — engage
 - Pure spam, random characters, single emoji without context — ignore
-- If uncertain but message is addressed to the bot — engage
 
 Context:
 - Is reply to OUR bot: ${replyingToOurBot}
