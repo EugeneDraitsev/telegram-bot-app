@@ -33,17 +33,14 @@ export const saveEvent = async (
       },
     }
 
-    const promises: Promise<any>[] = [dynamoPutItem(params)]
-
     const stage = process.env.IS_OFFLINE === 'true' ? 'prod' : process.env.stage
-    promises.push(
+    await Promise.all([
+      dynamoPutItem(params),
       invokeLambda({
         name: `telegram-websockets-${stage}-broadcastStats`,
         payload: broadcastLambdaPayload,
       }),
-    )
-
-    await Promise.all(promises)
+    ])
   }
 }
 

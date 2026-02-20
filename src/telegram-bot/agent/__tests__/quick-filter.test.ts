@@ -62,7 +62,8 @@ describe('quickFilter', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
-  test('returns true for explicit request in reply to OUR bot without model call', async () => {
+  test('runs model for explicit request in reply to OUR bot', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
     const message = {
       text: 'answer please',
       reply_to_message: { from: { is_bot: true, id: OUR_BOT.id } },
@@ -71,7 +72,7 @@ describe('quickFilter', () => {
     await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
       true,
     )
-    expect(mockInvoke).not.toHaveBeenCalled()
+    expect(mockInvoke).toHaveBeenCalled()
   })
 
   test('returns false for reply to ANOTHER bot', async () => {
@@ -98,7 +99,7 @@ describe('quickFilter', () => {
   test('allows when OUR bot and another account are both mentioned', async () => {
     mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
     const message = {
-      text: 'hey @testbot ask @otherbot later, can you answer now?',
+      text: 'hey @testbot and @otherbot are in this thread',
     } as Message
 
     await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
@@ -127,9 +128,31 @@ describe('quickFilter', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
+  test('runs model for addressed russian question', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+    const message = { text: 'ботик ты тут?' } as Message
+
+    await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
+      true,
+    )
+    expect(mockInvoke).toHaveBeenCalled()
+  })
+
+  test('runs model for addressed draw request', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+    const message = {
+      text: 'ботик нарисуй командную работу альведона и ибупрофена в сене',
+    } as Message
+
+    await expect(quickFilter(message, undefined, OUR_BOT)).resolves.toEqual(
+      true,
+    )
+    expect(mockInvoke).toHaveBeenCalled()
+  })
+
   test('returns true when model picks engage tool', async () => {
     mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
-    const message = { text: 'bot, answer please' } as Message
+    const message = { text: 'bot as a concept is interesting' } as Message
 
     await expect(quickFilter(message)).resolves.toEqual(true)
     expect(mockInvoke).toHaveBeenCalled()
@@ -137,7 +160,7 @@ describe('quickFilter', () => {
 
   test('returns false when model picks ignore tool', async () => {
     mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'ignore' }] })
-    const message = { text: 'bot, answer please' } as Message
+    const message = { text: 'bot as a concept is interesting' } as Message
 
     await expect(quickFilter(message)).resolves.toEqual(false)
     expect(mockInvoke).toHaveBeenCalled()
@@ -149,7 +172,7 @@ describe('quickFilter', () => {
       .mockImplementation(() => undefined)
     mockInvoke.mockRejectedValue(new Error('boom'))
 
-    const message = { text: 'bot, answer please' } as Message
+    const message = { text: 'bot in this context maybe' } as Message
 
     await expect(quickFilter(message)).resolves.toEqual(false)
     consoleSpy.mockRestore()
@@ -161,7 +184,7 @@ describe('quickFilter', () => {
     mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
 
     const message = {
-      text: 'bot, can you help?',
+      text: 'bot with status update',
       chat: { id: 123 },
     } as unknown as Message
 
@@ -180,7 +203,7 @@ describe('quickFilter', () => {
     mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'ignore' }] })
 
     const message = {
-      text: 'bot, can you answer?',
+      text: 'bot with status update',
       chat: { id: 456 },
     } as unknown as Message
 

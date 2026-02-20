@@ -5,7 +5,6 @@ import type { Message } from 'telegram-typings'
 import {
   type BotIdentity,
   hasBotAddressSignal,
-  hasExplicitRequestSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
   mentionsAnotherAccount,
@@ -77,11 +76,6 @@ export async function shouldRespondAfterRecheck(params: {
     return false
   }
 
-  // Deterministic fast path for explicit follow-up requests in reply to us.
-  if (replyingToOurBot && hasExplicitRequestSignal(textContent)) {
-    return true
-  }
-
   try {
     const systemPrompt = `You are the FINAL reply gate for a Telegram group bot.
 
@@ -102,7 +96,6 @@ Context:
 - Is reply to OUR bot: ${replyingToOurBot}
 - Mentions OUR bot: ${hasOurMention}
 - Mentions other account: ${hasAnotherMention}
-- Has explicit request signal: ${hasExplicitRequestSignal(textContent)}
 - Has media: ${hasImages}
 - Message: "${textContent || '[media without text]'}"
 ${memoryBlock ? `\n${memoryBlock}` : ''}`

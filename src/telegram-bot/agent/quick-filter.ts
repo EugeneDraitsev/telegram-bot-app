@@ -12,7 +12,6 @@ import {
   getChatMemory,
   getGlobalMemory,
   hasBotAddressSignal,
-  hasExplicitRequestSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
   mentionsAnotherAccount,
@@ -109,12 +108,6 @@ export async function quickFilter(
     return false
   }
 
-  // Deterministic fast path: explicit follow-up questions in reply to our bot
-  // should not be dropped by model variance.
-  if (replyingToOurBot && hasExplicitRequestSignal(textContent)) {
-    return true
-  }
-
   try {
     const chatId = message.chat?.id
     const [chatMemory, globalMemory] = await Promise.all([
@@ -146,7 +139,6 @@ Context:
 - Is reply to OUR bot: ${replyingToOurBot}
 - Mentions OUR bot: ${hasOurMention}
 - Mentions other account: ${hasAnotherMention}
-- Has explicit request signal: ${hasExplicitRequestSignal(textContent)}
 - Has media: ${hasMedia}
 - Message: "${textContent}"${memoryBlock}`
 

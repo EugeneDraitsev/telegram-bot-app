@@ -59,13 +59,13 @@ describe('shouldRespondAfterRecheck', () => {
   test('allows when OUR bot and another account are both mentioned', async () => {
     mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
     const message = {
-      text: '@testbot can you answer? and maybe @otherbot too',
+      text: '@testbot and maybe @otherbot too',
     } as Message
 
     await expect(
       shouldRespondAfterRecheck({
         message,
-        textContent: '@testbot can you answer? and maybe @otherbot too',
+        textContent: '@testbot and maybe @otherbot too',
         hasImages: false,
         botInfo: OUR_BOT,
       }),
@@ -91,7 +91,8 @@ describe('shouldRespondAfterRecheck', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
-  test('returns true for explicit request in reply to our bot without model call', async () => {
+  test('runs model for explicit request in reply to our bot', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
     const message = {
       text: 'а что если на молоко есть изжога?',
       reply_to_message: { from: { is_bot: true, id: OUR_BOT.id } },
@@ -105,7 +106,7 @@ describe('shouldRespondAfterRecheck', () => {
         botInfo: OUR_BOT,
       }),
     ).resolves.toEqual(true)
-    expect(mockInvoke).not.toHaveBeenCalled()
+    expect(mockInvoke).toHaveBeenCalled()
   })
 
   test('returns false for non-addressed request', async () => {
@@ -122,7 +123,7 @@ describe('shouldRespondAfterRecheck', () => {
     expect(mockInvoke).not.toHaveBeenCalled()
   })
 
-  test('returns true when model picks engage for explicit direct request', async () => {
+  test('runs model for explicit direct request', async () => {
     mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
     const message = { text: '@testbot can you help?' } as Message
 
@@ -137,14 +138,47 @@ describe('shouldRespondAfterRecheck', () => {
     expect(mockInvoke).toHaveBeenCalled()
   })
 
-  test('returns false when model picks ignore', async () => {
-    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'ignore' }] })
-    const message = { text: 'bot, answer please' } as Message
+  test('runs model for addressed russian question', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+    const message = { text: 'ботик ты тут?' } as Message
 
     await expect(
       shouldRespondAfterRecheck({
         message,
-        textContent: 'bot, answer please',
+        textContent: 'ботик ты тут?',
+        hasImages: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toEqual(true)
+    expect(mockInvoke).toHaveBeenCalled()
+  })
+
+  test('runs model for addressed draw request', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'engage' }] })
+    const message = {
+      text: 'ботик нарисуй командную работу альведона и ибупрофена в сене',
+    } as Message
+
+    await expect(
+      shouldRespondAfterRecheck({
+        message,
+        textContent:
+          'ботик нарисуй командную работу альведона и ибупрофена в сене',
+        hasImages: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toEqual(true)
+    expect(mockInvoke).toHaveBeenCalled()
+  })
+
+  test('returns false when model picks ignore', async () => {
+    mockInvoke.mockResolvedValue({ tool_calls: [{ name: 'ignore' }] })
+    const message = { text: 'bot as a concept is interesting' } as Message
+
+    await expect(
+      shouldRespondAfterRecheck({
+        message,
+        textContent: 'bot as a concept is interesting',
         hasImages: false,
         botInfo: OUR_BOT,
       }),
@@ -158,11 +192,11 @@ describe('shouldRespondAfterRecheck', () => {
       .mockImplementation(() => undefined)
     mockInvoke.mockRejectedValue(new Error('boom'))
 
-    const message = { text: 'bot, answer please' } as Message
+    const message = { text: 'bot as a concept is interesting' } as Message
     await expect(
       shouldRespondAfterRecheck({
         message,
-        textContent: 'bot, answer please',
+        textContent: 'bot as a concept is interesting',
         hasImages: false,
         botInfo: OUR_BOT,
       }),
