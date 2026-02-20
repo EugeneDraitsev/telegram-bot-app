@@ -42,7 +42,7 @@ function getReplyGateModelWithTools() {
   return replyGateModelWithTools
 }
 
-export async function shouldRespondAfterRecheck(params: {
+export async function shouldEngageWithMessage(params: {
   message: Message
   textContent: string
   hasImages: boolean
@@ -55,23 +55,17 @@ export async function shouldRespondAfterRecheck(params: {
     return false
   }
 
-  if (isReplyToAnotherBot(message, botInfo?.id)) {
-    return false
-  }
-
+  const isReplyToOur = isReplyToOurBot(message, botInfo?.id)
+  const isReplyToAnother = isReplyToAnotherBot(message, botInfo?.id)
   const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
-  const hasAnotherMention = mentionsAnotherAccount(
-    textContent,
-    botInfo?.username,
-  )
 
-  if (hasAnotherMention && !hasOurMention) {
+  if (isReplyToAnother && !hasOurMention) {
     return false
   }
 
-  const replyingToOurBot = isReplyToOurBot(message, botInfo?.id)
   const addressedToBot =
-    replyingToOurBot || hasBotAddressSignal(textContent, botInfo?.username)
+    isReplyToOur || hasBotAddressSignal(textContent, botInfo?.username)
+
   if (!addressedToBot) {
     return false
   }
@@ -93,9 +87,9 @@ Rules:
 - Pure spam, random characters, single emoji without context — ignore
 
 Context:
-- Is reply to OUR bot: ${replyingToOurBot}
+- Is reply to OUR bot: ${isReplyToOur}
 - Mentions OUR bot: ${hasOurMention}
-- Mentions other account: ${hasAnotherMention}
+- Mentions other account: ${mentionsAnotherAccount(textContent, botInfo?.username)}
 - Has media: ${hasImages}
 - Message: "${textContent || '[media without text]'}"
 ${memoryBlock ? `\n${memoryBlock}` : ''}`

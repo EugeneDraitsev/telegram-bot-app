@@ -50,41 +50,26 @@ function formatCaption(text?: string): string | undefined {
 }
 
 function collectBundle(responses: AgentResponse[]): DeliveryBundle {
+  const bundle: DeliveryBundle = {
+    text: '',
+    image: null,
+    video: null,
+    animation: null,
+    voice: null,
+    sticker: null,
+    dice: null,
+  }
   const textParts: string[] = []
-  let image: ImageResponse | null = null
-  let video: VideoResponse | null = null
-  let animation: AnimationResponse | null = null
-  let voice: Buffer | null = null
-  let sticker: StickerResponse | null = null
-  let dice: DiceResponse | null = null
 
-  for (const response of responses) {
-    if (response.type === 'text') {
-      textParts.push(cleanGeminiMessage(response.text))
-    } else if (response.type === 'image') {
-      image = response
-    } else if (response.type === 'video') {
-      video = response
-    } else if (response.type === 'animation') {
-      animation = response
-    } else if (response.type === 'voice') {
-      voice = response.buffer
-    } else if (response.type === 'sticker') {
-      sticker = response
-    } else if (response.type === 'dice') {
-      dice = response
-    }
+  for (const r of responses) {
+    if (r.type === 'text') textParts.push(cleanGeminiMessage(r.text))
+    else if (r.type === 'voice') bundle[r.type] = r.buffer
+    // biome-ignore lint/suspicious/noExplicitAny: generic mapping
+    else bundle[r.type] = r as any
   }
 
-  return {
-    text: textParts.join('\n\n').trim(),
-    image,
-    video,
-    animation,
-    voice,
-    sticker,
-    dice,
-  }
+  bundle.text = textParts.join('\n\n').trim()
+  return bundle
 }
 
 async function sendText(params: DeliveryParams & { text: string }) {
@@ -231,28 +216,21 @@ export async function sendResponses(
   }
 
   try {
+    const mediaParams = { ...base, text: bundle.text }
     if (bundle.dice) {
       await sendDice({ ...base, dice: bundle.dice })
-      if (bundle.text) {
-        await sendText({ ...base, text: bundle.text })
-      }
+      if (bundle.text) await sendText(mediaParams)
     } else if (bundle.sticker) {
       await sendSticker({ ...base, sticker: bundle.sticker })
-      if (bundle.text) {
-        await sendText({ ...base, text: bundle.text })
-      }
+      if (bundle.text) await sendText(mediaParams)
     } else if (bundle.animation) {
-      await sendAnimation({
-        ...base,
-        animation: bundle.animation,
-        text: bundle.text,
-      })
+      await sendAnimation({ ...mediaParams, animation: bundle.animation })
     } else if (bundle.image) {
-      await sendImage({ ...base, image: bundle.image, text: bundle.text })
+      await sendImage({ ...mediaParams, image: bundle.image })
     } else if (bundle.video) {
-      await sendVideo({ ...base, video: bundle.video, text: bundle.text })
-    } else {
-      await sendText({ ...base, text: bundle.text })
+      await sendVideo({ ...mediaParams, video: bundle.video })
+    } else if (bundle.text) {
+      await sendText(mediaParams)
     }
   } catch (error) {
     logger.error({ error, chatId: params.chatId }, 'delivery.primary_failed')

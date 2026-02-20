@@ -2,7 +2,7 @@ import type { Message } from 'telegram-typings'
 
 import { logger } from '../../logger'
 import { chatModel } from '../models'
-import { shouldRespondAfterRecheck } from '../reply-gate'
+import { shouldEngageWithMessage } from '../reply-gate'
 
 type ToolCall = { name: string }
 type InvokeResult = { tool_calls?: ToolCall[] }
@@ -27,12 +27,12 @@ beforeEach(() => {
   mockInvoke.mockReset()
 })
 
-describe('shouldRespondAfterRecheck', () => {
+describe('shouldEngageWithMessage', () => {
   test('returns false for empty message without media', async () => {
     const message = { text: '' } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: '',
         hasImages: false,
@@ -46,7 +46,7 @@ describe('shouldRespondAfterRecheck', () => {
     const message = { text: '@otherbot can you help?' } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: '@otherbot can you help?',
         hasImages: false,
@@ -63,7 +63,7 @@ describe('shouldRespondAfterRecheck', () => {
     } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: '@testbot and maybe @otherbot too',
         hasImages: false,
@@ -81,7 +81,7 @@ describe('shouldRespondAfterRecheck', () => {
     } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: 'ok',
         hasImages: false,
@@ -99,7 +99,7 @@ describe('shouldRespondAfterRecheck', () => {
     } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: 'а что если на молоко есть изжога?',
         hasImages: false,
@@ -113,7 +113,7 @@ describe('shouldRespondAfterRecheck', () => {
     const message = { text: 'can you help?' } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: 'can you help?',
         hasImages: false,
@@ -128,7 +128,7 @@ describe('shouldRespondAfterRecheck', () => {
     const message = { text: '@testbot can you help?' } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: '@testbot can you help?',
         hasImages: false,
@@ -143,7 +143,7 @@ describe('shouldRespondAfterRecheck', () => {
     const message = { text: 'ботик ты тут?' } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: 'ботик ты тут?',
         hasImages: false,
@@ -160,7 +160,7 @@ describe('shouldRespondAfterRecheck', () => {
     } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent:
           'ботик нарисуй командную работу альведона и ибупрофена в сене',
@@ -176,7 +176,7 @@ describe('shouldRespondAfterRecheck', () => {
     const message = { text: 'bot as a concept is interesting' } as Message
 
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: 'bot as a concept is interesting',
         hasImages: false,
@@ -194,7 +194,7 @@ describe('shouldRespondAfterRecheck', () => {
 
     const message = { text: 'bot as a concept is interesting' } as Message
     await expect(
-      shouldRespondAfterRecheck({
+      shouldEngageWithMessage({
         message,
         textContent: 'bot as a concept is interesting',
         hasImages: false,

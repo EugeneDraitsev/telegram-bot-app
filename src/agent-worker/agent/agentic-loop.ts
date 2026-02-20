@@ -16,7 +16,7 @@ import type { AgentResponse, TelegramApi } from '../types'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { composeFinalText } from './final-text'
-import { shouldRespondAfterRecheck } from './reply-gate'
+import { shouldEngageWithMessage } from './reply-gate'
 import { buildCollectionMessages, runToolCollection } from './tool-collection'
 import { startTyping } from './typing'
 
@@ -48,7 +48,7 @@ export async function runAgenticLoop(
         getGlobalMemory().catch(() => ''),
       ])
       const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
-      const shouldRespond = await shouldRespondAfterRecheck({
+      const shouldRespond = await shouldEngageWithMessage({
         message,
         textContent,
         hasImages,
