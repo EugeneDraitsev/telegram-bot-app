@@ -20,7 +20,7 @@
 - Ingress should not run LLM logic.
 - Ingress should dispatch to worker asynchronously and return.
 - Worker performs:
-  1. quick filter with cheap model
+  1. single reply gate check with Gemini 3 flash
   2. agentic loop with main model
 
 ## Performance/Safety

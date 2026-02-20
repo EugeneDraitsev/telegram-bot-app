@@ -21,7 +21,7 @@
 - `src/agent-worker/` owns all AI decisions.
 - Agent worker flow:
   1. chat enabled check
-  2. quick filter (cheap model)
+  2. single reply gate check (Gemini 3 flash)
   3. main response generation (Gemini flash model)
 
 ## Reliability Rules
