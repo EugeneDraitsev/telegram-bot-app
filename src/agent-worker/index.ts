@@ -7,6 +7,7 @@ import {
   getImageBuffers,
   isAgenticChatEnabled,
 } from '@tg-bot/common'
+import { quickFilter } from '../telegram-bot/agent/quick-filter'
 import { runAgenticLoop } from './agent'
 import { getMessageLogMeta, logger } from './logger'
 
@@ -110,15 +111,35 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       'worker.start',
     )
 
-    // Decode images if present in payload, otherwise fetch by Telegram file ids.
+    const effectiveBotInfo = await resolveBotInfo(botInfo)
     const decodedImages = imagesData?.map((base64) =>
       Buffer.from(base64, 'base64'),
     )
+    const quickFilterBotInfo = effectiveBotInfo?.id
+      ? { id: effectiveBotInfo.id, username: effectiveBotInfo.username }
+      : undefined
+
+    const passedQuickFilter = await quickFilter(
+      message,
+      decodedImages,
+      quickFilterBotInfo,
+    )
+    if (!passedQuickFilter) {
+      logger.info(
+        {
+          ...messageMeta,
+          reason: 'quick_filter',
+        },
+        'worker.skipped',
+      )
+      return { statusCode: 200, body: 'Skipped' }
+    }
+
+    // Decode images if present in payload, otherwise fetch by Telegram file ids.
     const fetchedImages = decodedImages?.length
       ? decodedImages
       : await fetchImagesByFileIds(imageFileIds)
     const effectiveImages = fetchedImages.length > 0 ? fetchedImages : undefined
-    const effectiveBotInfo = await resolveBotInfo(botInfo)
 
     // Run the agentic loop with bot API
     await runAgenticLoop(message, bot.api, effectiveImages, effectiveBotInfo)

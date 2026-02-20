@@ -64,13 +64,7 @@ bot.on('message', async (ctx) => {
     return
   }
 
-  // handleMessageWithAgent invokes the agent Lambda with InvocationType: 'Event',
-  // so AWS returns 202 instantly and the actual processing happens async.
-  // We MUST await here to ensure the Lambda API call completes before
-  // the execution context freezes (otherwise the invocation "sticks" until next message).
-  await handleMessageWithAgent(message, ctx).catch((error) =>
-    console.error('handleMessageWithAgent error: ', error),
-  )
+  handleMessageWithAgent(message)
 })
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')

@@ -1,39 +1,10 @@
-import type { Context } from 'grammy/web'
 import type { Message } from 'telegram-typings'
 
-import {
-  getLargestPhoto,
-  invokeAgentLambda,
-  isAgenticChatEnabled,
-} from '@tg-bot/common'
-import { type BotInfo, quickFilter } from './quick-filter'
+import { getLargestPhoto, invokeAgentLambda } from '@tg-bot/common'
 
 export interface AgentPayload {
   message: Message
   imageFileIds?: string[]
-  botInfo?: BotInfo
-}
-
-let cachedBotInfo: BotInfo | undefined
-
-async function resolveBotInfo(ctx: Context): Promise<BotInfo | undefined> {
-  if (cachedBotInfo) {
-    return cachedBotInfo
-  }
-
-  if (ctx.me) {
-    cachedBotInfo = { id: ctx.me.id, username: ctx.me.username }
-    return cachedBotInfo
-  }
-
-  try {
-    const me = await ctx.api.getMe()
-    cachedBotInfo = { id: me.id, username: me.username }
-    return cachedBotInfo
-  } catch (error) {
-    console.error('Failed to resolve bot info', error)
-    return undefined
-  }
 }
 
 function collectImageFileIds(message: Message): string[] {
@@ -50,39 +21,22 @@ function collectImageFileIds(message: Message): string[] {
  * Main entry point for handling messages with the agent.
  * Returns quickly after invoking Lambda async.
  */
-export async function handleMessageWithAgent(
-  message: Message,
-  ctx: Context,
-  imagesData?: Buffer[],
-): Promise<void> {
+export function handleMessageWithAgent(message: Message): void {
   const chatId = message.chat?.id
-  if (!chatId || !(await isAgenticChatEnabled(chatId))) {
+  if (!chatId) {
     return
   }
 
-  // Resolve bot identity so reply detection works reliably for plain follow-ups.
-  const botInfo = await resolveBotInfo(ctx)
-
-  // Step 1: Quick filter (cheap model) - this is fast
-  const passedQuickFilter = await quickFilter(message, imagesData, botInfo)
-
-  if (!passedQuickFilter) {
-    return
-  }
-
-  // Step 2: Invoke agent worker Lambda async (don't wait for response)
-  // This returns immediately, allowing us to send 200 OK to Telegram
+  // Invoke agent worker Lambda async and return immediately.
+  // Worker handles chat-enabled checks and quick filtering.
   const payload: AgentPayload = {
     message,
     imageFileIds: collectImageFileIds(message),
-    botInfo,
   }
 
-  try {
-    await invokeAgentLambda(payload)
-  } catch (error) {
-    console.error('Failed to invoke agent Lambda', error)
-  }
+  void invokeAgentLambda(payload).catch((error) =>
+    console.error('Failed to invoke agent Lambda', error),
+  )
 
   // Return immediately - worker will handle the response
 }
