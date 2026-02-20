@@ -124,15 +124,17 @@ export async function quickFilter(
     const systemPrompt = `You are a quick filter for a Telegram group bot.
 
 ENGAGE only if:
-- Message mentions the bot ("бот", "ботик", "ботяра", "bot", "ботан", etc) and IT MAKES SENSE that the user is talking to the bot (not just mentioning it in third person)
-- Message is a reply to the bot's previous message and IT MAKES SENSE that the user is asking the bot about clarification or asking something to do (draw, tell, help, explain, etc.). Don't reply on "great job" or something like that.
-- User is clearly asking the bot something
-- Message has media (photo/image) with caption mentioning the bot
+- Message mentions the bot ("бот", "ботик", "ботяра", "bot", "ботан", etc) AND the user is asking/requesting something from the bot (question, task, request)
+- Message is a reply to the bot's previous message AND the user is asking a follow-up question or requesting something new (draw, tell, help, explain, etc.)
+- User is clearly asking the bot something or giving it a task
+- Message has media (photo/image) with caption that asks the bot to do something
 
 IGNORE (default) if:
+- Praise, reactions, compliments about the bot ("молодец", "красиво", "круто", "класс", "nice", "cool", "ботик клевый", etc.) — even if the bot is mentioned
+- Short acknowledgements ("ок", "да", "понял", "спасибо", "лол", etc.)
 - The message is clearly NOT meant for the bot to answer
 - Pure spam or meaningless characters
-- Unsure - when in doubt, ignore
+- Unsure — when in doubt, IGNORE
 
 Context:
 - From: ${message.from?.first_name || 'Unknown'}
