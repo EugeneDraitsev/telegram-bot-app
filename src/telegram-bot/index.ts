@@ -71,7 +71,7 @@ bot.on('message', async (ctx) => {
     return
   }
 
-  handleMessageWithAgent(message)
+  await handleMessageWithAgent(message)
 })
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')

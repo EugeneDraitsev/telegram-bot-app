@@ -19,9 +19,9 @@ function collectImageFileIds(message: Message): string[] {
 
 /**
  * Main entry point for handling messages with the agent.
- * Returns quickly after invoking Lambda async.
+ * Waits only for Lambda async invoke ACK, not for worker completion.
  */
-export function handleMessageWithAgent(message: Message): void {
+export async function handleMessageWithAgent(message: Message): Promise<void> {
   const chatId = message.chat?.id
   if (!chatId) {
     return
@@ -34,9 +34,11 @@ export function handleMessageWithAgent(message: Message): void {
     imageFileIds: collectImageFileIds(message),
   }
 
-  void invokeAgentLambda(payload).catch((error) =>
-    console.error('Failed to invoke agent Lambda', error),
-  )
-
-  // Return immediately - worker will handle the response
+  try {
+    console.log(111)
+    await invokeAgentLambda(payload)
+    console.log(222)
+  } catch (error) {
+    console.error('Failed to invoke agent Lambda', error)
+  }
 }
