@@ -117,7 +117,7 @@ export async function generateImage(
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const interaction = await ai.interactions.create({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-3-pro-image-preview',
       input,
       response_modalities: ['image', 'text'],
     })
