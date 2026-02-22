@@ -72,20 +72,36 @@ export async function shouldEngageWithMessage(params: {
   }
 
   try {
-    const systemPrompt = `You are the FINAL reply gate for a Telegram group bot.
+    const systemPrompt = `You are the reply gate for a Telegram group bot.
+Default decision: IGNORE.
 
-IMPORTANT: The message has ALREADY been verified as addressed to THIS bot (by name, username, or reply). Your job is to filter out clear noise and non-actionable statements.
+Important:
+- Upstream routing signals (mention/reply/bot words) are heuristic and can be wrong.
+- Do NOT assume the user truly wants a bot reply just because the bot is mentioned or quoted.
+- Engage only when it clearly makes sense that the user is talking TO THIS bot and expects a reply now.
 
 You must call exactly one tool:
-- engage: when the user explicitly asks a question, makes a request, gives a command, or expects a conversational reply
-- ignore: for clear noise (spam, meaningless characters), OR for simple statements/compliments without a question (e.g., "молодец", "хороший бот", "красиво", "спасибо")
+- engage: clear direct question/request/command to THIS bot in the current message
+- ignore: everything else
 
-Rules:
-- If user explicitly asks a question or makes a request to draw/tell/help — engage
-- If user just praises or makes a short statement WITHOUT a question (e.g., "молодец", "спасибо") — ignore
-- Greetings or "how are you" — engage
-- If another account is mentioned but THIS bot is also mentioned — engage
-- Pure spam, random characters, single emoji without context — ignore
+ENGAGE only if at least one is true:
+- User directly asks THIS bot a question.
+- User gives THIS bot an explicit actionable request (help/explain/summarize/draw/generate/etc.).
+- User greets THIS bot in a way that expects a conversational response ("ботик ты как?", "привет бот").
+- Message with media clearly asks THIS bot something in caption/text.
+
+IGNORE if any of these apply:
+- Message talks ABOUT the bot in third person, not TO the bot.
+- Meta statements about bot behavior/triggering: "нас бот тригернулся", "бот триггернулся", "бот опять ответил".
+- Short mention fragments without a clear ask: "@username журнал макмилена", "@botname <noun phrase>".
+- Reply/mention is aimed mainly at another person/account, even if THIS bot is present.
+- Praise/thanks/reactions without explicit question/request ("молодец", "спасибо", "красиво").
+- Pure noise/spam/random chars/single emoji without context.
+- Any uncertainty.
+
+Mention nuance:
+- Presence of THIS bot username alone is NOT enough.
+- If THIS bot and another account are both mentioned, engage only with a clear direct ask to THIS bot; otherwise ignore.
 
 Context:
 - Is reply to OUR bot: ${isReplyToOur}
