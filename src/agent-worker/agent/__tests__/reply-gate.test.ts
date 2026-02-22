@@ -1,7 +1,7 @@
 import type { Message } from 'telegram-typings'
 
 import { logger } from '../../logger'
-import { chatModel } from '../models'
+import { replyGateModel } from '../models'
 import { shouldEngageWithMessage } from '../reply-gate'
 
 type ToolCall = { name: string }
@@ -11,11 +11,11 @@ const OUR_BOT = { id: 123456, username: 'testbot' }
 const mockInvoke = jest.fn<Promise<InvokeResult>, unknown[]>()
 
 beforeAll(() => {
-  jest.spyOn(chatModel, 'bindTools').mockImplementation(
+  jest.spyOn(replyGateModel, 'bindTools').mockImplementation(
     () =>
       ({
         invoke: mockInvoke,
-      }) as unknown as ReturnType<typeof chatModel.bindTools>,
+      }) as unknown as ReturnType<typeof replyGateModel.bindTools>,
   )
 })
 

@@ -4,7 +4,7 @@ import { getErrorMessage } from '@tg-bot/common'
 import { logger } from '../logger'
 import { getAgentTools, TOOL_NAMES } from '../tools'
 import type { AgentChatMessage } from '../types'
-import { MAX_TOOL_ITERATIONS } from './config'
+import { MAX_TOOL_ITERATIONS, TOOL_CALL_TIMEOUT_MS } from './config'
 import { TOOL_COLLECTION_RULES } from './context'
 import { chatModel } from './models'
 import { agentSystemInstructions } from './system-instructions'
@@ -42,6 +42,30 @@ function toResultText(result: unknown): string {
 
 function toErrorText(error: unknown): string {
   return getErrorMessage(error)
+}
+
+async function invokeToolWithTimeout(
+  tool: DynamicStructuredTool,
+  args: unknown,
+): Promise<unknown> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(
+        new Error(`Tool execution timed out after ${TOOL_CALL_TIMEOUT_MS}ms`),
+      )
+    }, TOOL_CALL_TIMEOUT_MS)
+    timeoutHandle.unref?.()
+  })
+
+  try {
+    // biome-ignore lint/suspicious/noExplicitAny: tool args come from model
+    return await Promise.race([(tool as any).invoke(args), timeoutPromise])
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
+  }
 }
 
 function mergeTools(
@@ -164,8 +188,7 @@ export async function runToolCollection(params: {
       )
 
       try {
-        // biome-ignore lint/suspicious/noExplicitAny: tool args come from model
-        const toolResult = await (tool as any).invoke(toolCall.args)
+        const toolResult = await invokeToolWithTimeout(tool, toolCall.args)
         const resultText = toResultText(toolResult)
         roundNotes.push(`${toolCall.name}: ${resultText}`)
         executedCount++

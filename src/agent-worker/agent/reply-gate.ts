@@ -11,7 +11,7 @@ import {
   mentionsOurBot,
 } from '@tg-bot/common'
 import { logger } from '../logger'
-import { chatModel } from './models'
+import { replyGateModel } from './models'
 
 const REPLY_GATE_TIMEOUT_MS = 15_000
 
@@ -32,12 +32,13 @@ const replyGateTools = [
   }),
 ]
 
-let replyGateModelWithTools: ReturnType<typeof chatModel.bindTools> | null =
-  null
+let replyGateModelWithTools: ReturnType<
+  typeof replyGateModel.bindTools
+> | null = null
 
 function getReplyGateModelWithTools() {
   if (!replyGateModelWithTools) {
-    replyGateModelWithTools = chatModel.bindTools(replyGateTools)
+    replyGateModelWithTools = replyGateModel.bindTools(replyGateTools)
   }
   return replyGateModelWithTools
 }
