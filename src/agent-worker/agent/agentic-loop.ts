@@ -1,4 +1,4 @@
-import { ThinkingLevel } from '@google/genai'
+// import { ThinkingLevel } from '@google/genai'
 import type {
   Content,
   FunctionCall,
@@ -225,7 +225,7 @@ export async function runAgenticLoop(
               systemInstruction,
               tools,
               temperature: 1.0,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+              // thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
             },
           },
           chatId,
