@@ -18,8 +18,10 @@ export const setupMultimodalOpenAiCommands = async (
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
   if (deferredCommands) {
-    // Don't wait for the response
-    invokeReplyLambda(commandData)
+    // Wait only for Lambda async invoke ACK, not for worker execution.
+    await invokeReplyLambda(commandData).catch((error) =>
+      console.error('Failed to invoke reply worker', error),
+    )
     return
   }
 
@@ -62,8 +64,10 @@ export const setupImageGenerationOpenAiCommands = async (
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
-    // Don't wait for the response
-    invokeReplyLambda(commandData)
+    // Wait only for Lambda async invoke ACK, not for worker execution.
+    await invokeReplyLambda(commandData).catch((error) =>
+      console.error('Failed to invoke reply worker', error),
+    )
     return
   }
 

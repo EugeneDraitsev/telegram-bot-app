@@ -17,8 +17,10 @@ export const setupGemmaDat1coCommands = async (
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
-    // Don't wait for the response
-    invokeReplyLambda(commandData)
+    // Wait only for Lambda async invoke ACK, not for worker execution.
+    await invokeReplyLambda(commandData).catch((error) =>
+      console.error('Failed to invoke reply worker', error),
+    )
     return
   } else {
     const { combinedText, imagesData, chatId, replyId } = commandData
@@ -51,8 +53,10 @@ export const setupImageGenerationDat1coCommands = async (
   const commandData = await getMultimodalCommandData(ctx)
 
   if (deferredCommands) {
-    // Don't wait for the response
-    invokeReplyLambda(commandData)
+    // Wait only for Lambda async invoke ACK, not for worker execution.
+    await invokeReplyLambda(commandData).catch((error) =>
+      console.error('Failed to invoke reply worker', error),
+    )
     return
   } else {
     const { combinedText, chatId, replyId } = commandData
