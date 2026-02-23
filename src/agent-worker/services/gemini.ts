@@ -57,7 +57,8 @@ export async function searchWeb(
 }
 
 /**
- * Generate image with optional text response
+ * Generate image with optional text response.
+ * Uses the Interactions API with gemini-3-pro-image-preview.
  */
 export async function generateImage(
   prompt: string,
@@ -67,7 +68,6 @@ export async function generateImage(
     throw new Error('Gemini API key not configured')
   }
 
-  // Build input with optional images
   const input: Array<{
     role: 'user'
     content: Array<
@@ -76,7 +76,6 @@ export async function generateImage(
     >
   }> = []
 
-  // Add input images if provided (for editing)
   if (inputImages?.length) {
     for (const image of inputImages) {
       input.push({
@@ -92,7 +91,6 @@ export async function generateImage(
     }
   }
 
-  // Add prompt
   input.push({
     role: 'user',
     content: [{ type: 'text', text: prompt }],
@@ -126,13 +124,7 @@ export async function generateImage(
       break
     }
 
-    logger.warn(
-      {
-        attempt,
-        maxRetries: MAX_RETRIES,
-      },
-      'Gemini image generation returned no image',
-    )
+    logger.warn({ attempt, maxRetries: MAX_RETRIES }, 'image_gen.no_image')
   }
 
   if (result.text) {

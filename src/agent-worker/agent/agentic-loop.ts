@@ -102,13 +102,13 @@ async function executeToolCall(
   logger.info({ chatId, tool: name, payload: toolCall.args }, 'tool.call')
 
   try {
+    const timeout = tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS
     const result = await Promise.race([
       tool.execute((toolCall.args as Record<string, unknown>) ?? {}),
       new Promise<string>((_, reject) => {
         const handle = setTimeout(
-          () =>
-            reject(new Error(`Tool timed out after ${TOOL_CALL_TIMEOUT_MS}ms`)),
-          TOOL_CALL_TIMEOUT_MS,
+          () => reject(new Error(`Tool timed out after ${timeout}ms`)),
+          timeout,
         )
         // biome-ignore lint/suspicious/noExplicitAny: timer unref
         ;(handle as any).unref?.()

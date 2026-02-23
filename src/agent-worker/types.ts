@@ -116,6 +116,8 @@ export type AgentResponse =
 export interface AgentTool {
   declaration: FunctionDeclaration
   execute: (args: Record<string, unknown>) => Promise<string>
+  /** Override default tool timeout (ms). Used for slow tools like image generation. */
+  timeoutMs?: number
 }
 
 export { Type }
