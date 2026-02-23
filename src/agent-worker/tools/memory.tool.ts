@@ -1,12 +1,6 @@
 /**
  * Tools for reading and updating agent memory (chat-scoped and global).
- *
- * Memory is stored as markdown in Redis. The agent decides autonomously
- * when to read or update it — ideally not on every message.
  */
-
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
 
 import {
   getChatMemory,
@@ -15,24 +9,31 @@ import {
   setChatMemory,
   setGlobalMemory,
 } from '@tg-bot/common'
+import { type AgentTool, Type } from '../types'
 import { requireToolContext } from './context'
 
-export const getMemoryTool = new DynamicStructuredTool({
-  name: 'get_memory',
-  description:
-    'Retrieve your saved memory notes. Use "chat" scope for notes specific to the current chat (user preferences, inside jokes, etc.) or "global" for cross-chat knowledge. Memory is preloaded in context at the start, so call this only if you need to re-read the latest version after an update.',
-  schema: z.object({
-    scope: z
-      .enum(['chat', 'global'])
-      .describe(
-        'Which memory to read: "chat" (current chat) or "global" (cross-chat).',
-      ),
-  }),
-  func: async ({ scope }) => {
+export const getMemoryTool: AgentTool = {
+  declaration: {
+    name: 'get_memory',
+    description:
+      'Retrieve your saved memory notes. Use "chat" scope for current chat notes or "global" for cross-chat knowledge. Memory is preloaded in context, so call this only if you need re-read after an update.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        scope: {
+          type: Type.STRING,
+          description: 'Which memory to read: "chat" or "global".',
+          enum: ['chat', 'global'],
+        },
+      },
+      required: ['scope'],
+    },
+  },
+  execute: async (args) => {
     const { message } = requireToolContext()
 
     try {
-      if (scope === 'chat') {
+      if (args.scope === 'chat') {
         const chatId = message.chat?.id
         if (!chatId) return 'Error: No chat ID available'
         const memory = await getChatMemory(chatId)
@@ -45,38 +46,44 @@ export const getMemoryTool = new DynamicStructuredTool({
       return `Error reading memory: ${getErrorMessage(error)}`
     }
   },
-})
+}
 
-export const updateMemoryTool = new DynamicStructuredTool({
-  name: 'update_memory',
-  description:
-    'Save or update your memory notes (markdown). Use sparingly — only when you learn something genuinely worth remembering (e.g. user preferences, important facts, self-improvement notes). "chat" scope is for current-chat notes, "global" is for cross-chat knowledge. Content replaces the previous value entirely, so include everything you want to keep.',
-  schema: z.object({
-    scope: z
-      .enum(['chat', 'global'])
-      .describe(
-        'Which memory to update: "chat" (current chat) or "global" (cross-chat).',
-      ),
-    content: z
-      .string()
-      .describe(
-        'Full markdown content to save. This replaces the existing memory entirely.',
-      ),
-  }),
-  func: async ({ scope, content }) => {
+export const updateMemoryTool: AgentTool = {
+  declaration: {
+    name: 'update_memory',
+    description:
+      'Save or update your memory notes (markdown). Use sparingly — only when you learn something genuinely worth remembering. Content replaces the previous value entirely.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        scope: {
+          type: Type.STRING,
+          description: 'Which memory to update: "chat" or "global".',
+          enum: ['chat', 'global'],
+        },
+        content: {
+          type: Type.STRING,
+          description:
+            'Full markdown content to save. Replaces the existing memory entirely.',
+        },
+      },
+      required: ['scope', 'content'],
+    },
+  },
+  execute: async (args) => {
     const { message } = requireToolContext()
 
     try {
-      if (scope === 'chat') {
+      if (args.scope === 'chat') {
         const chatId = message.chat?.id
         if (!chatId) return 'Error: No chat ID available'
-        const ok = await setChatMemory(chatId, content)
+        const ok = await setChatMemory(chatId, args.content as string)
         return ok
           ? 'Chat memory updated successfully.'
           : 'Error: failed to save chat memory.'
       }
 
-      const ok = await setGlobalMemory(content)
+      const ok = await setGlobalMemory(args.content as string)
       return ok
         ? 'Global memory updated successfully.'
         : 'Error: failed to save global memory.'
@@ -84,4 +91,4 @@ export const updateMemoryTool = new DynamicStructuredTool({
       return `Error updating memory: ${getErrorMessage(error)}`
     }
   },
-})
+}

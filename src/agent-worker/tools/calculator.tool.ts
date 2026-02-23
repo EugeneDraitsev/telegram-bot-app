@@ -1,11 +1,8 @@
 /**
  * Tool for mathematical calculations
- * Pure tool - returns calculation result
  */
 
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
-
+import { type AgentTool, Type } from '../types'
 import { requireToolContext } from './context'
 
 // Safe math expression evaluator (no eval!)
@@ -31,37 +28,39 @@ function evaluateExpression(expr: string): number {
   return result
 }
 
-export const calculatorTool = new DynamicStructuredTool({
-  name: 'calculator',
-  description:
-    'Perform mathematical calculations. Use for arithmetic operations like addition, subtraction, multiplication, division, percentages, and powers. Supports parentheses for complex expressions.',
-  schema: z.object({
-    expression: z
-      .string()
-      .describe(
-        'Mathematical expression to evaluate (e.g., "2 + 2", "15 * 7", "(100 - 20) / 4", "2^10", "50%")',
-      ),
-  }),
-  func: async ({ expression }) => {
+export const calculatorTool: AgentTool = {
+  declaration: {
+    name: 'calculator',
+    description:
+      'Perform mathematical calculations. Use for arithmetic operations like addition, subtraction, multiplication, division, percentages, and powers.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        expression: {
+          type: Type.STRING,
+          description:
+            'Mathematical expression to evaluate (e.g., "2 + 2", "15 * 7", "(100 - 20) / 4", "2^10")',
+        },
+      },
+      required: ['expression'],
+    },
+  },
+  execute: async (args) => {
     requireToolContext()
+    const expression = args.expression as string
 
     try {
-      // Handle percentage as "X% of Y" or just "X%" (convert to decimal)
       let processedExpr = expression
-
-      // Convert "X%" to "X/100" when standalone
       processedExpr = processedExpr.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)')
-
       const result = evaluateExpression(processedExpr)
 
-      // Format result nicely
       const formatted = Number.isInteger(result)
         ? result.toString()
         : result.toFixed(6).replace(/\.?0+$/, '')
 
       return `${expression} = ${formatted}`
     } catch (_error) {
-      return `Error calculating "${expression}": Invalid expression. Please use valid math operators (+, -, *, /, ^, %) and numbers.`
+      return `Error calculating "${expression}": Invalid expression.`
     }
   },
-})
+}

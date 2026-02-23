@@ -1,4 +1,3 @@
-import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 
 import {
@@ -7,6 +6,7 @@ import {
   getWeather,
 } from '@tg-bot/common'
 import { searchWeb } from '../services'
+import { type AgentTool, Type } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const MAX_DYNAMIC_TOOLS = 16
@@ -50,21 +50,28 @@ function buildPrompt(template: string | undefined, input: string): string {
   return `${normalizedTemplate}\n${normalizedInput}`.trim()
 }
 
-function createDynamicTool(
-  definition: DynamicToolDefinition,
-): DynamicStructuredTool {
+function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
   const { name, description, action, template, searchFormat } = definition
 
   if (action === 'send_text') {
-    return new DynamicStructuredTool({
-      name,
-      description,
-      schema: z.object({
-        input: z.string().describe('Text to send to user'),
-      }),
-      func: async ({ input }) => {
+    return {
+      declaration: {
+        name,
+        description,
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            input: {
+              type: Type.STRING,
+              description: 'Text to send to user',
+            },
+          },
+          required: ['input'],
+        },
+      },
+      execute: async (args) => {
         requireToolContext()
-        const text = buildPrompt(template, input)
+        const text = buildPrompt(template, args.input as string)
         if (!text) {
           return `Error: Dynamic tool "${name}" produced empty text`
         }
@@ -72,40 +79,66 @@ function createDynamicTool(
         addResponse({ type: 'text', text })
         return `Dynamic tool "${name}" added text response`
       },
-    })
+    }
   }
 
   if (action === 'web_search') {
-    return new DynamicStructuredTool({
-      name,
-      description,
-      schema: z.object({
-        query: z.string().describe('What to search on the web'),
-        format: z.enum(['brief', 'detailed', 'list']).optional(),
-      }),
-      func: async ({ query, format }) => {
+    return {
+      declaration: {
+        name,
+        description,
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            query: {
+              type: Type.STRING,
+              description: 'What to search on the web',
+            },
+            format: {
+              type: Type.STRING,
+              description: 'Response format',
+              enum: ['brief', 'detailed', 'list'],
+            },
+          },
+          required: ['query'],
+        },
+      },
+      execute: async (args) => {
         requireToolContext()
-        const preparedQuery = buildPrompt(template, query)
+        const preparedQuery = buildPrompt(template, args.query as string)
         if (!preparedQuery) {
           return `Error: Dynamic tool "${name}" has empty query`
         }
 
-        const text = await searchWeb(preparedQuery, format ?? searchFormat)
+        const text = await searchWeb(
+          preparedQuery,
+          (args.format as 'brief' | 'detailed' | 'list') ?? searchFormat,
+        )
         addResponse({ type: 'text', text })
         return `Dynamic tool "${name}" completed web search`
       },
-    })
+    }
   }
 
-  return new DynamicStructuredTool({
-    name,
-    description,
-    schema: z.object({
-      location: z.string().describe('City or location for weather'),
-    }),
-    func: async ({ location }) => {
+  // get_weather action
+  return {
+    declaration: {
+      name,
+      description,
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          location: {
+            type: Type.STRING,
+            description: 'City or location for weather',
+          },
+        },
+        required: ['location'],
+      },
+    },
+    execute: async (args) => {
       requireToolContext()
-      const preparedLocation = buildPrompt(template, location)
+      const preparedLocation = buildPrompt(template, args.location as string)
       if (!preparedLocation) {
         return `Error: Dynamic tool "${name}" has empty location`
       }
@@ -117,13 +150,13 @@ function createDynamicTool(
       })
       return `Dynamic tool "${name}" got weather for ${weather.city}`
     },
-  })
+  }
 }
 
 export async function loadDynamicTools(
   chatId: number | undefined,
   reservedNames: Set<string>,
-): Promise<DynamicStructuredTool[]> {
+): Promise<AgentTool[]> {
   if (!chatId) {
     return []
   }
@@ -133,7 +166,7 @@ export async function loadDynamicTools(
     return []
   }
 
-  const resolvedTools: DynamicStructuredTool[] = []
+  const resolvedTools: AgentTool[] = []
   const usedNames = new Set(reservedNames)
 
   for (const rawTool of rawTools) {

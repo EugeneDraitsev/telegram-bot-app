@@ -1,5 +1,10 @@
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
+/**
+ * Reply gate — LLM-based filter using gemini-2.5-flash-lite.
+ * Deterministic pre-filter + LLM engage/ignore decision.
+ */
+
+import { Type } from '@google/genai'
+import type { FunctionDeclaration } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
 import {
@@ -11,68 +16,33 @@ import {
   mentionsOurBot,
 } from '@tg-bot/common'
 import { logger } from '../logger'
-import { replyGateModel } from './models'
+import { REPLY_GATE_TIMEOUT_MS } from './config'
+import { ai, REPLY_GATE_MODEL } from './models'
 
-const REPLY_GATE_TIMEOUT_MS = 15_000
-
-const replyGateTools = [
-  new DynamicStructuredTool({
+const replyGateTools: FunctionDeclaration[] = [
+  {
     name: 'engage',
     description:
       'The message is addressed to the bot and contains something meaningful.',
-    schema: z.object({}),
-    func: async () => ({ shouldEngage: true }),
-  }),
-  new DynamicStructuredTool({
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
     name: 'ignore',
     description:
       'Ignore the message. Use for clear noise: spam, meaningless characters, or messages clearly not meant for the bot.',
-    schema: z.object({}),
-    func: async () => ({ shouldEngage: false }),
-  }),
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
 ]
 
-let replyGateModelWithTools: ReturnType<
-  typeof replyGateModel.bindTools
-> | null = null
-
-function getReplyGateModelWithTools() {
-  if (!replyGateModelWithTools) {
-    replyGateModelWithTools = replyGateModel.bindTools(replyGateTools)
-  }
-  return replyGateModelWithTools
-}
-
-export async function shouldEngageWithMessage(params: {
-  message: Message
-  textContent: string
+function buildReplyGatePrompt(params: {
+  isReplyToOur: boolean
+  hasOurMention: boolean
+  mentionsOther: boolean
   hasImages: boolean
+  textContent: string
   memoryBlock?: string
-  botInfo?: BotIdentity
-}): Promise<boolean> {
-  const { message, textContent, hasImages, memoryBlock, botInfo } = params
-
-  if (!textContent.trim() && !hasImages) {
-    return false
-  }
-
-  const isReplyToOur = isReplyToOurBot(message, botInfo?.id)
-  const isReplyToAnother = isReplyToAnotherBot(message, botInfo?.id)
-  const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
-
-  if (isReplyToAnother && !hasOurMention) {
-    return false
-  }
-
-  const addressedToBot =
-    isReplyToOur || hasBotAddressSignal(textContent, botInfo?.username)
-
-  if (!addressedToBot) {
-    return false
-  }
-
-  try {
-    const systemPrompt = `You are the reply gate for a Telegram group bot.
+}): string {
+  return `You are the reply gate for a Telegram group bot.
 Default decision: IGNORE.
 
 Important:
@@ -104,27 +74,82 @@ Mention nuance:
 - If THIS bot and another account are both mentioned, engage only with a clear direct ask to THIS bot; otherwise ignore.
 
 Context:
-- Is reply to OUR bot: ${isReplyToOur}
-- Mentions OUR bot: ${hasOurMention}
-- Mentions other account: ${mentionsAnotherAccount(textContent, botInfo?.username)}
-- Has media: ${hasImages}
-- Message: "${textContent || '[media without text]'}"
-${memoryBlock ? `\n${memoryBlock}` : ''}`
+- Is reply to OUR bot: ${params.isReplyToOur}
+- Mentions OUR bot: ${params.hasOurMention}
+- Mentions other account: ${params.mentionsOther}
+- Has media: ${params.hasImages}
+- Message: "${params.textContent || '[media without text]'}"
+${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
+}
 
-    const result = await getReplyGateModelWithTools().invoke(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'human', content: textContent || '[media without text]' },
-      ],
-      { timeout: REPLY_GATE_TIMEOUT_MS },
-    )
+export async function shouldEngageWithMessage(params: {
+  message: Message
+  textContent: string
+  hasImages: boolean
+  memoryBlock?: string
+  botInfo?: BotIdentity
+}): Promise<boolean> {
+  const { message, textContent, hasImages, memoryBlock, botInfo } = params
 
-    const toolCalls = result.tool_calls ?? []
-    if (toolCalls.length === 0) {
-      return false
+  if (!textContent.trim() && !hasImages) {
+    return false
+  }
+
+  const isReplyToOur = isReplyToOurBot(message, botInfo?.id)
+  const isReplyToAnother = isReplyToAnotherBot(message, botInfo?.id)
+  const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
+
+  if (isReplyToAnother && !hasOurMention) {
+    return false
+  }
+
+  const addressedToBot =
+    isReplyToOur || hasBotAddressSignal(textContent, botInfo?.username)
+
+  if (!addressedToBot) {
+    return false
+  }
+
+  try {
+    const systemPrompt = buildReplyGatePrompt({
+      isReplyToOur,
+      hasOurMention,
+      mentionsOther: mentionsAnotherAccount(textContent, botInfo?.username),
+      hasImages,
+      textContent,
+      memoryBlock,
+    })
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), REPLY_GATE_TIMEOUT_MS)
+
+    try {
+      const response = await ai.models.generateContent({
+        model: REPLY_GATE_MODEL,
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: textContent || '[media without text]' }],
+          },
+        ],
+        config: {
+          systemInstruction: systemPrompt,
+          tools: [{ functionDeclarations: replyGateTools }],
+          temperature: 0,
+        },
+      })
+
+      const parts = response.candidates?.[0]?.content?.parts ?? []
+      const functionCall = parts.find((p) => p.functionCall)?.functionCall
+
+      if (!functionCall) {
+        return false
+      }
+
+      return functionCall.name === 'engage'
+    } finally {
+      clearTimeout(timeout)
     }
-
-    return toolCalls[0].name === 'engage'
   } catch (error) {
     logger.error({ error }, 'reply_gate.failed')
     return false

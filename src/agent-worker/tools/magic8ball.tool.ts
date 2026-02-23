@@ -2,13 +2,10 @@
  * Magic 8 Ball tool - random prediction with sticker
  */
 
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
-
 import { sample } from '@tg-bot/common'
+import { type AgentTool, Type } from '../types'
 import { addResponse, requireToolContext } from './context'
 
-// Magic Ball sticker pack: https://telegram.me/addstickers/magicBall
 const MAGIC_BALL_STICKERS = [
   'BQADAgADYgADt7A3BoDZ58u5GNyPAg',
   'BQADAgADZAADt7A3BhljKKZjgGXtAg',
@@ -32,17 +29,22 @@ const MAGIC_BALL_STICKERS = [
   'BQADAgADiAADt7A3Bi3iPt8F9H3aAg',
 ]
 
-export const magic8BallTool = new DynamicStructuredTool({
-  name: 'magic_8_ball',
-  description:
-    'Magic 8 Ball - send a random prediction sticker as a SEPARATE message (no text needed). Use when user asks a yes/no question and wants a mystical answer, or asks for fortune telling, prediction, or uses "🎱" emoji. The sticker speaks for itself - don\'t add commentary.',
-  schema: z.object({
-    question: z
-      .string()
-      .optional()
-      .describe('The question user is asking (optional, for context)'),
-  }),
-  func: async ({ question }) => {
+export const magic8BallTool: AgentTool = {
+  declaration: {
+    name: 'magic_8_ball',
+    description:
+      "Magic 8 Ball - send a random prediction sticker as a SEPARATE message. Use when user asks a yes/no question and wants a mystical answer, or uses 🎱 emoji. Don't add commentary.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        question: {
+          type: Type.STRING,
+          description: 'The question user is asking (optional)',
+        },
+      },
+    },
+  },
+  execute: async (args) => {
     requireToolContext()
 
     const stickerId = sample(MAGIC_BALL_STICKERS)
@@ -55,7 +57,8 @@ export const magic8BallTool = new DynamicStructuredTool({
       fileId: stickerId,
     })
 
+    const question = args.question as string | undefined
     const questionText = question ? ` to "${question}"` : ''
     return `Magic 8 Ball has spoken${questionText}! Sent prediction sticker.`
   },
-})
+}

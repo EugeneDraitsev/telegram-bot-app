@@ -1,7 +1,16 @@
+import { ThinkingLevel } from '@google/genai'
+import type {
+  Content,
+  FunctionCall,
+  GenerateContentResponse,
+  Part,
+  Tool,
+} from '@google/genai'
 import type { Message } from 'telegram-typings'
 
 import {
   type BotIdentity,
+  cleanGeminiMessage,
   getChatMemory,
   getGlobalMemory,
 } from '@tg-bot/common'
@@ -10,15 +19,124 @@ import {
   getAgentTools,
   getCollectedResponses,
   runWithToolContext,
-  TOOL_NAMES,
 } from '../tools'
-import type { AgentResponse, TelegramApi } from '../types'
+import type { AgentResponse, AgentTool, TelegramApi } from '../types'
+import {
+  MAX_RETRIES,
+  MAX_TOOL_ITERATIONS,
+  RETRY_BASE_DELAY_MS,
+  TERMINAL_TOOLS,
+  TOOL_CALL_TIMEOUT_MS,
+} from './config'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
-import { composeFinalText } from './final-text'
+import { ai, CHAT_MODEL } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
-import { buildCollectionMessages, runToolCollection } from './tool-collection'
+import { agentSystemInstructions } from './system-instructions'
 import { startTyping } from './typing'
+
+// ── Helpers ──────────────────────────────────────────────────
+
+function buildSystemInstruction(
+  contextBlock: string,
+  memoryBlock?: string,
+): string {
+  const parts = [agentSystemInstructions, contextBlock]
+  if (memoryBlock) {
+    parts.push(memoryBlock)
+  }
+  return parts.join('\n\n')
+}
+
+function buildNativeTools(agentTools: AgentTool[]): Tool[] {
+  if (agentTools.length === 0) {
+    return []
+  }
+  return [{ functionDeclarations: agentTools.map((t) => t.declaration) }]
+}
+
+/**
+ * Call generateContent with retry logic for transient errors (503, 429).
+ */
+async function generateWithRetry(
+  params: Parameters<typeof ai.models.generateContent>[0],
+  chatId: number,
+): Promise<GenerateContentResponse> {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await ai.models.generateContent(params)
+    } catch (error) {
+      lastError = error
+      const status = (error as { status?: number })?.status
+      const isRetryable = status === 503 || status === 429
+
+      if (!isRetryable || attempt === MAX_RETRIES) {
+        throw error
+      }
+
+      const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
+      logger.warn(
+        { chatId, attempt: attempt + 1, status, delayMs: delay },
+        'model.retry',
+      )
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+
+  throw lastError
+}
+
+async function executeToolCall(
+  toolCall: FunctionCall,
+  toolByName: Map<string, AgentTool>,
+  chatId: number,
+): Promise<{ name: string; result: string }> {
+  const name = toolCall.name ?? ''
+  const tool = toolByName.get(name)
+  if (!tool) {
+    return { name, result: `Error: tool "${name}" not found` }
+  }
+
+  logger.info({ chatId, tool: name, payload: toolCall.args }, 'tool.call')
+
+  try {
+    const result = await Promise.race([
+      tool.execute((toolCall.args as Record<string, unknown>) ?? {}),
+      new Promise<string>((_, reject) => {
+        const handle = setTimeout(
+          () =>
+            reject(new Error(`Tool timed out after ${TOOL_CALL_TIMEOUT_MS}ms`)),
+          TOOL_CALL_TIMEOUT_MS,
+        )
+        // biome-ignore lint/suspicious/noExplicitAny: timer unref
+        ;(handle as any).unref?.()
+      }),
+    ])
+
+    logger.info({ chatId, tool: name, result }, 'tool.done')
+    return { name, result }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error({ chatId, tool: name, error: errorMsg }, 'tool.failed')
+    return { name, result: `Error: ${errorMsg}` }
+  }
+}
+
+function extractErrorInfo(error: unknown): unknown {
+  if (!(error instanceof Error)) return error
+  const record = error as unknown as Record<string, unknown>
+  return {
+    name: error.name,
+    message: error.message,
+    ...('status' in error ? { status: record.status } : {}),
+    ...('statusText' in error ? { statusText: record.statusText } : {}),
+    ...('errorDetails' in error ? { errorDetails: record.errorDetails } : {}),
+  }
+}
+
+// ── Main loop ────────────────────────────────────────────────
 
 export async function runAgenticLoop(
   message: Message,
@@ -48,6 +166,7 @@ export async function runAgenticLoop(
         getGlobalMemory().catch(() => ''),
       ])
       const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
+
       const shouldRespond = await shouldEngageWithMessage({
         message,
         textContent,
@@ -56,13 +175,7 @@ export async function runAgenticLoop(
         botInfo,
       })
       if (!shouldRespond) {
-        logger.info(
-          {
-            ...messageMeta,
-            reason: 'final_reply_gate',
-          },
-          'loop.skipped',
-        )
+        logger.info({ ...messageMeta, reason: 'reply_gate' }, 'loop.skipped')
         return
       }
 
@@ -75,63 +188,126 @@ export async function runAgenticLoop(
 
       stopTyping = startTyping(api, chatId)
 
-      const tools = await getAgentTools(chatId).catch((error) => {
+      const agentTools = await getAgentTools(chatId).catch((error) => {
         logger.error({ chatId, error }, 'tools.load_failed')
-        return []
+        return [] as AgentTool[]
       })
 
       const contextBlock = buildContextBlock(message, textContent, hasImages)
-
-      const collectionMessages = buildCollectionMessages({
+      const systemInstruction = buildSystemInstruction(
         contextBlock,
         memoryBlock,
-        textContent,
-      })
+      )
+      const tools = buildNativeTools(agentTools)
+      const toolByName = new Map<string, AgentTool>(
+        agentTools
+          .filter((t) => t.declaration.name != null)
+          .map((t) => [t.declaration.name ?? '', t]),
+      )
 
-      const { toolNotes, shouldSkip } = await runToolCollection({
-        messages: collectionMessages,
-        tools,
-        chatId,
-      })
+      // Build initial contents
+      const contents: Content[] = [
+        {
+          role: 'user',
+          parts: [{ text: textContent || '[User sent media without text]' }],
+        },
+      ]
 
-      if (shouldSkip) {
-        logger.info(
+      // generateContent loop with native function calling
+      let finalText = ''
+
+      for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+        const response = await generateWithRetry(
           {
-            ...messageMeta,
-            reason: TOOL_NAMES.DO_NOTHING,
+            model: CHAT_MODEL,
+            contents,
+            config: {
+              systemInstruction,
+              tools,
+              temperature: 1.0,
+              thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+            },
           },
-          'loop.skipped',
+          chatId,
         )
-        return
+
+        const parts = response.candidates?.[0]?.content?.parts ?? []
+        const functionCalls = parts.filter(
+          (p): p is Part & { functionCall: FunctionCall } => !!p.functionCall,
+        )
+        const textParts = parts.filter((p) => p.text).map((p) => p.text ?? '')
+
+        if (textParts.length > 0) {
+          finalText = textParts.join('\n')
+        }
+
+        // No function calls → we're done
+        if (functionCalls.length === 0) {
+          break
+        }
+
+        // Add model response to context
+        contents.push({ role: 'model', parts })
+
+        // Execute all function calls
+        const toolResults = await Promise.all(
+          functionCalls.map((fc) =>
+            executeToolCall(fc.functionCall, toolByName, chatId),
+          ),
+        )
+
+        // Check if ALL called tools are terminal (produce complete responses)
+        // If so, skip the second model call — the tool response IS the response
+        const allTerminal = functionCalls.every((fc) =>
+          TERMINAL_TOOLS.has(fc.functionCall.name ?? ''),
+        )
+        const collectedNow = getCollectedResponses()
+
+        if (allTerminal && collectedNow.length > 0) {
+          logger.info(
+            { chatId, tools: functionCalls.map((fc) => fc.functionCall.name) },
+            'loop.terminal_tools_skip',
+          )
+          break
+        }
+
+        // Add tool results back as function responses
+        contents.push({
+          role: 'user',
+          parts: toolResults.map((tr) => ({
+            functionResponse: {
+              name: tr.name,
+              response: { result: tr.result },
+            },
+          })),
+        })
       }
 
+      // Collect any responses added by tools (media, text drafts, etc.)
       const { textDrafts, mediaResponses } = splitResponses(
         getCollectedResponses(),
       )
 
-      const composeStartedAt = Date.now()
-      const finalText = await composeFinalText({
-        contextBlock,
-        memoryBlock,
-        textContent,
-        toolNotes,
-        textDrafts,
-        hasMedia: mediaResponses.length > 0,
-      })
-      const composeDurationMs = Date.now() - composeStartedAt
-
+      // Build final list of responses
       const responsesToSend: AgentResponse[] = [...mediaResponses]
+
+      // Combine model's final text with any tool text drafts
+      const allTextParts: string[] = []
+      if (textDrafts.length > 0) {
+        allTextParts.push(...textDrafts)
+      }
       if (finalText.trim()) {
-        responsesToSend.push({ type: 'text', text: finalText })
+        allTextParts.push(cleanGeminiMessage(finalText))
+      }
+
+      const combinedText = allTextParts.join('\n\n').trim()
+      if (combinedText) {
+        responsesToSend.push({ type: 'text', text: combinedText })
       }
 
       if (responsesToSend.length === 0) {
         logger.info(
-          {
-            ...messageMeta,
-            composeDurationMs,
-            durationMs: Date.now() - startedAt,
-          },
+          { ...messageMeta, durationMs: Date.now() - startedAt },
           'loop.no_response',
         )
         return
@@ -149,11 +325,10 @@ export async function runAgenticLoop(
         {
           ...messageMeta,
           durationMs: Date.now() - startedAt,
-          composeDurationMs,
           deliveryDurationMs: Date.now() - deliveryStartedAt,
           responseCount: responsesToSend.length,
           mediaCount: mediaResponses.length,
-          hasFinalText: Boolean(finalText.trim()),
+          hasFinalText: Boolean(combinedText),
         },
         'loop.done',
       )
@@ -163,7 +338,7 @@ export async function runAgenticLoop(
       {
         ...messageMeta,
         durationMs: Date.now() - startedAt,
-        error,
+        error: extractErrorInfo(error),
       },
       'loop.failed',
     )

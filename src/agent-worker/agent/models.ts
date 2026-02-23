@@ -1,17 +1,13 @@
 /**
- * AI Model configurations for the agent
+ * AI Model configuration for the agent.
+ * Single GoogleGenAI instance shared across all modules.
  */
 
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
+import { GoogleGenAI } from '@google/genai'
 
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 
-export const chatModel = new ChatGoogleGenerativeAI({
-  model: 'gemini-3-flash-preview',
-  apiKey,
-})
+export const ai = new GoogleGenAI({ apiKey })
 
-export const replyGateModel = new ChatGoogleGenerativeAI({
-  model: 'gemini-2.0-flash-lite',
-  apiKey,
-})
+export const CHAT_MODEL = 'gemini-3-flash-preview'
+export const REPLY_GATE_MODEL = 'gemini-2.5-flash-lite'
