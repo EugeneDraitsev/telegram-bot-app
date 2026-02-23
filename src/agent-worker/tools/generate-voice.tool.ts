@@ -1,52 +1,58 @@
 /**
  * Tool for generating voice messages (TTS)
- * Pure tool - adds response to collector, doesn't send directly
  */
-
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
 
 import { getErrorMessage } from '@tg-bot/common'
 import { generateVoice } from '../services'
+import { type AgentTool, Type } from '../types'
 import { addResponse, requireToolContext } from './context'
 
-export const generateVoiceTool = new DynamicStructuredTool({
-  name: 'generate_voice',
-  description:
-    'Generate a voice message (text-to-speech). Use when user asks for audio response, wants to hear something, or you want to add a voice message.',
-  schema: z.object({
-    text: z
-      .string()
-      .describe(
-        'The text to convert to speech. Keep it concise (max ~500 words).',
-      ),
-    voice: z
-      .enum(['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'])
-      .optional()
-      .describe(
-        'Voice to use. nova=female, onyx=male, alloy=neutral. Default: nova',
-      ),
-  }),
-  func: async ({ text, voice = 'nova' }) => {
+export const generateVoiceTool: AgentTool = {
+  declaration: {
+    name: 'generate_voice',
+    description:
+      'Generate a voice message (text-to-speech). Use when user asks for audio response.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        text: {
+          type: Type.STRING,
+          description:
+            'The text to convert to speech. Keep concise (~500 words).',
+        },
+        voice: {
+          type: Type.STRING,
+          description:
+            'Voice: nova=female, onyx=male, alloy=neutral. Default: nova.',
+          enum: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
+        },
+      },
+      required: ['text'],
+    },
+  },
+  execute: async (args) => {
     requireToolContext()
 
     try {
-      const normalizedText = text.trim()
-      if (!normalizedText) {
+      const text = (args.text as string).trim()
+      if (!text) {
         return 'Error generating voice: Text cannot be empty'
       }
 
-      const buffer = await generateVoice(normalizedText, voice)
+      const voice =
+        (args.voice as
+          | 'alloy'
+          | 'echo'
+          | 'fable'
+          | 'onyx'
+          | 'nova'
+          | 'shimmer') || 'nova'
+      const buffer = await generateVoice(text, voice)
 
-      addResponse({
-        type: 'voice',
-        buffer,
-      })
-
-      return `Generated voice message (${voice}): "${normalizedText.slice(0, 50)}..."`
+      addResponse({ type: 'voice', buffer })
+      return `Generated voice message (${voice}): "${text.slice(0, 50)}..."`
     } catch (error) {
-      const errorMsg = getErrorMessage(error)
-      return `Error generating voice: ${errorMsg}`
+      return `Error generating voice: ${getErrorMessage(error)}`
     }
   },
-})
+}

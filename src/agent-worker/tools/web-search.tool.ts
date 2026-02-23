@@ -1,48 +1,39 @@
 /**
- * Tool for searching the web using grounded Google Search.
- * Pure tool - adds response to collector, doesn't send directly.
+ * Web search tool — uses Google Search grounding via gemini-2.5-flash-lite.
+ * Returns search results to the model for composing the final response.
  */
-
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
 
 import { getErrorMessage } from '@tg-bot/common'
 import { searchWeb } from '../services'
-import { addResponse, requireToolContext } from './context'
+import { type AgentTool, Type } from '../types'
+import { requireToolContext } from './context'
 
-export const webSearchTool = new DynamicStructuredTool({
-  name: 'web_search',
-  description:
-    'Search the web for current information using grounded Google Search. Use for news, facts, prices, events, sports scores, and any other time-sensitive questions.',
-  schema: z.object({
-    query: z
-      .string()
-      .describe(
-        'The search query or question (e.g., "latest iPhone price", "who won World Cup 2024")',
-      ),
-    format: z
-      .enum(['brief', 'detailed', 'list'])
-      .optional()
-      .describe(
-        'Response format: brief=short answer, detailed=more context, list=concise bullet list. Default: brief',
-      ),
-  }),
-  func: async ({ query, format = 'brief' }) => {
+export const webSearchTool: AgentTool = {
+  declaration: {
+    name: 'web_search',
+    description:
+      'Search the web for current information. Use this for any factual queries: crypto prices, stock prices, exchange rates, news, sports scores, events, etc. Returns a text summary with fresh data from Google Search.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description:
+            'The search query (e.g. "bitcoin price", "cardano ADA price today")',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  execute: async (args) => {
     requireToolContext()
+    const { query } = args as { query: string }
 
     try {
-      const normalizedQuery = query.trim()
-      if (!normalizedQuery) {
-        return 'Error searching web: Query cannot be empty'
-      }
-
-      const text = await searchWeb(normalizedQuery, format)
-      addResponse({ type: 'text', text })
-
-      return `Web search completed for: "${normalizedQuery}"`
+      const result = await searchWeb(query, 'detailed')
+      return result
     } catch (error) {
-      const errorMsg = getErrorMessage(error)
-      return `Error searching web: ${errorMsg}`
+      return `Web search failed: ${getErrorMessage(error)}`
     }
   },
-})
+}

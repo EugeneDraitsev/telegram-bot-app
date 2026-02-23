@@ -5,14 +5,12 @@
  * Telegram messages directly.
  */
 
-import type { DynamicStructuredTool } from '@langchain/core/tools'
-
+import type { AgentTool } from '../types'
 import { animateGifTool } from './animate-gif.tool'
 import { calculatorTool } from './calculator.tool'
 import { createDynamicToolTool } from './create-dynamic-tool.tool'
 import { dateTimeTool } from './datetime.tool'
 import { telegramDiceTool } from './dice.tool'
-import { doNothingTool } from './do-nothing.tool'
 import { loadDynamicTools } from './dynamic-tools'
 import { generateImageTool } from './generate-image.tool'
 import { generateVoiceTool } from './generate-voice.tool'
@@ -23,8 +21,6 @@ import { randomChoiceTool, randomNumberTool } from './random.tool'
 import { searchGifTool } from './search-gif.tool'
 import { searchImageTool } from './search-image.tool'
 import { searchVideoTool } from './search-video.tool'
-import { sendTextTool } from './send-text.tool'
-import { summarizeContentTool } from './summarize-content.tool'
 import { weatherTool } from './weather.tool'
 import { webSearchTool } from './web-search.tool'
 
@@ -42,7 +38,6 @@ export {
   calculatorTool,
   createDynamicToolTool,
   dateTimeTool,
-  doNothingTool,
   generateImageTool,
   generateVoiceTool,
   getHistoryTool,
@@ -54,8 +49,6 @@ export {
   searchGifTool,
   searchImageTool,
   searchVideoTool,
-  sendTextTool,
-  summarizeContentTool,
   telegramDiceTool,
   updateMemoryTool,
   weatherTool,
@@ -63,7 +56,6 @@ export {
 }
 
 export const TOOL_NAMES = {
-  SEND_TEXT: 'send_text',
   GET_DATETIME: 'get_datetime',
   CALCULATOR: 'calculator',
   RANDOM_NUMBER: 'random_number',
@@ -77,17 +69,14 @@ export const TOOL_NAMES = {
   ANIMATE_TEXT: 'animate_text',
   GENERATE_VOICE: 'generate_voice',
   GET_WEATHER: 'get_weather',
-  WEB_SEARCH: 'web_search',
-  SUMMARIZE_CONTENT: 'summarize_content',
   GET_HISTORY: 'get_chat_history',
   GET_MEMORY: 'get_memory',
   UPDATE_MEMORY: 'update_memory',
   CREATE_DYNAMIC_TOOL: 'create_dynamic_tool',
-  DO_NOTHING: 'do_nothing',
+  WEB_SEARCH: 'web_search',
 } as const
 
-const baseAgentTools: DynamicStructuredTool[] = [
-  sendTextTool,
+const baseAgentTools: AgentTool[] = [
   dateTimeTool,
   calculatorTool,
   randomNumberTool,
@@ -101,18 +90,20 @@ const baseAgentTools: DynamicStructuredTool[] = [
   animateGifTool,
   generateVoiceTool,
   weatherTool,
-  webSearchTool,
-  summarizeContentTool,
   getHistoryTool,
   getMemoryTool,
   updateMemoryTool,
   createDynamicToolTool,
-  doNothingTool,
+  webSearchTool,
 ]
 
-const baseToolNames = new Set(baseAgentTools.map((tool) => tool.name))
+const baseToolNames = new Set<string>(
+  baseAgentTools
+    .map((tool) => tool.declaration.name)
+    .filter((name): name is string => name != null),
+)
 
-export function getBaseAgentTools(): DynamicStructuredTool[] {
+export function getBaseAgentTools(): AgentTool[] {
   return [...baseAgentTools]
 }
 
@@ -121,9 +112,7 @@ export function getBaseAgentTools(): DynamicStructuredTool[] {
  * - static built-in tools
  * - optional dynamic tools from Redis
  */
-export async function getAgentTools(
-  chatId?: number,
-): Promise<DynamicStructuredTool[]> {
+export async function getAgentTools(chatId?: number): Promise<AgentTool[]> {
   const tools = getBaseAgentTools()
   const dynamicTools = await loadDynamicTools(chatId, baseToolNames)
   return dynamicTools.length ? [...tools, ...dynamicTools] : tools

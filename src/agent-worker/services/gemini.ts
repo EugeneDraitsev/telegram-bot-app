@@ -1,6 +1,7 @@
 /**
- * Google Gemini AI for text and image generation
- * Independent implementation for agent-worker
+ * Google Gemini AI for image and voice generation.
+ * Text generation for the main loop is now in agentic-loop.ts via @google/genai directly.
+ * This file keeps specialized generation functions that tools still need.
  */
 
 import { GoogleGenAI } from '@google/genai'
@@ -9,55 +10,22 @@ import { logger } from '../logger'
 
 const apiKey = process.env.GEMINI_API_KEY || ''
 const ai = new GoogleGenAI({ apiKey })
-const OPENAI_TTS_TIMEOUT_MS = 15_000
 
 type WebSearchResponseFormat = 'brief' | 'detailed' | 'list'
 
 /**
- * System instructions for the bot personality
+ * Search the web using grounded Google Search via gemini-2.0-flash.
+ * Uses a faster model since it only needs to search + format — not think deeply.
+ * The output is Telegram-ready markdown that can be sent directly.
  */
-const SYSTEM_INSTRUCTIONS = `Ты - умный и весёлый бот-помощник в Telegram чате.
-Отвечай кратко, по делу, с юмором когда уместно.
-Используй emoji умеренно.
-Отвечай на том языке, на котором к тебе обращаются (обычно русский).
-Не используй markdown форматирование - только plain text.`
-
-/**
- * Generate text completion with optional grounded search
- */
-export async function generateText(
-  prompt: string,
-  useGroundedSearch = false,
-  model = 'gemini-3-flash-preview',
-): Promise<string> {
-  if (!apiKey) {
-    throw new Error('Gemini API key not configured')
-  }
-
-  const interaction = await ai.interactions.create({
-    model,
-    input: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-    system_instruction: SYSTEM_INSTRUCTIONS,
-    ...(useGroundedSearch ? { tools: [{ type: 'google_search' }] } : {}),
-  })
-
-  const textOutput = interaction.outputs?.find((o) => o.type === 'text')
-  const text = textOutput?.text
-
-  if (!text) {
-    throw new Error('Empty response from Gemini')
-  }
-
-  return cleanResponse(text)
-}
-
 export async function searchWeb(
   query: string,
   format: WebSearchResponseFormat = 'brief',
 ): Promise<string> {
   const formatInstructions: Record<WebSearchResponseFormat, string> = {
     brief: 'Answer briefly in 1-2 sentences.',
-    detailed: 'Answer in detail with concise context and key facts.',
+    detailed:
+      'Answer concisely with key facts. Use markdown formatting (bold for key numbers, bullet points for lists). Keep it under 500 characters — this is a Telegram chat.',
     list: 'Answer as a concise bullet list.',
   }
 
@@ -65,9 +33,27 @@ export async function searchWeb(
     'Use fresh web information from Google Search.',
     `Query: ${query}`,
     formatInstructions[format],
+    'Answer in the same language as the query.',
   ].join('\n')
 
-  return generateText(prompt, true)
+  if (!apiKey) {
+    throw new Error('Gemini API key not configured')
+  }
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-lite',
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+    },
+  })
+
+  const text = response.text
+  if (!text) {
+    throw new Error('Empty response from Gemini')
+  }
+
+  return cleanResponse(text)
 }
 
 /**
@@ -156,9 +142,10 @@ export async function generateImage(
   return result
 }
 
+const OPENAI_TTS_TIMEOUT_MS = 15_000
+
 /**
  * Generate voice audio using OpenAI TTS
- * Note: Using OpenAI because Gemini doesn't have native TTS
  */
 export async function generateVoice(
   text: string,
@@ -178,7 +165,7 @@ export async function generateVoice(
     },
     body: JSON.stringify({
       model: 'tts-1',
-      input: text.slice(0, 4096), // TTS limit
+      input: text.slice(0, 4096),
       voice,
       response_format: 'opus',
     }),

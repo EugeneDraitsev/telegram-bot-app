@@ -4,9 +4,8 @@
  * Tools collect responses and the agent loop delivers them at the end.
  */
 
-import type { BaseMessageLike } from '@langchain/core/messages'
-
-export type AgentChatMessage = BaseMessageLike
+import { Type } from '@google/genai'
+import type { FunctionDeclaration } from '@google/genai'
 
 export interface TelegramApi {
   sendMessage: (
@@ -110,8 +109,13 @@ export type AgentResponse =
   | StickerResponse
   | DiceResponse
 
-export interface ToolResult {
-  success: boolean
-  message: string
-  response?: AgentResponse
+/**
+ * Tool definition for native @google/genai function calling.
+ * Each tool has a declaration (schema for the model) and an execute function.
+ */
+export interface AgentTool {
+  declaration: FunctionDeclaration
+  execute: (args: Record<string, unknown>) => Promise<string>
 }
+
+export { Type }

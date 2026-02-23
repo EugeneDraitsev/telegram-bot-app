@@ -1,13 +1,12 @@
 /**
  * Tool for finding video links with grounded web search.
- * Uses generic web search instead of direct YouTube API.
+ * Now uses native google_search grounding via the main model call,
+ * but provides a specialized prompt for video search.
  */
-
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
 
 import { getErrorMessage } from '@tg-bot/common'
 import { searchWeb } from '../services'
+import { type AgentTool, Type } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const URL_REGEX = /https?:\/\/[^\s<>)"\]}]+/i
@@ -32,52 +31,55 @@ function buildVideoSearchPrompt(query: string): string {
   ].join('\n')
 }
 
-export const searchVideoTool = new DynamicStructuredTool({
-  name: 'search_video',
-  description:
-    'Find a relevant video link on the web. Use when user asks for a video, clip, tutorial, music video, or stream.',
-  schema: z.object({
-    query: z
-      .string()
-      .describe('Search query for finding the video. Be specific.'),
-    comment: z
-      .string()
-      .optional()
-      .describe('Optional comment to send with the found video link'),
-  }),
-  func: async ({ query, comment }) => {
+export const searchVideoTool: AgentTool = {
+  declaration: {
+    name: 'search_video',
+    description:
+      'Find a relevant video link on the web. Use when user asks for a video, clip, tutorial, music video.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description: 'Search query for finding the video. Be specific.',
+        },
+        comment: {
+          type: Type.STRING,
+          description: 'Optional comment to send with the found video link',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  execute: async (args) => {
     requireToolContext()
 
     try {
-      const normalizedQuery = query.trim()
-      if (!normalizedQuery) {
+      const query = (args.query as string).trim()
+      if (!query) {
         return 'Error searching video: Query cannot be empty'
       }
 
       const searchResult = await searchWeb(
-        buildVideoSearchPrompt(normalizedQuery),
+        buildVideoSearchPrompt(query),
         'brief',
       )
       const videoUrl = extractFirstUrl(searchResult)
 
       if (!videoUrl) {
-        addResponse({
-          type: 'text',
-          text: searchResult,
-        })
+        addResponse({ type: 'text', text: searchResult })
         return 'No direct video URL found, added web search answer as text'
       }
 
       addResponse({
         type: 'video',
         url: videoUrl,
-        caption: comment?.trim() || undefined,
+        caption: (args.comment as string)?.trim() || undefined,
       })
 
       return `Found video URL: ${videoUrl}`
     } catch (error) {
-      const errorMsg = getErrorMessage(error)
-      return `Error searching video: ${errorMsg}`
+      return `Error searching video: ${getErrorMessage(error)}`
     }
   },
-})
+}

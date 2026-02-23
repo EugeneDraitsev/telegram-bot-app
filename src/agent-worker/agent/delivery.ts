@@ -172,11 +172,22 @@ async function sendAnimation(
   }
 }
 
-async function sendVoice(params: DeliveryParams & { voice: Buffer }) {
+async function sendVoice(
+  params: DeliveryParams & { voice: Buffer; caption?: string },
+) {
+  const options = {
+    ...getReplyOptions(params.replyToMessageId),
+    ...(params.caption
+      ? {
+          caption: formatCaption(params.caption),
+          parse_mode: 'MarkdownV2' as const,
+        }
+      : {}),
+  }
   const sentMessage = await params.api.sendVoice(
     params.chatId,
     new InputFile(params.voice, 'voice.opus'),
-    getReplyOptions(params.replyToMessageId),
+    options,
   )
   await saveBotReplyToHistory(sentMessage)
 }
@@ -216,6 +227,12 @@ export async function sendResponses(
   }
 
   try {
+    // If we have voice + text → send voice with text as caption (one message)
+    if (bundle.voice && bundle.text) {
+      await sendVoice({ ...base, voice: bundle.voice, caption: bundle.text })
+      return
+    }
+
     const mediaParams = { ...base, text: bundle.text }
     if (bundle.dice) {
       await sendDice({ ...base, dice: bundle.dice })
@@ -236,13 +253,12 @@ export async function sendResponses(
     logger.error({ error, chatId: params.chatId }, 'delivery.primary_failed')
   }
 
-  if (!bundle.voice) {
-    return
-  }
-
-  try {
-    await sendVoice({ ...base, voice: bundle.voice })
-  } catch (error) {
-    logger.error({ error, chatId: params.chatId }, 'delivery.secondary_failed')
+  // Voice without text (already handled above if both present)
+  if (bundle.voice) {
+    try {
+      await sendVoice({ ...base, voice: bundle.voice })
+    } catch (error) {
+      logger.error({ error, chatId: params.chatId }, 'delivery.voice_failed')
+    }
   }
 }

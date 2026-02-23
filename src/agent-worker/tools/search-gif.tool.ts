@@ -4,11 +4,10 @@
  */
 
 import { GiphyFetch } from '@giphy/js-fetch-api'
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { z } from 'zod'
 import type { IGif } from '@giphy/js-types'
 
 import { getErrorMessage, sample } from '@tg-bot/common'
+import { type AgentTool, Type } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const GIPHY_RESULTS_LIMIT = 20
@@ -50,23 +49,32 @@ export async function searchGiphyGif(query: string): Promise<string | null> {
   return picked ? getMediaUrl(picked) : null
 }
 
-export const searchGifTool = new DynamicStructuredTool({
-  name: 'search_gif',
-  description:
-    'Find a direct gif/mp4/webm media URL for reactions or short loops.',
-  schema: z.object({
-    query: z.string().describe('Search query for gif/meme/reaction'),
-  }),
-  func: async ({ query }) => {
+export const searchGifTool: AgentTool = {
+  declaration: {
+    name: 'search_gif',
+    description:
+      'Find a direct gif/mp4/webm media URL for reactions or short loops.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description: 'Search query for gif/meme/reaction',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  execute: async (args) => {
     requireToolContext()
 
-    const normalizedQuery = query.trim()
-    if (!normalizedQuery) {
+    const query = (args.query as string).trim()
+    if (!query) {
       return 'Error searching gif: Query cannot be empty'
     }
 
     try {
-      const mediaUrl = await searchGiphyGif(normalizedQuery)
+      const mediaUrl = await searchGiphyGif(query)
 
       if (!mediaUrl) {
         return 'No GIF found for this query'
@@ -78,8 +86,7 @@ export const searchGifTool = new DynamicStructuredTool({
       })
       return `Found GIF: ${mediaUrl}`
     } catch (error) {
-      const errorMsg = getErrorMessage(error)
-      return `Error searching gif: ${errorMsg}`
+      return `Error searching gif: ${getErrorMessage(error)}`
     }
   },
-})
+}
