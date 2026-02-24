@@ -7,8 +7,8 @@ import type { Context } from 'grammy/web'
 
 import { startTypingIndicator } from './typing.utils'
 
-/** Default reaction emoji for AI commands (robot face) */
-export const AI_COMMAND_REACTION = '🤖'
+/** Default reaction emoji for AI commands */
+export const AI_COMMAND_REACTION = '⚡'
 
 /** Default reaction emoji for agentic bot */
 export const AGENT_REACTION = '👀'
