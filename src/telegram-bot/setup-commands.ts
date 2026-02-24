@@ -42,6 +42,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /z - get chat statistics for all time
   // /s - get chat statistics for last 24 hours
   // /all - ping all active users in chat
+  // /x <hours?> - show AI metrics dashboard
   setupUsersCommands(bot)
 
   // /w <text> - search wikipedia

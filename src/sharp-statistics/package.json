@@ -6,7 +6,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "2.15.4",
-    "styled-components": "^6.3.10"
+    "styled-components": "^6.3.11"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

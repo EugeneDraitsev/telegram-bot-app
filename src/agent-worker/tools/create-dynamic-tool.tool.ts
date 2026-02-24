@@ -8,7 +8,7 @@ import {
   saveDynamicToolsRaw,
 } from '@tg-bot/common'
 import { logger } from '../logger'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 import {
   type DynamicToolDefinition,
@@ -16,14 +16,25 @@ import {
 } from './dynamic-tools'
 
 const RESERVED_TOOL_NAMES = new Set<string>([
+  'get_datetime',
+  'code_execution',
+  'random_number',
+  'random_choice',
+  'magic_8_ball',
+  'telegram_dice',
   'search_image',
   'generate_or_edit_image',
   'search_video',
   'search_gif',
+  'animate_text',
   'generate_voice',
   'get_weather',
   'get_chat_history',
+  'get_memory',
+  'update_memory',
   'create_dynamic_tool',
+  'web_search',
+  'url_context',
 ])
 
 function uniqueByName(tools: DynamicToolDefinition[]): DynamicToolDefinition[] {
@@ -49,38 +60,39 @@ function parseDynamicToolList(rawTools: unknown[]): DynamicToolDefinition[] {
 
 export const createDynamicToolTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'create_dynamic_tool',
     description:
       'Create or update dynamic tool in Redis for current chat. Use only when the current user message explicitly asks for reusable automation.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         name: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Tool name (lowercase, underscores, 3-64 chars, e.g. "check_btc")',
         },
         description: {
-          type: Type.STRING,
+          type: 'string',
           description: 'What the tool does (8-500 chars)',
         },
         action: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Action type',
           enum: ['send_text', 'web_search', 'get_weather'],
         },
         template: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Optional template with {{input}} placeholder (max 2000 chars)',
         },
         searchFormat: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Search format for web_search action',
           enum: ['brief', 'detailed', 'list'],
         },
         enabled: {
-          type: Type.BOOLEAN,
+          type: 'boolean',
           description: 'Whether the tool is enabled. Default: true',
         },
       },

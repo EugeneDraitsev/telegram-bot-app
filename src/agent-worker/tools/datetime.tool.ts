@@ -2,34 +2,29 @@
  * Tool for getting current date and time
  */
 
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
 const TIMEZONE_LABELS: Record<string, string> = {
-  'Europe/Moscow': 'Москва',
-  'Europe/Kiev': 'Киев',
-  'Europe/Minsk': 'Минск',
-  'America/New_York': 'Нью-Йорк',
-  'America/Los_Angeles': 'Лос-Анджелес',
-  'Europe/London': 'Лондон',
-  'Europe/Paris': 'Париж',
-  'Asia/Tokyo': 'Токио',
-  'Asia/Shanghai': 'Шанхай',
+  'Europe/Warsaw': 'Warsaw',
+  'Europe/Stockholm': 'Stockholm',
   UTC: 'UTC',
 }
 
+const DEFAULT_TIMEZONE = 'UTC'
+
 export const dateTimeTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'get_datetime',
     description:
       'Get current date and time. Use when user asks about current time, date, day of week.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         timezone: {
-          type: Type.STRING,
-          description:
-            'Timezone in IANA format (e.g., "Europe/Moscow"). Defaults to UTC.',
+          type: 'string',
+          description: 'Timezone in IANA format. Defaults to UTC.',
         },
       },
     },
@@ -38,7 +33,7 @@ export const dateTimeTool: AgentTool = {
     requireToolContext()
 
     try {
-      const tz = (args.timezone as string) || 'UTC'
+      const tz = (args.timezone as string) || DEFAULT_TIMEZONE
       const now = new Date()
 
       const formatter = new Intl.DateTimeFormat('ru-RU', {

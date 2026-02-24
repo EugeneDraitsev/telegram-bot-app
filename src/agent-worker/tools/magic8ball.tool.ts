@@ -3,7 +3,7 @@
  */
 
 import { sample } from '@tg-bot/common'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const MAGIC_BALL_STICKERS = [
@@ -31,14 +31,15 @@ const MAGIC_BALL_STICKERS = [
 
 export const magic8BallTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'magic_8_ball',
     description:
       "Magic 8 Ball - send a random prediction sticker as a SEPARATE message. Use when user asks a yes/no question and wants a mystical answer, or uses 🎱 emoji. Don't add commentary.",
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         question: {
-          type: Type.STRING,
+          type: 'string',
           description: 'The question user is asking (optional)',
         },
       },

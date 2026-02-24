@@ -3,7 +3,7 @@
  */
 
 import { getErrorMessage, sample } from '@tg-bot/common'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 import { getGiphyClient, getMediaUrl } from './search-gif.tool'
 
@@ -19,14 +19,15 @@ export async function animateGiphyText(text: string): Promise<string | null> {
 
 export const animateGifTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'animate_text',
     description:
       'Generate an animated GIF from text using Giphy Animate. Great for greetings, announcements, or expressive short phrases.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         text: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Short text to animate (e.g. "Happy Birthday!", "LOL")',
         },
       },

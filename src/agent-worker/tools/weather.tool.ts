@@ -3,19 +3,20 @@
  */
 
 import { formatWeatherText, getErrorMessage, getWeather } from '@tg-bot/common'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 export const weatherTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'get_weather',
     description:
       'Get current weather and 3-day forecast for a location. Use when user asks about weather, temperature, or forecast.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         location: {
-          type: Type.STRING,
+          type: 'string',
           description: 'The city or location (e.g., "Moscow", "Минск")',
         },
       },

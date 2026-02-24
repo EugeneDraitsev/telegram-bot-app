@@ -1,0 +1,220 @@
+/**
+ * Metrics collection — logs and stores timing data for model calls and tools.
+ * Stores in Redis sorted set keyed by timestamp for time-series queries.
+ */
+
+import { getRedisClient } from './client'
+
+const METRICS_KEY = 'agent:metrics'
+/** Keep metrics for 30 days */
+const METRICS_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+interface MetricEntry {
+  /** 'model_call' for AI model invocations, 'tool_call' for tool executions */
+  type: 'model_call' | 'tool_call'
+  /** 'agentic' for agent loop calls, 'command' for /q /o /ge /e etc. */
+  source: 'agentic' | 'command'
+  name: string
+  model?: string
+  chatId: number
+  durationMs: number
+  success: boolean
+  timestamp: number
+}
+
+/** Record a metric entry — stores in Redis for graphing (fire-and-forget) */
+export async function recordMetric(entry: MetricEntry): Promise<void> {
+  try {
+    const redis = getRedisClient()
+    if (!redis) return
+
+    const timestamp = Number.isFinite(entry.timestamp)
+      ? entry.timestamp
+      : Date.now()
+    const metricEntry = { ...entry, timestamp }
+
+    await redis.zadd(METRICS_KEY, {
+      score: timestamp,
+      member: JSON.stringify(metricEntry),
+    })
+
+    // Trim old entries (older than TTL)
+    await redis.zremrangebyscore(METRICS_KEY, 0, timestamp - METRICS_TTL_MS)
+  } catch {
+    // Silently ignore Redis errors — metrics are best-effort
+  }
+}
+
+/** Time an async operation and record metrics */
+export async function timedCall<T>(
+  opts: {
+    type: MetricEntry['type']
+    source: MetricEntry['source']
+    name: string
+    model?: string
+    chatId: number
+  },
+  fn: () => Promise<T>,
+): Promise<T> {
+  const start = Date.now()
+  try {
+    const result = await fn()
+    const end = Date.now()
+    void recordMetric({
+      ...opts,
+      durationMs: end - start,
+      success: true,
+      timestamp: end,
+    })
+    return result
+  } catch (error) {
+    const end = Date.now()
+    void recordMetric({
+      ...opts,
+      durationMs: end - start,
+      success: false,
+      timestamp: end,
+    })
+    throw error
+  }
+}
+
+// ── Query & Visualization ────────────────────────────────────
+
+/** Retrieve metric entries from Redis within a time range */
+export async function getMetrics(
+  fromMs: number,
+  toMs: number = Date.now(),
+): Promise<MetricEntry[]> {
+  try {
+    const redis = getRedisClient()
+    if (!redis) return []
+
+    const raw = await redis.zrange(METRICS_KEY, fromMs, toMs, { byScore: true })
+    return (raw as unknown[])
+      .map((s) => {
+        try {
+          // Upstash may auto-deserialize JSON, so s might be string or object
+          if (typeof s === 'string') return JSON.parse(s) as MetricEntry
+          if (typeof s === 'object' && s !== null) return s as MetricEntry
+          return null
+        } catch {
+          return null
+        }
+      })
+      .filter(
+        (e): e is MetricEntry => e !== null && typeof e.durationMs === 'number',
+      )
+  } catch {
+    return []
+  }
+}
+
+function median(arr: number[]): number {
+  if (arr.length === 0) return 0
+  const sorted = [...arr].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
+
+function fmtMs(ms: number): string {
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`
+  return `${Math.round(ms)}ms`
+}
+
+function progressBar(ratio: number, len = 15): string {
+  const filled = Math.round(ratio * len)
+  return '▰'.repeat(filled) + '▱'.repeat(len - filled)
+}
+
+/** Format metrics into a Telegram HTML message (mobile-friendly) */
+export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
+  hoursBack = Math.max(1, Math.min(720, hoursBack || 24))
+  const fromMs = Date.now() - hoursBack * 60 * 60 * 1000
+  const entries = await getMetrics(fromMs)
+
+  if (entries.length === 0) {
+    return `📊 No metrics in the last ${hoursBack}h`
+  }
+
+  const total = entries.length
+  const successes = entries.filter((e) => e.success).length
+  const failures = total - successes
+  const successRate = total > 0 ? successes / total : 0
+  const agenticCount = entries.filter((e) => e.source === 'agentic').length
+  const commandCount = entries.filter((e) => e.source === 'command').length
+
+  const lines: string[] = []
+
+  lines.push(`<b>📊 Metrics — last ${hoursBack}h</b>`)
+  lines.push('')
+  const pct = `${(successRate * 100).toFixed(0)}%`
+  const failStr = failures > 0 ? ` · ❌ ${failures} failed` : ''
+  lines.push(
+    `<code>${progressBar(successRate)} ${pct} ok · ${total} calls</code>`,
+  )
+  lines.push(
+    `🤖 Agentic: ${agenticCount}  ⚡ Commands: ${commandCount}${failStr}`,
+  )
+
+  // Render a group of metrics as <pre> block
+  const renderGroup = (title: string, items: MetricEntry[]) => {
+    if (items.length === 0) return
+
+    const byName = new Map<string, MetricEntry[]>()
+    for (const e of items) {
+      if (!byName.has(e.name)) byName.set(e.name, [])
+      byName.get(e.name)?.push(e)
+    }
+
+    lines.push('')
+    lines.push(`<b>${title}</b>`)
+    const rows: string[] = []
+    for (const [name, group] of [...byName.entries()].sort(
+      (a, b) => b[1].length - a[1].length,
+    )) {
+      const d = group.map((e) => e.durationMs)
+      const fails = group.filter((e) => !e.success).length
+      const okRate =
+        fails > 0
+          ? ` (${Math.round(((group.length - fails) / group.length) * 100)}% ok)`
+          : ''
+      rows.push(`${name}  ${group.length}× ~${fmtMs(median(d))}${okRate}`)
+    }
+    lines.push(`<pre>${rows.join('\n')}</pre>`)
+  }
+
+  renderGroup(
+    '🤖 Agentic',
+    entries.filter((e) => e.source === 'agentic'),
+  )
+  renderGroup(
+    '⚡ Commands',
+    entries.filter((e) => e.source === 'command'),
+  )
+
+  // Models
+  const modelEntries = entries.filter((e) => e.model)
+  if (modelEntries.length > 0) {
+    const byModel = new Map<string, MetricEntry[]>()
+    for (const e of modelEntries) {
+      const m = e.model ?? ''
+      if (!byModel.has(m)) byModel.set(m, [])
+      byModel.get(m)?.push(e)
+    }
+
+    lines.push('')
+    lines.push('<b>🧠 Models</b>')
+    const rows: string[] = []
+    for (const [model, items] of [...byModel.entries()].sort(
+      (a, b) => b[1].length - a[1].length,
+    )) {
+      const d = items.map((e) => e.durationMs)
+      const short = model.replace('gemini-', '').replace('-preview', '')
+      rows.push(`${short}  ${items.length}× ~${fmtMs(median(d))}`)
+    }
+    lines.push(`<pre>${rows.join('\n')}</pre>`)
+  }
+
+  return lines.join('\n')
+}

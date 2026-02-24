@@ -6,7 +6,7 @@ import {
   getWeather,
 } from '@tg-bot/common'
 import { searchWeb } from '../services'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const MAX_DYNAMIC_TOOLS = 16
@@ -56,13 +56,14 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
   if (action === 'send_text') {
     return {
       declaration: {
+        type: 'function',
         name,
         description,
         parameters: {
-          type: Type.OBJECT,
+          type: 'object',
           properties: {
             input: {
-              type: Type.STRING,
+              type: 'string',
               description: 'Text to send to user',
             },
           },
@@ -85,17 +86,18 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
   if (action === 'web_search') {
     return {
       declaration: {
+        type: 'function',
         name,
         description,
         parameters: {
-          type: Type.OBJECT,
+          type: 'object',
           properties: {
             query: {
-              type: Type.STRING,
+              type: 'string',
               description: 'What to search on the web',
             },
             format: {
-              type: Type.STRING,
+              type: 'string',
               description: 'Response format',
               enum: ['brief', 'detailed', 'list'],
             },
@@ -123,13 +125,14 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
   // get_weather action
   return {
     declaration: {
+      type: 'function',
       name,
       description,
       parameters: {
-        type: Type.OBJECT,
+        type: 'object',
         properties: {
           location: {
-            type: Type.STRING,
+            type: 'string',
             description: 'City or location for weather',
           },
         },

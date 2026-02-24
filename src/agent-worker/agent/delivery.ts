@@ -78,15 +78,29 @@ async function sendText(params: DeliveryParams & { text: string }) {
     return
   }
 
-  const sentMessage = await params.api.sendMessage(
-    params.chatId,
-    formatText(text),
-    {
-      parse_mode: 'MarkdownV2',
-      ...getReplyOptions(params.replyToMessageId),
-    },
-  )
-  await saveBotReplyToHistory(sentMessage)
+  try {
+    const sentMessage = await params.api.sendMessage(
+      params.chatId,
+      formatText(text),
+      {
+        parse_mode: 'MarkdownV2',
+        ...getReplyOptions(params.replyToMessageId),
+      },
+    )
+    await saveBotReplyToHistory(sentMessage)
+  } catch (err) {
+    // Fallback: send as plain text if MarkdownV2 parsing fails
+    logger.warn(
+      { chatId: params.chatId, error: (err as Error).message },
+      'delivery.markdown_fallback',
+    )
+    const sentMessage = await params.api.sendMessage(
+      params.chatId,
+      text.slice(0, MAX_TEXT_LENGTH),
+      getReplyOptions(params.replyToMessageId),
+    )
+    await saveBotReplyToHistory(sentMessage)
+  }
 }
 
 async function sendImage(

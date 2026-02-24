@@ -7,7 +7,7 @@
 
 import type { AgentTool } from '../types'
 import { animateGifTool } from './animate-gif.tool'
-import { calculatorTool } from './calculator.tool'
+import { codeExecutionTool } from './code-execution.tool'
 import { createDynamicToolTool } from './create-dynamic-tool.tool'
 import { dateTimeTool } from './datetime.tool'
 import { telegramDiceTool } from './dice.tool'
@@ -21,6 +21,7 @@ import { randomChoiceTool, randomNumberTool } from './random.tool'
 import { searchGifTool } from './search-gif.tool'
 import { searchImageTool } from './search-image.tool'
 import { searchVideoTool } from './search-video.tool'
+import { urlContextTool } from './url-context.tool'
 import { weatherTool } from './weather.tool'
 import { webSearchTool } from './web-search.tool'
 
@@ -35,7 +36,7 @@ export {
 // Individual tools
 export {
   animateGifTool,
-  calculatorTool,
+  codeExecutionTool,
   createDynamicToolTool,
   dateTimeTool,
   generateImageTool,
@@ -51,34 +52,14 @@ export {
   searchVideoTool,
   telegramDiceTool,
   updateMemoryTool,
+  urlContextTool,
   weatherTool,
   webSearchTool,
 }
 
-export const TOOL_NAMES = {
-  GET_DATETIME: 'get_datetime',
-  CALCULATOR: 'calculator',
-  RANDOM_NUMBER: 'random_number',
-  RANDOM_CHOICE: 'random_choice',
-  MAGIC_8_BALL: 'magic_8_ball',
-  TELEGRAM_DICE: 'telegram_dice',
-  SEARCH_IMAGE: 'search_image',
-  GENERATE_IMAGE: 'generate_or_edit_image',
-  SEARCH_VIDEO: 'search_video',
-  SEARCH_GIF: 'search_gif',
-  ANIMATE_TEXT: 'animate_text',
-  GENERATE_VOICE: 'generate_voice',
-  GET_WEATHER: 'get_weather',
-  GET_HISTORY: 'get_chat_history',
-  GET_MEMORY: 'get_memory',
-  UPDATE_MEMORY: 'update_memory',
-  CREATE_DYNAMIC_TOOL: 'create_dynamic_tool',
-  WEB_SEARCH: 'web_search',
-} as const
-
 const baseAgentTools: AgentTool[] = [
   dateTimeTool,
-  calculatorTool,
+  codeExecutionTool,
   randomNumberTool,
   randomChoiceTool,
   magic8BallTool,
@@ -95,6 +76,7 @@ const baseAgentTools: AgentTool[] = [
   updateMemoryTool,
   createDynamicToolTool,
   webSearchTool,
+  urlContextTool,
 ]
 
 const baseToolNames = new Set<string>(

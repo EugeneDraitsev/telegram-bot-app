@@ -7,7 +7,7 @@ import { GiphyFetch } from '@giphy/js-fetch-api'
 import type { IGif } from '@giphy/js-types'
 
 import { getErrorMessage, sample } from '@tg-bot/common'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const GIPHY_RESULTS_LIMIT = 20
@@ -51,14 +51,15 @@ export async function searchGiphyGif(query: string): Promise<string | null> {
 
 export const searchGifTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'search_gif',
     description:
       'Find a direct gif/mp4/webm media URL for reactions or short loops.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         query: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Search query for gif/meme/reaction',
         },
       },

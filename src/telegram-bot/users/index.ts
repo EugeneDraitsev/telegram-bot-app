@@ -5,7 +5,9 @@ import {
   getChatName,
   getCommandData,
   getFormattedChatStatistics,
+  getFormattedMetrics,
   getUsersList,
+  isAiEnabledChat,
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 
@@ -41,6 +43,18 @@ const setupUsersCommands = (bot: Bot) => {
     const { text, replyId } = getCommandData(ctx.message)
     return ctx.reply(await getUsersList(ctx.chat?.id ?? '', text), {
       reply_parameters: { message_id: replyId },
+    })
+  })
+
+  bot.command('x', async (ctx) => {
+    if (!isAiEnabledChat(ctx.chat?.id)) return
+    const { text, replyId } = getCommandData(ctx.message)
+    const rawHours = text.trim()
+    const parsedHours = rawHours ? Number(rawHours) : Number.NaN
+    const hours = Number.isFinite(parsedHours) ? Math.trunc(parsedHours) : 24
+    return ctx.reply(await getFormattedMetrics(hours), {
+      reply_parameters: { message_id: replyId },
+      parse_mode: 'HTML',
     })
   })
 }
