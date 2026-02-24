@@ -157,16 +157,16 @@ describe('cleanGeminiMessage', () => {
   })
 
   test('should strip HTML tags like <img>, <br>, <center>', () => {
-    expect(cleanGeminiMessage('Hello<br>World')).toBe('HelloWorld')
+    expect(cleanGeminiMessage('Hello<br>World')).toBe('Hello\nWorld')
     expect(cleanGeminiMessage('Text<img src="x">End')).toBe('TextEnd')
     expect(cleanGeminiMessage('<center>Centered</center>')).toBe('Centered')
   })
 
-  test('should strip nested/malformed HTML tags', () => {
-    // <scr<script>ipt> → removes <scr<script> → leaves ipt>
-    // Second pass: ipt> has no < so nothing more to strip
-    expect(cleanGeminiMessage('<scr<script>ipt>')).toBe('ipt>')
-    expect(cleanGeminiMessage('a<b<c>d>e')).toBe('ad>e')
+  test('should keep non-HTML angle bracket content', () => {
+    expect(cleanGeminiMessage('Use Array<string> and Map<K, V>')).toBe(
+      'Use Array<string> and Map<K, V>',
+    )
+    expect(cleanGeminiMessage('1 < 2 and 3 > 1')).toBe('1 < 2 and 3 > 1')
   })
 
   test('should unescape model pre-escaped markdown characters', () => {

@@ -49,7 +49,9 @@ const setupUsersCommands = (bot: Bot) => {
   bot.command('x', async (ctx) => {
     if (!isAiEnabledChat(ctx.chat?.id)) return
     const { text, replyId } = getCommandData(ctx.message)
-    const hours = Number(text) || 24
+    const rawHours = text.trim()
+    const parsedHours = rawHours ? Number(rawHours) : Number.NaN
+    const hours = Number.isFinite(parsedHours) ? Math.trunc(parsedHours) : 24
     return ctx.reply(await getFormattedMetrics(hours), {
       reply_parameters: { message_id: replyId },
       parse_mode: 'HTML',

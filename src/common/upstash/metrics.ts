@@ -28,14 +28,18 @@ export async function recordMetric(entry: MetricEntry): Promise<void> {
     const redis = getRedisClient()
     if (!redis) return
 
-    const now = Date.now()
+    const timestamp = Number.isFinite(entry.timestamp)
+      ? entry.timestamp
+      : Date.now()
+    const metricEntry = { ...entry, timestamp }
+
     await redis.zadd(METRICS_KEY, {
-      score: now,
-      member: JSON.stringify(entry),
+      score: timestamp,
+      member: JSON.stringify(metricEntry),
     })
 
     // Trim old entries (older than TTL)
-    await redis.zremrangebyscore(METRICS_KEY, 0, now - METRICS_TTL_MS)
+    await redis.zremrangebyscore(METRICS_KEY, 0, timestamp - METRICS_TTL_MS)
   } catch {
     // Silently ignore Redis errors — metrics are best-effort
   }
@@ -55,19 +59,21 @@ export async function timedCall<T>(
   const start = Date.now()
   try {
     const result = await fn()
+    const end = Date.now()
     void recordMetric({
       ...opts,
-      durationMs: Date.now() - start,
+      durationMs: end - start,
       success: true,
-      timestamp: Date.now(),
+      timestamp: end,
     })
     return result
   } catch (error) {
+    const end = Date.now()
     void recordMetric({
       ...opts,
-      durationMs: Date.now() - start,
+      durationMs: end - start,
       success: false,
-      timestamp: Date.now(),
+      timestamp: end,
     })
     throw error
   }

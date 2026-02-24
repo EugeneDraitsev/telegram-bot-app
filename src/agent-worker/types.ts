@@ -60,7 +60,10 @@ export interface TelegramApi {
     emoji: string,
     options?: { reply_parameters?: { message_id: number } },
   ) => Promise<unknown>
-  sendChatAction: (chatId: number, action: string) => Promise<unknown>
+  sendChatAction: (
+    chatId: number,
+    action: 'typing' | 'upload_photo' | 'upload_video' | 'record_voice',
+  ) => Promise<unknown>
   setMessageReaction?: (
     chatId: number,
     messageId: number,

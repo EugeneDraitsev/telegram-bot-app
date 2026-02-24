@@ -11,6 +11,8 @@ const TIMEZONE_LABELS: Record<string, string> = {
   UTC: 'UTC',
 }
 
+const DEFAULT_TIMEZONE = 'UTC'
+
 export const dateTimeTool: AgentTool = {
   declaration: {
     type: 'function',
@@ -22,7 +24,7 @@ export const dateTimeTool: AgentTool = {
       properties: {
         timezone: {
           type: 'string',
-          description: 'Timezone in IANA format. Defaults to Europe/Stockholm.',
+          description: 'Timezone in IANA format. Defaults to UTC.',
         },
       },
     },
@@ -31,7 +33,7 @@ export const dateTimeTool: AgentTool = {
     requireToolContext()
 
     try {
-      const tz = (args.timezone as string) || 'Europe/Stockholm'
+      const tz = (args.timezone as string) || DEFAULT_TIMEZONE
       const now = new Date()
 
       const formatter = new Intl.DateTimeFormat('ru-RU', {

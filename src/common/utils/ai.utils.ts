@@ -40,6 +40,55 @@ const USER_PREFIX_REGEX =
 const REPLY_SUFFIX_REGEX = /\[In reply to message ID:\s*\d+\]\s*$/i
 const TIMESTAMP_SUFFIX_REGEX =
   /\[\d{1,4}\/\d{1,2}\/\d{1,4},\s*\d{1,2}:\d{1,2}:\d{1,2}\s*(?:AM|PM)\]\s*$/i
+const HTML_TAG_REGEX = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi
+const KNOWN_HTML_TAGS = new Set([
+  'a',
+  'b',
+  'blockquote',
+  'br',
+  'center',
+  'code',
+  'div',
+  'em',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'i',
+  'img',
+  'li',
+  'ol',
+  'p',
+  'pre',
+  's',
+  'script',
+  'section',
+  'span',
+  'strong',
+  'style',
+  'u',
+  'ul',
+])
+const HTML_BLOCK_TAGS = new Set([
+  'blockquote',
+  'br',
+  'center',
+  'div',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'li',
+  'ol',
+  'p',
+  'pre',
+  'section',
+  'ul',
+])
 
 function extractTextPayload(message: string): string {
   try {
@@ -80,6 +129,16 @@ function removeTrailingMetadata(input: string): string {
   }
 }
 
+function stripKnownHtmlTags(input: string): string {
+  return input.replace(HTML_TAG_REGEX, (tag, rawTagName: string) => {
+    const tagName = rawTagName.toLowerCase()
+    if (!KNOWN_HTML_TAGS.has(tagName)) {
+      return tag
+    }
+    return HTML_BLOCK_TAGS.has(tagName) ? '\n' : ''
+  })
+}
+
 export function cleanGeminiMessage(message: string) {
   let cleanedMessage = removeUserPrefixes(extractTextPayload(message))
   cleanedMessage = removeTrailingMetadata(cleanedMessage)
@@ -92,13 +151,8 @@ export function cleanGeminiMessage(message: string) {
     // biome-ignore lint/complexity/noUselessEscapeInRegex: <>
     .replace(/\\\"/g, '"')
 
-  // Strip HTML tags (model sometimes outputs <img>, <br>, <center> etc.)
-  // Loop to handle nested/malformed tags like <scr<script>ipt>
-  let previousMessage: string
-  do {
-    previousMessage = cleanedMessage
-    cleanedMessage = cleanedMessage.replace(/<[^>]+>/g, '')
-  } while (cleanedMessage !== previousMessage)
+  // Strip only known HTML tags while preserving useful angle-bracket content
+  cleanedMessage = stripKnownHtmlTags(cleanedMessage)
 
   // Remove model's pre-escaped markdown characters to avoid double-escaping
   // Models often output \( \) \! \. \- \# \| \{ \} \[ \] etc.
