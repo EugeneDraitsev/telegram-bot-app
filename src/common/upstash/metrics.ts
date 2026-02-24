@@ -112,13 +112,14 @@ function fmtMs(ms: number): string {
   return `${Math.round(ms)}ms`
 }
 
-function progressBar(ratio: number, len = 10): string {
+function progressBar(ratio: number, len = 15): string {
   const filled = Math.round(ratio * len)
-  return '█'.repeat(filled) + '░'.repeat(len - filled)
+  return '▰'.repeat(filled) + '▱'.repeat(len - filled)
 }
 
 /** Format metrics into a Telegram HTML message (mobile-friendly) */
 export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
+  hoursBack = Math.max(1, Math.min(720, hoursBack || 24))
   const fromMs = Date.now() - hoursBack * 60 * 60 * 1000
   const entries = await getMetrics(fromMs)
 
@@ -135,35 +136,42 @@ export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
 
   const lines: string[] = []
 
-  lines.push(`<b>📊 Metrics — ${hoursBack}h</b>`)
+  lines.push(`<b>📊 Metrics — last ${hoursBack}h</b>`)
+  lines.push('')
+  const pct = `${(successRate * 100).toFixed(0)}%`
+  const failStr = failures > 0 ? ` · ❌ ${failures} failed` : ''
   lines.push(
-    `${progressBar(successRate)} <b>${(successRate * 100).toFixed(0)}%</b> · ${total} calls`,
+    `<code>${progressBar(successRate)} ${pct} ok · ${total} calls</code>`,
   )
-  if (failures > 0) lines.push(`❌ ${failures} failed`)
-  lines.push(`🤖 ${agenticCount}  ⚡ ${commandCount}`)
+  lines.push(
+    `🤖 Agentic: ${agenticCount}  ⚡ Commands: ${commandCount}${failStr}`,
+  )
 
-  // Render a group of metrics
+  // Render a group of metrics as <pre> block
   const renderGroup = (title: string, items: MetricEntry[]) => {
     if (items.length === 0) return
 
     const byName = new Map<string, MetricEntry[]>()
     for (const e of items) {
       if (!byName.has(e.name)) byName.set(e.name, [])
-      byName.get(e.name)!.push(e)
+      byName.get(e.name)?.push(e)
     }
 
     lines.push('')
     lines.push(`<b>${title}</b>`)
+    const rows: string[] = []
     for (const [name, group] of [...byName.entries()].sort(
       (a, b) => b[1].length - a[1].length,
     )) {
       const d = group.map((e) => e.durationMs)
       const fails = group.filter((e) => !e.success).length
-      const fail = fails > 0 ? ` ❌${fails}` : ''
-      lines.push(
-        `<code>${name}</code> ${group.length}× ~${fmtMs(median(d))}${fail}`,
-      )
+      const okRate =
+        fails > 0
+          ? ` (${Math.round(((group.length - fails) / group.length) * 100)}% ok)`
+          : ''
+      rows.push(`${name}  ${group.length}× ~${fmtMs(median(d))}${okRate}`)
     }
+    lines.push(`<pre>${rows.join('\n')}</pre>`)
   }
 
   renderGroup(
@@ -180,19 +188,22 @@ export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
   if (modelEntries.length > 0) {
     const byModel = new Map<string, MetricEntry[]>()
     for (const e of modelEntries) {
-      if (!byModel.has(e.model!)) byModel.set(e.model!, [])
-      byModel.get(e.model!)!.push(e)
+      const m = e.model ?? ''
+      if (!byModel.has(m)) byModel.set(m, [])
+      byModel.get(m)?.push(e)
     }
 
     lines.push('')
     lines.push('<b>🧠 Models</b>')
+    const rows: string[] = []
     for (const [model, items] of [...byModel.entries()].sort(
       (a, b) => b[1].length - a[1].length,
     )) {
       const d = items.map((e) => e.durationMs)
       const short = model.replace('gemini-', '').replace('-preview', '')
-      lines.push(`<code>${short}</code> ${items.length}× ~${fmtMs(median(d))}`)
+      rows.push(`${short}  ${items.length}× ~${fmtMs(median(d))}`)
     }
+    lines.push(`<pre>${rows.join('\n')}</pre>`)
   }
 
   return lines.join('\n')

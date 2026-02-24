@@ -30,7 +30,7 @@ export const dateTimeTool: AgentTool = {
         timezone: {
           type: 'string',
           description:
-            'Timezone in IANA format (e.g., "Europe/Moscow"). Defaults to UTC.',
+            'Timezone in IANA format (e.g., "Europe/Moscow"). Defaults to CET (Europe/Warsaw).',
         },
       },
     },
@@ -39,7 +39,7 @@ export const dateTimeTool: AgentTool = {
     requireToolContext()
 
     try {
-      const tz = (args.timezone as string) || 'UTC'
+      const tz = (args.timezone as string) || 'Europe/Stockholm'
       const now = new Date()
 
       const formatter = new Intl.DateTimeFormat('ru-RU', {

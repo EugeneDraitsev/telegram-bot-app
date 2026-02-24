@@ -155,4 +155,29 @@ describe('cleanGeminiMessage', () => {
     const expected = 'Więc dawaj, pytaj, чем могу служить? 😁'
     expect(cleanGeminiMessage(messyMessage)).toBe(expected)
   })
+
+  test('should strip HTML tags like <img>, <br>, <center>', () => {
+    expect(cleanGeminiMessage('Hello<br>World')).toBe('HelloWorld')
+    expect(cleanGeminiMessage('Text<img src="x">End')).toBe('TextEnd')
+    expect(cleanGeminiMessage('<center>Centered</center>')).toBe('Centered')
+  })
+
+  test('should strip nested/malformed HTML tags', () => {
+    // <scr<script>ipt> → removes <scr<script> → leaves ipt>
+    // Second pass: ipt> has no < so nothing more to strip
+    expect(cleanGeminiMessage('<scr<script>ipt>')).toBe('ipt>')
+    expect(cleanGeminiMessage('a<b<c>d>e')).toBe('ad>e')
+  })
+
+  test('should unescape model pre-escaped markdown characters', () => {
+    expect(cleanGeminiMessage('Use \\*bold\\* and \\_italic\\_')).toBe(
+      'Use *bold* and _italic_',
+    )
+    expect(cleanGeminiMessage('Item \\#1 \\- done')).toBe('Item #1 - done')
+    expect(cleanGeminiMessage('sum \\= 10 \\+ 5')).toBe('sum = 10 + 5')
+  })
+
+  test('should normalize excessive blank lines', () => {
+    expect(cleanGeminiMessage('a\n\n\n\n\nb')).toBe('a\n\nb')
+  })
 })

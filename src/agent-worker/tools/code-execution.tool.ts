@@ -11,7 +11,7 @@ import { requireToolContext } from './context'
 export const codeExecutionTool: AgentTool = {
   declaration: {
     type: 'function',
-    name: 'run_code',
+    name: 'code_execution',
     description:
       'Execute code to perform calculations, data processing, or any computational task. Use for math, conversions, date calculations, sorting, formatting, etc. Powered by Python — can handle anything a calculator can and much more.',
     parameters: {

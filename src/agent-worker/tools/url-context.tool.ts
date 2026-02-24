@@ -11,7 +11,7 @@ import { requireToolContext } from './context'
 export const urlContextTool: AgentTool = {
   declaration: {
     type: 'function',
-    name: 'read_url',
+    name: 'url_context',
     description:
       'Read and summarize content from a specific URL. Use when user shares a link or asks about a specific webpage, article, or documentation page.',
     parameters: {

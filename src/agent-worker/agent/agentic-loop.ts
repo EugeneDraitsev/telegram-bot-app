@@ -59,7 +59,10 @@ function buildNativeTools(agentTools: AgentTool[]): Tool[] {
       functionDeclarations: agentTools.map((t) => {
         // Strip 'type' field — generateContent API doesn't accept it
         // (it was added for Interactions API compatibility)
-        const { type: _, ...declaration } = t.declaration as unknown as Record<string, unknown>
+        const { type: _, ...declaration } = t.declaration as unknown as Record<
+          string,
+          unknown
+        >
         return declaration
         // biome-ignore lint/suspicious/noExplicitAny: structurally compatible at runtime
       }) as any,

@@ -120,30 +120,31 @@ export async function shouldEngageWithMessage(params: {
       memoryBlock,
     })
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), REPLY_GATE_TIMEOUT_MS)
-
-    try {
-      const interaction = await ai.interactions.create({
+    const interaction = await Promise.race([
+      ai.interactions.create({
         model: FAST_MODEL,
         input: textContent || '[media without text]',
         system_instruction: systemPrompt,
         tools: replyGateTools,
         generation_config: { temperature: 0 },
-      })
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('reply_gate timeout')),
+          REPLY_GATE_TIMEOUT_MS,
+        ),
+      ),
+    ])
 
-      const functionCall = interaction.outputs?.find(
-        (o) => o.type === 'function_call',
-      )
+    const functionCall = interaction.outputs?.find(
+      (o) => o.type === 'function_call',
+    )
 
-      if (!functionCall) {
-        return false
-      }
-
-      return (functionCall as { name?: string }).name === 'engage'
-    } finally {
-      clearTimeout(timeout)
+    if (!functionCall) {
+      return false
     }
+
+    return (functionCall as { name?: string }).name === 'engage'
   } catch (error) {
     logger.error({ error }, 'reply_gate.failed')
     return false
