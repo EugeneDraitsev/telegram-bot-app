@@ -9,12 +9,12 @@
   "license": "MIT",
   "dependencies": {
     "@google/genai": "1.42.0",
-    "@langchain/core": "^1.1.26",
-    "@langchain/google-genai": "^2.1.19",
+    "@langchain/core": "^1.1.27",
+    "@langchain/google-genai": "^2.1.20",
     "@langchain/langgraph": "^1.1.5",
     "@upstash/redis": "^1.36.2",
     "grammy": "^1.40.0",
-    "openai": "^6.22.0",
+    "openai": "^6.23.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

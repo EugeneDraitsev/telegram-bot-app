@@ -2,7 +2,7 @@
  * Tool for getting current date and time
  */
 
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
 const TIMEZONE_LABELS: Record<string, string> = {
@@ -20,14 +20,15 @@ const TIMEZONE_LABELS: Record<string, string> = {
 
 export const dateTimeTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'get_datetime',
     description:
       'Get current date and time. Use when user asks about current time, date, day of week.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         timezone: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Timezone in IANA format (e.g., "Europe/Moscow"). Defaults to UTC.',
         },

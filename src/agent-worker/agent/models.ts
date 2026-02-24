@@ -9,8 +9,12 @@ const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 
 export const ai = new GoogleGenAI({ apiKey })
 
-// export const CHAT_MODEL = 'gemini-3-flash-preview'
-export const CHAT_MODEL = 'gemini-3-pro-preview'
+/** Main chat model — smart, handles user intent + tool routing */
+export const CHAT_MODEL = 'gemini-3-flash-preview'
+// export const CHAT_MODEL = 'gemini-3-pro-preview'
 // export const CHAT_MODEL = 'gemini-3.1-pro-preview'
 // export const CHAT_MODEL = 'gemini-2.5-flash'
-export const REPLY_GATE_MODEL = 'gemini-2.5-flash-lite'
+// export const CHAT_MODEL = 'gemini-2.5-pro'
+
+/** Fast/cheap model for tool execution wrappers (search, code, url, reply gate) */
+export const FAST_MODEL = 'gemini-2.5-flash-lite'

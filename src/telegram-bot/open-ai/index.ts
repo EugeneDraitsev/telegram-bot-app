@@ -7,6 +7,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  timedCall,
 } from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
 
@@ -27,11 +28,21 @@ export const setupMultimodalOpenAiCommands = async (
 
   const { combinedText, imagesData, chatId, replyId } = commandData
 
-  const message = await generateMultimodalCompletion(
-    combinedText,
-    chatId,
-    model,
-    imagesData,
+  const message = await timedCall(
+    {
+      type: 'model_call',
+      source: 'command',
+      name: '/e',
+      model: String(model),
+      chatId: Number(chatId),
+    },
+    () =>
+      generateMultimodalCompletion(
+        combinedText,
+        Number(chatId),
+        model,
+        imagesData,
+      ),
   )
 
   const normalizedMessage = message?.trim() || ''
@@ -73,11 +84,15 @@ export const setupImageGenerationOpenAiCommands = async (
 
   const { combinedText, imagesData, chatId, replyId } = commandData
   try {
-    const { image, text } = await generateImage(
-      combinedText,
-      chatId,
-      model,
-      imagesData,
+    const { image, text } = await timedCall(
+      {
+        type: 'model_call',
+        source: 'command',
+        name: '/ee',
+        model: String(model),
+        chatId: Number(chatId),
+      },
+      () => generateImage(combinedText, Number(chatId), model, imagesData),
     )
 
     const caption = text ? formatTelegramMarkdownV2(text) : undefined

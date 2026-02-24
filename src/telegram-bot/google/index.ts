@@ -6,6 +6,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  timedCall,
 } from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
@@ -27,12 +28,22 @@ export const setupMultimodalGeminiCommands = async (
     )
     return
   } else {
-    const { combinedText, imagesData, replyId } = commandData
-    const message = await generateMultimodalCompletion(
-      combinedText,
-      ctx.message,
-      imagesData,
-      model,
+    const { combinedText, imagesData, replyId, chatId } = commandData
+    const message = await timedCall(
+      {
+        type: 'model_call',
+        source: 'command',
+        name: `/${model.includes('pro') ? 'o' : 'q'}`,
+        model,
+        chatId: Number(chatId),
+      },
+      () =>
+        generateMultimodalCompletion(
+          combinedText,
+          ctx.message,
+          imagesData,
+          model,
+        ),
     )
 
     const formatted = formatTelegramMarkdownV2(message)
@@ -64,10 +75,20 @@ export const setupImageGenerationGeminiCommands = async (
     )
     return
   } else {
-    const response = await generateImage(
-      commandData.combinedText,
-      commandData.chatId,
-      commandData.imagesData,
+    const response = await timedCall(
+      {
+        type: 'model_call',
+        source: 'command',
+        name: '/ge',
+        model: 'gemini-3-pro-image',
+        chatId: Number(commandData.chatId),
+      },
+      () =>
+        generateImage(
+          commandData.combinedText,
+          commandData.chatId,
+          commandData.imagesData,
+        ),
     )
 
     if (response.image) {

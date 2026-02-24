@@ -4,24 +4,25 @@
 
 import { getErrorMessage } from '@tg-bot/common'
 import { generateVoice } from '../services'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 export const generateVoiceTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'generate_voice',
     description:
       'Generate a voice message (text-to-speech). Use when user asks for audio response.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         text: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'The text to convert to speech. Keep concise (~500 words).',
         },
         voice: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Voice: nova=female, onyx=male, alloy=neutral. Default: nova.',
           enum: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],

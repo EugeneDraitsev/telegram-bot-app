@@ -9,19 +9,20 @@ import {
   setChatMemory,
   setGlobalMemory,
 } from '@tg-bot/common'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
 export const getMemoryTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'get_memory',
     description:
       'Retrieve your saved memory notes. Use "chat" scope for current chat notes or "global" for cross-chat knowledge. Memory is preloaded in context, so call this only if you need re-read after an update.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         scope: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Which memory to read: "chat" or "global".',
           enum: ['chat', 'global'],
         },
@@ -50,19 +51,20 @@ export const getMemoryTool: AgentTool = {
 
 export const updateMemoryTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'update_memory',
     description:
       'Save or update your memory notes (markdown). Use sparingly — only when you learn something genuinely worth remembering. Content replaces the previous value entirely.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         scope: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Which memory to update: "chat" or "global".',
           enum: ['chat', 'global'],
         },
         content: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Full markdown content to save. Replaces the existing memory entirely.',
         },

@@ -2,27 +2,28 @@
  * Tools for random numbers and choices
  */
 
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
 export const randomNumberTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'random_number',
     description:
       'Generate a random number within a specified range. Use for dice rolls, random selections.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         min: {
-          type: Type.NUMBER,
+          type: 'number',
           description: 'Minimum value (inclusive). Defaults to 1.',
         },
         max: {
-          type: Type.NUMBER,
+          type: 'number',
           description: 'Maximum value (inclusive). Defaults to 100.',
         },
         count: {
-          type: Type.NUMBER,
+          type: 'number',
           description: 'Number of random values to generate. Defaults to 1.',
         },
       },
@@ -55,19 +56,20 @@ export const randomNumberTool: AgentTool = {
 
 export const randomChoiceTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'random_choice',
     description:
       'Make a random choice from a list of options. Use for decisions, picking winners.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         options: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
+          type: 'array',
+          items: { type: 'string' },
           description: 'List of options to choose from',
         },
         count: {
-          type: Type.NUMBER,
+          type: 'number',
           description: 'Number of items to pick. Defaults to 1.',
         },
       },

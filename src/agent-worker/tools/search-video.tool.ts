@@ -6,7 +6,7 @@
 
 import { getErrorMessage } from '@tg-bot/common'
 import { searchWeb } from '../services'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const URL_REGEX = /https?:\/\/[^\s<>)"\]}]+/i
@@ -33,18 +33,19 @@ function buildVideoSearchPrompt(query: string): string {
 
 export const searchVideoTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'search_video',
     description:
       'Find a relevant video link on the web. Use when user asks for a video, clip, tutorial, music video.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         query: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Search query for finding the video. Be specific.',
         },
         comment: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Optional comment to send with the found video link',
         },
       },

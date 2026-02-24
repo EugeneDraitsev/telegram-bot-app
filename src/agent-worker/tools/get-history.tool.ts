@@ -7,19 +7,20 @@ import {
   getErrorMessage,
   getRawHistory,
 } from '@tg-bot/common'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
 export const getHistoryTool: AgentTool = {
   declaration: {
+    type: 'function',
     name: 'get_chat_history',
     description:
       'Get recent chat messages for context. Use when you need to understand the conversation history.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         limit: {
-          type: Type.NUMBER,
+          type: 'number',
           description:
             'Number of recent messages to retrieve. Default: 10, Max: 50',
         },

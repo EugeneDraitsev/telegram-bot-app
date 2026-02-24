@@ -92,8 +92,19 @@ export function cleanGeminiMessage(message: string) {
     // biome-ignore lint/complexity/noUselessEscapeInRegex: <>
     .replace(/\\\"/g, '"')
 
+  // Strip HTML tags (model sometimes outputs <img>, <br>, <center> etc.)
+  cleanedMessage = cleanedMessage.replace(/<[^>]+>/g, '')
+
+  // Remove model's pre-escaped markdown characters to avoid double-escaping
+  // Models often output \( \) \! \. \- \# \| \{ \} \[ \] etc.
+  // These must be unescaped before telegramifyMarkdown re-escapes them
+  cleanedMessage = cleanedMessage.replace(/\\([_*[\]()~`>#+\-=|{}.!\\])/g, '$1')
+
   // Normalize actual CRLF/CR to LF
   cleanedMessage = cleanedMessage.replace(/\r\n?/g, '\n')
+
+  // Clean up excessive blank lines from stripped HTML
+  cleanedMessage = cleanedMessage.replace(/\n{3,}/g, '\n\n')
 
   return cleanedMessage.trim()
 }

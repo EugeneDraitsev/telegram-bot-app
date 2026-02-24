@@ -4,30 +4,31 @@
 
 import { getErrorMessage } from '@tg-bot/common'
 import { generateImage } from '../services'
-import { type AgentTool, Type } from '../types'
+import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 export const generateImageTool: AgentTool = {
   timeoutMs: 60_000,
   declaration: {
+    type: 'function',
     name: 'generate_or_edit_image',
     description:
       'Generate a NEW image using AI or EDIT an existing image. Use when user wants to create/draw something new, or edit/modify an attached image.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         prompt: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Detailed description of the image to generate or edit instructions.',
         },
         useAttachedImage: {
-          type: Type.BOOLEAN,
+          type: 'boolean',
           description:
             'If true and user attached an image, use it as base for editing. Default: true.',
         },
         includeTextResponse: {
-          type: Type.BOOLEAN,
+          type: 'boolean',
           description:
             'If true, include AI commentary as caption. Default: false.',
         },

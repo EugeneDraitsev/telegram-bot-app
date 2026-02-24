@@ -19,6 +19,15 @@ export const TERMINAL_TOOLS = new Set([
   'get_weather',
 ])
 
+/** Tools that create content — must run AFTER data-gathering tools.
+ *  If a round has both data + content tools, only data tools execute;
+ *  content tools are deferred to the next round. */
+export const CONTENT_TOOLS = new Set([
+  'generate_voice',
+  'generate_or_edit_image',
+  'animate_text',
+])
+
 // Model retry
 export const MAX_RETRIES = 2
 export const RETRY_BASE_DELAY_MS = 1_000

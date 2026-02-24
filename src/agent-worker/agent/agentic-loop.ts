@@ -22,6 +22,7 @@ import {
 } from '../tools'
 import type { AgentResponse, AgentTool, TelegramApi } from '../types'
 import {
+  CONTENT_TOOLS,
   MAX_RETRIES,
   MAX_TOOL_ITERATIONS,
   RETRY_BASE_DELAY_MS,
@@ -30,7 +31,8 @@ import {
 } from './config'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
-import { ai, CHAT_MODEL } from './models'
+import { recordMetric } from './metrics'
+import { ai, CHAT_MODEL, FAST_MODEL } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
 import { startTyping } from './typing'
@@ -52,27 +54,73 @@ function buildNativeTools(agentTools: AgentTool[]): Tool[] {
   if (agentTools.length === 0) {
     return []
   }
-  return [{ functionDeclarations: agentTools.map((t) => t.declaration) }]
+  return [
+    {
+      functionDeclarations: agentTools.map((t) => {
+        // Strip 'type' field — generateContent API doesn't accept it
+        // (it was added for Interactions API compatibility)
+        const { type: _, ...declaration } = t.declaration as unknown as Record<string, unknown>
+        return declaration
+        // biome-ignore lint/suspicious/noExplicitAny: structurally compatible at runtime
+      }) as any,
+    },
+  ]
 }
 
 /**
  * Call generateContent with retry logic for transient errors (503, 429).
+ * Wrapped with metrics recording.
  */
 async function generateWithRetry(
   params: Parameters<typeof ai.models.generateContent>[0],
   chatId: number,
+  metricName: string,
 ): Promise<GenerateContentResponse> {
   let lastError: unknown
+  const start = Date.now()
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await ai.models.generateContent(params)
+      const result = await ai.models.generateContent(params)
+      const durationMs = Date.now() - start
+      logger.info(
+        {
+          chatId,
+          metricType: 'model_call',
+          name: metricName,
+          model: params.model,
+          durationMs,
+        },
+        'metric',
+      )
+      void recordMetric({
+        type: 'model_call',
+        source: 'agentic',
+        name: metricName,
+        model: typeof params.model === 'string' ? params.model : undefined,
+        chatId,
+        durationMs,
+        success: true,
+        timestamp: Date.now(),
+      })
+      return result
     } catch (error) {
       lastError = error
       const status = (error as { status?: number })?.status
       const isRetryable = status === 503 || status === 429
 
       if (!isRetryable || attempt === MAX_RETRIES) {
+        const durationMs = Date.now() - start
+        void recordMetric({
+          type: 'model_call',
+          source: 'agentic',
+          name: metricName,
+          model: typeof params.model === 'string' ? params.model : undefined,
+          chatId,
+          durationMs,
+          success: false,
+          timestamp: Date.now(),
+        })
         throw error
       }
 
@@ -88,6 +136,15 @@ async function generateWithRetry(
   throw lastError
 }
 
+/** Maps tool names to their underlying AI model for metrics */
+const TOOL_MODELS: Record<string, string> = {
+  generate_or_edit_image: 'gemini-3-pro-image',
+  generate_voice: 'openai-tts-1',
+  web_search: FAST_MODEL,
+  code_execution: FAST_MODEL,
+  url_context: FAST_MODEL,
+}
+
 async function executeToolCall(
   toolCall: FunctionCall,
   toolByName: Map<string, AgentTool>,
@@ -101,6 +158,7 @@ async function executeToolCall(
 
   logger.info({ chatId, tool: name, payload: toolCall.args }, 'tool.call')
 
+  const toolStart = Date.now()
   try {
     const timeout = tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS
     const result = await Promise.race([
@@ -115,11 +173,36 @@ async function executeToolCall(
       }),
     ])
 
-    logger.info({ chatId, tool: name, result }, 'tool.done')
+    const durationMs = Date.now() - toolStart
+    logger.info({ chatId, tool: name, durationMs, result }, 'tool.done')
+    void recordMetric({
+      type: 'tool_call',
+      source: 'agentic',
+      name,
+      model: TOOL_MODELS[name],
+      chatId,
+      durationMs,
+      success: true,
+      timestamp: Date.now(),
+    })
     return { name, result }
   } catch (error) {
+    const durationMs = Date.now() - toolStart
     const errorMsg = error instanceof Error ? error.message : String(error)
-    logger.error({ chatId, tool: name, error: errorMsg }, 'tool.failed')
+    logger.error(
+      { chatId, tool: name, durationMs, error: errorMsg },
+      'tool.failed',
+    )
+    void recordMetric({
+      type: 'tool_call',
+      source: 'agentic',
+      name,
+      model: TOOL_MODELS[name],
+      chatId,
+      durationMs,
+      success: false,
+      timestamp: Date.now(),
+    })
     return { name, result: `Error: ${errorMsg}` }
   }
 }
@@ -225,13 +308,14 @@ export async function runAgenticLoop(
               systemInstruction,
               tools,
               temperature: 1.0,
-              // thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
             },
           },
           chatId,
+          iteration === 0 ? 'routing' : `iteration_${iteration}`,
         )
 
-        const parts = response.candidates?.[0]?.content?.parts ?? []
+        const candidateContent = response.candidates?.[0]?.content
+        const parts = candidateContent?.parts ?? []
         const functionCalls = parts.filter(
           (p): p is Part & { functionCall: FunctionCall } => !!p.functionCall,
         )
@@ -246,41 +330,87 @@ export async function runAgenticLoop(
           break
         }
 
-        // Add model response to context
-        contents.push({ role: 'model', parts })
+        // ── CONTENT_TOOLS deferring ──
+        // If a round has both data-gathering and content-creating tools,
+        // execute only data tools. Content tools will be naturally re-called
+        // by the model in the next iteration when it has the data.
+        const dataCalls = functionCalls.filter(
+          (fc) => !CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
+        )
+        const contentCalls = functionCalls.filter((fc) =>
+          CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
+        )
 
-        // Execute all function calls
+        const hasDeferred = dataCalls.length > 0 && contentCalls.length > 0
+        const callsToExecute = hasDeferred ? dataCalls : functionCalls
+
+        if (hasDeferred) {
+          logger.info(
+            {
+              chatId,
+              iteration,
+              deferred: contentCalls.map((fc) => fc.functionCall.name),
+            },
+            'loop.deferred_content_tools',
+          )
+        }
+
+        // Add model response to context — use raw content to preserve thoughtSignature
+        if (candidateContent) {
+          contents.push(candidateContent)
+        } else {
+          contents.push({ role: 'model', parts })
+        }
+
+        // Execute selected function calls
         const toolResults = await Promise.all(
-          functionCalls.map((fc) =>
+          callsToExecute.map((fc) =>
             executeToolCall(fc.functionCall, toolByName, chatId),
           ),
         )
 
+        // Build function responses — executed ones get results,
+        // deferred ones get a signal to retry after data is available
+        const functionResponses = [
+          ...toolResults.map((tr) => ({
+            functionResponse: {
+              name: tr.name,
+              response: { result: tr.result },
+            },
+          })),
+          ...(hasDeferred
+            ? contentCalls.map((fc) => ({
+                functionResponse: {
+                  name: fc.functionCall.name ?? '',
+                  response: {
+                    result:
+                      'NOT EXECUTED YET — data was just fetched. Call this tool again now with the actual data.',
+                  },
+                },
+              }))
+            : []),
+        ]
+
         // Check if ALL called tools are terminal (produce complete responses)
-        // If so, skip the second model call — the tool response IS the response
-        const allTerminal = functionCalls.every((fc) =>
+        // If so, skip the next model call — the tool response IS the response
+        const allTerminal = callsToExecute.every((fc) =>
           TERMINAL_TOOLS.has(fc.functionCall.name ?? ''),
         )
         const collectedNow = getCollectedResponses()
 
-        if (allTerminal && collectedNow.length > 0) {
+        if (allTerminal && collectedNow.length > 0 && !hasDeferred) {
           logger.info(
-            { chatId, tools: functionCalls.map((fc) => fc.functionCall.name) },
+            {
+              chatId,
+              tools: callsToExecute.map((fc) => fc.functionCall.name),
+            },
             'loop.terminal_tools_skip',
           )
           break
         }
 
         // Add tool results back as function responses
-        contents.push({
-          role: 'user',
-          parts: toolResults.map((tr) => ({
-            functionResponse: {
-              name: tr.name,
-              response: { result: tr.result },
-            },
-          })),
-        })
+        contents.push({ role: 'user', parts: functionResponses })
       }
 
       // Collect any responses added by tools (media, text drafts, etc.)

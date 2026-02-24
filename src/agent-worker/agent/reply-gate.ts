@@ -1,10 +1,8 @@
 /**
- * Reply gate — LLM-based filter using gemini-2.5-flash-lite.
+ * Reply gate — LLM-based filter using Interactions API with gemini-2.5-flash-lite.
  * Deterministic pre-filter + LLM engage/ignore decision.
  */
 
-import { Type } from '@google/genai'
-import type { FunctionDeclaration } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
 import {
@@ -17,20 +15,22 @@ import {
 } from '@tg-bot/common'
 import { logger } from '../logger'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
-import { ai, REPLY_GATE_MODEL } from './models'
+import { ai, FAST_MODEL } from './models'
 
-const replyGateTools: FunctionDeclaration[] = [
+const replyGateTools = [
   {
+    type: 'function' as const,
     name: 'engage',
     description:
       'The message is addressed to the bot and contains something meaningful.',
-    parameters: { type: Type.OBJECT, properties: {} },
+    parameters: { type: 'object', properties: {} },
   },
   {
+    type: 'function' as const,
     name: 'ignore',
     description:
       'Ignore the message. Use for clear noise: spam, meaningless characters, or messages clearly not meant for the bot.',
-    parameters: { type: Type.OBJECT, properties: {} },
+    parameters: { type: 'object', properties: {} },
   },
 ]
 
@@ -124,29 +124,23 @@ export async function shouldEngageWithMessage(params: {
     const timeout = setTimeout(() => controller.abort(), REPLY_GATE_TIMEOUT_MS)
 
     try {
-      const response = await ai.models.generateContent({
-        model: REPLY_GATE_MODEL,
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: textContent || '[media without text]' }],
-          },
-        ],
-        config: {
-          systemInstruction: systemPrompt,
-          tools: [{ functionDeclarations: replyGateTools }],
-          temperature: 0,
-        },
+      const interaction = await ai.interactions.create({
+        model: FAST_MODEL,
+        input: textContent || '[media without text]',
+        system_instruction: systemPrompt,
+        tools: replyGateTools,
+        generation_config: { temperature: 0 },
       })
 
-      const parts = response.candidates?.[0]?.content?.parts ?? []
-      const functionCall = parts.find((p) => p.functionCall)?.functionCall
+      const functionCall = interaction.outputs?.find(
+        (o) => o.type === 'function_call',
+      )
 
       if (!functionCall) {
         return false
       }
 
-      return functionCall.name === 'engage'
+      return (functionCall as { name?: string }).name === 'engage'
     } finally {
       clearTimeout(timeout)
     }
