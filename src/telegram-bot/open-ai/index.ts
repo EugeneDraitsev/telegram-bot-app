@@ -7,6 +7,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
@@ -18,52 +19,63 @@ export const setupMultimodalOpenAiCommands = async (
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
+
   if (deferredCommands) {
-    // Wait only for Lambda async invoke ACK, not for worker execution.
-    await invokeReplyLambda(commandData).catch((error) =>
-      console.error('Failed to invoke reply worker', error),
-    )
+    const stopReaction = startCommandReaction(ctx)
+    try {
+      // Wait only for Lambda async invoke ACK, not for worker execution.
+      await invokeReplyLambda(commandData).catch((error) =>
+        console.error('Failed to invoke reply worker', error),
+      )
+    } finally {
+      stopReaction()
+    }
     return
   }
 
-  const { combinedText, imagesData, chatId, replyId } = commandData
+  const stopReaction = startCommandReaction(ctx)
+  try {
+    const { combinedText, imagesData, chatId, replyId } = commandData
 
-  const message = await timedCall(
-    {
-      type: 'model_call',
-      source: 'command',
-      name: '/e',
-      model: String(model),
-      chatId: Number(chatId),
-    },
-    () =>
-      generateMultimodalCompletion(
-        combinedText,
-        Number(chatId),
-        model,
-        imagesData,
-      ),
-  )
+    const message = await timedCall(
+      {
+        type: 'model_call',
+        source: 'command',
+        name: '/e',
+        model: String(model),
+        chatId: Number(chatId),
+      },
+      () =>
+        generateMultimodalCompletion(
+          combinedText,
+          Number(chatId),
+          model,
+          imagesData,
+        ),
+    )
 
-  const normalizedMessage = message?.trim() || ''
-  const replyText = normalizedMessage
-    ? formatTelegramMarkdownV2(normalizedMessage)
-    : DEFAULT_ERROR_MESSAGE
+    const normalizedMessage = message?.trim() || ''
+    const replyText = normalizedMessage
+      ? formatTelegramMarkdownV2(normalizedMessage)
+      : DEFAULT_ERROR_MESSAGE
 
-  return ctx
-    .reply(replyText, {
-      reply_parameters: { message_id: replyId },
-      parse_mode: normalizedMessage ? 'MarkdownV2' : undefined,
-    })
-    .catch((err) => {
-      console.error(err)
-      return ctx.reply(normalizedMessage || DEFAULT_ERROR_MESSAGE, {
+    return ctx
+      .reply(replyText, {
         reply_parameters: { message_id: replyId },
+        parse_mode: normalizedMessage ? 'MarkdownV2' : undefined,
       })
-    })
-    .catch((err) => {
-      console.error(`Error (Open AI): ${err.message}`)
-    })
+      .catch((err) => {
+        console.error(err)
+        return ctx.reply(normalizedMessage || DEFAULT_ERROR_MESSAGE, {
+          reply_parameters: { message_id: replyId },
+        })
+      })
+      .catch((err) => {
+        console.error(`Error (Open AI): ${err.message}`)
+      })
+  } finally {
+    stopReaction()
+  }
 }
 
 export const setupImageGenerationOpenAiCommands = async (
@@ -75,41 +87,51 @@ export const setupImageGenerationOpenAiCommands = async (
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
-    // Wait only for Lambda async invoke ACK, not for worker execution.
-    await invokeReplyLambda(commandData).catch((error) =>
-      console.error('Failed to invoke reply worker', error),
-    )
+    const stopReaction = startCommandReaction(ctx)
+    try {
+      // Wait only for Lambda async invoke ACK, not for worker execution.
+      await invokeReplyLambda(commandData).catch((error) =>
+        console.error('Failed to invoke reply worker', error),
+      )
+    } finally {
+      stopReaction()
+    }
     return
   }
 
-  const { combinedText, imagesData, chatId, replyId } = commandData
+  const stopReaction = startCommandReaction(ctx)
   try {
-    const { image, text } = await timedCall(
-      {
-        type: 'model_call',
-        source: 'command',
-        name: '/ee',
-        model: String(model),
-        chatId: Number(chatId),
-      },
-      () => generateImage(combinedText, Number(chatId), model, imagesData),
-    )
+    const { combinedText, imagesData, chatId, replyId } = commandData
+    try {
+      const { image, text } = await timedCall(
+        {
+          type: 'model_call',
+          source: 'command',
+          name: '/ee',
+          model: String(model),
+          chatId: Number(chatId),
+        },
+        () => generateImage(combinedText, Number(chatId), model, imagesData),
+      )
 
-    const caption = text ? formatTelegramMarkdownV2(text) : undefined
+      const caption = text ? formatTelegramMarkdownV2(text) : undefined
 
-    return ctx.replyWithPhoto(
-      typeof image === 'string' ? image : new InputFile(image),
-      {
+      return ctx.replyWithPhoto(
+        typeof image === 'string' ? image : new InputFile(image),
+        {
+          reply_parameters: { message_id: replyId },
+          caption,
+          parse_mode: caption ? 'MarkdownV2' : undefined,
+        },
+      )
+    } catch (error) {
+      console.error(`Generate Image error (Open AI): ${error.message}`)
+      return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
         reply_parameters: { message_id: replyId },
-        caption,
-        parse_mode: caption ? 'MarkdownV2' : undefined,
-      },
-    )
-  } catch (error) {
-    console.error(`Generate Image error (Open AI): ${error.message}`)
-    return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
-      reply_parameters: { message_id: replyId },
-    })
+      })
+    }
+  } finally {
+    stopReaction()
   }
 }
 

@@ -6,6 +6,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  startCommandReaction,
 } from '@tg-bot/common'
 import { generateGemmaCompletion, generateImageDat1co } from './dat1co'
 
@@ -17,12 +18,20 @@ export const setupGemmaDat1coCommands = async (
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
-    // Wait only for Lambda async invoke ACK, not for worker execution.
-    await invokeReplyLambda(commandData).catch((error) =>
-      console.error('Failed to invoke reply worker', error),
-    )
+    const stopReaction = startCommandReaction(ctx)
+    try {
+      // Wait only for Lambda async invoke ACK, not for worker execution.
+      await invokeReplyLambda(commandData).catch((error) =>
+        console.error('Failed to invoke reply worker', error),
+      )
+    } finally {
+      stopReaction()
+    }
     return
-  } else {
+  }
+
+  const stopReaction = startCommandReaction(ctx)
+  try {
     const { combinedText, imagesData, chatId, replyId } = commandData
     const message = await generateGemmaCompletion(
       combinedText,
@@ -43,6 +52,8 @@ export const setupGemmaDat1coCommands = async (
       .catch((err) => {
         console.error(`Error (Gemma Dat1co): ${err.message}`)
       })
+  } finally {
+    stopReaction()
   }
 }
 
@@ -53,12 +64,20 @@ export const setupImageGenerationDat1coCommands = async (
   const commandData = await getMultimodalCommandData(ctx)
 
   if (deferredCommands) {
-    // Wait only for Lambda async invoke ACK, not for worker execution.
-    await invokeReplyLambda(commandData).catch((error) =>
-      console.error('Failed to invoke reply worker', error),
-    )
+    const stopReaction = startCommandReaction(ctx)
+    try {
+      // Wait only for Lambda async invoke ACK, not for worker execution.
+      await invokeReplyLambda(commandData).catch((error) =>
+        console.error('Failed to invoke reply worker', error),
+      )
+    } finally {
+      stopReaction()
+    }
     return
-  } else {
+  }
+
+  const stopReaction = startCommandReaction(ctx)
+  try {
     const { combinedText, chatId, replyId } = commandData
 
     try {
@@ -74,6 +93,8 @@ export const setupImageGenerationDat1coCommands = async (
         reply_parameters: { message_id: replyId },
       })
     }
+  } finally {
+    stopReaction()
   }
 }
 

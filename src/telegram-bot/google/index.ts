@@ -6,6 +6,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './gemini'
@@ -22,12 +23,20 @@ export const setupMultimodalGeminiCommands = async (
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
   if (deferredCommands) {
-    // Wait only for Lambda async invoke ACK, not for worker execution.
-    await invokeReplyLambda(commandData).catch((error) =>
-      console.error('Failed to invoke reply worker', error),
-    )
+    const stopReaction = startCommandReaction(ctx)
+    try {
+      // Wait only for Lambda async invoke ACK, not for worker execution.
+      await invokeReplyLambda(commandData).catch((error) =>
+        console.error('Failed to invoke reply worker', error),
+      )
+    } finally {
+      stopReaction()
+    }
     return
-  } else {
+  }
+
+  const stopReaction = startCommandReaction(ctx)
+  try {
     const { combinedText, imagesData, replyId, chatId } = commandData
     const message = await timedCall(
       {
@@ -47,7 +56,6 @@ export const setupMultimodalGeminiCommands = async (
     )
 
     const formatted = formatTelegramMarkdownV2(message)
-
     return ctx
       .reply(formatted, {
         reply_parameters: { message_id: replyId },
@@ -59,6 +67,8 @@ export const setupMultimodalGeminiCommands = async (
       .catch((err) => {
         console.error(`Error (Gemini AI): ${err.message}`)
       })
+  } finally {
+    stopReaction()
   }
 }
 
@@ -68,13 +78,22 @@ export const setupImageGenerationGeminiCommands = async (
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
+
   if (deferredCommands) {
-    // Wait only for Lambda async invoke ACK, not for worker execution.
-    await invokeReplyLambda(commandData).catch((error) =>
-      console.error('Failed to invoke reply worker', error),
-    )
+    const stopReaction = startCommandReaction(ctx)
+    try {
+      // Wait only for Lambda async invoke ACK, not for worker execution.
+      await invokeReplyLambda(commandData).catch((error) =>
+        console.error('Failed to invoke reply worker', error),
+      )
+    } finally {
+      stopReaction()
+    }
     return
-  } else {
+  }
+
+  const stopReaction = startCommandReaction(ctx)
+  try {
     const response = await timedCall(
       {
         type: 'model_call',
@@ -107,6 +126,8 @@ export const setupImageGenerationGeminiCommands = async (
       reply_parameters: { message_id: commandData.replyId },
       parse_mode: 'MarkdownV2',
     })
+  } finally {
+    stopReaction()
   }
 }
 

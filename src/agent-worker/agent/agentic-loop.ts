@@ -9,11 +9,13 @@ import type {
 import type { Message } from 'telegram-typings'
 
 import {
+  AGENT_REACTION,
   type BotIdentity,
   cleanGeminiMessage,
   getChatMemory,
   getGlobalMemory,
   recordMetric,
+  startTypingIndicator,
 } from '@tg-bot/common'
 import { getMessageLogMeta, logger } from '../logger'
 import {
@@ -41,7 +43,6 @@ import {
 } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
-import { startTyping } from './typing'
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -406,11 +407,15 @@ export async function runAgenticLoop(
       // Set reaction only after reply-gate confirms we will respond
       void api
         .setMessageReaction?.(chatId, message.message_id, [
-          { type: 'emoji', emoji: '👀' },
+          { type: 'emoji', emoji: AGENT_REACTION },
         ])
         .catch(() => undefined)
 
-      stopTyping = startTyping(api, chatId)
+      stopTyping = startTypingIndicator({
+        chatId,
+        sendChatAction: api.sendChatAction?.bind(api),
+        onError: (error) => logger.warn({ chatId, error }, 'typing.failed'),
+      })
 
       const agentTools = await getAgentTools(chatId).catch((error) => {
         logger.error({ chatId, error }, 'tools.load_failed')
