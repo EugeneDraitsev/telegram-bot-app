@@ -16,14 +16,25 @@ import {
 } from './dynamic-tools'
 
 const RESERVED_TOOL_NAMES = new Set<string>([
+  'get_datetime',
+  'code_execution',
+  'random_number',
+  'random_choice',
+  'magic_8_ball',
+  'telegram_dice',
   'search_image',
   'generate_or_edit_image',
   'search_video',
   'search_gif',
+  'animate_text',
   'generate_voice',
   'get_weather',
   'get_chat_history',
+  'get_memory',
+  'update_memory',
   'create_dynamic_tool',
+  'web_search',
+  'url_context',
 ])
 
 function uniqueByName(tools: DynamicToolDefinition[]): DynamicToolDefinition[] {

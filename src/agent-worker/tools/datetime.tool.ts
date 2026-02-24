@@ -6,15 +6,8 @@ import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
 const TIMEZONE_LABELS: Record<string, string> = {
-  'Europe/Moscow': 'Москва',
-  'Europe/Kiev': 'Киев',
-  'Europe/Minsk': 'Минск',
-  'America/New_York': 'Нью-Йорк',
-  'America/Los_Angeles': 'Лос-Анджелес',
-  'Europe/London': 'Лондон',
-  'Europe/Paris': 'Париж',
-  'Asia/Tokyo': 'Токио',
-  'Asia/Shanghai': 'Шанхай',
+  'Europe/Warsaw': 'Warsaw',
+  'Europe/Stockholm': 'Stockholm',
   UTC: 'UTC',
 }
 
@@ -29,8 +22,7 @@ export const dateTimeTool: AgentTool = {
       properties: {
         timezone: {
           type: 'string',
-          description:
-            'Timezone in IANA format (e.g., "Europe/Moscow"). Defaults to CET (Europe/Warsaw).',
+          description: 'Timezone in IANA format. Defaults to Europe/Stockholm.',
         },
       },
     },

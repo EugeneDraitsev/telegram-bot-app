@@ -57,28 +57,6 @@ export {
   webSearchTool,
 }
 
-export const TOOL_NAMES = {
-  GET_DATETIME: 'get_datetime',
-  RUN_CODE: 'run_code',
-  RANDOM_NUMBER: 'random_number',
-  RANDOM_CHOICE: 'random_choice',
-  MAGIC_8_BALL: 'magic_8_ball',
-  TELEGRAM_DICE: 'telegram_dice',
-  SEARCH_IMAGE: 'search_image',
-  GENERATE_IMAGE: 'generate_or_edit_image',
-  SEARCH_VIDEO: 'search_video',
-  SEARCH_GIF: 'search_gif',
-  ANIMATE_TEXT: 'animate_text',
-  GENERATE_VOICE: 'generate_voice',
-  GET_WEATHER: 'get_weather',
-  GET_HISTORY: 'get_chat_history',
-  GET_MEMORY: 'get_memory',
-  UPDATE_MEMORY: 'update_memory',
-  CREATE_DYNAMIC_TOOL: 'create_dynamic_tool',
-  WEB_SEARCH: 'web_search',
-  READ_URL: 'read_url',
-} as const
-
 const baseAgentTools: AgentTool[] = [
   dateTimeTool,
   codeExecutionTool,

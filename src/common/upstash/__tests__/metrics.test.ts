@@ -147,6 +147,12 @@ describe('getMetrics', () => {
     const entries = await getMetrics(0)
     expect(entries).toHaveLength(0)
   })
+
+  test('should return empty array on redis errors', async () => {
+    mockZrange.mockRejectedValue(new Error('redis down'))
+    const entries = await getMetrics(0)
+    expect(entries).toEqual([])
+  })
 })
 
 describe('getFormattedMetrics', () => {

@@ -18,7 +18,7 @@ When you receive tool results, use them to compose your final response.
 NEVER output HTML tags in your response. ONLY use plain text or simple Markdown (bold, italic, lists).
 When tools like generate_voice or generate_or_edit_image succeed, do NOT embed or reference them in your text — they are delivered to the user automatically as separate messages. Just write your text response and mention that you generated them.
 IMPORTANT: You have a maximum of 3 rounds to call tools. Plan your tool calls carefully:
-- Round 1: call data-gathering tools (web_search, read_url, get_weather, get_chat_history, etc.)
+- Round 1: call data-gathering tools (web_search, url_context, get_weather, get_chat_history, etc.)
 - Round 2+: call content-creation tools (generate_voice, generate_or_edit_image) ONLY AFTER you have data from round 1.
 NEVER call generate_voice or generate_or_edit_image in the same round as data-gathering tools if the content depends on that data.
 If tools are independent of each other, call them all in the same round.

@@ -8,7 +8,7 @@ export const MAX_TEXT_LENGTH = 4096
 export const TYPING_PING_INTERVAL_MS = 4000
 
 // Tool execution
-export const MAX_TOOL_ITERATIONS = 5
+export const MAX_TOOL_ITERATIONS = 3
 export const TOOL_CALL_TIMEOUT_MS = 20_000
 export const TERMINAL_TOOLS = new Set([
   'telegram_dice',

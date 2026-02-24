@@ -80,24 +80,28 @@ export async function getMetrics(
   fromMs: number,
   toMs: number = Date.now(),
 ): Promise<MetricEntry[]> {
-  const redis = getRedisClient()
-  if (!redis) return []
+  try {
+    const redis = getRedisClient()
+    if (!redis) return []
 
-  const raw = await redis.zrange(METRICS_KEY, fromMs, toMs, { byScore: true })
-  return (raw as unknown[])
-    .map((s) => {
-      try {
-        // Upstash may auto-deserialize JSON, so s might be string or object
-        if (typeof s === 'string') return JSON.parse(s) as MetricEntry
-        if (typeof s === 'object' && s !== null) return s as MetricEntry
-        return null
-      } catch {
-        return null
-      }
-    })
-    .filter(
-      (e): e is MetricEntry => e !== null && typeof e.durationMs === 'number',
-    )
+    const raw = await redis.zrange(METRICS_KEY, fromMs, toMs, { byScore: true })
+    return (raw as unknown[])
+      .map((s) => {
+        try {
+          // Upstash may auto-deserialize JSON, so s might be string or object
+          if (typeof s === 'string') return JSON.parse(s) as MetricEntry
+          if (typeof s === 'object' && s !== null) return s as MetricEntry
+          return null
+        } catch {
+          return null
+        }
+      })
+      .filter(
+        (e): e is MetricEntry => e !== null && typeof e.durationMs === 'number',
+      )
+  } catch {
+    return []
+  }
 }
 
 function median(arr: number[]): number {
