@@ -93,7 +93,12 @@ export function cleanGeminiMessage(message: string) {
     .replace(/\\\"/g, '"')
 
   // Strip HTML tags (model sometimes outputs <img>, <br>, <center> etc.)
-  cleanedMessage = cleanedMessage.replace(/<[^>]+>/g, '')
+  // Loop to handle nested/malformed tags like <scr<script>ipt>
+  let previousMessage: string
+  do {
+    previousMessage = cleanedMessage
+    cleanedMessage = cleanedMessage.replace(/<[^>]+>/g, '')
+  } while (cleanedMessage !== previousMessage)
 
   // Remove model's pre-escaped markdown characters to avoid double-escaping
   // Models often output \( \) \! \. \- \# \| \{ \} \[ \] etc.
