@@ -4,11 +4,10 @@ import type { Message } from 'telegram-typings'
 import {
   type BotIdentity,
   createBot,
-  getImageBuffers,
+  // getImageBuffers,
   isAgenticChatEnabled,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
-import { collectEffectiveImageFileIds } from './image-file-ids'
 import { getMessageLogMeta, logger } from './logger'
 
 const bot = createBot()
@@ -20,7 +19,7 @@ export interface AgentWorkerPayload {
   botInfo?: BotIdentity
 }
 
-const TELEGRAM_FILE_BASE_URL = 'https://api.telegram.org/file/bot'
+// const TELEGRAM_FILE_BASE_URL = 'https://api.telegram.org/file/bot'
 let cachedBotInfo: BotIdentity | undefined
 
 async function resolveBotInfo(
@@ -45,35 +44,35 @@ async function resolveBotInfo(
   }
 }
 
-async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
-  const uniqueIds = [...new Set((fileIds ?? []).filter(Boolean))]
-  if (uniqueIds.length === 0) return []
-
-  const token = process.env.TOKEN
-  if (!token) {
-    logger.warn('TOKEN is not configured, cannot fetch images')
-    return []
-  }
-
-  const fileResults = await Promise.allSettled(
-    uniqueIds.map((fileId) => bot.api.getFile(fileId)),
-  )
-
-  const filePaths: string[] = []
-  for (const result of fileResults) {
-    if (result.status === 'fulfilled' && result.value.file_path) {
-      filePaths.push(result.value.file_path)
-    }
-  }
-
-  const urls = filePaths.map(
-    (filePath) => `${TELEGRAM_FILE_BASE_URL}${token}/${filePath}`,
-  )
-
-  if (urls.length === 0) return []
-
-  return getImageBuffers(urls)
-}
+// async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
+//   const uniqueIds = [...new Set((fileIds ?? []).filter(Boolean))]
+//   if (uniqueIds.length === 0) return []
+//
+//   const token = process.env.TOKEN
+//   if (!token) {
+//     logger.warn('TOKEN is not configured, cannot fetch images')
+//     return []
+//   }
+//
+//   const fileResults = await Promise.allSettled(
+//     uniqueIds.map((fileId) => bot.api.getFile(fileId)),
+//   )
+//
+//   const filePaths: string[] = []
+//   for (const result of fileResults) {
+//     if (result.status === 'fulfilled' && result.value.file_path) {
+//       filePaths.push(result.value.file_path)
+//     }
+//   }
+//
+//   const urls = filePaths.map(
+//     (filePath) => `${TELEGRAM_FILE_BASE_URL}${token}/${filePath}`,
+//   )
+//
+//   if (urls.length === 0) return []
+//
+//   return getImageBuffers(urls)
+// }
 
 const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   const startedAt = Date.now()
@@ -102,17 +101,17 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       return { statusCode: 200, body: 'Skipped' }
     }
 
-    const effectiveImageFileIds = await collectEffectiveImageFileIds(
-      message,
-      imageFileIds,
-    )
+    // const effectiveImageFileIds = await collectEffectiveImageFileIds(
+    //   message,
+    //   imageFileIds,
+    // )
 
     logger.info(
       {
         ...messageMeta,
         hasInlineImages: Boolean(imagesData?.length),
         imageFileIdsCount: imageFileIds?.length ?? 0,
-        effectiveImageFileIdsCount: effectiveImageFileIds.length,
+        // effectiveImageFileIdsCount: effectiveImageFileIds.length,
       },
       'worker.start',
     )
@@ -121,17 +120,17 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
 
     // Image file IDs are collected by the ingress lambda (including album photos).
     // Worker just fetches the actual image data.
-    const effectiveImages = imagesData?.length
-      ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
-      : await fetchImagesByFileIds(effectiveImageFileIds)
+    // const effectiveImages = imagesData?.length
+    //   ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
+    // : await fetchImagesByFileIds(effectiveImageFileIds)
 
     // Run the agentic loop with bot API
-    await runAgenticLoop(message, bot.api, effectiveImages, effectiveBotInfo)
+    await runAgenticLoop(message, bot.api, [], effectiveBotInfo)
     logger.info(
       {
         ...messageMeta,
         durationMs: Date.now() - startedAt,
-        imageCount: effectiveImages?.length ?? 0,
+        // imageCount: effectiveImages?.length ?? 0,
       },
       'worker.done',
     )
