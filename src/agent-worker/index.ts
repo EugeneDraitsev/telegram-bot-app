@@ -5,6 +5,8 @@ import {
   type BotIdentity,
   createBot,
   getImageBuffers,
+  getLargestPhoto,
+  getMediaGroupMessagesFromHistory,
   isAgenticChatEnabled,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
@@ -74,6 +76,33 @@ async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
   return getImageBuffers(urls)
 }
 
+/**
+ * Merge ingress-provided file IDs with any extra photos from media group albums.
+ * This runs on the worker side to keep the ingress lambda fast.
+ */
+async function collectAllImageFileIds(
+  message: Message,
+  ingressFileIds?: string[],
+): Promise<string[]> {
+  const ids = [...(ingressFileIds ?? [])]
+
+  // Look up extra album photos from history (async, hits Redis)
+  const extraMessages = await getMediaGroupMessagesFromHistory(
+    message.chat?.id || 0,
+    message.message_id,
+    message.media_group_id,
+    message.reply_to_message?.media_group_id,
+    true,
+  )
+
+  for (const msg of extraMessages) {
+    const fileId = getLargestPhoto(msg)?.file_id
+    if (fileId) ids.push(fileId)
+  }
+
+  return [...new Set(ids)]
+}
+
 const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   const startedAt = Date.now()
   try {
@@ -111,10 +140,16 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     )
 
     const effectiveBotInfo = await resolveBotInfo(botInfo)
+
+    // Collect all image file IDs:
+    // 1. IDs from ingress (direct message + reply photos)
+    // 2. Extra IDs from media group albums (looked up from history on worker side)
+    const allFileIds = await collectAllImageFileIds(message, imageFileIds)
+
     // Decode base64 images, fallback to fetching from Telegram
     const effectiveImages = imagesData?.length
       ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
-      : await fetchImagesByFileIds(imageFileIds)
+      : await fetchImagesByFileIds(allFileIds)
 
     // Run the agentic loop with bot API
     await runAgenticLoop(message, bot.api, effectiveImages, effectiveBotInfo)
