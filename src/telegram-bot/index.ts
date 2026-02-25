@@ -21,46 +21,33 @@ bot.use(saveBotMessageMiddleware)
 // Setup all commands with deferred mode (async via Lambda)
 const commandRegistry = setupAllCommands(bot, true)
 
-async function trackActivity(
-  message: Message,
-  chatFromCtx: Chat,
-  chatInfo?: Chat,
-) {
+async function trackActivity(message: Message, chat: Chat) {
   const command = isRegisteredCommandMessage(message, commandRegistry)
     ? findCommand(message.text || message.caption)
     : ''
 
   await Promise.allSettled([
-    updateStatistics(message.from, (chatInfo || chatFromCtx) as Chat),
-    saveEvent(
-      message.from,
-      chatInfo?.id || chatFromCtx.id,
-      command,
-      message.date,
-    ),
+    updateStatistics(message.from, chat),
+    saveEvent(message.from, chat?.id, command, message.date),
   ]).catch((error) => console.error('Tracking error: ', error))
 }
 
 bot.use(async (ctx, next) => {
-  const chatFromCtx = ctx.chat
+  const { chat } = ctx
   const message = ctx.message as Message
-  if (chatFromCtx && message) {
-    const chatInfo = await ctx
+  if (chat && message) {
+    const chat = await ctx
       .getChat()
       .catch((error) => console.error('getChat error: ', error))
-    const effectiveChatId = chatInfo?.id || chatFromCtx.id
-
-    // Persist incoming message before command/agent handling.
-    // Album collection relies on this history being present.
-    await saveMessage(message, effectiveChatId).catch((error) =>
-      console.error('saveMessage error: ', error),
-    )
-
-    // Fire and forget tracking to not block the request
-    void trackActivity(message, chatFromCtx, chatInfo as Chat)
 
     try {
-      if (next) await next()
+      await Promise.all([
+        trackActivity(message, chat as Chat),
+        saveMessage(message, chat?.id).catch((error) =>
+          console.error('saveHistory error: ', error),
+        ),
+        next?.(),
+      ])
     } catch (error) {
       console.error('Root error: ', error)
     }
