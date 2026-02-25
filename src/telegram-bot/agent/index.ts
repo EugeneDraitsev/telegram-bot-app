@@ -1,6 +1,6 @@
 import type { Message } from 'telegram-typings'
 
-import { getLargestPhoto, invokeAgentLambda } from '@tg-bot/common'
+import { collectMessageImageFileIds, invokeAgentLambda } from '@tg-bot/common'
 
 export interface AgentPayload {
   message: Message
@@ -8,30 +8,10 @@ export interface AgentPayload {
 }
 
 /**
- * Collect image file IDs from the message, its reply, and any extra album messages.
- */
-function collectImageFileIds(
-  message: Message,
-  extraMessages: Message[] = [],
-): string[] {
-  const ids = [
-    getLargestPhoto(message)?.file_id,
-    getLargestPhoto(message.reply_to_message)?.file_id,
-    ...extraMessages.map((m) => getLargestPhoto(m)?.file_id),
-    message.reply_to_message?.sticker?.file_id,
-  ].filter((id): id is string => Boolean(id))
-
-  return [...new Set(ids)]
-}
-
-/**
  * Main entry point for handling messages with the agent.
  * Waits only for Lambda async invoke ACK, not for worker completion.
  */
-export async function handleMessageWithAgent(
-  message: Message,
-  extraMessages: Message[] = [],
-): Promise<void> {
+export async function handleMessageWithAgent(message: Message): Promise<void> {
   const chatId = message.chat?.id
   if (!chatId) {
     return
@@ -41,7 +21,7 @@ export async function handleMessageWithAgent(
   // Worker handles chat-enabled checks and quick filtering.
   const payload: AgentPayload = {
     message,
-    imageFileIds: collectImageFileIds(message, extraMessages),
+    imageFileIds: collectMessageImageFileIds(message),
   }
 
   try {

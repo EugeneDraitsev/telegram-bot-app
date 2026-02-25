@@ -8,6 +8,7 @@ import {
   isAgenticChatEnabled,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
+import { collectEffectiveImageFileIds } from './image-file-ids'
 import { getMessageLogMeta, logger } from './logger'
 
 const bot = createBot()
@@ -101,11 +102,17 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       return { statusCode: 200, body: 'Skipped' }
     }
 
+    const effectiveImageFileIds = await collectEffectiveImageFileIds(
+      message,
+      imageFileIds,
+    )
+
     logger.info(
       {
         ...messageMeta,
         hasInlineImages: Boolean(imagesData?.length),
         imageFileIdsCount: imageFileIds?.length ?? 0,
+        effectiveImageFileIdsCount: effectiveImageFileIds.length,
       },
       'worker.start',
     )
@@ -116,7 +123,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     // Worker just fetches the actual image data.
     const effectiveImages = imagesData?.length
       ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
-      : await fetchImagesByFileIds(imageFileIds)
+      : await fetchImagesByFileIds(effectiveImageFileIds)
 
     // Run the agentic loop with bot API
     await runAgenticLoop(message, bot.api, effectiveImages, effectiveBotInfo)

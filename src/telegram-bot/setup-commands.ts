@@ -1,7 +1,6 @@
 import type { Bot } from 'grammy/web'
 import type { Message } from 'telegram-typings'
 
-import { getMediaGroupMessages } from '@tg-bot/common'
 import { handleMessageWithAgent } from './agent'
 import { installCommandRegistry } from './command-registry'
 import { setupAgenticConfig } from './configuration-commands'
@@ -68,8 +67,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   bot.on('message:photo', async (ctx) => {
     const handled = handlePhotoMessage(ctx, deferredCommands)
     if (!handled && ctx.message?.caption) {
-      const extraMessages = await getMediaGroupMessages(ctx)
-      await handleMessageWithAgent(ctx.message as Message, extraMessages)
+      await handleMessageWithAgent(ctx.message as Message)
     }
   })
 
