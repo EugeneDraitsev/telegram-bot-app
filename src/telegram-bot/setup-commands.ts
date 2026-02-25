@@ -2,7 +2,10 @@ import type { Bot } from 'grammy/web'
 import type { Message } from 'telegram-typings'
 
 import { handleMessageWithAgent } from './agent'
-import { installCommandRegistry } from './command-registry'
+import {
+  installCommandRegistry,
+  isRegisteredCommandMessage,
+} from './command-registry'
 import { setupAgenticConfig } from './configuration-commands'
 import setupCurrencyCommands from './currency'
 import setupDat1coCommands from './dat1co'
@@ -64,11 +67,24 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
 
   // Photo message handler for multimodal commands.
   // If no command matches, fall through to the agentic handler.
-  bot.on('message:photo', async (ctx) => {
-    const handled = await handlePhotoMessage(ctx, deferredCommands)
-    if (!handled && ctx.message?.caption) {
-      await handleMessageWithAgent(ctx.message as Message)
+  bot.on('message:photo', async (ctx, next) => {
+    await handlePhotoMessage(ctx, deferredCommands)
+    await next()
+  })
+
+  // Smart agentic responses for non-command messages.
+  bot.on('message', async (ctx, next) => {
+    await next()
+
+    const message = ctx.message as Message
+    const chatId = ctx.chat?.id
+    const isCommand = isRegisteredCommandMessage(message, commandRegistry)
+
+    if (isCommand || !chatId) {
+      return
     }
+
+    await handleMessageWithAgent(message)
   })
 
   return commandRegistry

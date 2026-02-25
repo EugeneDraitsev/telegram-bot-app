@@ -163,6 +163,22 @@ describe('getCommandData', () => {
     expect(data.images).toEqual([photo1[1], photo2[1]])
   })
 
+  it('keeps current message photo for caption commands (no reply)', () => {
+    const photo = [
+      { file_id: 'p_small', width: 100, height: 100, file_unique_id: 'p' },
+      { file_id: 'p_big', width: 800, height: 700, file_unique_id: 'p' },
+    ]
+
+    const data = getCommandData({
+      caption: '/q what is on this image?',
+      photo,
+    } as unknown as Message)
+
+    expect(data.text).toEqual('what is on this image?')
+    expect(data.images).toHaveLength(1)
+    expect(data.images[0]).toEqual(photo[1])
+  })
+
   it('should include images from extraMessages', () => {
     const photo1 = [
       { file_id: '1', width: 100, height: 100, file_unique_id: 'u1' },

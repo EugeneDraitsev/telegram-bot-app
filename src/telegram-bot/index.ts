@@ -11,7 +11,6 @@ import {
   saveMessage,
   updateStatistics,
 } from '@tg-bot/common'
-import { handleMessageWithAgent } from './agent'
 import { isRegisteredCommandMessage } from './command-registry'
 import { setupAllCommands } from './setup-commands'
 
@@ -32,7 +31,6 @@ async function trackActivity(message: Message, chat: Chat) {
   ]
 
   if (isAiEnabledChat(chat.id)) {
-    console.log('DEBUG:', JSON.stringify(message, null, 2))
     tasks.push(
       saveMessage(message, chat.id).catch((error) =>
         console.error('saveHistory error: ', error),
@@ -64,23 +62,11 @@ bot.use(async (ctx, next) => {
 // Setup all commands with deferred mode (async via Lambda)
 commandRegistry = setupAllCommands(bot, true)
 
-// Smart Agentic responses - bot autonomously decides what to do
-bot.on('message', async (ctx) => {
-  const message = ctx.message as Message
-  const chatId = ctx.chat?.id
-  const isCommand = isRegisteredCommandMessage(message, commandRegistry)
-
-  if (isCommand || !chatId) {
-    return
-  }
-
-  await handleMessageWithAgent(message)
-})
-
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {
+    console.log('Telegram bot event: ', JSON.stringify(event, null, 2))
     await handleUpdate(
       { body: event.body ?? '', headers: event.headers },
       context,
