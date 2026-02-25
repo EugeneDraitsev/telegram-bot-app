@@ -18,8 +18,7 @@ const bot = createBot()
 
 bot.use(saveBotMessageMiddleware)
 
-// Setup all commands with deferred mode (async via Lambda)
-const commandRegistry = setupAllCommands(bot, true)
+let commandRegistry = new Set<string>()
 
 async function trackActivity(message: Message, chat: Chat) {
   const command = isRegisteredCommandMessage(message, commandRegistry)
@@ -53,6 +52,9 @@ bot.use(async (ctx, next) => {
     }
   }
 })
+
+// Setup all commands with deferred mode (async via Lambda)
+commandRegistry = setupAllCommands(bot, true)
 
 // Smart Agentic responses - bot autonomously decides what to do
 bot.on('message', async (ctx) => {
