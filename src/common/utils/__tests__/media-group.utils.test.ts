@@ -24,18 +24,13 @@ describe('getMediaGroupMessagesFromHistory', () => {
     expect(mockGetRawHistory).not.toHaveBeenCalled()
   })
 
-  test('retries once for reply album when first read has only one message', async () => {
-    const firstRead = [
-      { message_id: 10, media_group_id: 'group_1' },
-    ] as unknown as Message[]
-    const secondRead = [
+  test('does not retry for reply album lookups', async () => {
+    const history = [
       { message_id: 10, media_group_id: 'group_1' },
       { message_id: 11, media_group_id: 'group_1' },
     ] as unknown as Message[]
 
-    mockGetRawHistory
-      .mockResolvedValueOnce(firstRead)
-      .mockResolvedValueOnce(secondRead)
+    mockGetRawHistory.mockResolvedValueOnce(history)
 
     const startedAt = Date.now()
     const result = await getMediaGroupMessagesFromHistory(
@@ -46,28 +41,30 @@ describe('getMediaGroupMessagesFromHistory', () => {
       true,
     )
 
-    expect(mockGetRawHistory).toHaveBeenCalledTimes(2)
-    expect(result).toEqual(secondRead)
-    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(900)
+    expect(mockGetRawHistory).toHaveBeenCalledTimes(1)
+    expect(result).toEqual(history)
+    expect(Date.now() - startedAt).toBeLessThan(900)
   })
 
-  test('does not retry for reply album when first read already has multiple messages', async () => {
-    const firstRead = [
+  test('waits before lookup when current message belongs to an album', async () => {
+    const history = [
       { message_id: 10, media_group_id: 'group_1' },
       { message_id: 11, media_group_id: 'group_1' },
     ] as unknown as Message[]
 
-    mockGetRawHistory.mockResolvedValueOnce(firstRead)
+    mockGetRawHistory.mockResolvedValueOnce(history)
 
+    const startedAt = Date.now()
     const result = await getMediaGroupMessagesFromHistory(
       1,
-      999,
-      undefined,
+      10,
       'group_1',
+      undefined,
       true,
     )
 
     expect(mockGetRawHistory).toHaveBeenCalledTimes(1)
-    expect(result).toEqual(firstRead)
+    expect(result).toEqual([{ message_id: 11, media_group_id: 'group_1' }])
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(900)
   })
 })

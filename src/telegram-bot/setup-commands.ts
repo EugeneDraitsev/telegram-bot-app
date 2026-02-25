@@ -6,7 +6,6 @@ import { installCommandRegistry } from './command-registry'
 import { setupAgenticConfig } from './configuration-commands'
 import setupCurrencyCommands from './currency'
 import setupDat1coCommands from './dat1co'
-import { handleDebugImages } from './debug-images'
 import setupExternalApisCommands from './external-apis'
 import setupGoogleCommands from './google'
 import setupOpenAiCommands from './open-ai'
@@ -63,13 +62,10 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /toggle - enable/disable agentic bot for the chat
   setupAgenticConfig(bot)
 
-  // /debugImages - debug media-group and image collection paths
-  bot.command('debugImages', handleDebugImages)
-
   // Photo message handler for multimodal commands.
   // If no command matches, fall through to the agentic handler.
   bot.on('message:photo', async (ctx) => {
-    const handled = handlePhotoMessage(ctx, deferredCommands)
+    const handled = await handlePhotoMessage(ctx, deferredCommands)
     if (!handled && ctx.message?.caption) {
       await handleMessageWithAgent(ctx.message as Message)
     }

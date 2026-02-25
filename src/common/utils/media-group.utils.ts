@@ -36,31 +36,12 @@ export async function getMediaGroupMessagesFromHistory(
     await sleep(ALBUM_WAIT_DELAY_MS)
   }
 
-  let mediaGroupMessages = filterMediaGroupMessages(
+  return filterMediaGroupMessages(
     await getRawHistory(chatId),
     currentMessageId,
     currentMediaGroupId,
     replyMediaGroupId,
   )
-
-  // Replying to an album can race with background history persistence.
-  // If we see fewer than 2 album messages, wait and retry once.
-  if (
-    !currentMediaGroupId &&
-    replyMediaGroupId &&
-    waitForAlbum &&
-    mediaGroupMessages.length < 2
-  ) {
-    await sleep(ALBUM_WAIT_DELAY_MS)
-    mediaGroupMessages = filterMediaGroupMessages(
-      await getRawHistory(chatId),
-      currentMessageId,
-      currentMediaGroupId,
-      replyMediaGroupId,
-    )
-  }
-
-  return mediaGroupMessages
 }
 
 /**

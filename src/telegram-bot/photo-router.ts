@@ -1,6 +1,7 @@
 import type { Context } from 'grammy/web'
 
 import { setupGemmaDat1coCommands } from './dat1co'
+import { handleDebugImages } from './debug-images'
 import {
   setupImageGenerationGeminiCommands,
   setupMultimodalGeminiCommands,
@@ -13,6 +14,10 @@ type PhotoRoute = {
 }
 
 const photoRoutes: PhotoRoute[] = [
+  {
+    prefix: '/debugImages',
+    handler: async (ctx) => handleDebugImages(ctx),
+  },
   {
     prefix: '/o',
     handler: (ctx, deferred) =>
@@ -39,13 +44,13 @@ const photoRoutes: PhotoRoute[] = [
   },
 ]
 
-export const handlePhotoMessage = (
+export const handlePhotoMessage = async (
   ctx: Context,
   deferredCommands: boolean,
-): Promise<unknown> | undefined => {
+): Promise<boolean> => {
   const caption = ctx.message?.caption
 
-  if (!caption) return undefined
+  if (!caption) return false
 
   // Sort by prefix length descending to match the longest prefix first (e.g. /gemma before /ge)
   const sortedRoutes = [...photoRoutes].sort(
@@ -54,9 +59,10 @@ export const handlePhotoMessage = (
 
   for (const route of sortedRoutes) {
     if (caption.startsWith(route.prefix)) {
-      return route.handler(ctx, deferredCommands)
+      await route.handler(ctx, deferredCommands)
+      return true
     }
   }
 
-  return undefined
+  return false
 }
