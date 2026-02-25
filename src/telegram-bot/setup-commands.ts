@@ -1,5 +1,7 @@
 import type { Bot } from 'grammy/web'
+import type { Message } from 'telegram-typings'
 
+import { handleMessageWithAgent } from './agent'
 import { installCommandRegistry } from './command-registry'
 import { setupAgenticConfig } from './configuration-commands'
 import setupCurrencyCommands from './currency'
@@ -60,8 +62,14 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /toggle - enable/disable agentic bot for the chat
   setupAgenticConfig(bot)
 
-  // Photo message handler for multimodal commands
-  bot.on('message:photo', (ctx) => handlePhotoMessage(ctx, deferredCommands))
+  // Photo message handler for multimodal commands.
+  // If no command matches, fall through to the agentic handler.
+  bot.on('message:photo', async (ctx) => {
+    const handled = handlePhotoMessage(ctx, deferredCommands)
+    if (!handled && ctx.message?.caption) {
+      await handleMessageWithAgent(ctx.message as Message)
+    }
+  })
 
   return commandRegistry
 }
