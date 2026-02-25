@@ -1,7 +1,6 @@
 import type { Context } from 'grammy/web'
 
 import { setupGemmaDat1coCommands } from './dat1co'
-import { handleDebugImages } from './debug-images'
 import {
   setupImageGenerationGeminiCommands,
   setupMultimodalGeminiCommands,
@@ -14,10 +13,6 @@ type PhotoRoute = {
 }
 
 const photoRoutes: PhotoRoute[] = [
-  {
-    prefix: '/debugImages',
-    handler: async (ctx) => handleDebugImages(ctx),
-  },
   {
     prefix: '/o',
     handler: (ctx, deferred) =>

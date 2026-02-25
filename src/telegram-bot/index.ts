@@ -5,6 +5,7 @@ import type { Chat, Message } from 'telegram-typings'
 import {
   createBot,
   findCommand,
+  isAiEnabledChat,
   saveBotMessageMiddleware,
   saveEvent,
   saveMessage,
@@ -25,10 +26,23 @@ async function trackActivity(message: Message, chat: Chat) {
     ? findCommand(message.text || message.caption)
     : ''
 
-  await Promise.allSettled([
+  const tasks = [
     updateStatistics(message.from, chat),
     saveEvent(message.from, chat?.id, command, message.date),
-  ]).catch((error) => console.error('Tracking error: ', error))
+  ]
+
+  if (isAiEnabledChat(chat.id)) {
+    console.log('DEBUG:', JSON.stringify(chat, null, 2))
+    tasks.push(
+      saveMessage(message, chat.id).catch((error) =>
+        console.error('saveHistory error: ', error),
+      ),
+    )
+  }
+
+  await Promise.allSettled(tasks).catch((error) =>
+    console.error('Tracking error: ', error),
+  )
 }
 
 bot.use(async (ctx, next) => {
@@ -40,13 +54,7 @@ bot.use(async (ctx, next) => {
       .catch((error) => console.error('getChat error: ', error))
 
     try {
-      await Promise.all([
-        trackActivity(message, chat as Chat),
-        saveMessage(message, chat?.id).catch((error) =>
-          console.error('saveHistory error: ', error),
-        ),
-        next?.(),
-      ])
+      await Promise.all([trackActivity(message, chat as Chat), next?.()])
     } catch (error) {
       console.error('Root error: ', error)
     }

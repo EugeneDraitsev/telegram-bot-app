@@ -1,10 +1,12 @@
 import type { Handler } from 'aws-lambda'
+import type { Context } from 'grammy/web'
 import type { Message } from 'telegram-typings'
 
 import {
   type BotIdentity,
   createBot,
-  // getImageBuffers,
+  getMediaGroupMessages,
+  getMultimodalCommandData,
   isAgenticChatEnabled,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
@@ -19,7 +21,6 @@ export interface AgentWorkerPayload {
   botInfo?: BotIdentity
 }
 
-// const TELEGRAM_FILE_BASE_URL = 'https://api.telegram.org/file/bot'
 let cachedBotInfo: BotIdentity | undefined
 
 async function resolveBotInfo(
@@ -43,36 +44,6 @@ async function resolveBotInfo(
     return incomingBotInfo
   }
 }
-
-// async function fetchImagesByFileIds(fileIds?: string[]): Promise<Buffer[]> {
-//   const uniqueIds = [...new Set((fileIds ?? []).filter(Boolean))]
-//   if (uniqueIds.length === 0) return []
-//
-//   const token = process.env.TOKEN
-//   if (!token) {
-//     logger.warn('TOKEN is not configured, cannot fetch images')
-//     return []
-//   }
-//
-//   const fileResults = await Promise.allSettled(
-//     uniqueIds.map((fileId) => bot.api.getFile(fileId)),
-//   )
-//
-//   const filePaths: string[] = []
-//   for (const result of fileResults) {
-//     if (result.status === 'fulfilled' && result.value.file_path) {
-//       filePaths.push(result.value.file_path)
-//     }
-//   }
-//
-//   const urls = filePaths.map(
-//     (filePath) => `${TELEGRAM_FILE_BASE_URL}${token}/${filePath}`,
-//   )
-//
-//   if (urls.length === 0) return []
-//
-//   return getImageBuffers(urls)
-// }
 
 const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   const startedAt = Date.now()
@@ -101,36 +72,36 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       return { statusCode: 200, body: 'Skipped' }
     }
 
-    // const effectiveImageFileIds = await collectEffectiveImageFileIds(
-    //   message,
-    //   imageFileIds,
-    // )
-
     logger.info(
       {
         ...messageMeta,
         hasInlineImages: Boolean(imagesData?.length),
         imageFileIdsCount: imageFileIds?.length ?? 0,
-        // effectiveImageFileIdsCount: effectiveImageFileIds.length,
       },
       'worker.start',
     )
 
     const effectiveBotInfo = await resolveBotInfo(botInfo)
 
-    // Image file IDs are collected by the ingress lambda (including album photos).
-    // Worker just fetches the actual image data.
-    // const effectiveImages = imagesData?.length
-    //   ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
-    // : await fetchImagesByFileIds(effectiveImageFileIds)
+    const ctx = {
+      message,
+      chat: message.chat,
+      api: bot.api,
+    } as unknown as Context
+    const extraMessages = await getMediaGroupMessages(ctx)
+    const commandData = await getMultimodalCommandData(ctx, extraMessages)
+
+    const images = imagesData?.length
+      ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
+      : commandData.imagesData
 
     // Run the agentic loop with bot API
-    await runAgenticLoop(message, bot.api, [], effectiveBotInfo)
+    await runAgenticLoop(message, bot.api, images, effectiveBotInfo)
     logger.info(
       {
         ...messageMeta,
         durationMs: Date.now() - startedAt,
-        // imageCount: effectiveImages?.length ?? 0,
+        imageCount: images.length,
       },
       'worker.done',
     )
