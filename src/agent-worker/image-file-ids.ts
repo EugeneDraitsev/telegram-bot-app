@@ -6,10 +6,6 @@ import {
   getMediaGroupMessagesFromHistory,
 } from '@tg-bot/common'
 
-const MEDIA_GROUP_RETRY_DELAY_MS = 1_000
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 async function collectMediaGroupImageFileIds(
   message: Message,
 ): Promise<string[]> {
@@ -25,30 +21,13 @@ async function collectMediaGroupImageFileIds(
     return []
   }
 
-  let mediaGroupMessages = await getMediaGroupMessagesFromHistory(
+  const mediaGroupMessages = await getMediaGroupMessagesFromHistory(
     chatId,
     messageId,
     currentMediaGroupId,
     replyMediaGroupId,
     true,
   )
-
-  // Reply-to-media-group can race with history persistence.
-  // Retry once after a short delay when the first read is empty.
-  if (
-    !currentMediaGroupId &&
-    replyMediaGroupId &&
-    mediaGroupMessages.length === 0
-  ) {
-    await sleep(MEDIA_GROUP_RETRY_DELAY_MS)
-    mediaGroupMessages = await getMediaGroupMessagesFromHistory(
-      chatId,
-      messageId,
-      currentMediaGroupId,
-      replyMediaGroupId,
-      false,
-    )
-  }
 
   return mediaGroupMessages
     .map((m) => getLargestPhoto(m)?.file_id)

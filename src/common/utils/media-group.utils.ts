@@ -9,6 +9,7 @@ import type { Message } from 'telegram-typings'
 import { getRawHistory } from '../upstash'
 
 const ALBUM_WAIT_DELAY_MS = 1_000
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
  * Get messages from the same media group (album)
@@ -32,17 +33,34 @@ export async function getMediaGroupMessagesFromHistory(
   // If the current message is part of an album, we need to wait for other parts
   // of the album to be processed and saved to the history by concurrent Lambda executions.
   if (currentMediaGroupId && waitForAlbum) {
-    await new Promise((resolve) => setTimeout(resolve, ALBUM_WAIT_DELAY_MS))
+    await sleep(ALBUM_WAIT_DELAY_MS)
   }
 
-  const history = await getRawHistory(chatId)
-
-  return filterMediaGroupMessages(
-    history,
+  let mediaGroupMessages = filterMediaGroupMessages(
+    await getRawHistory(chatId),
     currentMessageId,
     currentMediaGroupId,
     replyMediaGroupId,
   )
+
+  // Replying to an album can race with background history persistence.
+  // If we see fewer than 2 album messages, wait and retry once.
+  if (
+    !currentMediaGroupId &&
+    replyMediaGroupId &&
+    waitForAlbum &&
+    mediaGroupMessages.length < 2
+  ) {
+    await sleep(ALBUM_WAIT_DELAY_MS)
+    mediaGroupMessages = filterMediaGroupMessages(
+      await getRawHistory(chatId),
+      currentMessageId,
+      currentMediaGroupId,
+      replyMediaGroupId,
+    )
+  }
+
+  return mediaGroupMessages
 }
 
 /**
