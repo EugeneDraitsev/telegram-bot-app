@@ -32,7 +32,7 @@ async function trackActivity(message: Message, chat: Chat) {
   ]
 
   if (isAiEnabledChat(chat.id)) {
-    console.log('DEBUG:', JSON.stringify(chat, null, 2))
+    console.log('DEBUG:', JSON.stringify(message, null, 2))
     tasks.push(
       saveMessage(message, chat.id).catch((error) =>
         console.error('saveHistory error: ', error),

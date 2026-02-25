@@ -434,21 +434,25 @@ export async function runAgenticLoop(
           .map((t) => [t.declaration.name ?? '', t]),
       )
 
-      // Build initial contents — include attached images as inlineData
-      const imageParts: Part[] = (imagesData ?? []).map((buf) => ({
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: buf.toString('base64'),
-        },
+      // Build initial contents in /q-like order:
+      // each image as a separate user turn, then the final text turn.
+      const imageContents: Content[] = (imagesData ?? []).map((buf) => ({
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: buf.toString('base64'),
+            },
+          } as Part,
+        ],
       }))
 
       const contents: Content[] = [
+        ...imageContents,
         {
           role: 'user',
-          parts: [
-            ...imageParts,
-            { text: textContent || '[User sent media without text]' },
-          ],
+          parts: [{ text: textContent || '[User sent media without text]' }],
         },
       ]
 

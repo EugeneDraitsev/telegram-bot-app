@@ -90,10 +90,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     } as unknown as Context
     const extraMessages = await getMediaGroupMessages(ctx)
     const commandData = await getMultimodalCommandData(ctx, extraMessages)
-
-    const images = imagesData?.length
-      ? imagesData.map((b64) => Buffer.from(b64, 'base64'))
-      : commandData.imagesData
+    const images = commandData.imagesData
 
     // Run the agentic loop with bot API
     await runAgenticLoop(message, bot.api, images, effectiveBotInfo)
