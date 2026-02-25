@@ -5,6 +5,7 @@ import type { Chat, Message } from 'telegram-typings'
 import {
   createBot,
   findCommand,
+  getMediaGroupMessages,
   saveBotMessageMiddleware,
   saveEvent,
   saveMessage,
@@ -71,7 +72,9 @@ bot.on('message', async (ctx) => {
     return
   }
 
-  await handleMessageWithAgent(message)
+  // Collect album photos when replying to a media group
+  const extraMessages = await getMediaGroupMessages(ctx)
+  await handleMessageWithAgent(message, extraMessages)
 })
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
