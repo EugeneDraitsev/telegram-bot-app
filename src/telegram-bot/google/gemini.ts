@@ -78,7 +78,7 @@ export const generateMultimodalCompletion = async (
       input: history,
       ...(!model.includes('gemma')
         ? {
-            tools: [{ type: 'google_search' }],
+            tools: [{ type: 'google_search' }, { type: 'url_context' }],
             system_instruction: geminiSystemInstructions,
           }
         : {}),

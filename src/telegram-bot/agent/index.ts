@@ -1,16 +1,30 @@
 import type { Message } from 'telegram-typings'
 
-import { getLargestPhoto, invokeAgentLambda } from '@tg-bot/common'
+import {
+  getLargestPhoto,
+  getMediaGroupMessagesFromHistory,
+  invokeAgentLambda,
+} from '@tg-bot/common'
 
 export interface AgentPayload {
   message: Message
   imageFileIds?: string[]
 }
 
-function collectImageFileIds(message: Message): string[] {
+async function collectImageFileIds(message: Message): Promise<string[]> {
+  const extraMessages = await getMediaGroupMessagesFromHistory(
+    message.chat?.id || 0,
+    message.message_id,
+    message.media_group_id,
+    message.reply_to_message?.media_group_id,
+  )
+
+  const extraPhotos = extraMessages.map(getLargestPhoto)
+
   const ids = [
     getLargestPhoto(message)?.file_id,
     getLargestPhoto(message.reply_to_message)?.file_id,
+    ...extraPhotos.map((p) => p?.file_id),
     message.reply_to_message?.sticker?.file_id,
   ].filter((id): id is string => Boolean(id))
 
@@ -31,7 +45,7 @@ export async function handleMessageWithAgent(message: Message): Promise<void> {
   // Worker handles chat-enabled checks and quick filtering.
   const payload: AgentPayload = {
     message,
-    imageFileIds: collectImageFileIds(message),
+    imageFileIds: await collectImageFileIds(message),
   }
 
   try {
