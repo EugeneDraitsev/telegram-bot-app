@@ -20,7 +20,7 @@ bot.use(saveBotMessageMiddleware)
 
 let commandRegistry = new Set<string>()
 
-async function trackActivity(message: Message, chat: Chat) {
+async function trackActivity(message: Message, chat: Chat, caption?: string) {
   const command = isRegisteredCommandMessage(message, commandRegistry)
     ? findCommand(message.text || message.caption)
     : ''
@@ -32,9 +32,10 @@ async function trackActivity(message: Message, chat: Chat) {
 
   if (isAiEnabledChat(chat.id)) {
     tasks.push(
-      saveMessage(message, chat.id).catch((error) =>
-        console.error('saveHistory error: ', error),
-      ),
+      saveMessage(
+        { ...message, text: message.text || caption || '' },
+        chat.id,
+      ).catch((error) => console.error('saveHistory error: ', error)),
     )
   }
 
@@ -46,13 +47,19 @@ async function trackActivity(message: Message, chat: Chat) {
 bot.use(async (ctx, next) => {
   const { chat } = ctx
   const message = ctx.message as Message
+  // biome-ignore lint/suspicious/noExplicitAny: <>
+  const caption: string = (ctx as any).caption
+  console.log('ctx: ', JSON.stringify(ctx, null, 2))
   if (chat && message) {
     const chat = await ctx
       .getChat()
       .catch((error) => console.error('getChat error: ', error))
 
     try {
-      await Promise.all([trackActivity(message, chat as Chat), next?.()])
+      await Promise.all([
+        trackActivity(message, chat as Chat, caption),
+        next?.(),
+      ])
     } catch (error) {
       console.error('Root error: ', error)
     }
@@ -66,7 +73,6 @@ const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {
-    console.log('Telegram bot event: ', JSON.stringify(event, null, 2))
     await handleUpdate(
       { body: event.body ?? '', headers: event.headers },
       context,
