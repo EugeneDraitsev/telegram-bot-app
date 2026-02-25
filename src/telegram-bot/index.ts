@@ -38,7 +38,6 @@ async function trackActivity(
       command,
       message.date,
     ),
-    saveMessage(message, chatInfo?.id || chatFromCtx.id),
   ]).catch((error) => console.error('Tracking error: ', error))
 }
 
@@ -49,6 +48,13 @@ bot.use(async (ctx, next) => {
     const chatInfo = await ctx
       .getChat()
       .catch((error) => console.error('getChat error: ', error))
+    const effectiveChatId = chatInfo?.id || chatFromCtx.id
+
+    // Persist incoming message before command/agent handling.
+    // Album collection relies on this history being present.
+    await saveMessage(message, effectiveChatId).catch((error) =>
+      console.error('saveMessage error: ', error),
+    )
 
     // Fire and forget tracking to not block the request
     void trackActivity(message, chatFromCtx, chatInfo as Chat)
