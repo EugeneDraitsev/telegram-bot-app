@@ -8,13 +8,16 @@ export interface AgentPayload {
 }
 
 /**
- * Collect image file IDs that are directly available on the message.
- * Media group (album) lookups happen on the worker side to keep ingress fast.
+ * Collect image file IDs from the message, its reply, and any extra album messages.
  */
-function collectImageFileIds(message: Message): string[] {
+function collectImageFileIds(
+  message: Message,
+  extraMessages: Message[] = [],
+): string[] {
   const ids = [
     getLargestPhoto(message)?.file_id,
     getLargestPhoto(message.reply_to_message)?.file_id,
+    ...extraMessages.map((m) => getLargestPhoto(m)?.file_id),
     message.reply_to_message?.sticker?.file_id,
   ].filter((id): id is string => Boolean(id))
 
@@ -25,7 +28,10 @@ function collectImageFileIds(message: Message): string[] {
  * Main entry point for handling messages with the agent.
  * Waits only for Lambda async invoke ACK, not for worker completion.
  */
-export async function handleMessageWithAgent(message: Message): Promise<void> {
+export async function handleMessageWithAgent(
+  message: Message,
+  extraMessages: Message[] = [],
+): Promise<void> {
   const chatId = message.chat?.id
   if (!chatId) {
     return
@@ -35,7 +41,7 @@ export async function handleMessageWithAgent(message: Message): Promise<void> {
   // Worker handles chat-enabled checks and quick filtering.
   const payload: AgentPayload = {
     message,
-    imageFileIds: collectImageFileIds(message),
+    imageFileIds: collectImageFileIds(message, extraMessages),
   }
 
   try {

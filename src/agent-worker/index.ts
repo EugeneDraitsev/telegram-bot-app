@@ -100,7 +100,20 @@ async function collectAllImageFileIds(
     if (fileId) ids.push(fileId)
   }
 
-  return [...new Set(ids)]
+  const result = [...new Set(ids)]
+
+  logger.info(
+    {
+      ingressCount: ingressFileIds?.length ?? 0,
+      extraCount: extraMessages.length,
+      totalUniqueIds: result.length,
+      mediaGroupId: message.media_group_id,
+      replyMediaGroupId: message.reply_to_message?.media_group_id,
+    },
+    'worker.collect_image_file_ids',
+  )
+
+  return result
 }
 
 const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
