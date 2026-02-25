@@ -32,50 +32,23 @@ export const saveMessage = async (message: Message, chatId?: number) => {
 /**
  * Get raw message history from Redis
  */
-export const getRawHistory = async (
-  chatId: string | number,
-): Promise<Message[]> => {
+export const getRawHistory = async (chatId: string | number) => {
   const redis = getRedisClient()
   try {
-    if (!redis || !isAiEnabledChat(chatId)) {
+    if (!isAiEnabledChat(chatId) || !redis) {
       return []
     }
 
     const key = `${CHAT_HISTORY_REDIS_KEY}:${chatId}`
 
-    const rawMessages = (await redis.zrange<Message[]>(
+    const rawMessages = await redis.zrange<Message[]>(
       key,
       Date.now() - TTL_MS,
       Date.now(),
       { byScore: true },
-    )) as unknown[]
+    )
 
-    if (!rawMessages?.length) {
-      return []
-    }
-
-    const messages: Message[] = []
-    for (const item of rawMessages) {
-      if (!item) {
-        continue
-      }
-
-      if (typeof item === 'string') {
-        try {
-          const parsed = JSON.parse(item)
-          if (parsed && typeof parsed === 'object') {
-            messages.push(parsed as Message)
-          }
-        } catch {
-          // Ignore malformed records.
-        }
-        continue
-      }
-
-      messages.push(item as Message)
-    }
-
-    return messages
+    return rawMessages
   } catch (error) {
     console.error('Error getting raw chat history:', error)
     return []

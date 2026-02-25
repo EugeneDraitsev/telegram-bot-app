@@ -16,7 +16,7 @@ export async function handleDebugImages(ctx: Context) {
     )
     .join('\n')
 
-  const response = `Text: ${text}\nCombined Text: ${combinedText}\n\nImages (${images.length}):\n${imagesInfo} \n${JSON.stringify(extraMessages, null, 2)}`
+  const response = `Text: ${text}\nCombined Text: ${combinedText}\n\nReplyId: ${replyId}\n\nImages (${images.length}):\n${imagesInfo} \n${JSON.stringify(extraMessages, null, 2)}`
 
   return ctx.reply(response, {
     reply_parameters: { message_id: replyId },
