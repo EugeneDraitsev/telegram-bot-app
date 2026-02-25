@@ -134,43 +134,6 @@ export async function generateImage(
   return result
 }
 
-const OPENAI_TTS_TIMEOUT_MS = 15_000
-
-/**
- * Generate voice audio using OpenAI TTS
- */
-export async function generateVoice(
-  text: string,
-  voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'nova',
-): Promise<Buffer> {
-  const openaiKey = process.env.OPENAI_API_KEY
-  if (!openaiKey) {
-    throw new Error('OpenAI API key not configured')
-  }
-
-  const response = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST',
-    signal: AbortSignal.timeout(OPENAI_TTS_TIMEOUT_MS),
-    headers: {
-      Authorization: `Bearer ${openaiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'tts-1',
-      input: text.slice(0, 4096),
-      voice,
-      response_format: 'opus',
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`OpenAI TTS error: ${response.status}`)
-  }
-
-  const arrayBuffer = await response.arrayBuffer()
-  return Buffer.from(arrayBuffer)
-}
-
 /**
  * Clean response text from markdown artifacts
  */

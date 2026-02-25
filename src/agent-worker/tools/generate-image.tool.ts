@@ -1,9 +1,9 @@
 /**
- * Tool for generating/editing AI images
+ * Tool for generating/editing AI images via OpenAI
  */
 
 import { getErrorMessage } from '@tg-bot/common'
-import { generateImage } from '../services'
+import { generateImageOpenAi } from '../services'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
@@ -49,7 +49,7 @@ export const generateImageTool: AgentTool = {
       const includeTextResponse = args.includeTextResponse as boolean
       const imagesToEdit =
         useAttachedImage && imagesData?.length ? imagesData : undefined
-      const result = await generateImage(prompt, imagesToEdit)
+      const result = await generateImageOpenAi(prompt, imagesToEdit)
 
       if (result.image) {
         addResponse({
