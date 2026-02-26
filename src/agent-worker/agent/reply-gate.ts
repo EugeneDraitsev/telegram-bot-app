@@ -65,7 +65,7 @@ IGNORE if any of these apply:
 - Meta statements about bot behavior/triggering: "нас бот тригернулся", "бот триггернулся", "бот опять ответил".
 - Short mention fragments without a clear ask: "@username журнал макмилена", "@botname <noun phrase>".
 - Reply/mention is aimed mainly at another person/account, even if THIS bot is present.
-- Praise/thanks/reactions without explicit question/request ("молодец", "спасибо", "красиво").
+- Praise/thanks/reactions without explicit question/request ("молодец", "спасибо", "красиво", "харош" и т.д).
 - Pure noise/spam/random chars/single emoji without context.
 - Any uncertainty.
 
