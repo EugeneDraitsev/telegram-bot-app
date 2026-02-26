@@ -19,7 +19,7 @@ type InteractionInput = {
   role: 'user' | 'model'
   content: Array<
     | { type: 'text'; text: string }
-    | { type: 'image'; data: string; mime_type: string }
+    | { type: 'image'; data: string; mime_type: 'image/jpeg' }
   >
 }
 
