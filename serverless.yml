@@ -125,9 +125,9 @@ build:
 
 custom:
   runtimeByStage:
-    local: nodejs22.x
+    local: nodejs24.x
   esbuildTargetByStage:
-    local: node22
+    local: node24
   serverless-offline:
     httpPort: 4000
     useChildProcesses: true
