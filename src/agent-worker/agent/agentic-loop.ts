@@ -247,7 +247,7 @@ async function generateWithRetry(
 
 /** Maps tool names to their underlying AI model for metrics */
 const TOOL_MODELS: Record<string, string> = {
-  generate_or_edit_image: 'gemini-3-pro-image',
+  generate_or_edit_image: 'gemini-3.1-flash-image-preview',
   generate_voice: 'openai-tts-1',
   web_search: FAST_MODEL,
   code_execution: FAST_MODEL,

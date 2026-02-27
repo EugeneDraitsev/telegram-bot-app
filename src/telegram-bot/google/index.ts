@@ -99,7 +99,7 @@ export const setupImageGenerationGeminiCommands = async (
         type: 'model_call',
         source: 'command',
         name: '/ge',
-        model: 'gemini-3-pro-image',
+        model: 'gemini-3.1-flash-image-preview',
         chatId: Number(commandData.chatId),
       },
       () =>

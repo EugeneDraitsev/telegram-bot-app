@@ -58,7 +58,7 @@ export async function searchWeb(
 
 /**
  * Generate image with optional text response.
- * Uses the Interactions API with gemini-3-pro-image-preview.
+ * Uses the Interactions API with gemini-3.1-flash-image-preview.
  */
 export async function generateImage(
   prompt: string,
@@ -101,7 +101,7 @@ export async function generateImage(
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const interaction = await ai.interactions.create({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3.1-flash-image-preview',
       input,
       response_modalities: ['image', 'text'],
     })
