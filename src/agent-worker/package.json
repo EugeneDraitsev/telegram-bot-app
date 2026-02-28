@@ -6,7 +6,7 @@
   "dependencies": {
     "@giphy/js-fetch-api": "^5.7.0",
     "@google/genai": "^1.43.0",
-    "@upstash/redis": "^1.36.2",
+    "@upstash/redis": "^1.36.3",
     "grammy": "^1.40.1",
     "openai": "^6.25.0",
     "pino": "^10.3.1",

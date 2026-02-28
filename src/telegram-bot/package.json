@@ -9,7 +9,7 @@
   "license": "MIT",
   "dependencies": {
     "@google/genai": "1.43.0",
-    "@upstash/redis": "^1.36.2",
+    "@upstash/redis": "^1.36.3",
     "grammy": "^1.40.1",
     "openai": "^6.25.0",
     "zod": "^4.3.6"
