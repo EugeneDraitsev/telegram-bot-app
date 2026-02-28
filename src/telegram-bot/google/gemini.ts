@@ -10,10 +10,20 @@ import {
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
+  systemInstructions,
 } from '@tg-bot/common'
 
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 const ai = new GoogleGenAI({ apiKey })
+const imageGenerationSystemInstruction = `
+  ${systemInstructions}
+
+  For /ge image generation command:
+  - Always return at least one generated image in the response.
+  - Never return a text-only response.
+  - If prompt is unclear, choose the best interpretation and still generate an image.
+  - If prompt is disallowed, generate a safe alternative image and explain shortly in text.
+`
 
 type InteractionInput = {
   role: 'user' | 'model'
@@ -23,11 +33,29 @@ type InteractionInput = {
   >
 }
 
+type InteractionOutput = {
+  type: 'text' | 'image'
+  text?: string
+  data?: string
+}
+
+type InteractionResponse = {
+  outputs?: InteractionOutput[]
+}
+
+type CreateInteraction = (
+  request: Record<string, unknown>,
+) => Promise<InteractionResponse>
+
+const createGeminiInteraction: CreateInteraction = (request) =>
+  ai.interactions.create(request as never) as Promise<InteractionResponse>
+
 export const generateMultimodalCompletion = async (
   prompt: string,
   message?: Message,
   imagesData?: Buffer[],
   model: string = 'gemini-3-flash-preview',
+  createInteraction: CreateInteraction = createGeminiInteraction,
 ) => {
   try {
     const chatId = message?.chat?.id
@@ -73,7 +101,7 @@ export const generateMultimodalCompletion = async (
       ],
     })
 
-    const interaction = await ai.interactions.create({
+    const interaction = await createInteraction({
       model,
       input: history,
       ...(!model.includes('gemma')
@@ -106,6 +134,7 @@ export async function generateImage(
   prompt: string,
   chatId: string | number,
   imagesData?: Buffer[],
+  createInteraction: CreateInteraction = createGeminiInteraction,
 ) {
   try {
     if (!isAiEnabledChat(chatId)) {
@@ -139,16 +168,17 @@ export async function generateImage(
     }
 
     const maxRetries = 3
-    let parsedResponse: { text: string; image?: Buffer } | undefined
+    let fallbackText = ''
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const interaction = await ai.interactions.create({
+      const interaction = await createInteraction({
         model: 'gemini-3.1-flash-image-preview',
         input: history,
         response_modalities: ['image', 'text'],
+        system_instruction: imageGenerationSystemInstruction,
       })
 
-      parsedResponse = interaction.outputs?.reduce(
+      const parsedResponse = interaction.outputs?.reduce(
         (acc, output) => {
           if (output.type === 'text' && output.text) {
             acc.text += `${output.text}\n`
@@ -159,24 +189,36 @@ export async function generateImage(
           return acc
         },
         { text: '' } as { text: string; image?: Buffer },
-      )
+      ) || { text: '' }
+
+      const parsedText = cleanGeminiMessage(parsedResponse.text).trim()
+      if (parsedText) {
+        fallbackText = parsedText
+      }
 
       if (parsedResponse?.image) {
-        break
+        return {
+          image: parsedResponse.image,
+          text: parsedText || undefined,
+        }
       }
 
       console.warn(
         `Gemini image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
-        JSON.stringify({ parsedResponse, outputs: interaction.outputs }),
+        JSON.stringify({
+          hasText: Boolean(parsedText),
+          parsedText,
+          outputs: interaction.outputs,
+        }),
       )
     }
 
-    if (!parsedResponse?.text && !parsedResponse?.image) {
+    if (!fallbackText) {
       console.error('Error empty gemini response after all retries')
       return { text: EMPTY_RESPONSE_ERROR, image: null }
     }
 
-    return parsedResponse
+    return { text: fallbackText }
   } catch (error) {
     console.error('Error generating gemini image:', error)
     return { text: error.message || DEFAULT_ERROR_MESSAGE }
