@@ -10,7 +10,7 @@ const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 export const ai = new GoogleGenAI({ apiKey })
 
 /** Main chat model — smart, handles user intent + tool routing */
-export const CHAT_MODEL = 'gemini-3-flash-preview'
+export const CHAT_MODEL = 'gemini-3.1-flash-lite-preview'
 // export const CHAT_MODEL = 'gemini-3-pro-preview'
 // export const CHAT_MODEL = 'gemini-3.1-pro-preview'
 // export const CHAT_MODEL = 'gemini-2.5-flash'

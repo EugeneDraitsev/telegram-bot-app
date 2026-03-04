@@ -26,7 +26,7 @@
     "sharp": "^0.34.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.4",
+    "@biomejs/biome": "^2.4.5",
     "@types/aws-lambda": "^8.10.161",
     "@types/jest": "^30.0.0",
     "esbuild": "^0.27.3",

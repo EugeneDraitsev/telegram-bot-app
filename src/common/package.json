@@ -11,6 +11,6 @@
   },
   "peerDependencies": {
     "@upstash/redis": "^1.36.3",
-    "grammy": "^1.40.1"
+    "grammy": "^1.41.1"
   }
 }
