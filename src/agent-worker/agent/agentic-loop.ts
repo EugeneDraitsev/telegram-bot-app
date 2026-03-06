@@ -8,10 +8,14 @@ import {
   cleanGeminiMessage,
   getChatMemory,
   getGlobalMemory,
+  getMetricStatusFromError,
+  type MetricStatus,
   recordMetric,
   startTypingIndicator,
 } from '@tg-bot/common'
 import { getMessageLogMeta, logger } from '../logger'
+import { IMAGE_MODEL } from '../services/openai-image'
+import { VOICE_MODEL } from '../services/openai-tts'
 import {
   getAgentTools,
   getCollectedResponses,
@@ -70,11 +74,35 @@ function buildNativeTools(agentTools: AgentTool[]): Tool[] {
 
 /** Maps tool names to their underlying AI model for metrics */
 const TOOL_MODELS: Record<string, string> = {
-  generate_or_edit_image: 'gemini-3.1-flash-image-preview',
-  generate_voice: 'openai-tts-1',
+  generate_or_edit_image: IMAGE_MODEL,
+  generate_voice: VOICE_MODEL,
   web_search: FAST_MODEL,
   code_execution: FAST_MODEL,
   url_context: FAST_MODEL,
+}
+
+function getToolResultStatus(result: string): MetricStatus {
+  const normalized = result.trim().toLowerCase()
+
+  if (normalized.includes('timed out')) {
+    return 'timeout'
+  }
+
+  if (
+    normalized.startsWith('error:') ||
+    normalized.startsWith('error generating image:') ||
+    normalized.startsWith('error generating voice:') ||
+    normalized.startsWith('url read failed:') ||
+    normalized.startsWith('code execution failed:') ||
+    normalized.startsWith('could not ') ||
+    normalized.includes(' failed:') ||
+    normalized.includes(' no output') ||
+    normalized.includes('cannot be empty')
+  ) {
+    return 'error'
+  }
+
+  return 'success'
 }
 
 async function executeToolCall(
@@ -106,7 +134,15 @@ async function executeToolCall(
     ])
 
     const durationMs = Date.now() - toolStart
-    logger.info({ chatId, tool: name, durationMs, result }, 'tool.done')
+    const status = getToolResultStatus(result)
+    if (status === 'success') {
+      logger.info({ chatId, tool: name, durationMs, result }, 'tool.done')
+    } else {
+      logger.warn(
+        { chatId, tool: name, durationMs, result, status },
+        'tool.done_non_success',
+      )
+    }
     void recordMetric({
       type: 'tool_call',
       source: 'agentic',
@@ -114,15 +150,17 @@ async function executeToolCall(
       model: TOOL_MODELS[name],
       chatId,
       durationMs,
-      success: true,
+      success: status === 'success',
+      status,
       timestamp: Date.now(),
     })
     return { name, result }
   } catch (error) {
     const durationMs = Date.now() - toolStart
     const errorMsg = error instanceof Error ? error.message : String(error)
+    const status = getMetricStatusFromError(error)
     logger.error(
-      { chatId, tool: name, durationMs, error: errorMsg },
+      { chatId, tool: name, durationMs, error: errorMsg, status },
       'tool.failed',
     )
     void recordMetric({
@@ -133,6 +171,7 @@ async function executeToolCall(
       chatId,
       durationMs,
       success: false,
+      status,
       timestamp: Date.now(),
     })
     return { name, result: `Error: ${errorMsg}` }

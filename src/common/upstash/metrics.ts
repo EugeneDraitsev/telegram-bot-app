@@ -3,35 +3,82 @@
  * Stores in Redis sorted set keyed by timestamp for time-series queries.
  */
 
-import { getRedisClient } from './client'
+import * as client from './client'
 
 const METRICS_KEY = 'agent:metrics'
 /** Keep metrics for 30 days */
 const METRICS_TTL_MS = 30 * 24 * 60 * 60 * 1000
+let redisClientOverride: ReturnType<typeof client.getRedisClient> | undefined
 
-interface MetricEntry {
+export type MetricStatus = 'success' | 'error' | 'timeout'
+
+export interface MetricEntry {
   /** 'model_call' for AI model invocations, 'tool_call' for tool executions */
   type: 'model_call' | 'tool_call'
   /** 'agentic' for agent loop calls, 'command' for /q /o /ge /e etc. */
   source: 'agentic' | 'command'
   name: string
   model?: string
+  fallbackFrom?: string
   chatId: number
   durationMs: number
   success: boolean
+  status?: MetricStatus
   timestamp: number
+}
+
+function normalizeMetricEntry(entry: MetricEntry): MetricEntry {
+  const status = entry.status ?? (entry.success ? 'success' : 'error')
+  return {
+    ...entry,
+    status,
+    success: status === 'success',
+  }
+}
+
+export function setMetricsRedisClientForTests(
+  redis: ReturnType<typeof client.getRedisClient> | undefined,
+): void {
+  redisClientOverride = redis
+}
+
+function getMetricsRedisClient(): ReturnType<typeof client.getRedisClient> {
+  if (redisClientOverride !== undefined) {
+    return redisClientOverride
+  }
+
+  return client.getRedisClient()
+}
+
+export function getMetricStatusFromError(error: unknown): MetricStatus {
+  if (!(error instanceof Error)) {
+    return 'error'
+  }
+
+  const name = error.name.toLowerCase()
+  const message = error.message.toLowerCase()
+
+  if (
+    name.includes('timeout') ||
+    message.includes('timed out') ||
+    message.includes('timeout')
+  ) {
+    return 'timeout'
+  }
+
+  return 'error'
 }
 
 /** Record a metric entry — stores in Redis for graphing (fire-and-forget) */
 export async function recordMetric(entry: MetricEntry): Promise<void> {
   try {
-    const redis = getRedisClient()
+    const redis = getMetricsRedisClient()
     if (!redis) return
 
     const timestamp = Number.isFinite(entry.timestamp)
       ? entry.timestamp
       : Date.now()
-    const metricEntry = { ...entry, timestamp }
+    const metricEntry = normalizeMetricEntry({ ...entry, timestamp })
 
     await redis.zadd(METRICS_KEY, {
       score: timestamp,
@@ -53,33 +100,42 @@ export async function timedCall<T>(
     name: string
     model?: string
     chatId: number
+    classifyResult?: (result: T) => MetricStatus
   },
   fn: () => Promise<T>,
 ): Promise<T> {
+  const { classifyResult, ...metricOpts } = opts
   const start = Date.now()
+
   try {
     const result = await fn()
     const end = Date.now()
+    const status = classifyResult?.(result) ?? 'success'
+
     void recordMetric({
-      ...opts,
+      ...metricOpts,
       durationMs: end - start,
-      success: true,
+      success: status === 'success',
+      status,
       timestamp: end,
     })
+
     return result
   } catch (error) {
     const end = Date.now()
+    const status = getMetricStatusFromError(error)
+
     void recordMetric({
-      ...opts,
+      ...metricOpts,
       durationMs: end - start,
       success: false,
+      status,
       timestamp: end,
     })
+
     throw error
   }
 }
-
-// ── Query & Visualization ────────────────────────────────────
 
 /** Retrieve metric entries from Redis within a time range */
 export async function getMetrics(
@@ -87,34 +143,40 @@ export async function getMetrics(
   toMs: number = Date.now(),
 ): Promise<MetricEntry[]> {
   try {
-    const redis = getRedisClient()
+    const redis = getMetricsRedisClient()
     if (!redis) return []
 
     const raw = await redis.zrange(METRICS_KEY, fromMs, toMs, { byScore: true })
     return (raw as unknown[])
-      .map((s) => {
+      .map((value) => {
         try {
-          // Upstash may auto-deserialize JSON, so s might be string or object
-          if (typeof s === 'string') return JSON.parse(s) as MetricEntry
-          if (typeof s === 'object' && s !== null) return s as MetricEntry
+          if (typeof value === 'string') {
+            return normalizeMetricEntry(JSON.parse(value) as MetricEntry)
+          }
+          if (typeof value === 'object' && value !== null) {
+            return normalizeMetricEntry(value as MetricEntry)
+          }
           return null
         } catch {
           return null
         }
       })
       .filter(
-        (e): e is MetricEntry => e !== null && typeof e.durationMs === 'number',
+        (entry): entry is MetricEntry =>
+          entry !== null && typeof entry.durationMs === 'number',
       )
   } catch {
     return []
   }
 }
 
-function median(arr: number[]): number {
-  if (arr.length === 0) return 0
-  const sorted = [...arr].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+function median(values: number[]): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
 function fmtMs(ms: number): string {
@@ -122,9 +184,40 @@ function fmtMs(ms: number): string {
   return `${Math.round(ms)}ms`
 }
 
-function progressBar(ratio: number, len = 15): string {
-  const filled = Math.round(ratio * len)
-  return '▰'.repeat(filled) + '▱'.repeat(len - filled)
+function progressBar(ratio: number, length = 15): string {
+  const filled = Math.round(ratio * length)
+  return '▰'.repeat(filled) + '▱'.repeat(length - filled)
+}
+
+function getOutcomeCounts(entries: MetricEntry[]) {
+  const success = entries.filter((entry) => entry.status === 'success').length
+  const timeout = entries.filter((entry) => entry.status === 'timeout').length
+  const error = entries.filter((entry) => entry.status === 'error').length
+  const fallback = entries.filter((entry) => entry.fallbackFrom).length
+
+  return {
+    success,
+    timeout,
+    error,
+    fallback,
+  }
+}
+
+function shortModelName(model: string): string {
+  return model.replace(/^gemini-/, '').replace(/-preview$/, '')
+}
+
+function formatOutcomeSummary(entries: MetricEntry[]): string {
+  if (entries.length === 0) return ''
+
+  const { success, timeout, error, fallback } = getOutcomeCounts(entries)
+  const parts = [`${Math.round((success / entries.length) * 100)}% ok`]
+
+  if (timeout > 0) parts.push(`${timeout} to`)
+  if (error > 0) parts.push(`${error} err`)
+  if (fallback > 0) parts.push(`${fallback} fb`)
+
+  return ` (${parts.join(' · ')})`
 }
 
 /** Format metrics into a Telegram HTML message (mobile-friendly) */
@@ -138,81 +231,96 @@ export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
   }
 
   const total = entries.length
-  const successes = entries.filter((e) => e.success).length
-  const failures = total - successes
-  const successRate = total > 0 ? successes / total : 0
-  const agenticCount = entries.filter((e) => e.source === 'agentic').length
-  const commandCount = entries.filter((e) => e.source === 'command').length
+  const { success, timeout, error, fallback } = getOutcomeCounts(entries)
+  const successRate = total > 0 ? success / total : 0
+  const agenticCount = entries.filter(
+    (entry) => entry.source === 'agentic',
+  ).length
+  const commandCount = entries.filter(
+    (entry) => entry.source === 'command',
+  ).length
 
   const lines: string[] = []
 
   lines.push(`<b>📊 Metrics — last ${hoursBack}h</b>`)
   lines.push('')
-  const pct = `${(successRate * 100).toFixed(0)}%`
-  const failStr = failures > 0 ? ` · ❌ ${failures} failed` : ''
   lines.push(
-    `<code>${progressBar(successRate)} ${pct} ok · ${total} calls</code>`,
-  )
-  lines.push(
-    `🤖 Agentic: ${agenticCount}  ⚡ Commands: ${commandCount}${failStr}`,
+    `<code>${progressBar(successRate)} ${Math.round(successRate * 100)}% ok · ${total} calls</code>`,
   )
 
-  // Render a group of metrics as <pre> block
+  const summaryParts = [
+    `🤖 Agentic: ${agenticCount}`,
+    `⚡ Commands: ${commandCount}`,
+  ]
+  if (timeout > 0) summaryParts.push(`⏱ ${timeout} timeout`)
+  if (error > 0) summaryParts.push(`❌ ${error} error`)
+  if (fallback > 0) summaryParts.push(`↪ ${fallback} fallback`)
+  lines.push(summaryParts.join('  '))
+
   const renderGroup = (title: string, items: MetricEntry[]) => {
     if (items.length === 0) return
 
     const byName = new Map<string, MetricEntry[]>()
-    for (const e of items) {
-      if (!byName.has(e.name)) byName.set(e.name, [])
-      byName.get(e.name)?.push(e)
+    for (const entry of items) {
+      if (!byName.has(entry.name)) {
+        byName.set(entry.name, [])
+      }
+      byName.get(entry.name)?.push(entry)
     }
 
     lines.push('')
     lines.push(`<b>${title}</b>`)
+
     const rows: string[] = []
     for (const [name, group] of [...byName.entries()].sort(
-      (a, b) => b[1].length - a[1].length,
+      (left, right) => right[1].length - left[1].length,
     )) {
-      const d = group.map((e) => e.durationMs)
-      const fails = group.filter((e) => !e.success).length
-      const okRate =
-        fails > 0
-          ? ` (${Math.round(((group.length - fails) / group.length) * 100)}% ok)`
-          : ''
-      rows.push(`${name}  ${group.length}× ~${fmtMs(median(d))}${okRate}`)
+      const durations = group.map((entry) => entry.durationMs)
+      rows.push(
+        `${name}  ${group.length}× ~${fmtMs(median(durations))}${formatOutcomeSummary(group)}`,
+      )
     }
+
     lines.push(`<pre>${rows.join('\n')}</pre>`)
   }
 
   renderGroup(
     '🤖 Agentic',
-    entries.filter((e) => e.source === 'agentic'),
+    entries.filter((entry) => entry.source === 'agentic'),
   )
   renderGroup(
     '⚡ Commands',
-    entries.filter((e) => e.source === 'command'),
+    entries.filter((entry) => entry.source === 'command'),
   )
 
-  // Models
-  const modelEntries = entries.filter((e) => e.model)
+  const modelEntries = entries.filter((entry) => entry.model)
   if (modelEntries.length > 0) {
     const byModel = new Map<string, MetricEntry[]>()
-    for (const e of modelEntries) {
-      const m = e.model ?? ''
-      if (!byModel.has(m)) byModel.set(m, [])
-      byModel.get(m)?.push(e)
+    for (const entry of modelEntries) {
+      const modelName = entry.model ?? ''
+      const label = entry.fallbackFrom
+        ? `${shortModelName(modelName)} <= ${shortModelName(entry.fallbackFrom)}`
+        : shortModelName(modelName)
+
+      if (!byModel.has(label)) {
+        byModel.set(label, [])
+      }
+      byModel.get(label)?.push(entry)
     }
 
     lines.push('')
     lines.push('<b>🧠 Models</b>')
+
     const rows: string[] = []
-    for (const [model, items] of [...byModel.entries()].sort(
-      (a, b) => b[1].length - a[1].length,
+    for (const [label, group] of [...byModel.entries()].sort(
+      (left, right) => right[1].length - left[1].length,
     )) {
-      const d = items.map((e) => e.durationMs)
-      const short = model.replace('gemini-', '').replace('-preview', '')
-      rows.push(`${short}  ${items.length}× ~${fmtMs(median(d))}`)
+      const durations = group.map((entry) => entry.durationMs)
+      rows.push(
+        `${label}  ${group.length}× ~${fmtMs(median(durations))}${formatOutcomeSummary(group)}`,
+      )
     }
+
     lines.push(`<pre>${rows.join('\n')}</pre>`)
   }
 

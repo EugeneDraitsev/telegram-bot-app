@@ -7,10 +7,18 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  NOT_ALLOWED_ERROR,
+  PROMPT_MISSING_ERROR,
   startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from './open-ai'
+
+const OPENAI_FAILURE_MESSAGES = new Set([
+  DEFAULT_ERROR_MESSAGE,
+  NOT_ALLOWED_ERROR,
+  PROMPT_MISSING_ERROR,
+])
 
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
@@ -44,6 +52,8 @@ export const setupMultimodalOpenAiCommands = async (
         name: '/e',
         model: String(model),
         chatId: Number(chatId),
+        classifyResult: (result) =>
+          OPENAI_FAILURE_MESSAGES.has(result.trim()) ? 'error' : 'success',
       },
       () =>
         generateMultimodalCompletion(

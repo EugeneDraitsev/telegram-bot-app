@@ -1,11 +1,15 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
 
 import {
+  DEFAULT_ERROR_MESSAGE,
+  EMPTY_RESPONSE_ERROR,
   formatTelegramMarkdownV2,
   getCommandData,
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  NOT_ALLOWED_ERROR,
+  PROMPT_MISSING_ERROR,
   startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
@@ -13,6 +17,13 @@ import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
+
+const GEMINI_FAILURE_MESSAGES = new Set([
+  DEFAULT_ERROR_MESSAGE,
+  EMPTY_RESPONSE_ERROR,
+  NOT_ALLOWED_ERROR,
+  PROMPT_MISSING_ERROR,
+])
 
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
@@ -45,6 +56,8 @@ export const setupMultimodalGeminiCommands = async (
         name: `/${model.includes('pro') ? 'o' : 'q'}`,
         model,
         chatId: Number(chatId),
+        classifyResult: (result) =>
+          GEMINI_FAILURE_MESSAGES.has(result.trim()) ? 'error' : 'success',
       },
       () =>
         generateMultimodalCompletion(
@@ -101,6 +114,7 @@ export const setupImageGenerationGeminiCommands = async (
         name: '/ge',
         model: 'gemini-3.1-flash-image-preview',
         chatId: Number(commandData.chatId),
+        classifyResult: (result) => (result.image ? 'success' : 'error'),
       },
       () =>
         generateImage(

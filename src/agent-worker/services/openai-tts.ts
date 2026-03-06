@@ -4,6 +4,8 @@
 
 import OpenAi from 'openai'
 
+export const VOICE_MODEL = 'tts-1'
+
 let client: OpenAi | null = null
 
 function getClient(): OpenAi {
@@ -21,7 +23,7 @@ export async function generateVoice(
   voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'nova',
 ): Promise<Buffer> {
   const response = await getClient().audio.speech.create({
-    model: 'tts-1',
+    model: VOICE_MODEL,
     input: text.slice(0, 4096),
     voice,
     response_format: 'opus',

@@ -1,7 +1,8 @@
 const mockGenerateContent = jest.fn()
+const mockRecordMetric = jest.fn()
 
 jest.mock('@tg-bot/common', () => ({
-  recordMetric: jest.fn(),
+  recordMetric: mockRecordMetric,
 }))
 
 jest.mock('../../logger', () => ({
@@ -33,6 +34,7 @@ import { generateWithRetry, isRetryableModelError } from '../model-call'
 describe('model-call', () => {
   beforeEach(() => {
     mockGenerateContent.mockReset()
+    mockRecordMetric.mockReset()
     jest.clearAllMocks()
   })
 
@@ -69,6 +71,16 @@ describe('model-call', () => {
       'gemini-3.1-flash-lite-preview',
       'gemini-2.5-flash',
     ])
+    expect(mockRecordMetric).toHaveBeenCalledTimes(1)
+    expect(mockRecordMetric).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'routing',
+        model: 'gemini-2.5-flash',
+        fallbackFrom: 'gemini-3.1-flash-lite-preview',
+        success: true,
+        status: 'success',
+      }),
+    )
   })
 
   test('does not treat 400 errors as retryable', () => {
