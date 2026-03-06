@@ -8,8 +8,7 @@ const {
   recordMetric,
   setMetricsRedisClientForTests,
   timedCall,
-} =
-  require('../metrics') as typeof import('../metrics')
+} = require('../metrics') as typeof import('../metrics')
 
 function mockRedisClient() {
   return {
