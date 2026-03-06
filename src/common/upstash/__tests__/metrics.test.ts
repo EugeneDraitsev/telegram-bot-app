@@ -1,3 +1,5 @@
+import type { Redis } from '@upstash/redis'
+
 const mockZadd = jest.fn()
 const mockZrange = jest.fn()
 const mockZremrangebyscore = jest.fn()
@@ -10,12 +12,12 @@ const {
   timedCall,
 } = require('../metrics') as typeof import('../metrics')
 
-function mockRedisClient() {
+function mockRedisClient(): Redis {
   return {
     zadd: mockZadd,
     zrange: mockZrange,
     zremrangebyscore: mockZremrangebyscore,
-  }
+  } as unknown as Redis
 }
 
 beforeEach(() => {
