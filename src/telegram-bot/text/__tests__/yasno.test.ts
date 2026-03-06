@@ -1,6 +1,10 @@
 import { yasnyfy } from '../yasno'
 
 describe('yasnyfy should works as designed', () => {
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   test('yasnyfy should properly work with hardcoded values', () => {
     jest.useFakeTimers()
     jest.setSystemTime(new Date(2018, 10, 10))

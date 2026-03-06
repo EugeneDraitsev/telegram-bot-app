@@ -18,6 +18,10 @@ describe('getMediaGroupMessages', () => {
     jest.useRealTimers()
   })
 
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   test('returns empty array when context has no message', async () => {
     const ctx = { chat: { id: 1 } } as Context
 

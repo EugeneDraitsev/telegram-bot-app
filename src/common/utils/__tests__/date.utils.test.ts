@@ -1,6 +1,10 @@
 import { getRoundedDate } from '../'
 
 describe('getRoundedDate', () => {
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   it('should return the same date if it is already rounded', () => {
     const date = new Date(Date.UTC(2018, 0, 1, 0, 0, 0, 0))
     expect(getRoundedDate(5, date)).toEqual(date)

@@ -33,6 +33,7 @@ import { generateWithRetry, isRetryableModelError } from '../model-call'
 
 describe('model-call', () => {
   beforeEach(() => {
+    jest.useRealTimers()
     mockGenerateContent.mockReset()
     mockRecordMetric.mockReset()
     jest.clearAllMocks()
