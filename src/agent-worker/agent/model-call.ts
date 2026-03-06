@@ -76,17 +76,25 @@ async function generateContentWithOptionalTimeout(
   }
 
   const model = resolveModelName(params) ?? 'unknown'
-  return Promise.race([
-    ai.models.generateContent(params),
-    new Promise<never>((_, reject) => {
-      const handle = setTimeout(
-        () => reject(new ModelCallTimeoutError(model, timeoutMs)),
-        timeoutMs,
-      )
-      // biome-ignore lint/suspicious/noExplicitAny: timer unref
-      ;(handle as any).unref?.()
-    }),
-  ])
+  let handle: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    return await Promise.race([
+      ai.models.generateContent(params),
+      new Promise<never>((_, reject) => {
+        handle = setTimeout(
+          () => reject(new ModelCallTimeoutError(model, timeoutMs)),
+          timeoutMs,
+        )
+        // biome-ignore lint/suspicious/noExplicitAny: timer unref
+        ;(handle as any).unref?.()
+      }),
+    ])
+  } finally {
+    if (handle) {
+      clearTimeout(handle)
+    }
+  }
 }
 
 export function isRetryableModelError(error: unknown): boolean {

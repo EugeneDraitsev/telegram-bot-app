@@ -121,17 +121,26 @@ async function executeToolCall(
   const toolStart = Date.now()
   try {
     const timeout = tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS
-    const result = await Promise.race([
-      tool.execute((toolCall.args as Record<string, unknown>) ?? {}),
-      new Promise<string>((_, reject) => {
-        const handle = setTimeout(
-          () => reject(new Error(`Tool timed out after ${timeout}ms`)),
-          timeout,
-        )
-        // biome-ignore lint/suspicious/noExplicitAny: timer unref
-        ;(handle as any).unref?.()
-      }),
-    ])
+    let handle: ReturnType<typeof setTimeout> | undefined
+    const result = await (async () => {
+      try {
+        return await Promise.race([
+          tool.execute((toolCall.args as Record<string, unknown>) ?? {}),
+          new Promise<string>((_, reject) => {
+            handle = setTimeout(
+              () => reject(new Error(`Tool timed out after ${timeout}ms`)),
+              timeout,
+            )
+            // biome-ignore lint/suspicious/noExplicitAny: timer unref
+            ;(handle as any).unref?.()
+          }),
+        ])
+      } finally {
+        if (handle) {
+          clearTimeout(handle)
+        }
+      }
+    })()
 
     const durationMs = Date.now() - toolStart
     const status = getToolResultStatus(result)

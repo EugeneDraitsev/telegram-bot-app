@@ -40,6 +40,8 @@ describe('getMediaGroupMessages', () => {
   })
 
   test('collects messages from current media group and excludes current message', async () => {
+    jest.useFakeTimers()
+
     const history = [
       { message_id: 10, media_group_id: 'group_1' },
       { message_id: 11, media_group_id: 'group_1' },
@@ -52,15 +54,21 @@ describe('getMediaGroupMessages', () => {
       message: { message_id: 10, media_group_id: 'group_1' },
     } as unknown as Context
 
-    const startedAt = Date.now()
-    const result = await getMediaGroupMessages(ctx)
+    const resultPromise = getMediaGroupMessages(ctx)
+
+    expect(mockGetRawHistory).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(1_000)
+
+    const result = await resultPromise
 
     expect(mockGetRawHistory).toHaveBeenCalledTimes(1)
     expect(result).toEqual([{ message_id: 11, media_group_id: 'group_1' }])
-    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(900)
   })
 
   test('collects messages from replied media group without waiting', async () => {
+    jest.useFakeTimers()
+
     const history = [
       { message_id: 20, media_group_id: 'group_reply' },
       { message_id: 21, media_group_id: 'group_reply' },
@@ -76,14 +84,16 @@ describe('getMediaGroupMessages', () => {
       },
     } as unknown as Context
 
-    const startedAt = Date.now()
-    const result = await getMediaGroupMessages(ctx)
+    const resultPromise = getMediaGroupMessages(ctx)
+
+    expect(mockGetRawHistory).toHaveBeenCalledTimes(1)
+
+    const result = await resultPromise
 
     expect(mockGetRawHistory).toHaveBeenCalledTimes(1)
     expect(result).toEqual([
       { message_id: 20, media_group_id: 'group_reply' },
       { message_id: 21, media_group_id: 'group_reply' },
     ])
-    expect(Date.now() - startedAt).toBeLessThan(900)
   })
 })
