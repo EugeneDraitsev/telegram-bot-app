@@ -1,11 +1,5 @@
 // import { ThinkingLevel } from '@google/genai'
-import type {
-  Content,
-  FunctionCall,
-  GenerateContentResponse,
-  Part,
-  Tool,
-} from '@google/genai'
+import type { Content, FunctionCall, Part, Tool } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
 import {
@@ -26,21 +20,18 @@ import {
 import type { AgentResponse, AgentTool, TelegramApi } from '../types'
 import {
   CONTENT_TOOLS,
-  MAX_RETRIES,
   MAX_TOOL_ITERATIONS,
-  RETRY_BASE_DELAY_MS,
   TERMINAL_TOOLS,
   TOOL_CALL_TIMEOUT_MS,
 } from './config'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import {
-  ai,
-  CHAT_MODEL,
-  CHAT_MODEL_FALLBACK,
-  CHAT_MODEL_TIMEOUT_MS,
-  FAST_MODEL,
-} from './models'
+  generateWithRetry,
+  isRetryableModelError,
+  ModelCallTimeoutError,
+} from './model-call'
+import { CHAT_MODEL, FAST_MODEL } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
 
@@ -75,174 +66,6 @@ function buildNativeTools(agentTools: AgentTool[]): Tool[] {
       }) as any,
     },
   ]
-}
-
-/**
- * Call generateContent with retry logic for transient errors (503, 429).
- * Wrapped with metrics recording.
- */
-class ModelCallTimeoutError extends Error {
-  constructor(
-    readonly model: string,
-    readonly timeoutMs: number,
-  ) {
-    super(`Model ${model} timed out after ${timeoutMs}ms`)
-    this.name = 'ModelCallTimeoutError'
-  }
-}
-
-function resolveModelName(
-  params: Parameters<typeof ai.models.generateContent>[0],
-): string | undefined {
-  return typeof params.model === 'string' ? params.model : undefined
-}
-
-async function generateContentWithOptionalTimeout(
-  params: Parameters<typeof ai.models.generateContent>[0],
-  timeoutMs?: number,
-): Promise<GenerateContentResponse> {
-  if (!timeoutMs) {
-    return ai.models.generateContent(params)
-  }
-
-  const model = resolveModelName(params) ?? 'unknown'
-  return Promise.race([
-    ai.models.generateContent(params),
-    new Promise<never>((_, reject) => {
-      const handle = setTimeout(
-        () => reject(new ModelCallTimeoutError(model, timeoutMs)),
-        timeoutMs,
-      )
-      // biome-ignore lint/suspicious/noExplicitAny: timer unref
-      ;(handle as any).unref?.()
-    }),
-  ])
-}
-
-async function generateSingleModelWithRetry(
-  params: Parameters<typeof ai.models.generateContent>[0],
-  chatId: number,
-  metricName: string,
-  timeoutMs?: number,
-): Promise<GenerateContentResponse> {
-  const model = resolveModelName(params)
-  const start = Date.now()
-  let lastError: unknown
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const result = await generateContentWithOptionalTimeout(params, timeoutMs)
-      const durationMs = Date.now() - start
-      logger.info(
-        {
-          chatId,
-          metricType: 'model_call',
-          name: metricName,
-          model: params.model,
-          durationMs,
-        },
-        'metric',
-      )
-      void recordMetric({
-        type: 'model_call',
-        source: 'agentic',
-        name: metricName,
-        model,
-        chatId,
-        durationMs,
-        success: true,
-        timestamp: Date.now(),
-      })
-      return result
-    } catch (error) {
-      lastError = error
-      const status = (error as { status?: number })?.status
-      const isTimeout = error instanceof ModelCallTimeoutError
-      const isRetryable = !isTimeout && (status === 503 || status === 429)
-
-      if (!isRetryable || attempt === MAX_RETRIES) {
-        const durationMs = Date.now() - start
-        if (isTimeout) {
-          logger.error(
-            {
-              chatId,
-              metricType: 'model_call',
-              name: metricName,
-              model,
-              durationMs,
-              timeoutMs,
-              failed: true,
-            },
-            'model.failed_timeout_over_20s',
-          )
-        }
-        void recordMetric({
-          type: 'model_call',
-          source: 'agentic',
-          name: metricName,
-          model,
-          chatId,
-          durationMs,
-          success: false,
-          timestamp: Date.now(),
-        })
-        throw error
-      }
-
-      const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
-      logger.warn(
-        { chatId, attempt: attempt + 1, status, delayMs: delay },
-        'model.retry',
-      )
-      await new Promise((resolve) => setTimeout(resolve, delay))
-    }
-  }
-
-  throw lastError
-}
-
-async function generateWithRetry(
-  params: Parameters<typeof ai.models.generateContent>[0],
-  chatId: number,
-  metricName: string,
-): Promise<GenerateContentResponse> {
-  const model = resolveModelName(params)
-  const shouldUseTimeoutFallback = model === 'gemini-3-flash-preview'
-
-  if (!shouldUseTimeoutFallback) {
-    return generateSingleModelWithRetry(params, chatId, metricName)
-  }
-
-  try {
-    return await generateSingleModelWithRetry(
-      params,
-      chatId,
-      metricName,
-      CHAT_MODEL_TIMEOUT_MS,
-    )
-  } catch (error) {
-    if (!(error instanceof ModelCallTimeoutError)) {
-      throw error
-    }
-
-    logger.warn(
-      {
-        chatId,
-        metricType: 'model_call',
-        name: metricName,
-        model,
-        timeoutMs: CHAT_MODEL_TIMEOUT_MS,
-        fallbackModel: CHAT_MODEL_FALLBACK,
-      },
-      'model.timeout_fallback',
-    )
-
-    return generateSingleModelWithRetry(
-      { ...params, model: CHAT_MODEL_FALLBACK },
-      chatId,
-      `${metricName}_fallback`,
-    )
-  }
 }
 
 /** Maps tool names to their underlying AI model for metrics */
@@ -359,6 +182,14 @@ function extractFallbackTextFromToolResults(
   }
 
   return [...new Set(fallbackResults)].slice(0, 2).join('\n\n')
+}
+
+function getLoopFailureReply(error: unknown): string {
+  if (error instanceof ModelCallTimeoutError || isRetryableModelError(error)) {
+    return '\u0421\u0435\u0440\u0432\u0438\u0441 \u043e\u0442\u0432\u0435\u0442\u0430 \u0441\u0435\u0439\u0447\u0430\u0441 \u043f\u0435\u0440\u0435\u0433\u0440\u0443\u0436\u0435\u043d. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u0435\u0449\u0435 \u0440\u0430\u0437 \u0447\u0443\u0442\u044c \u043f\u043e\u0437\u0436\u0435.'
+  }
+
+  return '\u0427\u0442\u043e-\u0442\u043e \u043f\u043e\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a \ud83d\ude35'
 }
 
 // ── Main loop ────────────────────────────────────────────────
@@ -691,7 +522,7 @@ export async function runAgenticLoop(
       'loop.failed',
     )
     try {
-      await api.sendMessage(chatId, 'Что-то пошло не так 😵', {
+      await api.sendMessage(chatId, getLoopFailureReply(error), {
         reply_parameters: { message_id: message.message_id },
       })
     } catch (sendError) {
