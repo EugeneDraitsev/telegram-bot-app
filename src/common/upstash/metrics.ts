@@ -217,7 +217,7 @@ function formatOutcomeSummary(entries: MetricEntry[]): string {
   const { success, timeout, error, fallback } = getOutcomeCounts(entries)
   const parts = [`${Math.round((success / entries.length) * 100)}% ok`]
 
-  if (timeout > 0) parts.push(`${timeout} to`)
+  if (timeout > 0) parts.push(`${timeout} t/o`)
   if (error > 0) parts.push(`${error} err`)
   if (fallback > 0) parts.push(`${fallback} fb`)
 
@@ -245,7 +245,7 @@ export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
   ).length
 
   const lines: string[] = []
-  const summaryCode = `${progressBar(successRate)} ${Math.round(successRate * 100)}% ok Â· ${total} calls`
+  const summaryCode = `${progressBar(successRate)} ${Math.round(successRate * 100)}% ok - ${total} calls`
 
   lines.push(`<b>📊 Metrics — last ${hoursBack}h</b>`)
   lines.push('')
