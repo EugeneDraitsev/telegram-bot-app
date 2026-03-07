@@ -196,7 +196,7 @@ describe('getFormattedMetrics', () => {
     expect(result).toContain('routing')
     expect(result).toContain('web_search')
     expect(result).toContain('Models')
-    expect(result).toContain('2.5-flash <= 3.1-flash-lite')
+    expect(result).toContain('2.5-flash &lt;= 3.1-flash-lite')
   })
 
   test('clamps hoursBack to safe range', async () => {

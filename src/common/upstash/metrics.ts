@@ -207,6 +207,10 @@ function shortModelName(model: string): string {
   return model.replace(/^gemini-/, '').replace(/-preview$/, '')
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function formatOutcomeSummary(entries: MetricEntry[]): string {
   if (entries.length === 0) return ''
 
@@ -241,12 +245,15 @@ export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
   ).length
 
   const lines: string[] = []
+  const summaryCode = `${progressBar(successRate)} ${Math.round(successRate * 100)}% ok Â· ${total} calls`
 
   lines.push(`<b>📊 Metrics — last ${hoursBack}h</b>`)
   lines.push('')
   lines.push(
     `<code>${progressBar(successRate)} ${Math.round(successRate * 100)}% ok · ${total} calls</code>`,
   )
+
+  lines[lines.length - 1] = `<code>${escapeHtml(summaryCode)}</code>`
 
   const summaryParts = [
     `🤖 Agentic: ${agenticCount}`,
@@ -282,6 +289,7 @@ export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
     }
 
     lines.push(`<pre>${rows.join('\n')}</pre>`)
+    lines[lines.length - 1] = `<pre>${escapeHtml(rows.join('\n'))}</pre>`
   }
 
   renderGroup(
@@ -322,6 +330,7 @@ export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
     }
 
     lines.push(`<pre>${rows.join('\n')}</pre>`)
+    lines[lines.length - 1] = `<pre>${escapeHtml(rows.join('\n'))}</pre>`
   }
 
   return lines.join('\n')
