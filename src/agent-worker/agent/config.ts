@@ -6,7 +6,7 @@ export const MAX_TEXT_LENGTH = 4096
 
 // Tool execution
 export const MAX_TOOL_ITERATIONS = 3
-export const TOOL_CALL_TIMEOUT_MS = 20_000
+export const TOOL_CALL_TIMEOUT_MS = 25_000
 export const TERMINAL_TOOLS = new Set([
   'telegram_dice',
   'magic_8_ball',
