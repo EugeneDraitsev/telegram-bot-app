@@ -14,9 +14,7 @@ const ai = new GoogleGenAI({ apiKey })
 type WebSearchResponseFormat = 'brief' | 'detailed' | 'list'
 
 /**
- * Search the web using grounded Google Search via gemini-2.0-flash.
- * Uses a faster model since it only needs to search + format — not think deeply.
- * The output is Telegram-ready markdown that can be sent directly.
+ * Search the web using grounded Google Search via Gemini.
  */
 export async function searchWeb(
   query: string,
@@ -25,13 +23,15 @@ export async function searchWeb(
   const formatInstructions: Record<WebSearchResponseFormat, string> = {
     brief: 'Answer briefly in 1-2 sentences.',
     detailed:
-      'Answer concisely with key facts. Use markdown formatting (bold for key numbers, bullet points for lists). Keep it under 500 characters — this is a Telegram chat.',
+      'Answer concisely with key facts. Use markdown formatting (bold for key numbers, bullet points for lists). Keep it under 500 characters - this is a Telegram chat.',
     list: 'Answer as a concise bullet list.',
   }
 
   const prompt = [
     'Use fresh web information from Google Search.',
     `Query: ${query}`,
+    'If the query names a specific product, model, company, or person, verify that exact name first.',
+    'If the exact name is not confirmed by search results, say that clearly instead of substituting a more familiar match as a fact.',
     formatInstructions[format],
     'Answer in the same language as the query.',
   ].join('\n')
@@ -41,7 +41,7 @@ export async function searchWeb(
   }
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.1-flash-lite-preview',
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],

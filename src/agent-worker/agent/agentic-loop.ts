@@ -35,7 +35,7 @@ import {
   isRetryableModelError,
   ModelCallTimeoutError,
 } from './model-call'
-import { CHAT_MODEL, FAST_MODEL } from './models'
+import { CHAT_MODEL, CHAT_MODEL_FALLBACK, FAST_MODEL } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
 
@@ -185,6 +185,40 @@ async function executeToolCall(
     })
     return { name, result: `Error: ${errorMsg}` }
   }
+}
+
+async function executeToolCalls(
+  calls: Array<Part & { functionCall: FunctionCall }>,
+  toolByName: Map<string, AgentTool>,
+  chatId: number,
+): Promise<Array<{ call: FunctionCall; name: string; result: string }>> {
+  const hasWebSearch = calls.some(
+    (call) => call.functionCall.name === 'web_search',
+  )
+
+  if (!hasWebSearch) {
+    return Promise.all(
+      calls.map((call) =>
+        executeToolCall(call.functionCall, toolByName, chatId).then(
+          (result) => ({
+            call: call.functionCall,
+            ...result,
+          }),
+        ),
+      ),
+    )
+  }
+
+  const results: Array<{ call: FunctionCall; name: string; result: string }> =
+    []
+  for (const call of calls) {
+    results.push({
+      call: call.functionCall,
+      ...(await executeToolCall(call.functionCall, toolByName, chatId)),
+    })
+  }
+
+  return results
 }
 
 function extractErrorInfo(error: unknown): unknown {
@@ -337,16 +371,17 @@ export async function runAgenticLoop(
 
       // generateContent loop with native function calling
       let finalText = ''
+      const followUpModel: string = CHAT_MODEL_FALLBACK
 
       for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
         const response = await generateWithRetry(
           {
-            model: CHAT_MODEL,
+            model: iteration === 0 ? CHAT_MODEL : followUpModel,
             contents,
             config: {
               systemInstruction,
               tools,
-              temperature: 1.0,
+              temperature: iteration === 0 ? 1.0 : 0.2,
             },
           },
           chatId,
@@ -402,16 +437,16 @@ export async function runAgenticLoop(
         }
 
         // Execute selected function calls
-        const toolResults = await Promise.all(
-          callsToExecute.map((fc) =>
-            executeToolCall(fc.functionCall, toolByName, chatId),
-          ),
+        const executionResults = await executeToolCalls(
+          callsToExecute,
+          toolByName,
+          chatId,
         )
 
         // Build function responses — executed ones get results,
         // deferred ones get a signal to retry after data is available
         const functionResponses = [
-          ...toolResults.map((tr) => ({
+          ...executionResults.map((tr) => ({
             functionResponse: {
               name: tr.name,
               response: { result: tr.result },
@@ -458,21 +493,21 @@ export async function runAgenticLoop(
         try {
           const finalizeResponse = await generateWithRetry(
             {
-              model: CHAT_MODEL,
+              model: followUpModel,
               contents: [
                 ...contents,
                 {
                   role: 'user',
                   parts: [
                     {
-                      text: 'Provide the final user-facing answer now. Use plain text only and do not call tools.',
+                      text: 'Provide the final user-facing answer now. Use plain text only and do not call tools. Use successful tool results as the primary evidence. If any tool failed or timed out, explicitly say you could not verify that part instead of guessing.',
                     },
                   ],
                 },
               ],
               config: {
                 systemInstruction,
-                temperature: 1.0,
+                temperature: 0.2,
               },
             },
             chatId,

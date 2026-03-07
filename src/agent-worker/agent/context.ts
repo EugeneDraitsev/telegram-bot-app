@@ -8,8 +8,12 @@ export function buildContextBlock(
   textContent: string,
   hasImages: boolean,
 ): string {
+  const currentDate = new Date().toLocaleDateString('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+  })
   const lines = [
     'CONTEXT:',
+    `- Current date (Europe/Stockholm): ${currentDate}`,
     `- User: ${message.from?.first_name || 'Unknown'} (@${message.from?.username || 'no username'})`,
     `- Chat type: ${message.chat?.type || 'unknown'}`,
     `- Message: "${textContent}"`,
