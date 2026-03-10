@@ -1,6 +1,6 @@
 import type { Message } from 'telegram-typings'
 
-import { cleanGeminiMessage } from '@tg-bot/common'
+import { cleanGeminiMessage, type ExtendedMessage } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 export function buildContextBlock(
@@ -21,9 +21,17 @@ export function buildContextBlock(
   ]
 
   if (message.reply_to_message) {
-    lines.push(
-      `- Replying to: "${message.reply_to_message.text || message.reply_to_message.caption || '[media]'}"`,
-    )
+    const quoteText = (message as ExtendedMessage).quote?.text
+    if (quoteText) {
+      lines.push(
+        `- Quoting a specific part of the message: "${quoteText}"`,
+        `- Original message being replied to: "${message.reply_to_message.text || message.reply_to_message.caption || '[media]'}"`,
+      )
+    } else {
+      lines.push(
+        `- Replying to: "${message.reply_to_message.text || message.reply_to_message.caption || '[media]'}"`,
+      )
+    }
   }
 
   return lines.join('\n')

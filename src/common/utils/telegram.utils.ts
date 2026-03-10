@@ -1,6 +1,8 @@
 import type { Context } from 'grammy/web'
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
+import type { ExtendedMessage } from '../types'
+
 export const isLink = (text = '') => text.includes('https://')
 
 export const findCommand = (text = ''): string =>
@@ -34,10 +36,16 @@ export const getCommandData = (
   const replyId = parsedText
     ? message_id || 0
     : (reply_to_message?.message_id ?? message_id ?? 0)
+  const quoteText = (message as ExtendedMessage)?.quote?.text
   const text =
-    parsedText || reply_to_message?.text || reply_to_message?.caption || ''
+    parsedText ||
+    quoteText ||
+    reply_to_message?.text ||
+    reply_to_message?.caption ||
+    ''
   const messageText = parsedText
-  const replyText = reply_to_message?.text || reply_to_message?.caption
+  const replyText =
+    quoteText || reply_to_message?.text || reply_to_message?.caption
   const combinedText =
     replyText && messageText ? `${replyText}\n${messageText}` : text
 
