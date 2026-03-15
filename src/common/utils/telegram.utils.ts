@@ -189,10 +189,8 @@ export function collectMediaFileRefs(
     const sticker = m.sticker as
       | (typeof m.sticker & { is_animated?: boolean; is_video?: boolean })
       | undefined
-    if (sticker?.file_id) {
-      if (sticker.is_animated) {
-        // Lottie-based .tgs stickers — Gemini can't process these, skip
-      } else if (sticker.is_video) {
+    if (sticker?.file_id && !sticker.is_animated) {
+      if (sticker.is_video) {
         add({
           fileId: sticker.file_id,
           mimeType: 'video/webm',
@@ -310,13 +308,21 @@ async function resolveMediaBuffers(
   refs: MediaFileRef[],
   ctx: Context,
 ): Promise<MediaBuffer[]> {
+  const token = process.env.TOKEN
+  if (!token) {
+    console.warn(
+      'resolveMediaBuffers: TOKEN env var is not set, skipping all media downloads',
+    )
+    return []
+  }
+
   const results = await Promise.allSettled(
     refs.map(async (ref): Promise<MediaBuffer | undefined> => {
       const file = await ctx.api.getFile(ref.fileId)
       const filePath = (file as { file_path?: string }).file_path
       if (!filePath) return undefined
 
-      const url = `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${filePath}`
+      const url = `https://api.telegram.org/file/bot${token}/${filePath}`
       const res = await fetch(url)
 
       if (!res.ok) {
@@ -344,11 +350,15 @@ async function resolveMediaBuffers(
   )
 
   const buffers: MediaBuffer[] = []
-  for (const r of results) {
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]
     if (r.status === 'fulfilled' && r.value) {
       buffers.push(r.value)
     } else if (r.status === 'rejected') {
-      console.warn('resolveMediaBuffers: file download failed', r.reason)
+      console.warn(
+        `resolveMediaBuffers: download failed for ${refs[i]?.fileId}`,
+        r.reason,
+      )
     }
   }
   return buffers
