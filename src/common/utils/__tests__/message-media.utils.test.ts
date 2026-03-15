@@ -108,6 +108,42 @@ describe('collectMediaFileRefs', () => {
     ])
   })
 
+  test('collects raster sticker as image/webp', () => {
+    const message = {
+      sticker: { file_id: 'sticker_raster' },
+    } as unknown as Message
+
+    const refs = collectMediaFileRefs(message)
+    expect(refs).toEqual([
+      { fileId: 'sticker_raster', mimeType: 'image/webp', mediaType: 'image' },
+    ])
+  })
+
+  test('collects video sticker as video/webm', () => {
+    const message = {
+      sticker: { file_id: 'sticker_video', is_video: true },
+    } as unknown as Message
+
+    const refs = collectMediaFileRefs(message)
+    expect(refs).toEqual([
+      { fileId: 'sticker_video', mimeType: 'video/webm', mediaType: 'video' },
+    ])
+  })
+
+  test('skips animated sticker', () => {
+    const message = {
+      sticker: { file_id: 'sticker_animated', is_animated: true },
+    } as unknown as Message
+
+    const refs = collectMediaFileRefs(message)
+    expect(refs).toEqual([])
+  })
+
+  test('returns initialRefs for undefined message', () => {
+    const refs = collectMediaFileRefs(undefined)
+    expect(refs).toEqual([])
+  })
+
   test('collects video_note', () => {
     const message = {
       video_note: { file_id: 'vnote_1' },

@@ -7,6 +7,7 @@ import {
   AGENT_REACTION,
   type BotIdentity,
   cleanGeminiMessage,
+  collectMediaFileRefs,
   getChatMemory,
   getGlobalMemory,
   getMetricStatusFromError,
@@ -300,12 +301,7 @@ export async function runAgenticLoop(
       const textContent = message.text || message.caption || ''
       const hasMedia =
         !!mediaBuffers?.length ||
-        !!message.photo?.length ||
-        !!message.voice ||
-        !!message.video ||
-        !!message.video_note ||
-        !!message.document ||
-        !!message.sticker
+        collectMediaFileRefs(message).length > 0
 
       const [chatMemory, globalMemory] = await Promise.all([
         getChatMemory(chatId).catch(() => ''),
