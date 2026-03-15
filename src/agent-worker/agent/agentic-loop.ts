@@ -300,8 +300,7 @@ export async function runAgenticLoop(
     await runWithToolContext(message, mediaBuffers, async () => {
       const textContent = message.text || message.caption || ''
       const hasMedia =
-        !!mediaBuffers?.length ||
-        collectMediaFileRefs(message).length > 0
+        !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
 
       const [chatMemory, globalMemory] = await Promise.all([
         getChatMemory(chatId).catch(() => ''),
