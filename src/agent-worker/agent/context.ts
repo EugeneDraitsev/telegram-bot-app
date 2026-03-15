@@ -1,6 +1,10 @@
 import type { Message } from 'telegram-typings'
 
-import { type MediaBuffer, cleanGeminiMessage, type ExtendedMessage } from '@tg-bot/common'
+import {
+  cleanGeminiMessage,
+  type ExtendedMessage,
+  type MediaBuffer,
+} from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 export function buildContextBlock(

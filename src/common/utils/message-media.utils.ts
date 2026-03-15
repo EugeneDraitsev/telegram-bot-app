@@ -14,7 +14,7 @@ function isImageDocument(
   doc: { mime_type?: string; file_id?: string } | undefined,
 ): doc is { mime_type: string; file_id: string } {
   if (!doc?.file_id || !doc.mime_type) return false
-  return IMAGE_MIME_PREFIXES.some((prefix) => doc.mime_type!.startsWith(prefix))
+  return IMAGE_MIME_PREFIXES.some((prefix) => doc.mime_type?.startsWith(prefix))
 }
 
 /**
@@ -46,27 +46,47 @@ export function collectMediaFileRefs(
 
     // Stickers (treat as images)
     if (m.sticker?.file_id) {
-      add({ fileId: m.sticker.file_id, mimeType: 'image/webp', mediaType: 'image' })
+      add({
+        fileId: m.sticker.file_id,
+        mimeType: 'image/webp',
+        mediaType: 'image',
+      })
     }
 
     // Documents — only image types
     if (isImageDocument(m.document)) {
-      add({ fileId: m.document.file_id, mimeType: m.document.mime_type, mediaType: 'image' })
+      add({
+        fileId: m.document.file_id,
+        mimeType: m.document.mime_type,
+        mediaType: 'image',
+      })
     }
 
     // Voice messages
     if (m.voice?.file_id) {
-      add({ fileId: m.voice.file_id, mimeType: m.voice.mime_type || 'audio/ogg', mediaType: 'audio' })
+      add({
+        fileId: m.voice.file_id,
+        mimeType: m.voice.mime_type || 'audio/ogg',
+        mediaType: 'audio',
+      })
     }
 
     // Videos
     if (m.video?.file_id) {
-      add({ fileId: m.video.file_id, mimeType: m.video.mime_type || 'video/mp4', mediaType: 'video' })
+      add({
+        fileId: m.video.file_id,
+        mimeType: m.video.mime_type || 'video/mp4',
+        mediaType: 'video',
+      })
     }
 
     // Video notes (round videos)
     if (m.video_note?.file_id) {
-      add({ fileId: m.video_note.file_id, mimeType: 'video/mp4', mediaType: 'video' })
+      add({
+        fileId: m.video_note.file_id,
+        mimeType: 'video/mp4',
+        mediaType: 'video',
+      })
     }
   }
 

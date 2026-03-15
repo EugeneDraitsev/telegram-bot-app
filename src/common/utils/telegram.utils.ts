@@ -2,7 +2,7 @@ import type { Context } from 'grammy/web'
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 import type { ExtendedMessage } from '../types'
-import { type MediaFileRef, collectMediaFileRefs } from './message-media.utils'
+import { collectMediaFileRefs, type MediaFileRef } from './message-media.utils'
 
 export const isLink = (text = '') => text.includes('https://')
 
@@ -216,4 +216,3 @@ async function resolveMediaBuffers(
   }
   return buffers
 }
-

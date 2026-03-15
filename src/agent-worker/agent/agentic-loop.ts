@@ -1,8 +1,8 @@
 // import { ThinkingLevel } from '@google/genai'
 import type { Content, FunctionCall, Part, Tool } from '@google/genai'
-import type { MediaBuffer } from '@tg-bot/common'
 import type { Message } from 'telegram-typings'
 
+import type { MediaBuffer } from '@tg-bot/common'
 import {
   AGENT_REACTION,
   type BotIdentity,
@@ -336,7 +336,12 @@ export async function runAgenticLoop(
         return [] as AgentTool[]
       })
 
-      const contextBlock = buildContextBlock(message, textContent, hasMedia, mediaBuffers)
+      const contextBlock = buildContextBlock(
+        message,
+        textContent,
+        hasMedia,
+        mediaBuffers,
+      )
       const systemInstruction = buildSystemInstruction(
         contextBlock,
         memoryBlock,

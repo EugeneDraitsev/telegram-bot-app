@@ -92,7 +92,12 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     const mediaData = await getMultimodalMediaData(ctx, extraMessages)
 
     // Run the agentic loop with bot API
-    await runAgenticLoop(message, bot.api, mediaData.mediaBuffers, effectiveBotInfo)
+    await runAgenticLoop(
+      message,
+      bot.api,
+      mediaData.mediaBuffers,
+      effectiveBotInfo,
+    )
     logger.info(
       {
         ...messageMeta,
