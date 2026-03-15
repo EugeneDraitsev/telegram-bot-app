@@ -3,7 +3,7 @@
  * The actual implementation lives in telegram.utils.ts to avoid circular imports.
  */
 export {
-  type MediaFileRef,
   collectMediaFileRefs,
   collectMessageImageFileIds,
+  type MediaFileRef,
 } from './telegram.utils'
