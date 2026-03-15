@@ -37,7 +37,7 @@ export const generateImageTool: AgentTool = {
     },
   },
   execute: async (args) => {
-    const { imagesData } = requireToolContext()
+    const { mediaBuffers } = requireToolContext()
 
     try {
       const prompt = (args.prompt as string).trim()
@@ -47,8 +47,11 @@ export const generateImageTool: AgentTool = {
 
       const useAttachedImage = (args.useAttachedImage as boolean) ?? true
       const includeTextResponse = args.includeTextResponse as boolean
+      const imageBuffers = mediaBuffers
+        ?.filter((m) => m.mediaType === 'image')
+        .map((m) => m.buffer)
       const imagesToEdit =
-        useAttachedImage && imagesData?.length ? imagesData : undefined
+        useAttachedImage && imageBuffers?.length ? imageBuffers : undefined
       const result = await generateImageOpenAi(prompt, imagesToEdit)
 
       if (result.image) {
