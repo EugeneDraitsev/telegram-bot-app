@@ -298,7 +298,14 @@ export async function runAgenticLoop(
   try {
     await runWithToolContext(message, mediaBuffers, async () => {
       const textContent = message.text || message.caption || ''
-      const hasMedia = !!mediaBuffers?.length || !!message.photo?.length
+      const hasMedia =
+        !!mediaBuffers?.length ||
+        !!message.photo?.length ||
+        !!message.voice ||
+        !!message.video ||
+        !!message.video_note ||
+        !!message.document ||
+        !!message.sticker
 
       const [chatMemory, globalMemory] = await Promise.all([
         getChatMemory(chatId).catch(() => ''),

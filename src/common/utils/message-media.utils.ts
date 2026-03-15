@@ -22,9 +22,11 @@ function isImageDocument(
  * Supports: photo, sticker, document (image), voice, video, video_note.
  */
 export function collectMediaFileRefs(
-  message: Message,
+  message: Message | undefined,
   initialRefs: MediaFileRef[] = [],
 ): MediaFileRef[] {
+  if (!message) return initialRefs
+
   const refs: MediaFileRef[] = [...initialRefs]
   const seenIds = new Set(initialRefs.map((r) => r.fileId))
 
@@ -44,13 +46,26 @@ export function collectMediaFileRefs(
       add({ fileId: photo.file_id, mimeType: 'image/jpeg', mediaType: 'image' })
     }
 
-    // Stickers (treat as images)
-    if (m.sticker?.file_id) {
-      add({
-        fileId: m.sticker.file_id,
-        mimeType: 'image/webp',
-        mediaType: 'image',
-      })
+    // Stickers — skip animated (.tgs/Lottie), handle video (.webm) and raster (.webp)
+    const sticker = m.sticker as
+      | (typeof m.sticker & { is_animated?: boolean; is_video?: boolean })
+      | undefined
+    if (sticker?.file_id) {
+      if (sticker.is_animated) {
+        // Lottie-based .tgs stickers — Gemini can't process these, skip
+      } else if (sticker.is_video) {
+        add({
+          fileId: sticker.file_id,
+          mimeType: 'video/webm',
+          mediaType: 'video',
+        })
+      } else {
+        add({
+          fileId: sticker.file_id,
+          mimeType: 'image/webp',
+          mediaType: 'image',
+        })
+      }
     }
 
     // Documents — only image types

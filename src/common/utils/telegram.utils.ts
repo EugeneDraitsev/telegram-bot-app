@@ -169,7 +169,7 @@ export async function getMultimodalMediaData(
   const chatId = ctx?.chat?.id ?? ''
 
   // Collect all media refs from the message, reply, and album extras
-  let refs = collectMediaFileRefs(ctx.message as Message)
+  let refs = collectMediaFileRefs(ctx.message)
   for (const extra of extraMessages) {
     refs = collectMediaFileRefs(extra, refs)
   }
@@ -191,6 +191,14 @@ async function resolveMediaBuffers(
 
       const url = `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${filePath}`
       const res = await fetch(url)
+
+      if (!res.ok) {
+        console.warn(
+          `Skipping file ${ref.fileId}: HTTP ${res.status} ${res.statusText}`,
+        )
+        return undefined
+      }
+
       const arrayBuffer = await res.arrayBuffer()
 
       if (arrayBuffer.byteLength > MAX_INLINE_BYTES) {
