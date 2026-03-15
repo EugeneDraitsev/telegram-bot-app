@@ -12,7 +12,7 @@ describe('shouldEngageWithMessage', () => {
       await shouldEngageWithMessage({
         message,
         textContent: '',
-        hasImages: false,
+        hasMedia: false,
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)
@@ -25,7 +25,7 @@ describe('shouldEngageWithMessage', () => {
       await shouldEngageWithMessage({
         message,
         textContent: '@otherbot can you help?',
-        hasImages: false,
+        hasMedia: false,
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)
@@ -38,7 +38,7 @@ describe('shouldEngageWithMessage', () => {
       await shouldEngageWithMessage({
         message,
         textContent: 'can you help?',
-        hasImages: false,
+        hasMedia: false,
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)
@@ -54,7 +54,7 @@ describe('shouldEngageWithMessage', () => {
       await shouldEngageWithMessage({
         message,
         textContent: 'some text',
-        hasImages: false,
+        hasMedia: false,
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)

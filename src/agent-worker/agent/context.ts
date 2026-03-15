@@ -1,23 +1,37 @@
 import type { Message } from 'telegram-typings'
 
-import { cleanGeminiMessage, type ExtendedMessage } from '@tg-bot/common'
+import { type MediaBuffer, cleanGeminiMessage, type ExtendedMessage } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 export function buildContextBlock(
   message: Message,
   textContent: string,
-  hasImages: boolean,
+  hasMedia: boolean,
+  mediaBuffers?: MediaBuffer[],
 ): string {
   const currentDate = new Date().toLocaleDateString('sv-SE', {
     timeZone: 'Europe/Stockholm',
   })
+
+  // Build media summary
+  let mediaSummary = String(hasMedia)
+  if (mediaBuffers?.length) {
+    const counts: Record<string, number> = {}
+    for (const m of mediaBuffers) {
+      counts[m.mediaType] = (counts[m.mediaType] || 0) + 1
+    }
+    mediaSummary = Object.entries(counts)
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(', ')
+  }
+
   const lines = [
     'CONTEXT:',
     `- Current date (Europe/Stockholm): ${currentDate}`,
     `- User: ${message.from?.first_name || 'Unknown'} (@${message.from?.username || 'no username'})`,
     `- Chat type: ${message.chat?.type || 'unknown'}`,
     `- Message: "${textContent}"`,
-    `- Has attached images: ${hasImages}`,
+    `- Has attached media: ${mediaSummary}`,
   ]
 
   if (message.reply_to_message) {
