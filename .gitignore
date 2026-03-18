@@ -35,3 +35,4 @@ package-lock.json
 scripts
 .output.txt
 .junie
+gen*
