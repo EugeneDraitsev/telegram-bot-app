@@ -1,11 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Message } from 'telegram-typings'
 
+import type { MediaBuffer } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 interface ToolContext {
   message: Message
-  imagesData?: Buffer[]
+  mediaBuffers?: MediaBuffer[]
   responses: AgentResponse[]
 }
 
@@ -29,8 +30,8 @@ export function getCollectedResponses(): AgentResponse[] {
 
 export async function runWithToolContext<T>(
   message: Message,
-  imagesData: Buffer[] | undefined,
+  mediaBuffers: MediaBuffer[] | undefined,
   callback: () => Promise<T>,
 ): Promise<T> {
-  return contextStorage.run({ message, imagesData, responses: [] }, callback)
+  return contextStorage.run({ message, mediaBuffers, responses: [] }, callback)
 }

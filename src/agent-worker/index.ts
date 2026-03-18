@@ -6,7 +6,7 @@ import {
   type BotIdentity,
   createBot,
   getMediaGroupMessages,
-  getMultimodalCommandData,
+  getMultimodalMediaData,
   isAgenticChatEnabled,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
@@ -89,16 +89,20 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       api: bot.api,
     } as unknown as Context
     const extraMessages = await getMediaGroupMessages(ctx)
-    const commandData = await getMultimodalCommandData(ctx, extraMessages)
-    const images = commandData.imagesData
+    const mediaData = await getMultimodalMediaData(ctx, extraMessages)
 
     // Run the agentic loop with bot API
-    await runAgenticLoop(message, bot.api, images, effectiveBotInfo)
+    await runAgenticLoop(
+      message,
+      bot.api,
+      mediaData.mediaBuffers,
+      effectiveBotInfo,
+    )
     logger.info(
       {
         ...messageMeta,
         durationMs: Date.now() - startedAt,
-        imageCount: images.length,
+        mediaCount: mediaData.mediaBuffers.length,
       },
       'worker.done',
     )

@@ -2,10 +2,12 @@
 import type { Content, FunctionCall, Part, Tool } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
+import type { MediaBuffer } from '@tg-bot/common'
 import {
   AGENT_REACTION,
   type BotIdentity,
   cleanGeminiMessage,
+  collectMediaFileRefs,
   getChatMemory,
   getGlobalMemory,
   getMetricStatusFromError,
@@ -279,7 +281,7 @@ function getLoopFailureReply(error: unknown): string {
 export async function runAgenticLoop(
   message: Message,
   api: TelegramApi,
-  imagesData?: Buffer[],
+  mediaBuffers?: MediaBuffer[],
   botInfo?: BotIdentity,
 ): Promise<void> {
   const startedAt = Date.now()
@@ -295,9 +297,10 @@ export async function runAgenticLoop(
   let stopTyping: (() => void) | undefined
 
   try {
-    await runWithToolContext(message, imagesData, async () => {
+    await runWithToolContext(message, mediaBuffers, async () => {
       const textContent = message.text || message.caption || ''
-      const hasImages = !!imagesData?.length || !!message.photo?.length
+      const hasMedia =
+        !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
 
       const [chatMemory, globalMemory] = await Promise.all([
         getChatMemory(chatId).catch(() => ''),
@@ -308,7 +311,7 @@ export async function runAgenticLoop(
       const shouldRespond = await shouldEngageWithMessage({
         message,
         textContent,
-        hasImages,
+        hasMedia,
         memoryBlock,
         botInfo,
       })
@@ -335,7 +338,12 @@ export async function runAgenticLoop(
         return [] as AgentTool[]
       })
 
-      const contextBlock = buildContextBlock(message, textContent, hasImages)
+      const contextBlock = buildContextBlock(
+        message,
+        textContent,
+        hasMedia,
+        mediaBuffers,
+      )
       const systemInstruction = buildSystemInstruction(
         contextBlock,
         memoryBlock,
@@ -347,22 +355,21 @@ export async function runAgenticLoop(
           .map((t) => [t.declaration.name ?? '', t]),
       )
 
-      // Build initial contents in /q-like order:
-      // each image as a separate user turn, then the final text turn.
-      const imageContents: Content[] = (imagesData ?? []).map((buf) => ({
+      // Build initial contents: each media file as a separate user turn, then the final text turn.
+      const mediaContents: Content[] = (mediaBuffers ?? []).map((m) => ({
         role: 'user',
         parts: [
           {
             inlineData: {
-              mimeType: 'image/jpeg',
-              data: buf.toString('base64'),
+              mimeType: m.mimeType,
+              data: m.buffer.toString('base64'),
             },
           } as Part,
         ],
       }))
 
       const contents: Content[] = [
-        ...imageContents,
+        ...mediaContents,
         {
           role: 'user',
           parts: [{ text: textContent || '[User sent media without text]' }],
@@ -589,7 +596,8 @@ export async function runAgenticLoop(
           durationMs: Date.now() - startedAt,
           deliveryDurationMs: Date.now() - deliveryStartedAt,
           responseCount: responsesToSend.length,
-          mediaCount: mediaResponses.length,
+          inputMediaCount: mediaBuffers?.length ?? 0,
+          outputMediaCount: mediaResponses.length,
           hasFinalText: Boolean(combinedText),
         },
         'loop.done',

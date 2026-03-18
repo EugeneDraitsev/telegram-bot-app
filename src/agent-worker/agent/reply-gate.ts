@@ -38,7 +38,7 @@ function buildReplyGatePrompt(params: {
   isReplyToOur: boolean
   hasOurMention: boolean
   mentionsOther: boolean
-  hasImages: boolean
+  hasMedia: boolean
   textContent: string
   memoryBlock?: string
 }): string {
@@ -77,7 +77,7 @@ Context:
 - Is reply to OUR bot: ${params.isReplyToOur}
 - Mentions OUR bot: ${params.hasOurMention}
 - Mentions other account: ${params.mentionsOther}
-- Has media: ${params.hasImages}
+- Has media: ${params.hasMedia}
 - Message: "${params.textContent || '[media without text]'}"
 ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
 }
@@ -85,13 +85,13 @@ ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
 export async function shouldEngageWithMessage(params: {
   message: Message
   textContent: string
-  hasImages: boolean
+  hasMedia: boolean
   memoryBlock?: string
   botInfo?: BotIdentity
 }): Promise<boolean> {
-  const { message, textContent, hasImages, memoryBlock, botInfo } = params
+  const { message, textContent, hasMedia, memoryBlock, botInfo } = params
 
-  if (!textContent.trim() && !hasImages) {
+  if (!textContent.trim() && !hasMedia) {
     return false
   }
 
@@ -115,7 +115,7 @@ export async function shouldEngageWithMessage(params: {
       isReplyToOur,
       hasOurMention,
       mentionsOther: mentionsAnotherAccount(textContent, botInfo?.username),
-      hasImages,
+      hasMedia,
       textContent,
       memoryBlock,
     })
