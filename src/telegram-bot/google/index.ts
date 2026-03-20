@@ -25,6 +25,8 @@ const GEMINI_FAILURE_MESSAGES = new Set([
   PROMPT_MISSING_ERROR,
 ])
 
+export const GEMMA_MODEL = 'gemma-3-12b-it'
+
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
   deferredCommands = false,
@@ -187,6 +189,10 @@ const setupGoogleCommands = (
       deferredCommands,
       'gemini-3-flash-preview',
     ),
+  )
+
+  bot.command('gemma', (ctx) =>
+    setupMultimodalGeminiCommands(ctx, deferredCommands, GEMMA_MODEL),
   )
 
   bot.command('o', (ctx) =>

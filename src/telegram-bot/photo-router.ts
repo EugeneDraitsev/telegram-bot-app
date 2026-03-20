@@ -1,7 +1,7 @@
 import type { Context } from 'grammy/web'
 
-import { setupGemmaDat1coCommands } from './dat1co'
 import {
+  GEMMA_MODEL,
   setupImageGenerationGeminiCommands,
   setupMultimodalGeminiCommands,
 } from './google'
@@ -30,7 +30,8 @@ const photoRoutes: PhotoRoute[] = [
   },
   {
     prefix: '/gemma',
-    handler: (ctx, deferred) => setupGemmaDat1coCommands(ctx, deferred),
+    handler: (ctx, deferred) =>
+      setupMultimodalGeminiCommands(ctx, deferred, GEMMA_MODEL),
   },
   {
     prefix: '/ge',

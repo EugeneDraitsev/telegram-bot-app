@@ -105,7 +105,6 @@ const setupDat1coCommands = (
   bot.command('de', (ctx) =>
     setupImageGenerationDat1coCommands(ctx, deferredCommands),
   )
-  bot.command('gemma', (ctx) => setupGemmaDat1coCommands(ctx, deferredCommands))
 }
 
 export default setupDat1coCommands
