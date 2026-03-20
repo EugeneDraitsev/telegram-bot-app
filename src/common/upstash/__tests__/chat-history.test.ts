@@ -4,6 +4,8 @@ import * as utils from '../../utils'
 import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
+  getHistory,
+  getRawHistory,
   getRecentRawHistory,
 } from '../chat-history'
 import * as client from '../client'
@@ -120,8 +122,12 @@ describe('formatHistoryForDisplay', () => {
 })
 
 describe('getRecentRawHistory', () => {
-  test('fetches only the requested recent slice and restores chronological order', async () => {
-    mockZrange.mockResolvedValue([createMessage(3), createMessage(2)])
+  test('reads recent history through the same raw-history path and slices locally', async () => {
+    mockZrange.mockResolvedValue([
+      createMessage(1),
+      createMessage(2),
+      createMessage(3),
+    ])
 
     const history = await getRecentRawHistory(777, 2)
 
@@ -131,11 +137,37 @@ describe('getRecentRawHistory', () => {
       expect.any(Number),
       {
         byScore: true,
-        rev: true,
-        offset: 0,
-        count: 2,
       },
     )
     expect(history.map((message) => message.message_id)).toEqual([2, 3])
+  })
+
+  test('uses the exact same redis fetch as full history and only trims the tail locally', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_740_000_000_000)
+    const messages = [
+      createMessage(1),
+      createMessage(2),
+      createMessage(3),
+      createMessage(4),
+    ]
+    mockZrange.mockResolvedValue(messages)
+
+    const rawHistory = await getRawHistory(777)
+    const recentHistory = await getRecentRawHistory(777, 2)
+    const formattedHistory = await getHistory(777)
+
+    expect(mockZrange).toHaveBeenCalledTimes(3)
+    expect(mockZrange.mock.calls[0]).toEqual(mockZrange.mock.calls[1])
+    expect(mockZrange.mock.calls[1]).toEqual(mockZrange.mock.calls[2])
+
+    expect(rawHistory).toEqual(messages)
+    expect(recentHistory).toEqual(messages.slice(-2))
+    expect(
+      formattedHistory.map(
+        (entry) => JSON.parse(entry.content[0]?.text ?? '{}').message_id,
+      ),
+    ).toEqual(messages.map((message) => message.message_id))
+
+    nowSpy.mockRestore()
   })
 })

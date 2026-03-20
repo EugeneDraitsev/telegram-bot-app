@@ -121,19 +121,16 @@ async function readRawHistory(
 
     const key = `${CHAT_HISTORY_REDIS_KEY}:${chatId}`
     const normalizedLimit = normalizeRawHistoryLimit(limit)
+    const rawMessages = await redis.zrange<Message[]>(
+      key,
+      Date.now() - TTL_MS,
+      Date.now(),
+      {
+        byScore: true,
+      },
+    )
 
-    const rawMessages = normalizedLimit
-      ? await redis.zrange<Message[]>(key, Date.now() - TTL_MS, Date.now(), {
-          byScore: true,
-          rev: true,
-          offset: 0,
-          count: normalizedLimit,
-        })
-      : await redis.zrange<Message[]>(key, Date.now() - TTL_MS, Date.now(), {
-          byScore: true,
-        })
-
-    return normalizedLimit ? rawMessages.reverse() : rawMessages
+    return normalizedLimit ? rawMessages.slice(-normalizedLimit) : rawMessages
   } catch (error) {
     console.error('Error getting raw chat history:', error)
     return []
