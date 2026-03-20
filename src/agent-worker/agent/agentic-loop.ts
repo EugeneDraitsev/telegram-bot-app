@@ -116,19 +116,6 @@ function getHistoryMediaPrompt(message: Message): string {
     : 'Context image from recent chat history.'
 }
 
-export function buildCurrentRequestPrompt(
-  textContent: string,
-  historyAttachmentCount: number,
-): string {
-  const currentMessageText = textContent || '[User sent media without text]'
-  if (historyAttachmentCount < 1) {
-    return currentMessageText
-  }
-
-  const label = historyAttachmentCount === 1 ? 'image' : 'images'
-  return `[Context note: ${historyAttachmentCount} ${label} from recent chat history are attached in this request and available for visual analysis.]\n${currentMessageText}`
-}
-
 export async function resolveHistoryMediaAttachments(
   entries: HistoryMediaFileRef[],
   api: TelegramApi,
@@ -143,49 +130,6 @@ export async function resolveHistoryMediaAttachments(
   return resolved.filter(
     (entry): entry is HistoryMediaAttachment => entry != null,
   )
-}
-
-export function buildInitialContents(
-  textContent: string,
-  historyMediaAttachments: HistoryMediaAttachment[],
-  mediaBuffers?: MediaBuffer[],
-): Content[] {
-  const parts: Part[] = [
-    {
-      text: buildCurrentRequestPrompt(
-        textContent,
-        historyMediaAttachments.length,
-      ),
-    },
-  ]
-
-  for (const { media, message } of historyMediaAttachments) {
-    parts.push({
-      text: getHistoryMediaPrompt(message),
-    })
-    parts.push({
-      inlineData: {
-        mimeType: media.mimeType,
-        data: media.buffer.toString('base64'),
-      },
-    } as Part)
-  }
-
-  for (const media of mediaBuffers ?? []) {
-    parts.push({
-      inlineData: {
-        mimeType: media.mimeType,
-        data: media.buffer.toString('base64'),
-      },
-    } as Part)
-  }
-
-  return [
-    {
-      role: 'user',
-      parts,
-    },
-  ]
 }
 
 function getToolResultStatus(result: string): MetricStatus {
@@ -470,6 +414,22 @@ export async function runAgenticLoop(
             },
           )
         : []
+      logger.info(
+        {
+          chatId,
+          rawHistoryCount: rawHistory.length,
+          historyImageRefCount: historyImageRefs.length,
+          historyImageRefIds: historyImageRefs.map((entry) => entry.ref.fileId),
+          historyImageMessageIds: historyImageRefs.map(
+            (entry) => entry.message.message_id,
+          ),
+          historyMediaAttachmentCount: historyMediaAttachments.length,
+          historyMediaAttachmentMessageIds: historyMediaAttachments.map(
+            (entry) => entry.message.message_id,
+          ),
+        },
+        'history.media_debug',
+      )
       const historyMediaBuffers = historyMediaAttachments.map(
         (entry) => entry.media,
       )
@@ -493,10 +453,56 @@ export async function runAgenticLoop(
           .map((t) => [t.declaration.name ?? '', t]),
       )
 
-      const contents = buildInitialContents(
-        textContent,
-        historyMediaAttachments,
-        mediaBuffers,
+      // Build initial contents: each media file as a separate user turn, then the final text turn.
+      const historyMediaContents: Content[] = historyMediaAttachments.map(
+        ({ media, message: sourceMessage }) => ({
+          role: 'user',
+          parts: [
+            {
+              text: getHistoryMediaPrompt(sourceMessage),
+            },
+            {
+              inlineData: {
+                mimeType: media.mimeType,
+                data: media.buffer.toString('base64'),
+              },
+            } as Part,
+          ],
+        }),
+      )
+      const mediaContents: Content[] = (mediaBuffers ?? []).map((m) => ({
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              mimeType: m.mimeType,
+              data: m.buffer.toString('base64'),
+            },
+          } as Part,
+        ],
+      }))
+      const contents: Content[] = [
+        ...historyMediaContents,
+        ...mediaContents,
+        {
+          role: 'user',
+          parts: [{ text: textContent || '[User sent media without text]' }],
+        },
+      ]
+      const allParts = contents.flatMap((content) => content.parts ?? [])
+      logger.info(
+        {
+          chatId,
+          contentsCount: contents.length,
+          contentPartCounts: contents.map(
+            (content) => content.parts?.length ?? 0,
+          ),
+          textPartCount: allParts.filter((p) => p.text).length,
+          inlinePartCount: allParts.filter((p) => 'inlineData' in p).length,
+          currentMediaCount: mediaBuffers?.length ?? 0,
+          historyMediaCount: historyMediaAttachments.length,
+        },
+        'loop.request_media_debug',
       )
 
       // generateContent loop with native function calling
@@ -527,6 +533,16 @@ export async function runAgenticLoop(
 
         if (textParts.length > 0) {
           finalText = textParts.join('\n')
+        }
+        if (iteration === 0 && historyMediaAttachments.length > 0) {
+          logger.info(
+            {
+              chatId,
+              firstReplyTextPreview: finalText.slice(0, 300),
+              firstReplyFunctionCallCount: functionCalls.length,
+            },
+            'loop.first_model_reply_debug',
+          )
         }
 
         // No function calls → we're done
