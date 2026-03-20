@@ -6,6 +6,7 @@
  */
 
 export interface TelegramApi {
+  getFile: (fileId: string) => Promise<{ file_path?: string }>
   sendMessage: (
     chatId: number,
     text: string,

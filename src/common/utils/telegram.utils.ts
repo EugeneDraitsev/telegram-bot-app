@@ -147,6 +147,11 @@ export interface MediaFileRef {
   mediaType: 'image' | 'audio' | 'video'
 }
 
+export interface HistoryMediaFileRef {
+  ref: MediaFileRef
+  message: Message
+}
+
 const IMAGE_MIME_PREFIXES = ['image/']
 
 function isImageDocument(
@@ -248,6 +253,48 @@ export function collectMediaFileRefs(
   return refs
 }
 
+export function collectHistoryMediaFileRefs(
+  messages: Message[],
+  options: {
+    excludeMessageId?: number
+    limit?: number
+    mediaTypes?: MediaFileRef['mediaType'][]
+  } = {},
+): HistoryMediaFileRef[] {
+  // History media intentionally includes each visible message's immediate
+  // reply context so a recent reply can carry the replied-to media into
+  // the model input as additional context.
+  const visibleMessages =
+    typeof options.excludeMessageId === 'number'
+      ? messages.filter(
+          (message) => message.message_id !== options.excludeMessageId,
+        )
+      : messages
+
+  const limitedMessages = Number.isFinite(options.limit)
+    ? visibleMessages.slice(-Math.max(Math.trunc(options.limit ?? 1), 1))
+    : visibleMessages
+
+  const allowedMediaTypes = options.mediaTypes?.length
+    ? new Set(options.mediaTypes)
+    : undefined
+  const refsById = new Map<string, HistoryMediaFileRef>()
+
+  for (const message of limitedMessages) {
+    const refs = collectMediaFileRefs(message).filter(
+      (ref) => !allowedMediaTypes || allowedMediaTypes.has(ref.mediaType),
+    )
+
+    for (const ref of refs) {
+      if (!refsById.has(ref.fileId)) {
+        refsById.set(ref.fileId, { ref, message })
+      }
+    }
+  }
+
+  return [...refsById.values()]
+}
+
 /**
  * Backwards-compatible: collect only image file IDs as flat strings.
  */
@@ -299,14 +346,18 @@ export async function getMultimodalMediaData(
     refs = collectMediaFileRefs(extra, refs)
   }
 
-  const mediaBuffers = await resolveMediaBuffers(refs, ctx)
+  const mediaBuffers = await resolveMediaBuffers(refs, ctx.api)
 
   return { combinedText, mediaBuffers, replyId, chatId, message: ctx.message }
 }
 
-async function resolveMediaBuffers(
+type MediaResolverApi = {
+  getFile: (fileId: string) => Promise<{ file_path?: string }>
+}
+
+export async function resolveMediaBuffers(
   refs: MediaFileRef[],
-  ctx: Context,
+  api: MediaResolverApi,
 ): Promise<MediaBuffer[]> {
   const token = process.env.TOKEN
   if (!token) {
@@ -318,7 +369,7 @@ async function resolveMediaBuffers(
 
   const results = await Promise.allSettled(
     refs.map(async (ref): Promise<MediaBuffer | undefined> => {
-      const file = await ctx.api.getFile(ref.fileId)
+      const file = await api.getFile(ref.fileId)
       const filePath = (file as { file_path?: string }).file_path
       if (!filePath) return undefined
 

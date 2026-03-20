@@ -7,6 +7,7 @@ import {
   AGENT_REACTION,
   type BotIdentity,
   cleanGeminiMessage,
+  collectHistoryMediaFileRefs,
   collectMediaFileRefs,
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
@@ -14,8 +15,10 @@ import {
   getGlobalMemory,
   getMetricStatusFromError,
   getRecentRawHistory,
+  type HistoryMediaFileRef,
   type MetricStatus,
   recordMetric,
+  resolveMediaBuffers,
   startTypingIndicator,
 } from '@tg-bot/common'
 import { getMessageLogMeta, logger } from '../logger'
@@ -97,6 +100,36 @@ const TOOL_MODELS: Record<string, string> = {
   web_search: FAST_MODEL,
   code_execution: FAST_MODEL,
   url_context: FAST_MODEL,
+}
+
+const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
+
+interface HistoryMediaAttachment {
+  message: Message
+  media: MediaBuffer
+}
+
+function getHistoryMediaPrompt(message: Message): string {
+  const sourceText = (message.caption || message.text || '').trim()
+  return sourceText
+    ? `Context image from recent chat history. Related message text: ${sourceText.slice(0, 200)}`
+    : 'Context image from recent chat history.'
+}
+
+export async function resolveHistoryMediaAttachments(
+  entries: HistoryMediaFileRef[],
+  api: TelegramApi,
+): Promise<HistoryMediaAttachment[]> {
+  const resolved = await Promise.all(
+    entries.map(async (entry) => {
+      const [media] = await resolveMediaBuffers([entry.ref], api)
+      return media ? { message: entry.message, media } : undefined
+    }),
+  )
+
+  return resolved.filter(
+    (entry): entry is HistoryMediaAttachment => entry != null,
+  )
 }
 
 function getToolResultStatus(result: string): MetricStatus {
@@ -349,26 +382,48 @@ export async function runAgenticLoop(
         onError: (error) => logger.warn({ chatId, error }, 'typing.failed'),
       })
 
-      const [agentTools, recentHistory] = await Promise.all([
+      const [agentTools, rawHistory] = await Promise.all([
         getAgentTools(chatId).catch((error) => {
           logger.error({ chatId, error }, 'tools.load_failed')
           return [] as AgentTool[]
         }),
-        getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1)
-          .then((rawHistory) =>
-            getRecentHistoryContext(rawHistory, message.message_id),
-          )
-          .catch((error) => {
+        getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1).catch(
+          (error) => {
             logger.warn({ chatId, error }, 'history.preload_failed')
-            return ''
-          }),
+            return [] as Message[]
+          },
+        ),
       ])
+
+      const recentHistory = getRecentHistoryContext(
+        rawHistory,
+        message.message_id,
+      )
+      const historyImageRefs = collectHistoryMediaFileRefs(rawHistory, {
+        excludeMessageId: message.message_id,
+        limit: DEFAULT_AGENT_HISTORY_LIMIT,
+        mediaTypes: ['image'],
+      })
+        .slice(-MAX_HISTORY_IMAGE_ATTACHMENTS)
+        .map((entry) => entry)
+      const historyMediaAttachments = historyImageRefs.length
+        ? await resolveHistoryMediaAttachments(historyImageRefs, api).catch(
+            (error) => {
+              logger.warn({ chatId, error }, 'history.media_preload_failed')
+              return [] as HistoryMediaAttachment[]
+            },
+          )
+        : []
+      const historyMediaBuffers = historyMediaAttachments.map(
+        (entry) => entry.media,
+      )
+      const allMediaBuffers = [...historyMediaBuffers, ...(mediaBuffers ?? [])]
 
       const contextBlock = buildContextBlock(
         message,
         textContent,
         hasMedia,
-        mediaBuffers,
+        allMediaBuffers,
         { recentHistory },
       )
       const systemInstruction = buildSystemInstruction(
@@ -383,6 +438,22 @@ export async function runAgenticLoop(
       )
 
       // Build initial contents: each media file as a separate user turn, then the final text turn.
+      const historyMediaContents: Content[] = historyMediaAttachments.map(
+        ({ media, message: sourceMessage }) => ({
+          role: 'user',
+          parts: [
+            {
+              text: getHistoryMediaPrompt(sourceMessage),
+            },
+            {
+              inlineData: {
+                mimeType: media.mimeType,
+                data: media.buffer.toString('base64'),
+              },
+            } as Part,
+          ],
+        }),
+      )
       const mediaContents: Content[] = (mediaBuffers ?? []).map((m) => ({
         role: 'user',
         parts: [
@@ -396,6 +467,7 @@ export async function runAgenticLoop(
       }))
 
       const contents: Content[] = [
+        ...historyMediaContents,
         ...mediaContents,
         {
           role: 'user',
@@ -623,7 +695,7 @@ export async function runAgenticLoop(
           durationMs: Date.now() - startedAt,
           deliveryDurationMs: Date.now() - deliveryStartedAt,
           responseCount: responsesToSend.length,
-          inputMediaCount: mediaBuffers?.length ?? 0,
+          inputMediaCount: allMediaBuffers.length,
           outputMediaCount: mediaResponses.length,
           hasFinalText: Boolean(combinedText),
         },

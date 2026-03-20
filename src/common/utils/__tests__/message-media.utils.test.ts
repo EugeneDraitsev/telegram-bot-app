@@ -1,6 +1,10 @@
 import type { Message } from 'telegram-typings'
 
-import { collectMediaFileRefs, collectMessageImageFileIds } from '..'
+import {
+  collectHistoryMediaFileRefs,
+  collectMediaFileRefs,
+  collectMessageImageFileIds,
+} from '..'
 
 describe('collectMessageImageFileIds (backward compat)', () => {
   test('collects direct image ids from message and reply context', () => {
@@ -197,6 +201,170 @@ describe('collectMediaFileRefs', () => {
       'audio',
       'image',
       'video',
+    ])
+  })
+})
+
+describe('collectHistoryMediaFileRefs', () => {
+  test('collects recent images from history, skips current message and deduplicates', () => {
+    const messages = [
+      {
+        message_id: 1,
+        photo: [
+          {
+            file_id: 'old_small',
+            width: 100,
+            height: 100,
+            file_unique_id: 'old',
+          },
+          {
+            file_id: 'old_big',
+            width: 1000,
+            height: 1000,
+            file_unique_id: 'old',
+          },
+        ],
+      },
+      {
+        message_id: 2,
+        text: 'just text',
+      },
+      {
+        message_id: 3,
+        document: { file_id: 'doc_image', mime_type: 'image/png' },
+      },
+      {
+        message_id: 4,
+        photo: [
+          {
+            file_id: 'current_small',
+            width: 100,
+            height: 100,
+            file_unique_id: 'current',
+          },
+          {
+            file_id: 'current_big',
+            width: 1000,
+            height: 1000,
+            file_unique_id: 'current',
+          },
+        ],
+      },
+      {
+        message_id: 5,
+        photo: [
+          {
+            file_id: 'old_big',
+            width: 1000,
+            height: 1000,
+            file_unique_id: 'old',
+          },
+        ],
+      },
+    ] as unknown as Message[]
+
+    const refs = collectHistoryMediaFileRefs(messages, {
+      excludeMessageId: 4,
+      mediaTypes: ['image'],
+    })
+
+    expect(refs).toEqual([
+      {
+        ref: { fileId: 'old_big', mimeType: 'image/jpeg', mediaType: 'image' },
+        message: messages[0],
+      },
+      {
+        ref: { fileId: 'doc_image', mimeType: 'image/png', mediaType: 'image' },
+        message: messages[2],
+      },
+    ])
+  })
+
+  test('respects recent history limit before collecting media refs', () => {
+    const messages = [
+      {
+        message_id: 1,
+        photo: [
+          { file_id: 'old_1', width: 1000, height: 1000, file_unique_id: '1' },
+        ],
+      },
+      {
+        message_id: 2,
+        photo: [
+          { file_id: 'old_2', width: 1000, height: 1000, file_unique_id: '2' },
+        ],
+      },
+      {
+        message_id: 3,
+        photo: [
+          {
+            file_id: 'recent_3',
+            width: 1000,
+            height: 1000,
+            file_unique_id: '3',
+          },
+        ],
+      },
+      {
+        message_id: 4,
+        photo: [
+          {
+            file_id: 'recent_4',
+            width: 1000,
+            height: 1000,
+            file_unique_id: '4',
+          },
+        ],
+      },
+    ] as unknown as Message[]
+
+    const refs = collectHistoryMediaFileRefs(messages, {
+      limit: 2,
+      mediaTypes: ['image'],
+    })
+
+    expect(refs.map((entry) => entry.ref.fileId)).toEqual([
+      'recent_3',
+      'recent_4',
+    ])
+  })
+
+  test('can pull replied-to image into history context for a recent reply', () => {
+    const originalImageMessage = {
+      message_id: 1,
+      caption: 'look at this',
+      photo: [
+        {
+          file_id: 'reply_context_image',
+          width: 1000,
+          height: 1000,
+          file_unique_id: 'reply-context',
+        },
+      ],
+    } as unknown as Message
+    const recentReply = {
+      message_id: 2,
+      text: 'what is happening on this image?',
+      reply_to_message: originalImageMessage,
+    } as unknown as Message
+
+    const refs = collectHistoryMediaFileRefs(
+      [originalImageMessage, recentReply],
+      {
+        limit: 1,
+        mediaTypes: ['image'],
+      },
+    )
+
+    expect(refs).toEqual([
+      {
+        ref: {
+          fileId: 'reply_context_image',
+          mimeType: 'image/jpeg',
+          mediaType: 'image',
+        },
+        message: recentReply,
+      },
     ])
   })
 })
