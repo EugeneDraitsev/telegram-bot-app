@@ -11,6 +11,86 @@ import { getRedisClient } from './client'
 const ONE_HOUR = 60 * 60 * 1000
 const TTL_MS = 24 * ONE_HOUR
 const CHAT_HISTORY_REDIS_KEY = 'chat-history'
+export const DEFAULT_AGENT_HISTORY_LIMIT = 40
+export const MAX_HISTORY_TOOL_LIMIT = 200
+
+interface FormatHistoryForDisplayOptions {
+  limit?: number
+  includeHeader?: boolean
+  headerLabel?: string
+  excludeMessageId?: number
+}
+
+function normalizeHistoryLimit(limit?: number): number {
+  if (!Number.isFinite(limit)) {
+    return DEFAULT_AGENT_HISTORY_LIMIT
+  }
+
+  return Math.max(Math.trunc(limit ?? DEFAULT_AGENT_HISTORY_LIMIT), 1)
+}
+
+function normalizeRawHistoryLimit(limit?: number): number | undefined {
+  if (!Number.isFinite(limit)) {
+    return undefined
+  }
+
+  return Math.max(Math.trunc(limit ?? 1), 1)
+}
+
+function getMediaLabels(message: Message): string[] {
+  const labels: string[] = []
+  const sticker = message.sticker as
+    | (typeof message.sticker & { is_video?: boolean; file_id?: string })
+    | undefined
+
+  if (message.photo?.length) {
+    labels.push('photo')
+  }
+  if (sticker?.file_id) {
+    labels.push(sticker.is_video ? 'video sticker' : 'sticker')
+  }
+  if (message.document?.file_id) {
+    labels.push(
+      message.document.mime_type
+        ? `document (${message.document.mime_type})`
+        : 'document',
+    )
+  }
+  if (message.animation?.file_id) {
+    labels.push('animation')
+  }
+  if (message.voice?.file_id) {
+    labels.push('voice')
+  }
+  if (message.audio?.file_id) {
+    labels.push('audio')
+  }
+  if (message.video?.file_id) {
+    labels.push('video')
+  }
+  if (message.video_note?.file_id) {
+    labels.push('video_note')
+  }
+
+  return labels
+}
+
+function getHistoryLineText(message: Message): string {
+  const mediaLabels = getMediaLabels(message)
+  const text = message.text || message.caption
+
+  if (text && mediaLabels.length === 0) {
+    return text
+  }
+  if (text) {
+    return `${text} [media: ${mediaLabels.join(', ')}]`
+  }
+  if (mediaLabels.length > 0) {
+    return `[media: ${mediaLabels.join(', ')}]`
+  }
+
+  return '[empty message]'
+}
 
 /**
  * Save a message to chat history
@@ -29,10 +109,10 @@ export const saveMessage = async (message: Message, chatId?: number) => {
   })
 }
 
-/**
- * Get raw message history from Redis
- */
-export const getRawHistory = async (chatId: string | number) => {
+async function readRawHistory(
+  chatId: string | number,
+  limit?: number,
+): Promise<Message[]> {
   const redis = getRedisClient()
   try {
     if (!isAiEnabledChat(chatId) || !redis) {
@@ -40,20 +120,39 @@ export const getRawHistory = async (chatId: string | number) => {
     }
 
     const key = `${CHAT_HISTORY_REDIS_KEY}:${chatId}`
+    const normalizedLimit = normalizeRawHistoryLimit(limit)
 
-    const rawMessages = await redis.zrange<Message[]>(
-      key,
-      Date.now() - TTL_MS,
-      Date.now(),
-      { byScore: true },
-    )
+    const rawMessages = normalizedLimit
+      ? await redis.zrange<Message[]>(key, Date.now() - TTL_MS, Date.now(), {
+          byScore: true,
+          rev: true,
+          offset: 0,
+          count: normalizedLimit,
+        })
+      : await redis.zrange<Message[]>(key, Date.now() - TTL_MS, Date.now(), {
+          byScore: true,
+        })
 
-    return rawMessages
+    return normalizedLimit ? rawMessages.reverse() : rawMessages
   } catch (error) {
     console.error('Error getting raw chat history:', error)
     return []
   }
 }
+
+/**
+ * Get raw message history from Redis
+ */
+export const getRawHistory = async (chatId: string | number) =>
+  readRawHistory(chatId)
+
+/**
+ * Get recent raw message history from Redis
+ */
+export const getRecentRawHistory = async (
+  chatId: string | number,
+  limit = DEFAULT_AGENT_HISTORY_LIMIT,
+) => readRawHistory(chatId, limit)
 
 /**
  * Get formatted history for Gemini AI interactions
@@ -91,24 +190,43 @@ function getFormattedHistory(chatHistory: Message[]) {
  */
 export function formatHistoryForDisplay(
   messages: Message[],
-  limit = 10,
+  limitOrOptions:
+    | number
+    | FormatHistoryForDisplayOptions = DEFAULT_AGENT_HISTORY_LIMIT,
 ): string {
-  const limited = messages.slice(-limit)
+  const options =
+    typeof limitOrOptions === 'number'
+      ? { limit: limitOrOptions }
+      : limitOrOptions
+  const limit = normalizeHistoryLimit(options.limit)
+  const filtered =
+    typeof options.excludeMessageId === 'number'
+      ? messages.filter(
+          (message) => message.message_id !== options.excludeMessageId,
+        )
+      : messages
 
-  if (limited.length === 0) {
+  const visibleMessages = filtered.slice(-limit)
+
+  if (visibleMessages.length === 0) {
     return 'No message history available'
   }
 
-  const formatted = limited.map((msg) => {
+  const formatted = visibleMessages.map((msg) => {
     const from = msg.from?.is_bot ? 'Bot' : msg.from?.first_name || 'Unknown'
-    const text = msg.text || msg.caption || '[media]'
+    const text = getHistoryLineText(msg)
     const time = msg.date
       ? new Date(msg.date * 1000).toLocaleTimeString('ru-RU')
       : ''
     return `[${time}] ${from}: ${text.slice(0, 200)}`
   })
 
-  return `Recent ${limited.length} messages:\n${formatted.join('\n')}`
+  if (options.includeHeader === false) {
+    return formatted.join('\n')
+  }
+
+  const headerLabel = options.headerLabel || 'Recent'
+  return `${headerLabel} ${visibleMessages.length} messages:\n${formatted.join('\n')}`
 }
 
 /**

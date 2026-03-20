@@ -3,9 +3,12 @@
  */
 
 import {
+  DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
   getErrorMessage,
   getRawHistory,
+  getRecentRawHistory,
+  MAX_HISTORY_TOOL_LIMIT,
 } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
@@ -15,14 +18,19 @@ export const getHistoryTool: AgentTool = {
     type: 'function',
     name: 'get_chat_history',
     description:
-      'Get recent chat messages for context. Use when you need to understand the conversation history.',
+      'Get chat messages for context. Recent 40 messages are already available by default, but you can request more or all available history when needed.',
     parameters: {
       type: 'object',
       properties: {
         limit: {
           type: 'number',
           description:
-            'Number of recent messages to retrieve. Default: 10, Max: 50',
+            'Number of recent messages to retrieve. Default: 40, Max: 200. Use all=true for the full available history.',
+        },
+        all: {
+          type: 'boolean',
+          description:
+            'Set to true to retrieve all available history from the last 24 hours.',
         },
       },
     },
@@ -36,14 +44,25 @@ export const getHistoryTool: AgentTool = {
     }
 
     try {
-      const rawHistory = await getRawHistory(chatId)
       const limit = args.limit as number | undefined
+      const wantsAll = args.all === true
       const normalizedLimit = Number.isFinite(limit)
-        ? Math.trunc(limit ?? 10)
-        : 10
-      const limitedCount = Math.min(Math.max(normalizedLimit, 1), 50)
+        ? Math.min(
+            Math.max(Math.trunc(limit ?? DEFAULT_AGENT_HISTORY_LIMIT), 1),
+            MAX_HISTORY_TOOL_LIMIT,
+          )
+        : DEFAULT_AGENT_HISTORY_LIMIT
 
-      return formatHistoryForDisplay(rawHistory, limitedCount)
+      if (wantsAll) {
+        const rawHistory = await getRawHistory(chatId)
+        return formatHistoryForDisplay(rawHistory, {
+          limit: rawHistory.length || DEFAULT_AGENT_HISTORY_LIMIT,
+          headerLabel: 'Available history',
+        })
+      }
+
+      const recentHistory = await getRecentRawHistory(chatId, normalizedLimit)
+      return formatHistoryForDisplay(recentHistory, normalizedLimit)
     } catch (error) {
       return `Error getting history: ${getErrorMessage(error)}`
     }

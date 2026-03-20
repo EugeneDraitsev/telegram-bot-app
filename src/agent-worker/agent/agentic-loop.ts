@@ -8,9 +8,12 @@ import {
   type BotIdentity,
   cleanGeminiMessage,
   collectMediaFileRefs,
+  DEFAULT_AGENT_HISTORY_LIMIT,
+  formatHistoryForDisplay,
   getChatMemory,
   getGlobalMemory,
   getMetricStatusFromError,
+  getRecentRawHistory,
   type MetricStatus,
   recordMetric,
   startTypingIndicator,
@@ -52,6 +55,19 @@ function buildSystemInstruction(
     parts.push(memoryBlock)
   }
   return parts.join('\n\n')
+}
+
+function getRecentHistoryContext(
+  messages: Message[],
+  currentMessageId?: number,
+): string {
+  const history = formatHistoryForDisplay(messages, {
+    limit: DEFAULT_AGENT_HISTORY_LIMIT,
+    includeHeader: false,
+    excludeMessageId: currentMessageId,
+  })
+
+  return history === 'No message history available' ? '' : history
 }
 
 function buildNativeTools(agentTools: AgentTool[]): Tool[] {
@@ -333,16 +349,27 @@ export async function runAgenticLoop(
         onError: (error) => logger.warn({ chatId, error }, 'typing.failed'),
       })
 
-      const agentTools = await getAgentTools(chatId).catch((error) => {
-        logger.error({ chatId, error }, 'tools.load_failed')
-        return [] as AgentTool[]
-      })
+      const [agentTools, recentHistory] = await Promise.all([
+        getAgentTools(chatId).catch((error) => {
+          logger.error({ chatId, error }, 'tools.load_failed')
+          return [] as AgentTool[]
+        }),
+        getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1)
+          .then((rawHistory) =>
+            getRecentHistoryContext(rawHistory, message.message_id),
+          )
+          .catch((error) => {
+            logger.warn({ chatId, error }, 'history.preload_failed')
+            return ''
+          }),
+      ])
 
       const contextBlock = buildContextBlock(
         message,
         textContent,
         hasMedia,
         mediaBuffers,
+        { recentHistory },
       )
       const systemInstruction = buildSystemInstruction(
         contextBlock,

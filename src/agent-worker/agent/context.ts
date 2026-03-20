@@ -7,11 +7,16 @@ import {
 } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
+interface BuildContextOptions {
+  recentHistory?: string
+}
+
 export function buildContextBlock(
   message: Message,
   textContent: string,
   hasMedia: boolean,
   mediaBuffers?: MediaBuffer[],
+  options: BuildContextOptions = {},
 ): string {
   const currentDate = new Date().toLocaleDateString('sv-SE', {
     timeZone: 'Europe/Stockholm',
@@ -50,6 +55,10 @@ export function buildContextBlock(
         `- Replying to: "${message.reply_to_message.text || message.reply_to_message.caption || '[media]'}"`,
       )
     }
+  }
+
+  if (options.recentHistory) {
+    lines.push(`- Recent chat history:\n${options.recentHistory}`)
   }
 
   return lines.join('\n')
