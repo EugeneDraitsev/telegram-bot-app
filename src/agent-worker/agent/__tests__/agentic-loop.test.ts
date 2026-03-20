@@ -1,7 +1,7 @@
 import type { Message } from 'telegram-typings'
 
+import { resolveHistoryMediaAttachments } from '@tg-bot/common'
 import type { TelegramApi } from '../../types'
-import { resolveHistoryMediaAttachments } from '../agentic-loop'
 
 describe('resolveHistoryMediaAttachments', () => {
   const originalFetch = global.fetch

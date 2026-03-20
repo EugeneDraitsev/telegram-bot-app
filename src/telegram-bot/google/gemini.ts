@@ -3,13 +3,16 @@ import type { Message } from 'telegram-typings'
 
 import {
   cleanGeminiMessage,
+  collectHistoryMediaFileRefs,
   DEFAULT_ERROR_MESSAGE,
   EMPTY_RESPONSE_ERROR,
   geminiSystemInstructions,
   getHistory,
+  getRawHistory,
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
+  resolveHistoryMediaAttachments,
   systemInstructions,
 } from '@tg-bot/common'
 
@@ -29,7 +32,7 @@ type InteractionInput = {
   role: 'user' | 'model'
   content: Array<
     | { type: 'text'; text: string }
-    | { type: 'image'; data: string; mime_type: 'image/jpeg' }
+    | { type: 'image'; data: string; mime_type: string }
   >
 }
 
@@ -47,23 +50,112 @@ type CreateInteraction = (
   request: Record<string, unknown>,
 ) => Promise<InteractionResponse>
 
+type HistoryMediaApi = {
+  getFile: (fileId: string) => Promise<{ file_path?: string }>
+}
+
+interface GenerateMultimodalCompletionOptions {
+  prompt: string
+  message?: Message
+  imagesData?: Buffer[]
+  model?: string
+  createInteraction?: CreateInteraction
+  api?: HistoryMediaApi
+}
+
+const MAX_HISTORY_IMAGE_ATTACHMENTS = 8
+const MAX_HISTORY_IMAGE_INLINE_BYTES = 12 * 1024 * 1024
+
 const createGeminiInteraction: CreateInteraction = (request) =>
   ai.interactions.create(request as never) as Promise<InteractionResponse>
 
-export const generateMultimodalCompletion = async (
-  prompt: string,
-  message?: Message,
-  imagesData?: Buffer[],
-  model: string = 'gemini-3-flash-preview',
-  createInteraction: CreateInteraction = createGeminiInteraction,
-) => {
+function getHistoryImagePrompt(message: Message): string {
+  const sourceText = (message.caption || message.text || '').trim()
+  return sourceText
+    ? `Context image from recent chat history. Related message text: ${sourceText.slice(0, 200)}`
+    : 'Context image from recent chat history.'
+}
+
+async function getHistoryImageInputs(
+  message: Message | undefined,
+  api: HistoryMediaApi | undefined,
+): Promise<InteractionInput[]> {
+  const chatId = message?.chat?.id
+  if (!chatId || !api) {
+    return []
+  }
+
+  const rawHistory = await getRawHistory(chatId)
+  const historyImageRefs = collectHistoryMediaFileRefs(rawHistory, {
+    excludeMessageId: message.message_id,
+    mediaTypes: ['image'],
+  })
+
+  if (historyImageRefs.length === 0) {
+    return []
+  }
+
+  const attachments = await resolveHistoryMediaAttachments(
+    historyImageRefs,
+    api,
+  )
+  if (attachments.length === 0) {
+    return []
+  }
+
+  const selected: typeof attachments = []
+  let totalBytes = 0
+
+  for (let index = attachments.length - 1; index >= 0; index--) {
+    const attachment = attachments[index]
+    const size = attachment?.media.buffer.byteLength ?? 0
+
+    if (!attachment || selected.length >= MAX_HISTORY_IMAGE_ATTACHMENTS) {
+      break
+    }
+
+    if (totalBytes + size > MAX_HISTORY_IMAGE_INLINE_BYTES) {
+      continue
+    }
+
+    totalBytes += size
+    selected.unshift(attachment)
+  }
+
+  return selected.map(({ message: sourceMessage, media }) => ({
+    role: 'user',
+    content: [
+      { type: 'text', text: getHistoryImagePrompt(sourceMessage) },
+      {
+        type: 'image',
+        data: media.buffer.toString('base64'),
+        mime_type: media.mimeType,
+      },
+    ],
+  }))
+}
+
+export const generateMultimodalCompletion = async ({
+  prompt,
+  message,
+  imagesData,
+  model = 'gemini-3-flash-preview',
+  createInteraction = createGeminiInteraction,
+  api,
+}: GenerateMultimodalCompletionOptions) => {
   try {
     const chatId = message?.chat?.id
     if (!chatId || !isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
     }
 
-    const history: InteractionInput[] = await getHistory(chatId)
+    const history = (await getHistory(chatId)) as InteractionInput[]
+    const historyImageInputs = await getHistoryImageInputs(message, api).catch(
+      (error) => {
+        console.warn('getHistoryImageInputs error: ', error)
+        return [] as InteractionInput[]
+      },
+    )
 
     // Add a placeholder for the first message if the first message is from the model
     if (history?.[0]?.role === 'model') {
@@ -72,6 +164,8 @@ export const generateMultimodalCompletion = async (
         content: [{ type: 'text', text: '...' }],
       })
     }
+
+    history.push(...historyImageInputs)
 
     // Add images to history
     for (const image of imagesData ?? []) {

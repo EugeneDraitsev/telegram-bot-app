@@ -11,6 +11,12 @@ const mockIsAiEnabledChat = jest.spyOn(common, 'isAiEnabledChat')
 const mockGetHistory = jest
   .spyOn(common, 'getHistory')
   .mockResolvedValue([] as never)
+const mockGetRawHistory = jest
+  .spyOn(common, 'getRawHistory')
+  .mockResolvedValue([] as never)
+const mockResolveHistoryMediaAttachments = jest
+  .spyOn(common, 'resolveHistoryMediaAttachments')
+  .mockResolvedValue([] as never)
 
 const NOT_ALLOWED_ERROR =
   'AI is not allowed for this chat. Contact @drrrrrrrr for details'
@@ -18,7 +24,12 @@ const NOT_ALLOWED_ERROR =
 describe('gemini AI access control', () => {
   beforeEach(() => {
     mockIsAiEnabledChat.mockReset()
-    mockGetHistory.mockClear()
+    mockGetHistory.mockReset()
+    mockGetHistory.mockResolvedValue([] as never)
+    mockGetRawHistory.mockReset()
+    mockGetRawHistory.mockResolvedValue([] as never)
+    mockResolveHistoryMediaAttachments.mockReset()
+    mockResolveHistoryMediaAttachments.mockResolvedValue([] as never)
     mockInteractionsCreate.mockReset()
     mockInteractionsCreate.mockResolvedValue({
       outputs: [{ type: 'text', text: 'Test response' }],
@@ -30,7 +41,10 @@ describe('gemini AI access control', () => {
       mockIsAiEnabledChat.mockReturnValue(false)
 
       const message = { chat: { id: 999 } } as Message
-      const result = await generateMultimodalCompletion('test prompt', message)
+      const result = await generateMultimodalCompletion({
+        prompt: 'test prompt',
+        message,
+      })
 
       expect(result).toBe(NOT_ALLOWED_ERROR)
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(999)
@@ -40,7 +54,10 @@ describe('gemini AI access control', () => {
       mockIsAiEnabledChat.mockReturnValue(false)
 
       const message = { chat: undefined } as unknown as Message
-      const result = await generateMultimodalCompletion('test prompt', message)
+      const result = await generateMultimodalCompletion({
+        prompt: 'test prompt',
+        message,
+      })
 
       expect(result).toBe(NOT_ALLOWED_ERROR)
     })
@@ -52,16 +69,115 @@ describe('gemini AI access control', () => {
       mockIsAiEnabledChat.mockReturnValue(true)
 
       const message = { chat: { id: 123 } } as Message
-      const result = await generateMultimodalCompletion(
-        'test prompt',
+      const result = await generateMultimodalCompletion({
+        prompt: 'test prompt',
         message,
-        undefined,
-        'gemini-3-flash-preview',
-        mockInteractionsCreate,
-      )
+        model: 'gemini-3-flash-preview',
+        createInteraction: mockInteractionsCreate,
+      })
 
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(123)
       expect(result).not.toBe(NOT_ALLOWED_ERROR)
+      consoleSpy.mockRestore()
+    })
+
+    test('includes recent history images when api access is available', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      mockIsAiEnabledChat.mockReturnValue(true)
+      mockGetHistory.mockResolvedValue([] as never)
+      mockGetRawHistory.mockResolvedValue([
+        {
+          message_id: 41,
+          photo: [
+            {
+              file_id: 'history_photo',
+              file_unique_id: 'history_photo',
+              width: 1000,
+              height: 1000,
+            },
+          ],
+        },
+      ] as never)
+      mockResolveHistoryMediaAttachments.mockResolvedValue([
+        {
+          message: {
+            message_id: 41,
+            caption: 'old screenshot',
+          } as Message,
+          media: {
+            buffer: Buffer.from('history-image'),
+            mimeType: 'image/png',
+            mediaType: 'image',
+          },
+        },
+      ] as never)
+
+      const message = { chat: { id: 123 }, message_id: 42 } as Message
+      const api = {
+        getFile: jest.fn(),
+      }
+
+      await generateMultimodalCompletion({
+        prompt: 'test prompt',
+        message,
+        imagesData: [Buffer.from('current-image')],
+        model: 'gemini-3-flash-preview',
+        createInteraction: mockInteractionsCreate,
+        api,
+      })
+
+      expect(mockGetRawHistory).toHaveBeenCalledWith(123)
+      expect(mockResolveHistoryMediaAttachments).toHaveBeenCalledWith(
+        [
+          {
+            ref: {
+              fileId: 'history_photo',
+              mimeType: 'image/jpeg',
+              mediaType: 'image',
+            },
+            message: expect.objectContaining({ message_id: 41 }),
+          },
+        ],
+        api,
+      )
+
+      const request = mockInteractionsCreate.mock.calls[0]?.[0] as {
+        input: Array<{
+          role: 'user' | 'model'
+          content: Array<
+            | { type: 'text'; text: string }
+            | { type: 'image'; data: string; mime_type: string }
+          >
+        }>
+      }
+
+      expect(request.input).toHaveLength(3)
+      expect(request.input[0]?.content).toEqual([
+        {
+          type: 'text',
+          text: 'Context image from recent chat history. Related message text: old screenshot',
+        },
+        {
+          type: 'image',
+          data: Buffer.from('history-image').toString('base64'),
+          mime_type: 'image/png',
+        },
+      ])
+      expect(request.input[1]?.content).toEqual([
+        {
+          type: 'image',
+          data: Buffer.from('current-image').toString('base64'),
+          mime_type: 'image/jpeg',
+        },
+      ])
+      expect(
+        JSON.parse(
+          (request.input[2]?.content[0] as { type: 'text'; text: string }).text,
+        ),
+      ).toEqual(expect.objectContaining({ text: 'test prompt' }))
+
       consoleSpy.mockRestore()
     })
   })

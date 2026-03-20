@@ -323,6 +323,11 @@ export interface MediaBuffer {
   mediaType: 'image' | 'audio' | 'video'
 }
 
+export interface HistoryMediaAttachment {
+  message: Message
+  media: MediaBuffer
+}
+
 /**
  * Resolve all media from a message (photo, sticker, document-image, voice, video, video_note)
  * into downloaded buffers with MIME info for Gemini multimodal input.
@@ -413,4 +418,20 @@ export async function resolveMediaBuffers(
     }
   }
   return buffers
+}
+
+export async function resolveHistoryMediaAttachments(
+  entries: HistoryMediaFileRef[],
+  api: MediaResolverApi,
+): Promise<HistoryMediaAttachment[]> {
+  const resolved = await Promise.all(
+    entries.map(async (entry) => {
+      const [media] = await resolveMediaBuffers([entry.ref], api)
+      return media ? { message: entry.message, media } : undefined
+    }),
+  )
+
+  return resolved.filter(
+    (entry): entry is HistoryMediaAttachment => entry != null,
+  )
 }

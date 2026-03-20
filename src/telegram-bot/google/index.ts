@@ -62,12 +62,13 @@ export const setupMultimodalGeminiCommands = async (
           GEMINI_FAILURE_MESSAGES.has(result.trim()) ? 'error' : 'success',
       },
       () =>
-        generateMultimodalCompletion(
-          combinedText,
-          ctx.message,
+        generateMultimodalCompletion({
+          prompt: combinedText,
+          message: ctx.message,
           imagesData,
           model,
-        ),
+          api: ctx.api,
+        }),
     )
 
     const formatted = formatTelegramMarkdownV2(message)

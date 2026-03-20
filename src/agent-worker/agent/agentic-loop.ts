@@ -2,7 +2,7 @@
 import type { Content, FunctionCall, Part, Tool } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
-import type { MediaBuffer } from '@tg-bot/common'
+import type { HistoryMediaAttachment, MediaBuffer } from '@tg-bot/common'
 import {
   AGENT_REACTION,
   type BotIdentity,
@@ -15,10 +15,9 @@ import {
   getGlobalMemory,
   getMetricStatusFromError,
   getRecentRawHistory,
-  type HistoryMediaFileRef,
   type MetricStatus,
   recordMetric,
-  resolveMediaBuffers,
+  resolveHistoryMediaAttachments,
   startTypingIndicator,
 } from '@tg-bot/common'
 import { getMessageLogMeta, logger } from '../logger'
@@ -104,32 +103,11 @@ const TOOL_MODELS: Record<string, string> = {
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
 
-interface HistoryMediaAttachment {
-  message: Message
-  media: MediaBuffer
-}
-
 function getHistoryMediaPrompt(message: Message): string {
   const sourceText = (message.caption || message.text || '').trim()
   return sourceText
     ? `Context image from recent chat history. Related message text: ${sourceText.slice(0, 200)}`
     : 'Context image from recent chat history.'
-}
-
-export async function resolveHistoryMediaAttachments(
-  entries: HistoryMediaFileRef[],
-  api: TelegramApi,
-): Promise<HistoryMediaAttachment[]> {
-  const resolved = await Promise.all(
-    entries.map(async (entry) => {
-      const [media] = await resolveMediaBuffers([entry.ref], api)
-      return media ? { message: entry.message, media } : undefined
-    }),
-  )
-
-  return resolved.filter(
-    (entry): entry is HistoryMediaAttachment => entry != null,
-  )
 }
 
 function getToolResultStatus(result: string): MetricStatus {
