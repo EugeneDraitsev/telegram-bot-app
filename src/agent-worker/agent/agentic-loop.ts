@@ -116,6 +116,19 @@ function getHistoryMediaPrompt(message: Message): string {
     : 'Context image from recent chat history.'
 }
 
+export function buildCurrentRequestPrompt(
+  textContent: string,
+  historyAttachmentCount: number,
+): string {
+  const currentMessageText = textContent || '[User sent media without text]'
+  if (historyAttachmentCount < 1) {
+    return currentMessageText
+  }
+
+  const label = historyAttachmentCount === 1 ? 'image' : 'images'
+  return `[Context note: ${historyAttachmentCount} ${label} from recent chat history are attached in this request and available for visual analysis.]\n${currentMessageText}`
+}
+
 export async function resolveHistoryMediaAttachments(
   entries: HistoryMediaFileRef[],
   api: TelegramApi,
@@ -130,6 +143,49 @@ export async function resolveHistoryMediaAttachments(
   return resolved.filter(
     (entry): entry is HistoryMediaAttachment => entry != null,
   )
+}
+
+export function buildInitialContents(
+  textContent: string,
+  historyMediaAttachments: HistoryMediaAttachment[],
+  mediaBuffers?: MediaBuffer[],
+): Content[] {
+  const parts: Part[] = [
+    {
+      text: buildCurrentRequestPrompt(
+        textContent,
+        historyMediaAttachments.length,
+      ),
+    },
+  ]
+
+  for (const { media, message } of historyMediaAttachments) {
+    parts.push({
+      text: getHistoryMediaPrompt(message),
+    })
+    parts.push({
+      inlineData: {
+        mimeType: media.mimeType,
+        data: media.buffer.toString('base64'),
+      },
+    } as Part)
+  }
+
+  for (const media of mediaBuffers ?? []) {
+    parts.push({
+      inlineData: {
+        mimeType: media.mimeType,
+        data: media.buffer.toString('base64'),
+      },
+    } as Part)
+  }
+
+  return [
+    {
+      role: 'user',
+      parts,
+    },
+  ]
 }
 
 function getToolResultStatus(result: string): MetricStatus {
@@ -437,43 +493,11 @@ export async function runAgenticLoop(
           .map((t) => [t.declaration.name ?? '', t]),
       )
 
-      // Build initial contents: each media file as a separate user turn, then the final text turn.
-      const historyMediaContents: Content[] = historyMediaAttachments.map(
-        ({ media, message: sourceMessage }) => ({
-          role: 'user',
-          parts: [
-            {
-              text: getHistoryMediaPrompt(sourceMessage),
-            },
-            {
-              inlineData: {
-                mimeType: media.mimeType,
-                data: media.buffer.toString('base64'),
-              },
-            } as Part,
-          ],
-        }),
+      const contents = buildInitialContents(
+        textContent,
+        historyMediaAttachments,
+        mediaBuffers,
       )
-      const mediaContents: Content[] = (mediaBuffers ?? []).map((m) => ({
-        role: 'user',
-        parts: [
-          {
-            inlineData: {
-              mimeType: m.mimeType,
-              data: m.buffer.toString('base64'),
-            },
-          } as Part,
-        ],
-      }))
-
-      const contents: Content[] = [
-        ...historyMediaContents,
-        ...mediaContents,
-        {
-          role: 'user',
-          parts: [{ text: textContent || '[User sent media without text]' }],
-        },
-      ]
 
       // generateContent loop with native function calling
       let finalText = ''
