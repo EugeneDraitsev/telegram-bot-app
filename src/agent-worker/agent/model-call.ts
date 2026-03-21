@@ -9,6 +9,7 @@ import {
   CHAT_MODEL_FALLBACK,
   CHAT_MODEL_TIMEOUT_MS,
 } from './models'
+import { withTimeout } from './utils'
 
 export class ModelCallTimeoutError extends Error {
   constructor(
@@ -20,86 +21,13 @@ export class ModelCallTimeoutError extends Error {
   }
 }
 
-function resolveModelName(
-  params: Parameters<typeof ai.models.generateContent>[0],
-): string | undefined {
-  return typeof params.model === 'string' ? params.model : undefined
+export function isRetryableModelError(error: unknown): boolean {
+  const status = (error as { status?: number })?.status
+  return status === 429 || status === 503
 }
 
 function getModelErrorStatus(error: unknown): MetricStatus {
   return error instanceof ModelCallTimeoutError ? 'timeout' : 'error'
-}
-
-function recordModelMetric(params: {
-  chatId: number
-  metricName: string
-  model?: string
-  fallbackFrom?: string
-  durationMs: number
-  status: MetricStatus
-}) {
-  const { chatId, metricName, model, fallbackFrom, durationMs, status } = params
-
-  logger.info(
-    {
-      chatId,
-      metricType: 'model_call',
-      name: metricName,
-      model,
-      fallbackFrom,
-      durationMs,
-      status,
-    },
-    'metric',
-  )
-
-  void recordMetric({
-    type: 'model_call',
-    source: 'agentic',
-    name: metricName,
-    model,
-    fallbackFrom,
-    chatId,
-    durationMs,
-    success: status === 'success',
-    status,
-    timestamp: Date.now(),
-  })
-}
-
-async function generateContentWithOptionalTimeout(
-  params: Parameters<typeof ai.models.generateContent>[0],
-  timeoutMs?: number,
-): Promise<GenerateContentResponse> {
-  if (!timeoutMs) {
-    return ai.models.generateContent(params)
-  }
-
-  const model = resolveModelName(params) ?? 'unknown'
-  let handle: ReturnType<typeof setTimeout> | undefined
-
-  try {
-    return await Promise.race([
-      ai.models.generateContent(params),
-      new Promise<never>((_, reject) => {
-        handle = setTimeout(
-          () => reject(new ModelCallTimeoutError(model, timeoutMs)),
-          timeoutMs,
-        )
-        // biome-ignore lint/suspicious/noExplicitAny: timer unref
-        ;(handle as any).unref?.()
-      }),
-    ])
-  } finally {
-    if (handle) {
-      clearTimeout(handle)
-    }
-  }
-}
-
-export function isRetryableModelError(error: unknown): boolean {
-  const status = (error as { status?: number })?.status
-  return status === 429 || status === 503
 }
 
 async function generateSingleModelWithRetry(
@@ -110,25 +38,26 @@ async function generateSingleModelWithRetry(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await generateContentWithOptionalTimeout(
-        params,
-        params.model === CHAT_MODEL ? CHAT_MODEL_TIMEOUT_MS : undefined,
-      )
+      const promise = ai.models.generateContent(params)
+      return await (params.model === CHAT_MODEL
+        ? withTimeout(
+            promise,
+            CHAT_MODEL_TIMEOUT_MS,
+            new ModelCallTimeoutError(
+              params.model as string,
+              CHAT_MODEL_TIMEOUT_MS,
+            ),
+          )
+        : promise)
     } catch (error) {
       lastError = error
-      const status = (error as { status?: number })?.status
       const isTimeout = error instanceof ModelCallTimeoutError
       const isRetryable = !isTimeout && isRetryableModelError(error)
 
       if (!isRetryable || attempt === MAX_RETRIES) {
         if (isTimeout) {
           logger.error(
-            {
-              chatId,
-              model: params.model,
-              timeoutMs: CHAT_MODEL_TIMEOUT_MS,
-              failed: true,
-            },
+            { chatId, model: params.model, timeoutMs: CHAT_MODEL_TIMEOUT_MS },
             'model.failed_timeout_over_20s',
           )
         }
@@ -137,7 +66,12 @@ async function generateSingleModelWithRetry(
 
       const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
       logger.warn(
-        { chatId, attempt: attempt + 1, status, delayMs: delay },
+        {
+          chatId,
+          attempt: attempt + 1,
+          status: (error as { status?: number })?.status,
+          delayMs: delay,
+        },
         'model.retry',
       )
       await new Promise((resolve) => setTimeout(resolve, delay))
@@ -152,57 +86,48 @@ export async function generateWithRetry(
   chatId: number,
   metricName: string,
 ): Promise<GenerateContentResponse> {
-  const primaryModel = resolveModelName(params)
+  const primaryModel =
+    typeof params.model === 'string' ? params.model : undefined
   const fallbackModel: string = CHAT_MODEL_FALLBACK
-  const shouldUseFallback =
+  const canFallback =
     primaryModel === CHAT_MODEL && fallbackModel !== primaryModel
   const startedAt = Date.now()
 
+  const track = (
+    model?: string,
+    fallbackFrom?: string,
+    status: MetricStatus = 'success',
+  ) => {
+    void recordMetric({
+      type: 'model_call',
+      source: 'agentic',
+      name: metricName,
+      model,
+      fallbackFrom,
+      chatId,
+      durationMs: Date.now() - startedAt,
+      success: status === 'success',
+      status,
+      timestamp: Date.now(),
+    })
+  }
+
   try {
     const response = await generateSingleModelWithRetry(params, chatId)
-    recordModelMetric({
-      chatId,
-      metricName,
-      model: primaryModel,
-      durationMs: Date.now() - startedAt,
-      status: 'success',
-    })
+    track(primaryModel)
     return response
   } catch (primaryError) {
-    if (
-      !shouldUseFallback ||
-      !(
-        primaryError instanceof ModelCallTimeoutError ||
-        isRetryableModelError(primaryError)
-      )
-    ) {
-      recordModelMetric({
-        chatId,
-        metricName,
-        model: primaryModel,
-        durationMs: Date.now() - startedAt,
-        status: getModelErrorStatus(primaryError),
-      })
+    const isTransient =
+      primaryError instanceof ModelCallTimeoutError ||
+      isRetryableModelError(primaryError)
+
+    if (!canFallback || !isTransient) {
+      track(primaryModel, undefined, getModelErrorStatus(primaryError))
       throw primaryError
     }
 
     logger.warn(
-      {
-        chatId,
-        metricType: 'model_call',
-        name: metricName,
-        model: primaryModel,
-        timeoutMs:
-          primaryError instanceof ModelCallTimeoutError
-            ? CHAT_MODEL_TIMEOUT_MS
-            : undefined,
-        status: (primaryError as { status?: number })?.status,
-        reason:
-          primaryError instanceof ModelCallTimeoutError
-            ? 'timeout'
-            : 'retryable_status',
-        fallbackModel,
-      },
+      { chatId, model: primaryModel, fallbackModel },
       'model.primary_fallback',
     )
 
@@ -211,24 +136,10 @@ export async function generateWithRetry(
         { ...params, model: fallbackModel },
         chatId,
       )
-      recordModelMetric({
-        chatId,
-        metricName,
-        model: fallbackModel,
-        fallbackFrom: primaryModel,
-        durationMs: Date.now() - startedAt,
-        status: 'success',
-      })
+      track(fallbackModel, primaryModel)
       return response
     } catch (fallbackError) {
-      recordModelMetric({
-        chatId,
-        metricName,
-        model: fallbackModel,
-        fallbackFrom: primaryModel,
-        durationMs: Date.now() - startedAt,
-        status: getModelErrorStatus(fallbackError),
-      })
+      track(fallbackModel, primaryModel, getModelErrorStatus(fallbackError))
       throw fallbackError
     }
   }

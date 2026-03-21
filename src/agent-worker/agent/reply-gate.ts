@@ -16,6 +16,7 @@ import {
 import { logger } from '../logger'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
 import { ai, FAST_MODEL } from './models'
+import { withTimeout } from './utils'
 
 const replyGateTools = [
   {
@@ -120,32 +121,17 @@ export async function shouldEngageWithMessage(params: {
       memoryBlock,
     })
 
-    let handle: ReturnType<typeof setTimeout> | undefined
-    const interaction = await (async () => {
-      try {
-        return await Promise.race([
-          ai.interactions.create({
-            model: FAST_MODEL,
-            input: textContent || '[media without text]',
-            system_instruction: systemPrompt,
-            tools: replyGateTools,
-            generation_config: { temperature: 0 },
-          }),
-          new Promise<never>((_, reject) => {
-            handle = setTimeout(
-              () => reject(new Error('reply_gate timeout')),
-              REPLY_GATE_TIMEOUT_MS,
-            )
-            // biome-ignore lint/suspicious/noExplicitAny: timer unref
-            ;(handle as any).unref?.()
-          }),
-        ])
-      } finally {
-        if (handle) {
-          clearTimeout(handle)
-        }
-      }
-    })()
+    const interaction = await withTimeout(
+      ai.interactions.create({
+        model: FAST_MODEL,
+        input: textContent || '[media without text]',
+        system_instruction: systemPrompt,
+        tools: replyGateTools,
+        generation_config: { temperature: 0 },
+      }),
+      REPLY_GATE_TIMEOUT_MS,
+      'reply_gate timeout',
+    )
 
     const functionCall = interaction.outputs?.find(
       (o) => o.type === 'function_call',

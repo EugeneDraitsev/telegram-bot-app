@@ -45,6 +45,7 @@ import {
 import { CHAT_MODEL, CHAT_MODEL_FALLBACK, FAST_MODEL } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
+import { withTimeout } from './utils'
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -53,9 +54,7 @@ function buildSystemInstruction(
   memoryBlock?: string,
 ): string {
   const parts = [agentSystemInstructions, contextBlock]
-  if (memoryBlock) {
-    parts.push(memoryBlock)
-  }
+  if (memoryBlock) parts.push(memoryBlock)
   return parts.join('\n\n')
 }
 
@@ -68,14 +67,11 @@ function getRecentHistoryContext(
     includeHeader: false,
     excludeMessageId: currentMessageId,
   })
-
   return history === 'No message history available' ? '' : history
 }
 
 function buildNativeTools(agentTools: AgentTool[]): Tool[] {
-  if (agentTools.length === 0) {
-    return []
-  }
+  if (agentTools.length === 0) return []
   return [
     {
       functionDeclarations: agentTools.map((t) => {
@@ -112,11 +108,7 @@ function getHistoryMediaPrompt(message: Message): string {
 
 function getToolResultStatus(result: string): MetricStatus {
   const normalized = result.trim().toLowerCase()
-
-  if (normalized.includes('timed out')) {
-    return 'timeout'
-  }
-
+  if (normalized.includes('timed out')) return 'timeout'
   if (
     normalized.startsWith('error:') ||
     normalized.startsWith('error generating image:') ||
@@ -130,7 +122,6 @@ function getToolResultStatus(result: string): MetricStatus {
   ) {
     return 'error'
   }
-
   return 'success'
 }
 
@@ -141,35 +132,18 @@ async function executeToolCall(
 ): Promise<{ name: string; result: string }> {
   const name = toolCall.name ?? ''
   const tool = toolByName.get(name)
-  if (!tool) {
-    return { name, result: `Error: tool "${name}" not found` }
-  }
+  if (!tool) return { name, result: `Error: tool "${name}" not found` }
 
   logger.info({ chatId, tool: name, payload: toolCall.args }, 'tool.call')
 
   const toolStart = Date.now()
   try {
     const timeout = tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS
-    let handle: ReturnType<typeof setTimeout> | undefined
-    const result = await (async () => {
-      try {
-        return await Promise.race([
-          tool.execute((toolCall.args as Record<string, unknown>) ?? {}),
-          new Promise<string>((_, reject) => {
-            handle = setTimeout(
-              () => reject(new Error(`Tool timed out after ${timeout}ms`)),
-              timeout,
-            )
-            // biome-ignore lint/suspicious/noExplicitAny: timer unref
-            ;(handle as any).unref?.()
-          }),
-        ])
-      } finally {
-        if (handle) {
-          clearTimeout(handle)
-        }
-      }
-    })()
+    const result = await withTimeout(
+      tool.execute((toolCall.args as Record<string, unknown>) ?? {}),
+      timeout,
+      `Tool timed out after ${timeout}ms`,
+    )
 
     const durationMs = Date.now() - toolStart
     const status = getToolResultStatus(result)
@@ -221,33 +195,21 @@ async function executeToolCalls(
   toolByName: Map<string, AgentTool>,
   chatId: number,
 ): Promise<Array<{ call: FunctionCall; name: string; result: string }>> {
-  const hasWebSearch = calls.some(
-    (call) => call.functionCall.name === 'web_search',
-  )
-
-  if (!hasWebSearch) {
-    return Promise.all(
-      calls.map((call) =>
-        executeToolCall(call.functionCall, toolByName, chatId).then(
-          (result) => ({
-            call: call.functionCall,
-            ...result,
-          }),
-        ),
-      ),
-    )
-  }
-
-  const results: Array<{ call: FunctionCall; name: string; result: string }> =
-    []
-  for (const call of calls) {
-    results.push({
+  const run = (call: Part & { functionCall: FunctionCall }) =>
+    executeToolCall(call.functionCall, toolByName, chatId).then((r) => ({
       call: call.functionCall,
-      ...(await executeToolCall(call.functionCall, toolByName, chatId)),
-    })
+      ...r,
+    }))
+
+  // Run sequentially when web_search is present (rate limiting)
+  if (calls.some((c) => c.functionCall.name === 'web_search')) {
+    const results: Array<{ call: FunctionCall; name: string; result: string }> =
+      []
+    for (const call of calls) results.push(await run(call))
+    return results
   }
 
-  return results
+  return Promise.all(calls.map(run))
 }
 
 function extractErrorInfo(error: unknown): unknown {
@@ -265,45 +227,219 @@ function extractErrorInfo(error: unknown): unknown {
 function extractFallbackTextFromToolResults(
   contents: Content[],
 ): string | null {
-  const fallbackResults: string[] = []
-
+  const results: string[] = []
   for (let i = contents.length - 1; i >= 0; i--) {
-    const parts = contents[i]?.parts ?? []
-    for (let j = parts.length - 1; j >= 0; j--) {
-      const functionResponse = (
-        parts[j] as unknown as {
+    for (const part of [...(contents[i]?.parts ?? [])].reverse()) {
+      const rawResult = (
+        part as unknown as {
           functionResponse?: { response?: { result?: unknown } }
         }
-      ).functionResponse
-      const rawResult = functionResponse?.response?.result
-      if (typeof rawResult !== 'string') {
-        continue
+      ).functionResponse?.response?.result
+      if (
+        typeof rawResult === 'string' &&
+        rawResult.trim() &&
+        !rawResult.startsWith('Error:')
+      ) {
+        results.push(rawResult.trim())
       }
-
-      const result = rawResult.trim()
-      if (!result || result.startsWith('Error:')) {
-        continue
-      }
-      fallbackResults.push(result)
     }
   }
-
-  if (fallbackResults.length === 0) {
-    return null
-  }
-
-  return [...new Set(fallbackResults)].slice(0, 2).join('\n\n')
+  return results.length ? [...new Set(results)].slice(0, 2).join('\n\n') : null
 }
 
 function getLoopFailureReply(error: unknown): string {
   if (error instanceof ModelCallTimeoutError || isRetryableModelError(error)) {
-    return '\u0421\u0435\u0440\u0432\u0438\u0441 \u043e\u0442\u0432\u0435\u0442\u0430 \u0441\u0435\u0439\u0447\u0430\u0441 \u043f\u0435\u0440\u0435\u0433\u0440\u0443\u0436\u0435\u043d. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u0435\u0449\u0435 \u0440\u0430\u0437 \u0447\u0443\u0442\u044c \u043f\u043e\u0437\u0436\u0435.'
+    return 'Сервис ответа сейчас перегружен. Попробуй ещё раз чуть позже.'
   }
-
-  return '\u0427\u0442\u043e-\u0442\u043e \u043f\u043e\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a \ud83d\ude35'
+  return 'Что-то пошло не так 😵'
 }
 
-// ── Main loop ────────────────────────────────────────────────
+// ── Content building ─────────────────────────────────────────
+
+function buildInitialContents(
+  _message: Message,
+  textContent: string,
+  mediaBuffers: MediaBuffer[] | undefined,
+  historyMediaAttachments: HistoryMediaAttachment[],
+): Content[] {
+  const historyParts: Content[] = historyMediaAttachments.map(
+    ({ media, message: srcMsg }) => ({
+      role: 'user',
+      parts: [
+        { text: getHistoryMediaPrompt(srcMsg) },
+        {
+          inlineData: {
+            mimeType: media.mimeType,
+            data: media.buffer.toString('base64'),
+          },
+        } as Part,
+      ],
+    }),
+  )
+
+  const mediaParts: Content[] = (mediaBuffers ?? []).map((m) => ({
+    role: 'user',
+    parts: [
+      {
+        inlineData: { mimeType: m.mimeType, data: m.buffer.toString('base64') },
+      } as Part,
+    ],
+  }))
+
+  return [
+    ...historyParts,
+    ...mediaParts,
+    {
+      role: 'user',
+      parts: [{ text: textContent || '[User sent media without text]' }],
+    },
+  ]
+}
+
+// ── Model loop ───────────────────────────────────────────────
+
+async function runToolLoop(
+  contents: Content[],
+  systemInstruction: string,
+  tools: Tool[],
+  toolByName: Map<string, AgentTool>,
+  chatId: number,
+): Promise<string> {
+  let finalText = ''
+  const followUpModel = CHAT_MODEL_FALLBACK
+
+  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+    const response = await generateWithRetry(
+      {
+        model: iteration === 0 ? CHAT_MODEL : followUpModel,
+        contents,
+        config: {
+          systemInstruction,
+          tools,
+          temperature: iteration === 0 ? 1.0 : 0.2,
+        },
+      },
+      chatId,
+      iteration === 0 ? 'routing' : `iteration_${iteration}`,
+    )
+
+    const candidateContent = response.candidates?.[0]?.content
+    const parts = candidateContent?.parts ?? []
+    const functionCalls = parts.filter(
+      (p): p is Part & { functionCall: FunctionCall } => !!p.functionCall,
+    )
+    const textParts = parts.filter((p) => p.text).map((p) => p.text ?? '')
+
+    if (textParts.length > 0) finalText = textParts.join('\n')
+    if (functionCalls.length === 0) break
+
+    // If a round has both data-gathering and content-creating tools, defer
+    // content tools so they run after data is available in the next iteration.
+    const dataCalls = functionCalls.filter(
+      (fc) => !CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
+    )
+    const contentCalls = functionCalls.filter((fc) =>
+      CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
+    )
+    const hasDeferred = dataCalls.length > 0 && contentCalls.length > 0
+    const callsToExecute = hasDeferred ? dataCalls : functionCalls
+
+    if (hasDeferred) {
+      logger.info(
+        {
+          chatId,
+          iteration,
+          deferred: contentCalls.map((fc) => fc.functionCall.name),
+        },
+        'loop.deferred_content_tools',
+      )
+    }
+
+    contents.push(candidateContent ?? { role: 'model', parts })
+
+    const executionResults = await executeToolCalls(
+      callsToExecute,
+      toolByName,
+      chatId,
+    )
+
+    const functionResponses = [
+      ...executionResults.map((tr) => ({
+        functionResponse: { name: tr.name, response: { result: tr.result } },
+      })),
+      ...(hasDeferred
+        ? contentCalls.map((fc) => ({
+            functionResponse: {
+              name: fc.functionCall.name ?? '',
+              response: {
+                result:
+                  'NOT EXECUTED YET — data was just fetched. Call this tool again now with the actual data.',
+              },
+            },
+          }))
+        : []),
+    ]
+
+    const allTerminal = callsToExecute.every((fc) =>
+      TERMINAL_TOOLS.has(fc.functionCall.name ?? ''),
+    )
+    if (allTerminal && getCollectedResponses().length > 0 && !hasDeferred) {
+      logger.info(
+        { chatId, tools: callsToExecute.map((fc) => fc.functionCall.name) },
+        'loop.terminal_tools_skip',
+      )
+      break
+    }
+
+    contents.push({ role: 'user', parts: functionResponses })
+  }
+
+  // If no text came out of the loop, force a final synthesis pass without tools.
+  if (!finalText.trim()) {
+    try {
+      const finalizeResponse = await generateWithRetry(
+        {
+          model: followUpModel,
+          contents: [
+            ...contents,
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: 'Provide the final user-facing answer now. Use plain text only and do not call tools. Use successful tool results as the primary evidence. If any tool failed or timed out, explicitly say you could not verify that part instead of guessing.',
+                },
+              ],
+            },
+          ],
+          config: { systemInstruction, temperature: 0.2 },
+        },
+        chatId,
+        'finalize',
+      )
+      const finalizeText = (
+        finalizeResponse.candidates?.[0]?.content?.parts ?? []
+      )
+        .filter((p) => p.text)
+        .map((p) => p.text ?? '')
+        .join('\n')
+        .trim()
+      if (finalizeText) {
+        finalText = finalizeText
+      } else {
+        logger.warn({ chatId }, 'loop.finalize_empty')
+      }
+    } catch (error) {
+      logger.warn(
+        { chatId, error: extractErrorInfo(error) },
+        'loop.finalize_failed',
+      )
+    }
+  }
+
+  return finalText
+}
+
+// ── Main entry ───────────────────────────────────────────────
 
 export async function runAgenticLoop(
   message: Message,
@@ -329,6 +465,7 @@ export async function runAgenticLoop(
       const hasMedia =
         !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
 
+      // Load memory first — needed by the reply gate
       const [chatMemory, globalMemory] = await Promise.all([
         getChatMemory(chatId).catch(() => ''),
         getGlobalMemory().catch(() => ''),
@@ -347,7 +484,6 @@ export async function runAgenticLoop(
         return
       }
 
-      // Set reaction only after reply-gate confirms we will respond
       void api
         .setMessageReaction?.(chatId, message.message_id, [
           { type: 'emoji', emoji: AGENT_REACTION },
@@ -360,6 +496,7 @@ export async function runAgenticLoop(
         onError: (error) => logger.warn({ chatId, error }, 'typing.failed'),
       })
 
+      // Load tools + history in parallel (only after gate confirms we'll respond)
       const [agentTools, rawHistory] = await Promise.all([
         getAgentTools(chatId).catch((error) => {
           logger.error({ chatId, error }, 'tools.load_failed')
@@ -377,13 +514,13 @@ export async function runAgenticLoop(
         rawHistory,
         message.message_id,
       )
+
       const historyImageRefs = collectHistoryMediaFileRefs(rawHistory, {
         excludeMessageId: message.message_id,
         limit: DEFAULT_AGENT_HISTORY_LIMIT,
         mediaTypes: ['image'],
-      })
-        .slice(-MAX_HISTORY_IMAGE_ATTACHMENTS)
-        .map((entry) => entry)
+      }).slice(-MAX_HISTORY_IMAGE_ATTACHMENTS)
+
       const historyMediaAttachments = historyImageRefs.length
         ? await resolveHistoryMediaAttachments(historyImageRefs, api).catch(
             (error) => {
@@ -392,33 +529,20 @@ export async function runAgenticLoop(
             },
           )
         : []
-      logger.info(
-        {
-          chatId,
-          rawHistoryCount: rawHistory.length,
-          historyImageRefCount: historyImageRefs.length,
-          historyImageRefIds: historyImageRefs.map((entry) => entry.ref.fileId),
-          historyImageMessageIds: historyImageRefs.map(
-            (entry) => entry.message.message_id,
-          ),
-          historyMediaAttachmentCount: historyMediaAttachments.length,
-          historyMediaAttachmentMessageIds: historyMediaAttachments.map(
-            (entry) => entry.message.message_id,
-          ),
-        },
-        'history.media_debug',
-      )
-      const historyMediaBuffers = historyMediaAttachments.map(
-        (entry) => entry.media,
-      )
-      const allMediaBuffers = [...historyMediaBuffers, ...(mediaBuffers ?? [])]
+
+      const allMediaBuffers = [
+        ...historyMediaAttachments.map((e) => e.media),
+        ...(mediaBuffers ?? []),
+      ]
 
       const contextBlock = buildContextBlock(
         message,
         textContent,
         hasMedia,
         allMediaBuffers,
-        { recentHistory },
+        {
+          recentHistory,
+        },
       )
       const systemInstruction = buildSystemInstruction(
         contextBlock,
@@ -431,262 +555,41 @@ export async function runAgenticLoop(
           .map((t) => [t.declaration.name ?? '', t]),
       )
 
-      // Build initial contents: each media file as a separate user turn, then the final text turn.
-      const historyMediaContents: Content[] = historyMediaAttachments.map(
-        ({ media, message: sourceMessage }) => ({
-          role: 'user',
-          parts: [
-            {
-              text: getHistoryMediaPrompt(sourceMessage),
-            },
-            {
-              inlineData: {
-                mimeType: media.mimeType,
-                data: media.buffer.toString('base64'),
-              },
-            } as Part,
-          ],
-        }),
-      )
-      const mediaContents: Content[] = (mediaBuffers ?? []).map((m) => ({
-        role: 'user',
-        parts: [
-          {
-            inlineData: {
-              mimeType: m.mimeType,
-              data: m.buffer.toString('base64'),
-            },
-          } as Part,
-        ],
-      }))
-      const contents: Content[] = [
-        ...historyMediaContents,
-        ...mediaContents,
-        {
-          role: 'user',
-          parts: [{ text: textContent || '[User sent media without text]' }],
-        },
-      ]
-      const allParts = contents.flatMap((content) => content.parts ?? [])
-      logger.info(
-        {
-          chatId,
-          contentsCount: contents.length,
-          contentPartCounts: contents.map(
-            (content) => content.parts?.length ?? 0,
-          ),
-          textPartCount: allParts.filter((p) => p.text).length,
-          inlinePartCount: allParts.filter((p) => 'inlineData' in p).length,
-          currentMediaCount: mediaBuffers?.length ?? 0,
-          historyMediaCount: historyMediaAttachments.length,
-        },
-        'loop.request_media_debug',
+      const contents = buildInitialContents(
+        message,
+        textContent,
+        mediaBuffers,
+        historyMediaAttachments,
       )
 
-      // generateContent loop with native function calling
-      let finalText = ''
-      const followUpModel: string = CHAT_MODEL_FALLBACK
+      const finalText = await runToolLoop(
+        contents,
+        systemInstruction,
+        tools,
+        toolByName,
+        chatId,
+      )
 
-      for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-        const response = await generateWithRetry(
-          {
-            model: iteration === 0 ? CHAT_MODEL : followUpModel,
-            contents,
-            config: {
-              systemInstruction,
-              tools,
-              temperature: iteration === 0 ? 1.0 : 0.2,
-            },
-          },
-          chatId,
-          iteration === 0 ? 'routing' : `iteration_${iteration}`,
-        )
-
-        const candidateContent = response.candidates?.[0]?.content
-        const parts = candidateContent?.parts ?? []
-        const functionCalls = parts.filter(
-          (p): p is Part & { functionCall: FunctionCall } => !!p.functionCall,
-        )
-        const textParts = parts.filter((p) => p.text).map((p) => p.text ?? '')
-
-        if (textParts.length > 0) {
-          finalText = textParts.join('\n')
-        }
-        if (iteration === 0 && historyMediaAttachments.length > 0) {
-          logger.info(
-            {
-              chatId,
-              firstReplyTextPreview: finalText.slice(0, 300),
-              firstReplyFunctionCallCount: functionCalls.length,
-            },
-            'loop.first_model_reply_debug',
-          )
-        }
-
-        // No function calls → we're done
-        if (functionCalls.length === 0) {
-          break
-        }
-
-        // ── CONTENT_TOOLS deferring ──
-        // If a round has both data-gathering and content-creating tools,
-        // execute only data tools. Content tools will be naturally re-called
-        // by the model in the next iteration when it has the data.
-        const dataCalls = functionCalls.filter(
-          (fc) => !CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
-        )
-        const contentCalls = functionCalls.filter((fc) =>
-          CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
-        )
-
-        const hasDeferred = dataCalls.length > 0 && contentCalls.length > 0
-        const callsToExecute = hasDeferred ? dataCalls : functionCalls
-
-        if (hasDeferred) {
-          logger.info(
-            {
-              chatId,
-              iteration,
-              deferred: contentCalls.map((fc) => fc.functionCall.name),
-            },
-            'loop.deferred_content_tools',
-          )
-        }
-
-        // Add model response to context — use raw content to preserve thoughtSignature
-        if (candidateContent) {
-          contents.push(candidateContent)
-        } else {
-          contents.push({ role: 'model', parts })
-        }
-
-        // Execute selected function calls
-        const executionResults = await executeToolCalls(
-          callsToExecute,
-          toolByName,
-          chatId,
-        )
-
-        // Build function responses — executed ones get results,
-        // deferred ones get a signal to retry after data is available
-        const functionResponses = [
-          ...executionResults.map((tr) => ({
-            functionResponse: {
-              name: tr.name,
-              response: { result: tr.result },
-            },
-          })),
-          ...(hasDeferred
-            ? contentCalls.map((fc) => ({
-                functionResponse: {
-                  name: fc.functionCall.name ?? '',
-                  response: {
-                    result:
-                      'NOT EXECUTED YET — data was just fetched. Call this tool again now with the actual data.',
-                  },
-                },
-              }))
-            : []),
-        ]
-
-        // Check if ALL called tools are terminal (produce complete responses)
-        // If so, skip the next model call — the tool response IS the response
-        const allTerminal = callsToExecute.every((fc) =>
-          TERMINAL_TOOLS.has(fc.functionCall.name ?? ''),
-        )
-        const collectedNow = getCollectedResponses()
-
-        if (allTerminal && collectedNow.length > 0 && !hasDeferred) {
-          logger.info(
-            {
-              chatId,
-              tools: callsToExecute.map((fc) => fc.functionCall.name),
-            },
-            'loop.terminal_tools_skip',
-          )
-          break
-        }
-
-        // Add tool results back as function responses
-        contents.push({ role: 'user', parts: functionResponses })
-      }
-
-      // If tool rounds ended without model text, force one final synthesis pass
-      // without tools so we still produce a user-facing answer.
-      if (!finalText.trim()) {
-        try {
-          const finalizeResponse = await generateWithRetry(
-            {
-              model: followUpModel,
-              contents: [
-                ...contents,
-                {
-                  role: 'user',
-                  parts: [
-                    {
-                      text: 'Provide the final user-facing answer now. Use plain text only and do not call tools. Use successful tool results as the primary evidence. If any tool failed or timed out, explicitly say you could not verify that part instead of guessing.',
-                    },
-                  ],
-                },
-              ],
-              config: {
-                systemInstruction,
-                temperature: 0.2,
-              },
-            },
-            chatId,
-            'finalize',
-          )
-          const finalizeParts =
-            finalizeResponse.candidates?.[0]?.content?.parts ?? []
-          const finalizeText = finalizeParts
-            .filter((p) => p.text)
-            .map((p) => p.text ?? '')
-            .join('\n')
-            .trim()
-          if (finalizeText) {
-            finalText = finalizeText
-          } else {
-            logger.warn({ chatId }, 'loop.finalize_empty')
-          }
-        } catch (error) {
-          logger.warn(
-            {
-              chatId,
-              error: extractErrorInfo(error),
-            },
-            'loop.finalize_failed',
-          )
-        }
-      }
-
-      // Collect any responses added by tools (media, text drafts, etc.)
+      // Collect any responses produced by tools (media, text drafts, etc.)
       const { textDrafts, mediaResponses } = splitResponses(
         getCollectedResponses(),
       )
-
-      // Build final list of responses
       const responsesToSend: AgentResponse[] = [...mediaResponses]
 
-      // Combine model's final text with any tool text drafts
-      const allTextParts: string[] = []
-      if (textDrafts.length > 0) {
-        allTextParts.push(...textDrafts)
-      }
+      const allTextParts: string[] = [...textDrafts]
       if (finalText.trim()) {
         allTextParts.push(cleanGeminiMessage(finalText))
       } else {
-        const fallbackText = extractFallbackTextFromToolResults(contents)
-        if (fallbackText) {
-          allTextParts.push(cleanGeminiMessage(fallbackText))
+        const fallback = extractFallbackTextFromToolResults(contents)
+        if (fallback) {
+          allTextParts.push(cleanGeminiMessage(fallback))
           logger.warn({ chatId }, 'loop.fallback_from_tool_result')
         }
       }
 
       const combinedText = allTextParts.join('\n\n').trim()
-      if (combinedText) {
+      if (combinedText)
         responsesToSend.push({ type: 'text', text: combinedText })
-      }
 
       if (responsesToSend.length === 0) {
         responsesToSend.push({
@@ -699,7 +602,7 @@ export async function runAgenticLoop(
         )
       }
 
-      const deliveryStartedAt = Date.now()
+      const deliveryStart = Date.now()
       await sendResponses({
         responses: responsesToSend,
         chatId,
@@ -711,7 +614,7 @@ export async function runAgenticLoop(
         {
           ...messageMeta,
           durationMs: Date.now() - startedAt,
-          deliveryDurationMs: Date.now() - deliveryStartedAt,
+          deliveryDurationMs: Date.now() - deliveryStart,
           responseCount: responsesToSend.length,
           inputMediaCount: allMediaBuffers.length,
           outputMediaCount: mediaResponses.length,

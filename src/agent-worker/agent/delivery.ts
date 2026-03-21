@@ -229,9 +229,7 @@ async function sendDice(params: DeliveryParams & { dice: DiceResponse }) {
 export async function sendResponses(
   params: DeliveryParams & { responses: AgentResponse[] },
 ): Promise<void> {
-  if (params.responses.length === 0) {
-    return
-  }
+  if (params.responses.length === 0) return
 
   const bundle = collectBundle(params.responses)
   const base: DeliveryParams = {
@@ -241,9 +239,14 @@ export async function sendResponses(
   }
 
   try {
-    // If we have voice + text → send voice with text as caption (one message)
+    // Keep voice+text as a single message, but preserve legacy voice-only
+    // behavior for mixed bundles (e.g. image + voice).
     if (bundle.voice && bundle.text) {
-      await sendVoice({ ...base, voice: bundle.voice, caption: bundle.text })
+      await sendVoice({
+        ...base,
+        voice: bundle.voice,
+        caption: bundle.text,
+      })
       return
     }
 
@@ -267,7 +270,6 @@ export async function sendResponses(
     logger.error({ error, chatId: params.chatId }, 'delivery.primary_failed')
   }
 
-  // Voice without text (already handled above if both present)
   if (bundle.voice) {
     try {
       await sendVoice({ ...base, voice: bundle.voice })
