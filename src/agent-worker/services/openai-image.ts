@@ -8,6 +8,7 @@ import OpenAi from 'openai'
 import { toFile, type Uploadable } from 'openai/uploads'
 import type { ImageModel } from 'openai/resources'
 
+import { buildOpenAiImagePrompt, OPENAI_GPT_IMAGE_SIZE } from '@tg-bot/common'
 import { logger } from '../logger'
 
 /** Model used by the generate_or_edit_image agent tool */
@@ -32,6 +33,7 @@ export async function generateImageOpenAi(
   inputImages?: Buffer[],
 ): Promise<{ image?: Buffer; text?: string }> {
   const openAi = getClient()
+  const requestPrompt = buildOpenAiImagePrompt(prompt)
 
   const requestImage = async (): Promise<OpenAi.Images.ImagesResponse> => {
     if (inputImages?.length && IMAGE_MODEL === 'gpt-image-1.5') {
@@ -41,21 +43,21 @@ export async function generateImageOpenAi(
       }
 
       return openAi.images.edit({
-        prompt,
+        prompt: requestPrompt,
         model: IMAGE_MODEL,
         image: images,
         quality: 'medium',
         n: 1,
-        size: '1024x1024',
+        size: OPENAI_GPT_IMAGE_SIZE,
       })
     }
 
     return openAi.images.generate({
-      prompt,
+      prompt: requestPrompt,
       model: IMAGE_MODEL,
       quality: IMAGE_MODEL === 'gpt-image-1.5' ? 'medium' : 'standard',
       n: 1,
-      size: '1024x1024',
+      size: OPENAI_GPT_IMAGE_SIZE,
     })
   }
 

@@ -7,9 +7,11 @@ import type {
 } from 'openai/resources'
 
 import {
+  buildOpenAiImagePrompt,
   DEFAULT_ERROR_MESSAGE,
   isAiEnabledChat,
   NOT_ALLOWED_ERROR,
+  OPENAI_GPT_IMAGE_SIZE,
   PROMPT_MISSING_ERROR,
   systemInstructions,
 } from '@tg-bot/common'
@@ -44,6 +46,10 @@ export const generateImage = async (
   }
 
   const openAi = getOpenAiClient()
+  const isGptImageModel = model.startsWith('gpt-image-')
+  const requestPrompt = isGptImageModel
+    ? buildOpenAiImagePrompt(prompt)
+    : prompt
 
   const maxRetries = 3
   let lastError: Error | undefined
@@ -56,21 +62,21 @@ export const generateImage = async (
       }
 
       return openAi.images.edit({
-        prompt,
+        prompt: requestPrompt,
         quality: 'medium',
         model,
         image,
         n: 1,
-        size: '1024x1024',
+        size: OPENAI_GPT_IMAGE_SIZE,
       })
     }
 
     return openAi.images.generate({
-      prompt,
+      prompt: requestPrompt,
       quality: model === 'gpt-image-1.5' ? 'medium' : 'standard',
       model,
       n: 1,
-      size: '1024x1024',
+      size: isGptImageModel ? OPENAI_GPT_IMAGE_SIZE : '1024x1024',
     })
   }
 
