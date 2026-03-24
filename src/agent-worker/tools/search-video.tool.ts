@@ -61,10 +61,10 @@ export const searchVideoTool: AgentTool = {
         return 'Error searching video: Query cannot be empty'
       }
 
-      const searchResult = await searchWeb(
-        buildVideoSearchPrompt(query),
-        'brief',
-      )
+      const searchResult = await searchWeb(query, 'brief', {
+        groundedPrompt: buildVideoSearchPrompt(query),
+        fallbackQuery: query,
+      })
       const videoUrl = extractFirstUrl(searchResult)
 
       if (!videoUrl) {

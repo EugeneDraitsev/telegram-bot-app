@@ -42,7 +42,12 @@ import {
   isRetryableModelError,
   ModelCallTimeoutError,
 } from './model-call'
-import { CHAT_MODEL, CHAT_MODEL_FALLBACK, FAST_MODEL } from './models'
+import {
+  CHAT_MODEL,
+  CHAT_MODEL_FALLBACK,
+  FAST_MODEL,
+  SEARCH_MODEL_PRIMARY,
+} from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
 import { withTimeout } from './utils'
@@ -92,10 +97,12 @@ function buildNativeTools(agentTools: AgentTool[]): Tool[] {
 const TOOL_MODELS: Record<string, string> = {
   generate_or_edit_image: IMAGE_MODEL,
   generate_voice: VOICE_MODEL,
-  web_search: FAST_MODEL,
+  web_search: SEARCH_MODEL_PRIMARY,
+  search_video: SEARCH_MODEL_PRIMARY,
   code_execution: FAST_MODEL,
   url_context: FAST_MODEL,
 }
+const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
 
@@ -201,8 +208,8 @@ async function executeToolCalls(
       ...r,
     }))
 
-  // Run sequentially when web_search is present (rate limiting)
-  if (calls.some((c) => c.functionCall.name === 'web_search')) {
+  // Run sequentially when search-backed tools are present (rate limiting).
+  if (calls.some((c) => RATE_LIMITED_TOOLS.has(c.functionCall.name ?? ''))) {
     const results: Array<{ call: FunctionCall; name: string; result: string }> =
       []
     for (const call of calls) results.push(await run(call))

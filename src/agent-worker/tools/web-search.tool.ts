@@ -1,6 +1,6 @@
 /**
- * Web search tool — uses Google Search grounding via gemini-2.5-flash-lite.
- * Returns search results to the model for composing the final response.
+ * Web search tool.
+ * Uses grounded Gemini search first, then falls back to Tavily and Google Custom Search.
  */
 
 import { getErrorMessage } from '@tg-bot/common'
@@ -13,7 +13,7 @@ export const webSearchTool: AgentTool = {
     type: 'function',
     name: 'web_search',
     description:
-      'Search the web for current information. Use this for any factual queries: prices, releases, product comparisons, news, sports scores, events, and similar lookups. Returns a concise summary with fresh data from Google Search.',
+      'Search the web for current information. Use this for any factual queries: prices, releases, product comparisons, news, sports scores, events, and similar lookups. Returns a concise summary with fresh data from grounded Gemini search or fallback search providers.',
     parameters: {
       type: 'object',
       properties: {
@@ -36,5 +36,4 @@ export const webSearchTool: AgentTool = {
       throw new Error(`Web search failed: ${getErrorMessage(error)}`)
     }
   },
-  timeoutMs: 15_000,
 }
