@@ -1,6 +1,6 @@
 /**
- * Web search tool — uses Google Search grounding via gemini-2.5-flash-lite.
- * Returns search results to the model for composing the final response.
+ * Web search tool.
+ * Uses grounded Gemini search first, then falls back to Google Custom Search.
  */
 
 import { getErrorMessage } from '@tg-bot/common'

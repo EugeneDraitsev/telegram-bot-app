@@ -42,7 +42,12 @@ import {
   isRetryableModelError,
   ModelCallTimeoutError,
 } from './model-call'
-import { CHAT_MODEL, CHAT_MODEL_FALLBACK, FAST_MODEL } from './models'
+import {
+  CHAT_MODEL,
+  CHAT_MODEL_FALLBACK,
+  FAST_MODEL,
+  SEARCH_MODEL_PRIMARY,
+} from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
 import { withTimeout } from './utils'
@@ -92,7 +97,8 @@ function buildNativeTools(agentTools: AgentTool[]): Tool[] {
 const TOOL_MODELS: Record<string, string> = {
   generate_or_edit_image: IMAGE_MODEL,
   generate_voice: VOICE_MODEL,
-  web_search: FAST_MODEL,
+  web_search: SEARCH_MODEL_PRIMARY,
+  search_video: SEARCH_MODEL_PRIMARY,
   code_execution: FAST_MODEL,
   url_context: FAST_MODEL,
 }
