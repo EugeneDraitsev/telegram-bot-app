@@ -121,6 +121,22 @@ function extractPromptQuery(promptOrQuery: string): string {
   return explicitQuery?.trim() || promptOrQuery.trim()
 }
 
+function looksLikeGroundedPrompt(input: string): boolean {
+  const normalized = input.trim()
+  if (!normalized.includes('\n')) {
+    return false
+  }
+
+  return (
+    /(?:^|\n)\s*query:\s*\S/im.test(normalized) &&
+    (normalized.includes('Use fresh web information from Google Search.') ||
+      normalized.includes('Answer in the same language as the query.') ||
+      normalized.includes(
+        'If the query names a specific product, model, company, or person, verify that exact name first.',
+      ))
+  )
+}
+
 function normalizeSnippet(value: string | undefined): string {
   return (value ?? '').replace(/\s+/g, ' ').trim()
 }
@@ -356,10 +372,15 @@ export async function searchWeb(
     throw new Error('Search query cannot be empty')
   }
 
+  const explicitGroundedPrompt = options.groundedPrompt?.trim()
   const groundedPrompt =
-    options.groundedPrompt?.trim() || buildSearchPrompt(normalizedQuery, format)
+    explicitGroundedPrompt ||
+    (looksLikeGroundedPrompt(normalizedQuery)
+      ? normalizedQuery
+      : buildSearchPrompt(normalizedQuery, format))
   const fallbackQuery =
-    options.fallbackQuery?.trim() || extractPromptQuery(normalizedQuery)
+    options.fallbackQuery?.trim() ||
+    extractPromptQuery(explicitGroundedPrompt || normalizedQuery)
   const geminiApiKey = getGeminiApiKey()
   const tavilyApiKey = getTavilyApiKey()
   const customSearchCredentials = getCustomSearchCredentials()
@@ -412,23 +433,25 @@ export async function searchWeb(
     )
   }
 
-  try {
-    const tavilyResults = await searchWebWithTavily(fallbackQuery, format)
-    logger.info(
-      { query: fallbackQuery, searchType: 'tavily' },
-      'web_search.success',
-    )
-    return tavilyResults
-  } catch (tavilyError) {
-    logger.warn(
-      {
-        query: fallbackQuery,
-        searchType: 'tavily',
-        error: getErrorMessage(tavilyError),
-        timeoutLike: isTimeoutLikeError(tavilyError),
-      },
-      'web_search.tavily_failed_fallback_to_custom',
-    )
+  if (tavilyApiKey) {
+    try {
+      const tavilyResults = await searchWebWithTavily(fallbackQuery, format)
+      logger.info(
+        { query: fallbackQuery, searchType: 'tavily' },
+        'web_search.success',
+      )
+      return tavilyResults
+    } catch (tavilyError) {
+      logger.warn(
+        {
+          query: fallbackQuery,
+          searchType: 'tavily',
+          error: getErrorMessage(tavilyError),
+          timeoutLike: isTimeoutLikeError(tavilyError),
+        },
+        'web_search.tavily_failed_fallback_to_custom',
+      )
+    }
   }
 
   try {

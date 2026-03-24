@@ -150,6 +150,55 @@ describe('searchWeb', () => {
     )
   })
 
+  test('derives fallback query from groundedPrompt when fallbackQuery is omitted', async () => {
+    mockGenerateContent
+      .mockRejectedValueOnce(new Error('primary failed'))
+      .mockRejectedValueOnce(new Error('backup failed'))
+
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        answer: 'Short Tavily answer',
+        results: [],
+      }),
+    })
+
+    await expect(
+      searchWeb('ignored raw query', 'brief', {
+        groundedPrompt:
+          'Find one relevant source.\nReturn concise results.\nQuery: exact fallback query',
+      }),
+    ).resolves.toContain('Short Tavily answer')
+
+    const [, request] = (global.fetch as jest.Mock).mock.calls[0]
+    expect(JSON.parse(request.body as string)).toEqual(
+      expect.objectContaining({
+        query: 'exact fallback query',
+      }),
+    )
+  })
+
+  test('preserves backward compatibility when query already contains a grounded prompt', async () => {
+    mockGenerateContent.mockResolvedValue({
+      text: 'grounded prompt result',
+    })
+
+    const prompt =
+      'Use fresh web information from Google Search.\nQuery: compat query\nAnswer in the same language as the query.'
+
+    await expect(searchWeb(prompt, 'brief')).resolves.toBe(
+      'grounded prompt result',
+    )
+
+    expect(mockGenerateContent).toHaveBeenCalledWith({
+      model: 'gemini-3.1-flash-lite-preview',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    })
+  })
+
   test('falls back to Google Custom Search when Tavily also fails', async () => {
     mockGenerateContent
       .mockRejectedValueOnce(new Error('primary failed'))

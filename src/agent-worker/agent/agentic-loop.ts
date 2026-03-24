@@ -102,6 +102,7 @@ const TOOL_MODELS: Record<string, string> = {
   code_execution: FAST_MODEL,
   url_context: FAST_MODEL,
 }
+const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
 
@@ -207,8 +208,8 @@ async function executeToolCalls(
       ...r,
     }))
 
-  // Run sequentially when web_search is present (rate limiting)
-  if (calls.some((c) => c.functionCall.name === 'web_search')) {
+  // Run sequentially when search-backed tools are present (rate limiting).
+  if (calls.some((c) => RATE_LIMITED_TOOLS.has(c.functionCall.name ?? ''))) {
     const results: Array<{ call: FunctionCall; name: string; result: string }> =
       []
     for (const call of calls) results.push(await run(call))
