@@ -7,7 +7,10 @@
 import { GoogleGenAI } from '@google/genai'
 
 import { getErrorMessage } from '@tg-bot/common'
-import { SEARCH_MODEL_FALLBACK, SEARCH_MODEL_PRIMARY } from '../agent/models'
+import {
+  SEARCH_MODEL_FALLBACK,
+  SEARCH_MODEL_PRIMARY,
+} from '../agent/model-constants'
 import { withTimeout } from '../agent/utils'
 import { logger } from '../logger'
 

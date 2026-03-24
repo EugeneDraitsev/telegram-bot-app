@@ -65,6 +65,7 @@ functions:
     timeout: 300
     memorySize: 1536
     environment:
+      TAVILY_API_KEY: ${env:TAVILY_API_KEY}
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
       COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
