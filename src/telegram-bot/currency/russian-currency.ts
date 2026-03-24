@@ -1,6 +1,5 @@
+import { fetchBrentPrice } from './brent'
 import type { CurrenciesResponse } from './index'
-
-const timeout = 10_000
 
 const formatRow = (key: string, value: string, length = 10) => {
   return `${key.toUpperCase()}: ${value.padStart(length - key.length, ' ')}`
@@ -9,21 +8,7 @@ const formatRow = (key: string, value: string, length = 10) => {
 export const getRussianCurrency = async (
   currenciesRatesPromise: Promise<CurrenciesResponse>,
 ) => {
-  const brentUrl = 'https://oilprice.com/freewidgets/json_get_oilprices'
-
-  const brentPromise = fetch(brentUrl, {
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'x-requested-with': 'XMLHttpRequest',
-    },
-    body: 'blend_id=46&period=2',
-    method: 'POST',
-    mode: 'cors',
-    signal: globalThis.AbortSignal.timeout(timeout),
-  })
-    .then((x) => x.json())
-    .then((x) => x?.blend?.open)
-    .catch((e) => console.error('Failed to fetch brent price: ', e))
+  const brentPromise = fetchBrentPrice()
 
   const [{ rates, provider }, brentPrice] = await Promise.all([
     currenciesRatesPromise,
