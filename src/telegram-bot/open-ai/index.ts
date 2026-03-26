@@ -135,8 +135,10 @@ export const setupImageGenerationOpenAiCommands = async (
         },
       )
     } catch (error) {
-      console.error(`Generate Image error (Open AI): ${error.message}`)
-      return ctx.reply(error.message || DEFAULT_ERROR_MESSAGE, {
+      const errorMessage =
+        error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE
+      console.error(`Generate Image error (Open AI): ${errorMessage}`)
+      return ctx.reply(errorMessage, {
         reply_parameters: { message_id: replyId },
       })
     }

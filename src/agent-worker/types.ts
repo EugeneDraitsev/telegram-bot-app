@@ -1,3 +1,5 @@
+import type { Api } from 'grammy'
+
 /**
  * Types for Agent Worker.
  *
@@ -5,71 +7,22 @@
  * Tool declarations use the Interactions API format (type: 'function').
  */
 
-export interface TelegramApi {
-  getFile: (fileId: string) => Promise<{ file_path?: string }>
-  sendMessage: (
-    chatId: number,
-    text: string,
-    options?: {
-      reply_parameters?: { message_id: number }
-      parse_mode?: string
-    },
-  ) => Promise<unknown>
-  sendPhoto: (
-    chatId: number,
-    photo: unknown,
-    options?: {
-      caption?: string
-      parse_mode?: string
-      reply_parameters?: { message_id: number }
-    },
-  ) => Promise<unknown>
-  sendVoice: (
-    chatId: number,
-    voice: unknown,
-    options?: {
-      caption?: string
-      parse_mode?: string
-      reply_parameters?: { message_id: number }
-    },
-  ) => Promise<unknown>
-  sendVideo: (
-    chatId: number,
-    video: string,
-    options?: {
-      caption?: string
-      parse_mode?: string
-      reply_parameters?: { message_id: number }
-    },
-  ) => Promise<unknown>
-  sendAnimation: (
-    chatId: number,
-    animation: string,
-    options?: {
-      caption?: string
-      parse_mode?: string
-      reply_parameters?: { message_id: number }
-    },
-  ) => Promise<unknown>
-  sendSticker: (
-    chatId: number,
-    sticker: string,
-    options?: { reply_parameters?: { message_id: number } },
-  ) => Promise<unknown>
-  sendDice: (
-    chatId: number,
-    emoji: string,
-    options?: { reply_parameters?: { message_id: number } },
-  ) => Promise<unknown>
-  sendChatAction: (
-    chatId: number,
-    action: 'typing' | 'upload_photo' | 'upload_video' | 'record_voice',
-  ) => Promise<unknown>
-  setMessageReaction?: (
-    chatId: number,
-    messageId: number,
-    reaction: unknown[],
-  ) => Promise<unknown>
+type TelegramApiMethods = Pick<
+  Api,
+  | 'getFile'
+  | 'sendMessage'
+  | 'sendPhoto'
+  | 'sendVoice'
+  | 'sendVideo'
+  | 'sendAnimation'
+  | 'sendSticker'
+  | 'sendDice'
+  | 'sendChatAction'
+  | 'setMessageReaction'
+>
+
+export type TelegramApi = Omit<TelegramApiMethods, 'setMessageReaction'> & {
+  setMessageReaction?: TelegramApiMethods['setMessageReaction']
 }
 
 // ── Responses ────────────────────────────────────────────────

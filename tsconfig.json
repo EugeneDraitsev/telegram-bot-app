@@ -5,14 +5,13 @@
     "moduleResolution": "nodenext",
     "skipLibCheck": true,
     "rootDir": "./",
-    "noImplicitAny": true,
+    "strict": true,
     "noUnusedLocals": true,
-    "noImplicitThis": true,
-    "strictNullChecks": true,
     "noImplicitReturns": true,
     "preserveConstEnums": true,
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["node", "jest"]
   }
 }

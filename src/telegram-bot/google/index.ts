@@ -171,7 +171,7 @@ const setupGoogleCommands = (
           })
         })
     } catch (e) {
-      return ctx.reply(e.message, {
+      return ctx.reply(e instanceof Error ? e.message : String(e), {
         reply_parameters: { message_id: replyId },
       })
     }

@@ -315,6 +315,8 @@ export async function generateImage(
     return { text: fallbackText }
   } catch (error) {
     console.error('Error generating gemini image:', error)
-    return { text: error.message || DEFAULT_ERROR_MESSAGE }
+    return {
+      text: error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE,
+    }
   }
 }

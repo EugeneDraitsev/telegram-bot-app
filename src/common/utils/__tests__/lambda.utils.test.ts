@@ -2,15 +2,20 @@ import { type InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
 import { invokeAgentLambda, invokeLambda, invokeReplyLambda } from '..'
 
+type LambdaSend = LambdaClient['send']
+
+const mockLambdaSend = (implementation: (command: InvokeCommand) => unknown) =>
+  jest
+    .spyOn(LambdaClient.prototype, 'send')
+    .mockImplementation(implementation as unknown as LambdaSend)
+
 describe('invokeLambda', () => {
   afterEach(() => {
     jest.restoreAllMocks()
   })
 
   test('should call lambda with provided options', async () => {
-    jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation(() => 'lambda response!!')
+    mockLambdaSend(() => 'lambda response!!')
 
     expect(
       await invokeLambda({
@@ -23,12 +28,10 @@ describe('invokeLambda', () => {
   test('should set InvocationType to Event when async is true', async () => {
     let capturedCommand: InvokeCommand | undefined
 
-    jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation((command: InvokeCommand) => {
-        capturedCommand = command
-        return Promise.resolve('ok')
-      })
+    mockLambdaSend((command) => {
+      capturedCommand = command
+      return Promise.resolve('ok')
+    })
 
     await invokeLambda({
       name: 'my-function',
@@ -42,12 +45,10 @@ describe('invokeLambda', () => {
   test('should not set InvocationType when async is false', async () => {
     let capturedCommand: InvokeCommand | undefined
 
-    jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation((command: InvokeCommand) => {
-        capturedCommand = command
-        return Promise.resolve('ok')
-      })
+    mockLambdaSend((command) => {
+      capturedCommand = command
+      return Promise.resolve('ok')
+    })
 
     await invokeLambda({
       name: 'my-function',
@@ -61,9 +62,7 @@ describe('invokeLambda', () => {
     const originalEnv = process.env
     process.env = { ...originalEnv, IS_OFFLINE: 'true' }
 
-    const clientSpy = jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation(() => Promise.resolve('ok'))
+    const clientSpy = mockLambdaSend(() => Promise.resolve('ok'))
 
     await invokeLambda({
       name: 'my-function',
@@ -78,12 +77,10 @@ describe('invokeLambda', () => {
   test('should serialize payload as JSON buffer', async () => {
     let capturedCommand: InvokeCommand | undefined
 
-    jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation((command: InvokeCommand) => {
-        capturedCommand = command
-        return Promise.resolve('ok')
-      })
+    mockLambdaSend((command) => {
+      capturedCommand = command
+      return Promise.resolve('ok')
+    })
 
     const payload = { chatId: 123, text: 'hello' }
     await invokeLambda({ name: 'fn', payload })
@@ -110,12 +107,10 @@ describe('invokeReplyLambda', () => {
   test('should remove imagesData from payload to avoid exceeding 6MB limit', async () => {
     let capturedPayload: Buffer | undefined
 
-    jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation((command: InvokeCommand) => {
-        capturedPayload = command.input.Payload as Buffer
-        return Promise.resolve('lambda response!!')
-      })
+    mockLambdaSend((command) => {
+      capturedPayload = command.input.Payload as Buffer
+      return Promise.resolve('lambda response!!')
+    })
 
     const payload = {
       combinedText: 'test text',
@@ -143,12 +138,10 @@ describe('invokeReplyLambda', () => {
   test('should invoke lambda with async mode', async () => {
     let capturedCommand: InvokeCommand | undefined
 
-    jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation((command: InvokeCommand) => {
-        capturedCommand = command
-        return Promise.resolve('ok')
-      })
+    mockLambdaSend((command) => {
+      capturedCommand = command
+      return Promise.resolve('ok')
+    })
 
     await invokeReplyLambda({ text: 'test' })
 
@@ -181,12 +174,10 @@ describe('invokeAgentLambda', () => {
 
     let capturedCommand: InvokeCommand | undefined
 
-    jest
-      .spyOn(LambdaClient.prototype, 'send')
-      .mockImplementation((command: InvokeCommand) => {
-        capturedCommand = command
-        return Promise.resolve('ok')
-      })
+    mockLambdaSend((command) => {
+      capturedCommand = command
+      return Promise.resolve('ok')
+    })
 
     await invokeAgentLambda({
       message: { text: 'hello' },

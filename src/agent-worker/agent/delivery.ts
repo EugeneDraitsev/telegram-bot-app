@@ -110,7 +110,7 @@ async function sendImage(
   const caption = formatCaption(rawCaption)
   const options = {
     caption,
-    parse_mode: caption ? 'MarkdownV2' : undefined,
+    parse_mode: caption ? ('MarkdownV2' as const) : undefined,
     ...getReplyOptions(params.replyToMessageId),
   }
 
@@ -165,7 +165,7 @@ async function sendAnimation(
   const caption = formatCaption(rawCaption)
   const options = {
     caption,
-    parse_mode: caption ? 'MarkdownV2' : undefined,
+    parse_mode: caption ? ('MarkdownV2' as const) : undefined,
     ...getReplyOptions(params.replyToMessageId),
   }
 
