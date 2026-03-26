@@ -36,6 +36,13 @@ describe('gemini AI access control', () => {
     })
   })
 
+  afterAll(() => {
+    mockIsAiEnabledChat.mockRestore()
+    mockGetHistory.mockRestore()
+    mockGetRawHistory.mockRestore()
+    mockResolveHistoryMediaAttachments.mockRestore()
+  })
+
   describe('generateMultimodalCompletion', () => {
     test('returns NOT_ALLOWED_ERROR when chat is not in OPENAI_CHAT_IDS', async () => {
       mockIsAiEnabledChat.mockReturnValue(false)
