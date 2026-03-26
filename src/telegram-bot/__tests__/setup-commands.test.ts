@@ -100,6 +100,7 @@ describe('setupAllCommands', () => {
   beforeEach(() => {
     installCommandRegistryMock.mockClear()
     isRegisteredCommandMessageMock.mockReset()
+    isRegisteredCommandMessageMock.mockReturnValue(false)
     setupAgenticConfigMock.mockClear()
     setupCurrencyCommandsMock.mockClear()
     setupDat1coCommandsMock.mockClear()
@@ -111,6 +112,11 @@ describe('setupAllCommands', () => {
     setupImageGenerationOpenAiCommandsMock.mockClear()
     setupTextCommandsMock.mockClear()
     setupUsersCommandsMock.mockClear()
+  })
+
+  afterEach(() => {
+    isRegisteredCommandMessageMock.mockReset()
+    isRegisteredCommandMessageMock.mockReturnValue(false)
   })
 
   test('registers photo middleware and always calls next when photo command is handled', async () => {
