@@ -2,17 +2,19 @@ import type { Bot, Context, NextFunction } from 'grammy/web'
 
 import { setupAllCommands } from '../setup-commands'
 
-const installCommandRegistryMock = jest.fn(
-  (..._args: unknown[]) => new Set<string>(['q']),
-)
-const isRegisteredCommandMessageMock = jest.fn((..._args: unknown[]) => false)
 const setupAgenticConfigMock = jest.fn((..._args: unknown[]) => undefined)
 const setupCurrencyCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupDat1coCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupExternalApisCommandsMock = jest.fn(
   (..._args: unknown[]) => undefined,
 )
-const setupGoogleCommandsMock = jest.fn((..._args: unknown[]) => undefined)
+const setupGoogleCommandsMock = jest.fn((bot: unknown, ..._args: unknown[]) => {
+  ;(
+    bot as {
+      command: (command: string | string[], ...middleware: unknown[]) => Bot
+    }
+  ).command(['q', 'qq', 'ge'], jest.fn())
+})
 const setupMultimodalGeminiCommandsMock = jest.fn((..._args: unknown[]) =>
   Promise.resolve(undefined),
 )
@@ -25,13 +27,6 @@ const setupImageGenerationOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
 )
 const setupTextCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupUsersCommandsMock = jest.fn((..._args: unknown[]) => undefined)
-
-jest.mock('../command-registry', () => ({
-  installCommandRegistry: (...args: unknown[]) =>
-    installCommandRegistryMock(...args),
-  isRegisteredCommandMessage: (...args: unknown[]) =>
-    isRegisteredCommandMessageMock(...args),
-}))
 
 jest.mock('../configuration-commands', () => ({
   setupAgenticConfig: (...args: unknown[]) => setupAgenticConfigMock(...args),
@@ -54,7 +49,8 @@ jest.mock('../external-apis', () => ({
 
 jest.mock('../google', () => ({
   __esModule: true,
-  default: (...args: unknown[]) => setupGoogleCommandsMock(...args),
+  default: (bot: unknown, ...args: unknown[]) =>
+    setupGoogleCommandsMock(bot, ...args),
   GEMMA_MODEL: 'gemma-3-12b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -84,6 +80,7 @@ type BotHandler = (ctx: Context, next: NextFunction) => Promise<void>
 function createBotStub() {
   const handlers = new Map<string, BotHandler>()
   const bot = {
+    command: jest.fn((_command: string | string[], _handler: unknown) => bot),
     on: jest.fn((event: string, handler: unknown) => {
       handlers.set(event, handler as BotHandler)
       return bot
@@ -98,9 +95,6 @@ function createBotStub() {
 
 describe('setupAllCommands', () => {
   beforeEach(() => {
-    installCommandRegistryMock.mockClear()
-    isRegisteredCommandMessageMock.mockReset()
-    isRegisteredCommandMessageMock.mockReturnValue(false)
     setupAgenticConfigMock.mockClear()
     setupCurrencyCommandsMock.mockClear()
     setupDat1coCommandsMock.mockClear()
@@ -112,11 +106,6 @@ describe('setupAllCommands', () => {
     setupImageGenerationOpenAiCommandsMock.mockClear()
     setupTextCommandsMock.mockClear()
     setupUsersCommandsMock.mockClear()
-  })
-
-  afterEach(() => {
-    isRegisteredCommandMessageMock.mockReset()
-    isRegisteredCommandMessageMock.mockReturnValue(false)
   })
 
   test('registers photo middleware and always calls next when photo command is handled', async () => {
@@ -163,13 +152,13 @@ describe('setupAllCommands', () => {
   })
 
   test('message middleware calls next for non-command messages', async () => {
-    ;(isRegisteredCommandMessageMock as jest.Mock).mockReturnValue(false)
     const { bot, getHandler } = createBotStub()
 
-    setupAllCommands(bot, true)
+    const commandRegistry = setupAllCommands(bot, true)
 
     const messageHandler = getHandler('message')
     expect(messageHandler).toBeDefined()
+    expect(commandRegistry.has('q')).toBe(true)
 
     const message = { text: 'hello' }
     const ctx = { message } as unknown as Context
@@ -178,20 +167,16 @@ describe('setupAllCommands', () => {
     await messageHandler?.(ctx, next as NextFunction)
 
     expect(next).toHaveBeenCalledTimes(1)
-    expect(isRegisteredCommandMessageMock).toHaveBeenCalledWith(
-      message,
-      expect.any(Set),
-    )
   })
 
   test('message middleware still calls next for command messages', async () => {
-    ;(isRegisteredCommandMessageMock as jest.Mock).mockReturnValue(true)
     const { bot, getHandler } = createBotStub()
 
-    setupAllCommands(bot, true)
+    const commandRegistry = setupAllCommands(bot, true)
 
     const messageHandler = getHandler('message')
     expect(messageHandler).toBeDefined()
+    expect(commandRegistry.has('q')).toBe(true)
 
     const message = { text: '/q test', chat: { id: 123 } }
     const ctx = { message, chat: { id: 123 } } as unknown as Context
@@ -201,9 +186,5 @@ describe('setupAllCommands', () => {
 
     expect(next).toHaveBeenCalledTimes(1)
     expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
-    expect(isRegisteredCommandMessageMock).toHaveBeenCalledWith(
-      message,
-      expect.any(Set),
-    )
   })
 })
