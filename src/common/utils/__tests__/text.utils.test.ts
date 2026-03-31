@@ -1,9 +1,4 @@
-import {
-  dedent,
-  hasRussiansLetters,
-  normalize,
-  unEscape,
-} from '..'
+import { dedent, hasRussiansLetters, normalize, unEscape } from '..'
 
 describe('hasRussiansLetters', () => {
   test('can check is provided text on russian or not', () => {
