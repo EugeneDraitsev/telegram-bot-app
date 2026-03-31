@@ -1,15 +1,14 @@
 import sharp from 'sharp'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import { get24hChatStats, sanitizeSvg } from '@tg-bot/common'
+import { get24hChatStats } from '@tg-bot/common'
 import { getDailyUsersBarsSvg } from './daily-users-bars.component'
 
 const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
   const chatId =
     event.queryStringParameters?.chatId || event.pathParameters?.chatId || ''
   const chatData = await get24hChatStats(chatId)
-  const html = getDailyUsersBarsSvg(chatData)
-  const svg = sanitizeSvg(html)
+  const svg = getDailyUsersBarsSvg(chatData)
 
   const image = await sharp(Buffer.from(svg))
     .resize(1200, 400)

@@ -19,25 +19,33 @@
     "deploy": "sls deploy"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1016.0",
-    "@aws-sdk/client-lambda": "^3.1016.0",
-    "@aws-sdk/client-s3": "^3.1016.0",
-    "@aws-sdk/lib-dynamodb": "^3.1016.0",
+    "@aws-sdk/client-dynamodb": "^3.1020.0",
+    "@aws-sdk/client-lambda": "^3.1020.0",
+    "@aws-sdk/client-s3": "^3.1020.0",
+    "@aws-sdk/lib-dynamodb": "^3.1020.0",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.9",
+    "@biomejs/biome": "^2.4.10",
     "@types/aws-lambda": "^8.10.161",
     "@types/jest": "^30.0.0",
     "esbuild": "^0.27.4",
     "serverless": "^4.33.0",
     "serverless-esbuild": "^1.57.0",
     "serverless-offline": "^14.5.0",
-    "typescript": "^6.0.0"
+    "typescript": "^6.0.2"
   },
   "resolutions": {
+    "@aws-sdk/client-lambda": "^3.1020.0",
+    "@aws-sdk/xml-builder": "^3.972.16",
     "whatwg-url": "^15.1.0",
-    "@smithy/types": "^4.3.1"
+    "@smithy/types": "^4.3.1",
+    "effect": "^3.21.0",
+    "undici": "^6.24.0",
+    "picomatch": "^4.0.4",
+    "fast-xml-parser": "^5.5.9",
+    "minimatch": "^3.1.4",
+    "brace-expansion": "^1.1.13"
   },
   "workspaces": [
     "src/*"
