@@ -12,6 +12,21 @@ provider:
   environment:
     region: eu-central-1
     stage: ${sls:stage}
+    GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
+    COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
+    OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
+    TOKEN: ${env:TOKEN}
+    YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
+    FIXER_API_KEY: ${env:FIXER_API_KEY}
+    EXCHANGE_RATE_API_KEY: ${env:EXCHANGE_RATE_API_KEY}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
+    GEMINI_API_KEY: ${env:GEMINI_API_KEY}
+    UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
+    UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
+    DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
+    TAVILY_API_KEY: ${env:TAVILY_API_KEY}
+    GIPHY_API_KEY: ${env:GIPHY_API_KEY}
   iam:
     role:
       statements: ${file(roleStatements.yml)}
@@ -21,19 +36,6 @@ functions:
     timeout: 300
     handler: src/telegram-bot/index.default
     environment:
-      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-      COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
-      OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
-      TOKEN: ${env:TOKEN}
-      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
-      FIXER_API_KEY: ${env:FIXER_API_KEY}
-      EXCHANGE_RATE_API_KEY: ${env:EXCHANGE_RATE_API_KEY}
-      OPENAI_API_KEY: ${env:OPENAI_API_KEY}
-      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
-      GEMINI_API_KEY: ${env:GEMINI_API_KEY}
-      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
-      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
-      DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
       REPLY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-reply-worker
       AGENT_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-agent-worker
     events:
@@ -45,46 +47,14 @@ functions:
     handler: src/telegram-bot/telegram-reply-worker.default
     timeout: 300
     memorySize: 1536
-    environment:
-      TAVILY_API_KEY: ${env:TAVILY_API_KEY}
-      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-      COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
-      OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
-      TOKEN: ${env:TOKEN}
-      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
-      FIXER_API_KEY: ${env:FIXER_API_KEY}
-      EXCHANGE_RATE_API_KEY: ${env:EXCHANGE_RATE_API_KEY}
-      OPENAI_API_KEY: ${env:OPENAI_API_KEY}
-      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
-      GEMINI_API_KEY: ${env:GEMINI_API_KEY}
-      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
-      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
-      DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
 
   telegram-agent-worker:
     handler: src/agent-worker/index.default
     timeout: 300
     memorySize: 1536
-    environment:
-      TAVILY_API_KEY: ${env:TAVILY_API_KEY}
-      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-      COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
-      OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
-      TOKEN: ${env:TOKEN}
-      YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
-      OPENAI_API_KEY: ${env:OPENAI_API_KEY}
-      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
-      GEMINI_API_KEY: ${env:GEMINI_API_KEY}
-      GIPHY_API_KEY: ${env:GIPHY_API_KEY}
-      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
-      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default
-    environment:
-      TOKEN: ${env:TOKEN}
-      FIXER_API_KEY: ${env:FIXER_API_KEY}
-      EXCHANGE_RATE_API_KEY: ${env:EXCHANGE_RATE_API_KEY}
     events:
       - schedule:
           name: currency-scheduler-event
@@ -93,9 +63,6 @@ functions:
 
   redis-scheduler:
     handler: src/telegram-bot/redis-scheduler.default
-    environment:
-      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
-      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
     events:
       - schedule:
           name: redis-scheduler-event
