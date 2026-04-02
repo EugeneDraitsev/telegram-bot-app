@@ -139,7 +139,7 @@ export const generateMultimodalCompletion = async ({
   prompt,
   message,
   imagesData,
-  model = 'gemini-3-flash-preview',
+  model = 'gemini-3.1-flash-lite-preview',
   createInteraction = createGeminiInteraction,
   api,
 }: GenerateMultimodalCompletionOptions) => {

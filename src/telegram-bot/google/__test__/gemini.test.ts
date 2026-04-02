@@ -79,7 +79,7 @@ describe('gemini AI access control', () => {
       const result = await generateMultimodalCompletion({
         prompt: 'test prompt',
         message,
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.1-flash-lite-preview',
         createInteraction: mockInteractionsCreate,
       })
 
@@ -130,7 +130,7 @@ describe('gemini AI access control', () => {
         prompt: 'test prompt',
         message,
         imagesData: [Buffer.from('current-image')],
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.1-flash-lite-preview',
         createInteraction: mockInteractionsCreate,
         api,
       })

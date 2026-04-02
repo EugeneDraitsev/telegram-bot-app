@@ -125,7 +125,7 @@ describe('setupAllCommands', () => {
     expect(setupMultimodalGeminiCommandsMock).toHaveBeenCalledWith(
       ctx,
       true,
-      'gemini-3-flash-preview',
+      'gemini-3.1-flash-lite-preview',
     )
     expect(next).toHaveBeenCalledTimes(1)
   })

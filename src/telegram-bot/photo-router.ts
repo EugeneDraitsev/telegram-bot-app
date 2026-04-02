@@ -21,7 +21,11 @@ const photoRoutes: PhotoRoute[] = [
   {
     prefix: '/q',
     handler: (ctx, deferred) =>
-      setupMultimodalGeminiCommands(ctx, deferred, 'gemini-3-flash-preview'),
+      setupMultimodalGeminiCommands(
+        ctx,
+        deferred,
+        'gemini-3.1-flash-lite-preview',
+      ),
   },
   {
     prefix: '/e',

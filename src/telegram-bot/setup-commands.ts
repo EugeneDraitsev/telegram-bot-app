@@ -32,7 +32,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /ps <text> - punto switcher
   setupTextCommands(bot)
 
-  // /q /qq <text, image> - generate chat completion with gemini-3-flash-preview
+  // /q /qq <text, image> - generate chat completion with gemini-3.1-flash-lite-preview
   // /o <text, image> - generate chat completion with gemini-3.1-pro-preview
   // /g <text> - search random image in google search
   // /t <text> - translate detected language to russian / english
