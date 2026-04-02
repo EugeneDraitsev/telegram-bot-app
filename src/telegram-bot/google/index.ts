@@ -30,7 +30,7 @@ export const GEMMA_MODEL = 'gemma-3-12b-it'
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
   deferredCommands = false,
-  model: string = 'gemini-3-flash-preview',
+  model: string = 'gemini-3.1-flash-lite-preview',
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
@@ -188,7 +188,7 @@ const setupGoogleCommands = (
     setupMultimodalGeminiCommands(
       ctx,
       deferredCommands,
-      'gemini-3-flash-preview',
+      'gemini-3.1-flash-lite-preview',
     ),
   )
 
