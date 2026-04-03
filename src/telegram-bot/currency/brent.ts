@@ -26,10 +26,10 @@ const fetchCnbc = () =>
     .then((x) => (x ? Number(x) : undefined))
 
 export const fetchBrentPrice = () =>
-  fetchYahoo()
-    .then((price) => price ?? fetchCnbc())
+  fetchCnbc()
+    .then((price) => price ?? fetchYahoo())
     .catch(() =>
-      fetchCnbc().catch((e) =>
+      fetchYahoo().catch((e) =>
         console.error('Failed to fetch brent price: ', e),
       ),
     )
