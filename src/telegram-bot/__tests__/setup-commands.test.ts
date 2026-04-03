@@ -51,7 +51,7 @@ jest.mock('../google', () => ({
   __esModule: true,
   default: (bot: unknown, ...args: unknown[]) =>
     setupGoogleCommandsMock(bot, ...args),
-  GEMMA_MODEL: 'gemma-3-12b-it',
+  GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
   setupImageGenerationGeminiCommands: (...args: unknown[]) =>

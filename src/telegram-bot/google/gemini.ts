@@ -7,6 +7,7 @@ import {
   DEFAULT_ERROR_MESSAGE,
   EMPTY_RESPONSE_ERROR,
   geminiSystemInstructions,
+  gemmaSystemInstructions,
   getHistory,
   getRawHistory,
   isAiEnabledChat,
@@ -144,6 +145,7 @@ export const generateMultimodalCompletion = async ({
   api,
 }: GenerateMultimodalCompletionOptions) => {
   try {
+    const isGemmaModel = model.includes('gemma')
     const chatId = message?.chat?.id
     if (!chatId || !isAiEnabledChat(chatId)) {
       return NOT_ALLOWED_ERROR
@@ -198,10 +200,12 @@ export const generateMultimodalCompletion = async ({
     const interaction = await createInteraction({
       model,
       input: history,
-      ...(!model.includes('gemma')
+      system_instruction: isGemmaModel
+        ? gemmaSystemInstructions
+        : geminiSystemInstructions,
+      ...(!isGemmaModel
         ? {
             tools: [{ type: 'google_search' }, { type: 'url_context' }],
-            system_instruction: geminiSystemInstructions,
           }
         : {}),
     })

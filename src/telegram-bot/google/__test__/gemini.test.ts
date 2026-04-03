@@ -187,6 +187,44 @@ describe('gemini AI access control', () => {
 
       consoleSpy.mockRestore()
     })
+
+    test('passes text formatting instructions to gemma models without enabling tools', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      mockIsAiEnabledChat.mockReturnValue(true)
+
+      const message = { chat: { id: 123 } } as Message
+
+      await generateMultimodalCompletion({
+        prompt: 'test prompt',
+        message,
+        model: 'gemma-4-31b-it',
+        createInteraction: mockInteractionsCreate,
+      })
+
+      expect(mockInteractionsCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gemma-4-31b-it',
+          system_instruction: expect.stringContaining(
+            'Format responses for Telegram MarkdownV2',
+          ),
+        }),
+      )
+
+      const request = mockInteractionsCreate.mock.calls[0]?.[0] as {
+        system_instruction?: string
+        tools?: unknown
+      }
+
+      expect(request.tools).toBeUndefined()
+      expect(request.system_instruction).toContain(
+        'do not have access to web search or tools',
+      )
+      expect(request.system_instruction).not.toContain('use search first')
+
+      consoleSpy.mockRestore()
+    })
   })
 
   describe('generateImage', () => {

@@ -59,7 +59,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   setupOpenAiCommands(bot, { deferredCommands })
 
   // /de <text> - generate image with dat1co
-  // /gemma <text, image> - generate with Gemma model
+  // /gemma <text, image> - generate with Gemma 4 model
   setupDat1coCommands(bot, { deferredCommands })
 
   // /toggle - enable/disable agentic bot for the chat

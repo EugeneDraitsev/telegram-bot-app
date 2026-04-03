@@ -25,7 +25,7 @@ const GEMINI_FAILURE_MESSAGES = new Set([
   PROMPT_MISSING_ERROR,
 ])
 
-export const GEMMA_MODEL = 'gemma-3-12b-it'
+export const GEMMA_MODEL = 'gemma-4-31b-it'
 
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,

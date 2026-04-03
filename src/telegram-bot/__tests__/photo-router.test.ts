@@ -13,7 +13,7 @@ const setupImageGenerationOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
 )
 
 jest.mock('../google', () => ({
-  GEMMA_MODEL: 'gemma-3-12b-it',
+  GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
   setupImageGenerationGeminiCommands: (...args: unknown[]) =>
@@ -43,7 +43,7 @@ describe('handlePhotoMessage', () => {
     expect(setupMultimodalGeminiCommandsMock).toHaveBeenCalledWith(
       ctx,
       true,
-      'gemma-3-12b-it',
+      'gemma-4-31b-it',
     )
     expect(setupImageGenerationGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
