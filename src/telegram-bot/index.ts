@@ -48,12 +48,23 @@ bot.use(async (ctx, next) => {
   const { chat } = ctx
   const message = ctx.message as Message
   if (chat && message) {
-    const chat = await ctx
-      .getChat()
-      .catch((error) => logger.error({ err: error }, 'getChat error'))
+    const resolvedChat =
+      (await ctx.getChat().catch((error) => {
+        logger.error({ err: error }, 'getChat error')
+        return undefined
+      })) ?? chat
+
+    if (!resolvedChat?.id) {
+      logger.warn(
+        { chatId: chat.id },
+        'Skipping activity tracking: missing chat id',
+      )
+      await next()
+      return
+    }
 
     try {
-      await Promise.all([trackActivity(message, chat as Chat), next?.()])
+      await Promise.all([trackActivity(message, resolvedChat), next?.()])
     } catch (error) {
       logger.error({ error }, 'Root error')
     }

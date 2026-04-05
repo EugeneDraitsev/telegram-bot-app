@@ -63,7 +63,7 @@ function formatLevel(level: unknown) {
 }
 
 function toPrettyLine(record: LogRecord) {
-  const { time, level, levelLabel, msg, pid, hostname, ...rest } = record
+  const { time, level, levelLabel, msg, ...rest } = record
   const levelText = formatLevel(levelLabel ?? level)
   const ts = time
     ? new Date(time).toLocaleString('en-GB', {
@@ -75,8 +75,12 @@ function toPrettyLine(record: LogRecord) {
     : ''
   const coloredLevel = `${color}${levelText.toUpperCase().padEnd(5)}${color ? resetColor : ''}`
   const payload = msg ?? ''
-  const details = Object.keys(rest).length
-    ? inspect(rest, { colors: isTerminalOutput, depth: 2 })
+  const { ...prunedRest } = rest
+  delete prunedRest.pid
+  delete prunedRest.hostname
+
+  const details = Object.keys(prunedRest).length
+    ? inspect(prunedRest, { colors: isTerminalOutput, depth: 2 })
     : ''
 
   const prettyPayload =
