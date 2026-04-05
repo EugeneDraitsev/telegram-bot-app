@@ -87,26 +87,42 @@ function toPrettyLine(record: LogRecord) {
   return `${ts} ${coloredLevel} ${prettyPayload}${details ? ` ${details}` : ''}`
 }
 
+function formatPrettyStreamLine(line: string) {
+  const trimmed = line.trim()
+  if (!trimmed) {
+    return ''
+  }
+
+  try {
+    return `${toPrettyLine(JSON.parse(trimmed) as LogRecord)}\n`
+  } catch {
+    return `${trimmed}\n`
+  }
+}
+
+let pendingPrettyLine = ''
+
 const prettyStream = isPrettyEnabled
   ? new Writable({
       decodeStrings: false,
       write(chunk, _encoding, cb) {
-        const lines = String(chunk).split('\n')
-        const result = lines
-          .filter(Boolean)
-          .map((line) => {
-            const trimmed = line.trim()
-            if (!trimmed) {
-              return ''
-            }
+        const lines = `${pendingPrettyLine}${String(chunk)}`.split('\n')
+        pendingPrettyLine = lines.pop() || ''
 
-            try {
-              return `${toPrettyLine(JSON.parse(trimmed) as LogRecord)}\n`
-            } catch {
-              return `${line}\n`
-            }
+        const result = lines
+          .map((line) => {
+            return formatPrettyStreamLine(line)
           })
           .join('')
+
+        if (result.length > 0) {
+          process.stdout.write(result)
+        }
+        cb()
+      },
+      final(cb) {
+        const result = formatPrettyStreamLine(pendingPrettyLine)
+        pendingPrettyLine = ''
 
         if (result.length > 0) {
           process.stdout.write(result)

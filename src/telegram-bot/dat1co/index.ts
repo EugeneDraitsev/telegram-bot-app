@@ -51,7 +51,8 @@ export const setupGemmaDat1coCommands = async (
         return ctx.reply(message, { reply_parameters: { message_id: replyId } })
       })
       .catch((err) => {
-        logger.error(`Error (Gemma Dat1co): ${err.message}`)
+        const error = err instanceof Error ? err : new Error(String(err))
+        logger.error({ err: error }, 'Error (Gemma Dat1co)')
       })
   } finally {
     stopReaction()

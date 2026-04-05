@@ -98,7 +98,15 @@ export const getMultimodalCommandData = async (
     if (result.status === 'fulfilled') {
       files.push(result.value as { file_path?: string })
     } else {
-      logger.warn('getFile error: ', result.reason)
+      logger.warn(
+        {
+          err:
+            result.reason instanceof Error
+              ? result.reason
+              : new Error(String(result.reason)),
+        },
+        'getFile error',
+      )
     }
   }
 
@@ -413,8 +421,12 @@ export async function resolveMediaBuffers(
       buffers.push(r.value)
     } else if (r.status === 'rejected') {
       logger.warn(
+        {
+          err:
+            r.reason instanceof Error ? r.reason : new Error(String(r.reason)),
+          fileId: refs[i]?.fileId,
+        },
         `resolveMediaBuffers: download failed for ${refs[i]?.fileId}`,
-        r.reason,
       )
     }
   }

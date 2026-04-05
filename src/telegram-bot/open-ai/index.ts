@@ -21,6 +21,9 @@ const OPENAI_FAILURE_MESSAGES = new Set([
   PROMPT_MISSING_ERROR,
 ])
 
+const toError = (value: unknown) =>
+  value instanceof Error ? value : new Error(String(value))
+
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
   model: ChatModel = 'gpt-5-mini',
@@ -82,7 +85,8 @@ export const setupMultimodalOpenAiCommands = async (
         })
       })
       .catch((err) => {
-        logger.error(`Error (Open AI): ${err.message}`)
+        const error = toError(err)
+        logger.error({ err: error }, 'Error (Open AI)')
       })
   } finally {
     stopReaction()
@@ -136,9 +140,9 @@ export const setupImageGenerationOpenAiCommands = async (
         },
       )
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE
-      logger.error(`Generate Image error (Open AI): ${errorMessage}`)
+      const err = toError(error)
+      const errorMessage = err.message || DEFAULT_ERROR_MESSAGE
+      logger.error({ err }, 'Generate Image error (Open AI)')
       return ctx.reply(errorMessage, {
         reply_parameters: { message_id: replyId },
       })

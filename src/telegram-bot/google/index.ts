@@ -82,7 +82,8 @@ export const setupMultimodalGeminiCommands = async (
         return ctx.reply(message, { reply_parameters: { message_id: replyId } })
       })
       .catch((err) => {
-        logger.error(`Error (Gemini AI): ${err.message}`)
+        const error = err instanceof Error ? err : new Error(String(err))
+        logger.error({ err: error }, 'Error (Gemini AI)')
       })
   } finally {
     stopReaction()
