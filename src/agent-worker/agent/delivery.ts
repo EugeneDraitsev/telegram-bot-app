@@ -3,9 +3,9 @@ import { InputFile } from 'grammy/web'
 import {
   cleanGeminiMessage,
   formatTelegramMarkdownV2,
+  logger,
   saveBotReplyToHistory,
 } from '@tg-bot/common'
-import { logger } from '../logger'
 import type {
   AgentResponse,
   AnimationResponse,

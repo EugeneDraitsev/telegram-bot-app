@@ -1,3 +1,4 @@
+import { logger } from '@tg-bot/common'
 import { normalize } from '@tg-bot/common/utils'
 
 const timeout = 10_000
@@ -63,7 +64,7 @@ export const getHoroscope = async (query: string): Promise<string> => {
       formatHoroscopeResponse(today),
     )}\n\n<b>Завтра:</b>\n\n${formatHoroscopeResponse(tomorrow)}`
   } catch (e) {
-    console.error('getHoroscope error: ', e)
+    logger.error({ error: e }, 'getHoroscope error')
     return 'Request error 😿'
   }
 }

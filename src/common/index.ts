@@ -1,4 +1,5 @@
 export * from './aws'
+export * from './logger'
 export * from './types'
 export * from './upstash'
 export * from './utils'

@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import { clearOldMessages } from '@tg-bot/common'
+import { clearOldMessages, logger } from '@tg-bot/common'
 
 const redisSchedulerHandler: APIGatewayProxyHandler = async () => {
   try {
@@ -8,7 +8,7 @@ const redisSchedulerHandler: APIGatewayProxyHandler = async () => {
 
     return { body: '', statusCode: 200 }
   } catch (e) {
-    console.error('redisSchedulerHandler error: ', e)
+    logger.error({ error: e }, 'redisSchedulerHandler error')
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),
       // we need to send 200 here to avoid issue with telegram attempts to resend you a message

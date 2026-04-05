@@ -1,3 +1,4 @@
+import { logger } from '@tg-bot/common'
 import type { CurrenciesResponse } from './index'
 
 const timeout = 10_000
@@ -46,7 +47,7 @@ const getBynRates = async () => {
       EUR: eurRate,
     }
   } catch (e) {
-    console.error('Can not fetch BYN rates', e)
+    logger.error({ error: e }, 'Can not fetch BYN rates')
     return {}
   }
 }

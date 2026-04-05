@@ -1,3 +1,4 @@
+import { logger } from '../logger'
 import { getRedisClient } from './client'
 
 const DYNAMIC_TOOLS_PREFIX = 'agent-dynamic-tools'
@@ -89,7 +90,7 @@ export async function getDynamicToolsRawByScope(
     const rawData = await redis.get<unknown>(getDynamicToolsKey(scope))
     return parseDynamicToolsPayload(rawData)
   } catch (error) {
-    console.error('Error getting dynamic tools:', error)
+    logger.error({ error }, 'Error getting dynamic tools')
     return []
   }
 }
@@ -109,7 +110,7 @@ export async function saveDynamicToolsRaw(
     })
     return true
   } catch (error) {
-    console.error('Error saving dynamic tools:', error)
+    logger.error({ error }, 'Error saving dynamic tools')
     return false
   }
 }

@@ -1,11 +1,12 @@
 import type { Bot } from 'grammy/web'
 
+import { logger } from '@tg-bot/common'
 import { getCryptoCurrency } from './crypto-currency'
 import { getMainCurrencies } from './main-currency'
 import { getRussianCurrency } from './russian-currency'
 
 const getError = (err: Error, from: string): string => {
-  console.error(`Can't fetch currency from ${from}`, err)
+  logger.error({ error: err }, `Can't fetch currency from ${from}`)
   return `Can't fetch currency from ${from}\n`
 }
 
@@ -33,7 +34,7 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
 
     return { rates: conversion_rates, provider: 'ExchangeRate' }
   } catch (e) {
-    console.error('ExchangeRate API error', e)
+    logger.error({ error: e }, 'ExchangeRate API error')
     const url = 'http://data.fixer.io/api/latest'
     const params = new URLSearchParams({
       access_key: process.env.FIXER_API_KEY || 'set_your_token',

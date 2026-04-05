@@ -1,6 +1,10 @@
 import type { Message } from 'telegram-typings'
 
-import { collectMessageImageFileIds, invokeAgentLambda } from '@tg-bot/common'
+import {
+  collectMessageImageFileIds,
+  invokeAgentLambda,
+  logger,
+} from '@tg-bot/common'
 
 export interface AgentPayload {
   message: Message
@@ -27,6 +31,6 @@ export async function handleMessageWithAgent(message: Message): Promise<void> {
   try {
     await invokeAgentLambda(payload)
   } catch (error) {
-    console.error('Failed to invoke agent Lambda', error)
+    logger.error({ error }, 'Failed to invoke agent Lambda')
   }
 }

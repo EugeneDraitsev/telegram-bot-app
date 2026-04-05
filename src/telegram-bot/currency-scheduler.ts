@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import { createBot } from '@tg-bot/common'
+import { createBot, logger } from '@tg-bot/common'
 import { getCurrencyMessage } from './currency'
 
 const bot = createBot()
@@ -17,7 +17,7 @@ const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
 
     return { body: '', statusCode: 200 }
   } catch (e) {
-    console.error('currencySchedulerHandler error: ', e)
+    logger.error({ error: e }, 'currencySchedulerHandler error')
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),
       // we need to send 200 here to avoid issue with telegram attempts to resend you a message

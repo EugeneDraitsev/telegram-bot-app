@@ -1,5 +1,6 @@
 import type { Chat, User } from 'telegram-typings'
 
+import { logger } from '../../logger'
 import type { UserStat } from '../../types'
 import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
 
@@ -57,7 +58,7 @@ export const getFormattedChatStatistics = async (
             All messages: ${allMessagesCount.toLocaleString()}
             ${formattedUsers.join('\n')}`
   } catch (e) {
-    console.error('Error while fetching statistic', e)
+    logger.error({ error: e }, 'Error while fetching statistic')
     return 'Error while fetching statistic'
   }
 }

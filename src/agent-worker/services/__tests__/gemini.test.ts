@@ -19,7 +19,9 @@ jest.mock('@google/genai', () => ({
   })),
 }))
 
-jest.mock('../../logger', () => ({
+jest.mock('@tg-bot/common', () => ({
+  getErrorMessage: (error: unknown) =>
+    error instanceof Error ? error.message : String(error),
   logger: mockLogger,
 }))
 

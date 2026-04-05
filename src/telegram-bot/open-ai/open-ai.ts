@@ -10,6 +10,7 @@ import {
   buildOpenAiImagePrompt,
   DEFAULT_ERROR_MESSAGE,
   isAiEnabledChat,
+  logger,
   NOT_ALLOWED_ERROR,
   OPENAI_GPT_IMAGE_SIZE,
   PROMPT_MISSING_ERROR,
@@ -97,29 +98,39 @@ export const generateImage = async (
         return { image: imageData.url, text }
       }
 
-      console.warn(
+      logger.warn(
+        {
+          metadata: JSON.stringify({
+            hasB64: Boolean(imageData?.b64_json),
+            hasUrl: Boolean(imageData?.url),
+            revised_prompt: imageData?.revised_prompt,
+          }),
+        },
         `OpenAI image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
-        JSON.stringify({
-          hasB64: Boolean(imageData?.b64_json),
-          hasUrl: Boolean(imageData?.url),
-          revised_prompt: imageData?.revised_prompt,
-        }),
       )
     } catch (error) {
       lastError = error as Error
-      console.warn(
+      logger.warn(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : JSON.stringify(error, null, 2),
+        },
         `OpenAI image generation attempt ${attempt}/${maxRetries} failed`,
-        error instanceof Error ? error.message : error,
       )
     }
   }
 
   if (lastError) {
-    console.error('OpenAI image generation failed after all retries', lastError)
+    logger.error(
+      { error: lastError },
+      'OpenAI image generation failed after all retries',
+    )
     throw new Error(lastError.message || DEFAULT_ERROR_MESSAGE)
   }
 
-  console.error(
+  logger.error(
     'OpenAI image generation failed after all retries - empty response',
   )
   throw new Error('OpenAI returned empty response, please try again')
@@ -176,7 +187,7 @@ export const generateMultimodalCompletion = async (
 
     return message.content
   } catch (error) {
-    console.error('generateMultimodalCompletion error: ', error)
+    logger.error({ error }, 'generateMultimodalCompletion error')
     return DEFAULT_ERROR_MESSAGE
   }
 }

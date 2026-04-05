@@ -10,6 +10,7 @@
  * Both values are plain markdown strings. TTL is 90 days (refreshed on every write).
  */
 
+import { logger } from '../logger'
 import { getRedisClient } from './client'
 
 export const MEMORY_PREFIX = 'memory'
@@ -32,7 +33,7 @@ export async function getChatMemory(chatId: string | number): Promise<string> {
     const value = await redis.get<string>(chatMemoryKey(chatId))
     return value ?? ''
   } catch (error) {
-    console.error('Error getting chat memory:', error)
+    logger.error({ error }, 'Error getting chat memory')
     return ''
   }
 }
@@ -58,7 +59,7 @@ export async function setChatMemory(
     })
     return true
   } catch (error) {
-    console.error('Error saving chat memory:', error)
+    logger.error({ error }, 'Error saving chat memory')
     return false
   }
 }
@@ -74,7 +75,7 @@ export async function getGlobalMemory(): Promise<string> {
     const value = await redis.get<string>(MEMORY_GLOBAL_KEY)
     return value ?? ''
   } catch (error) {
-    console.error('Error getting global memory:', error)
+    logger.error({ error }, 'Error getting global memory')
     return ''
   }
 }
@@ -97,7 +98,7 @@ export async function setGlobalMemory(content: string): Promise<boolean> {
     })
     return true
   } catch (error) {
-    console.error('Error saving global memory:', error)
+    logger.error({ error }, 'Error saving global memory')
     return false
   }
 }

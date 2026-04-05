@@ -1,7 +1,6 @@
 import type { GenerateContentResponse } from '@google/genai'
 
-import { type MetricStatus, recordMetric } from '@tg-bot/common'
-import { logger } from '../logger'
+import { logger, type MetricStatus, recordMetric } from '@tg-bot/common'
 import { MAX_RETRIES, RETRY_BASE_DELAY_MS } from './config'
 import {
   ai,

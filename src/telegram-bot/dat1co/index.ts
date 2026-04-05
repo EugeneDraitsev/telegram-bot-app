@@ -6,6 +6,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  logger,
   startCommandReaction,
 } from '@tg-bot/common'
 import { generateGemmaCompletion, generateImageDat1co } from './dat1co'
@@ -22,7 +23,7 @@ export const setupGemmaDat1coCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error('Failed to invoke reply worker', error),
       )
     } finally {
       stopReaction()
@@ -50,7 +51,7 @@ export const setupGemmaDat1coCommands = async (
         return ctx.reply(message, { reply_parameters: { message_id: replyId } })
       })
       .catch((err) => {
-        console.error(`Error (Gemma Dat1co): ${err.message}`)
+        logger.error(`Error (Gemma Dat1co): ${err.message}`)
       })
   } finally {
     stopReaction()
@@ -68,7 +69,7 @@ export const setupImageGenerationDat1coCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error('Failed to invoke reply worker', error),
       )
     } finally {
       stopReaction()
@@ -90,7 +91,7 @@ export const setupImageGenerationDat1coCommands = async (
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE
-      console.error(`Generate Image error (Dat1co): ${errorMessage}`)
+      logger.error(`Generate Image error (Dat1co): ${errorMessage}`)
       return ctx.reply(errorMessage, {
         reply_parameters: { message_id: replyId },
       })

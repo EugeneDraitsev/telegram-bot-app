@@ -7,6 +7,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  logger,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
   startCommandReaction,
@@ -33,7 +34,7 @@ export const setupMultimodalOpenAiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error('Failed to invoke reply worker', error),
       )
     } finally {
       stopReaction()
@@ -75,13 +76,13 @@ export const setupMultimodalOpenAiCommands = async (
         parse_mode: normalizedMessage ? 'MarkdownV2' : undefined,
       })
       .catch((err) => {
-        console.error(err)
+        logger.error(err)
         return ctx.reply(normalizedMessage || DEFAULT_ERROR_MESSAGE, {
           reply_parameters: { message_id: replyId },
         })
       })
       .catch((err) => {
-        console.error(`Error (Open AI): ${err.message}`)
+        logger.error(`Error (Open AI): ${err.message}`)
       })
   } finally {
     stopReaction()
@@ -101,7 +102,7 @@ export const setupImageGenerationOpenAiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error('Failed to invoke reply worker', error),
       )
     } finally {
       stopReaction()
@@ -137,7 +138,7 @@ export const setupImageGenerationOpenAiCommands = async (
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE
-      console.error(`Generate Image error (Open AI): ${errorMessage}`)
+      logger.error(`Generate Image error (Open AI): ${errorMessage}`)
       return ctx.reply(errorMessage, {
         reply_parameters: { message_id: replyId },
       })

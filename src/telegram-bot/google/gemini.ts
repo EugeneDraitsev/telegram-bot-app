@@ -11,6 +11,7 @@ import {
   getHistory,
   getRawHistory,
   isAiEnabledChat,
+  logger,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
   resolveHistoryMediaAttachments,
@@ -154,7 +155,7 @@ export const generateMultimodalCompletion = async ({
     const history = (await getHistory(chatId)) as InteractionInput[]
     const historyImageInputs = await getHistoryImageInputs(message, api).catch(
       (error) => {
-        console.warn('getHistoryImageInputs error: ', error)
+        logger.warn({ error }, 'getHistoryImageInputs error')
         return [] as InteractionInput[]
       },
     )
@@ -219,7 +220,7 @@ export const generateMultimodalCompletion = async ({
 
     return cleanGeminiMessage(text)
   } catch (error) {
-    console.error('gemini generateMultimodalCompletion error: ', error)
+    logger.error({ error }, 'gemini generateMultimodalCompletion error')
     const errorMessage = error instanceof Error ? error.message : String(error)
     if (errorMessage.includes('Missing text in content of type text')) {
       return EMPTY_RESPONSE_ERROR
@@ -301,24 +302,26 @@ export async function generateImage(
         }
       }
 
-      console.warn(
+      logger.warn(
+        {
+          metadata: JSON.stringify({
+            hasText: Boolean(parsedText),
+            parsedText,
+            outputs: interaction.outputs,
+          }),
+        },
         `Gemini image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
-        JSON.stringify({
-          hasText: Boolean(parsedText),
-          parsedText,
-          outputs: interaction.outputs,
-        }),
       )
     }
 
     if (!fallbackText) {
-      console.error('Error empty gemini response after all retries')
+      logger.error('Error empty gemini response after all retries')
       return { text: EMPTY_RESPONSE_ERROR, image: null }
     }
 
     return { text: fallbackText }
   } catch (error) {
-    console.error('Error generating gemini image:', error)
+    logger.error({ error }, 'Error generating gemini image')
     return {
       text: error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE,
     }

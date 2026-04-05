@@ -6,11 +6,12 @@ import {
   type BotIdentity,
   createBot,
   getMediaGroupMessages,
+  getMessageLogMeta,
   getMultimodalMediaData,
   isAgenticChatEnabled,
+  logger,
 } from '@tg-bot/common'
 import { runAgenticLoop } from './agent'
-import { getMessageLogMeta, logger } from './logger'
 
 const bot = createBot()
 
