@@ -7,7 +7,7 @@
     "@giphy/js-fetch-api": "^5.7.0",
     "@google/genai": "^1.48.0",
     "@upstash/redis": "^1.37.0",
-    "grammy": "^1.41.1",
+    "grammy": "^1.42.0",
     "openai": "^6.33.0",
     "sharp": "^0.34.5",
     "zod": "^4.3.6"

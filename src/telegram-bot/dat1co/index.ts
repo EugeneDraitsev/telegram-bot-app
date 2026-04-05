@@ -23,7 +23,7 @@ export const setupGemmaDat1coCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        logger.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
@@ -69,7 +69,7 @@ export const setupImageGenerationDat1coCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        logger.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()

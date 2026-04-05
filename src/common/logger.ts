@@ -21,8 +21,12 @@ const isPrettyEnabled =
   isLocalPrettyLog
 
 const loggerOptions = {
-  level: process.env.LOG_LEVEL ?? process.env.AGENT_WORKER_LOG_LEVEL ?? 'info',
+  level: process.env.AGENT_WORKER_LOG_LEVEL ?? process.env.LOG_LEVEL ?? 'info',
   base: null,
+  serializers: {
+    err: pino.stdSerializers.err,
+    error: pino.stdSerializers.err,
+  },
 }
 
 const levelByNumber = new Map<number, string>([
@@ -69,7 +73,7 @@ function toPrettyLine(record: LogRecord) {
   const color = isTerminalOutput
     ? (levelColor[levelText as keyof typeof levelColor] ?? '')
     : ''
-  const coloredLevel = `${color}${levelText.toUpperCase().padEnd(5)}${resetColor}`
+  const coloredLevel = `${color}${levelText.toUpperCase().padEnd(5)}${color ? resetColor : ''}`
   const payload = msg ?? ''
   const details = Object.keys(rest).length
     ? inspect(rest, { colors: isTerminalOutput, depth: 2 })

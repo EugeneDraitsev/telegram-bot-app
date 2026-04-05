@@ -100,7 +100,7 @@ export async function saveBotReplyToHistory(messageLike: unknown) {
   }
 
   await saveMessage(message, chatId).catch((error) =>
-    logger.error('saveHistory error: ', error),
+    logger.error({ err: error }, 'saveHistory error'),
   )
 }
 

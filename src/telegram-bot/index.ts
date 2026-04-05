@@ -34,13 +34,13 @@ async function trackActivity(message: Message, chat: Chat) {
   if (isAiEnabledChat(chat.id)) {
     tasks.push(
       saveMessage(message, chat.id).catch((error) =>
-        logger.error('saveHistory error: ', error),
+        logger.error({ err: error }, 'saveHistory error'),
       ),
     )
   }
 
   await Promise.allSettled(tasks).catch((error) =>
-    logger.error('Tracking error: ', error),
+    logger.error({ err: error }, 'Tracking error'),
   )
 }
 
@@ -50,7 +50,7 @@ bot.use(async (ctx, next) => {
   if (chat && message) {
     const chat = await ctx
       .getChat()
-      .catch((error) => logger.error('getChat error: ', error))
+      .catch((error) => logger.error({ err: error }, 'getChat error'))
 
     try {
       await Promise.all([trackActivity(message, chat as Chat), next?.()])

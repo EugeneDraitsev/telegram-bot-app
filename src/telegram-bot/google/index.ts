@@ -41,7 +41,7 @@ export const setupMultimodalGeminiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        logger.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
@@ -101,7 +101,7 @@ export const setupImageGenerationGeminiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        logger.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
