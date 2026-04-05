@@ -90,9 +90,9 @@ export const setupImageGenerationDat1coCommands = async (
         { reply_parameters: { message_id: replyId } },
       )
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE
-      logger.error(`Generate Image error (Dat1co): ${errorMessage}`)
+      const err = error instanceof Error ? error : new Error(String(error))
+      const errorMessage = err.message || DEFAULT_ERROR_MESSAGE
+      logger.error({ err }, 'Generate Image error (Dat1co)')
       return ctx.reply(errorMessage, {
         reply_parameters: { message_id: replyId },
       })

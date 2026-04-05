@@ -55,6 +55,9 @@ export const generateImage = async (
   const maxRetries = 3
   let lastError: Error | undefined
 
+  const toError = (error: unknown) =>
+    error instanceof Error ? error : new Error(String(error))
+
   const requestImage = async (): Promise<OpenAi.Images.ImagesResponse> => {
     if (imagesData?.length && model === 'gpt-image-1.5') {
       const image: Uploadable[] = []
@@ -109,13 +112,11 @@ export const generateImage = async (
         `OpenAI image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
       )
     } catch (error) {
-      lastError = error as Error
+      const err = toError(error)
+      lastError = err
       logger.warn(
         {
-          error:
-            error instanceof Error
-              ? error.message
-              : JSON.stringify(error, null, 2),
+          err,
         },
         `OpenAI image generation attempt ${attempt}/${maxRetries} failed`,
       )

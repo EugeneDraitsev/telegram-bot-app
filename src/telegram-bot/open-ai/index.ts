@@ -79,7 +79,8 @@ export const setupMultimodalOpenAiCommands = async (
         parse_mode: normalizedMessage ? 'MarkdownV2' : undefined,
       })
       .catch((err) => {
-        logger.error(err)
+        const error = toError(err)
+        logger.error({ err: error }, 'Error (Open AI)')
         return ctx.reply(normalizedMessage || DEFAULT_ERROR_MESSAGE, {
           reply_parameters: { message_id: replyId },
         })
