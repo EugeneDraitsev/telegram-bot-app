@@ -132,12 +132,20 @@ export const getMultimodalCommandData = async (
 export async function getImageBuffers(imagesUrls: string[]) {
   const imagesData = await Promise.all(
     imagesUrls.map(async (url) => {
+      const toError = (value: unknown) =>
+        value instanceof Error ? value : new Error(String(value))
       try {
         const res = await fetch(url)
         const arrayBuffer = await res.arrayBuffer()
         return Buffer.from(arrayBuffer)
       } catch (error) {
-        logger.error(error)
+        logger.error(
+          {
+            err: toError(error),
+            imageUrl: url,
+          },
+          'getImageBuffers fetch error',
+        )
         return undefined
       }
     }),

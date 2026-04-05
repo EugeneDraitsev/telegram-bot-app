@@ -304,11 +304,11 @@ export async function generateImage(
 
       logger.warn(
         {
-          metadata: JSON.stringify({
+          metadata: {
             hasText: Boolean(parsedText),
             parsedText,
             outputs: interaction.outputs,
-          }),
+          },
         },
         `Gemini image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
       )

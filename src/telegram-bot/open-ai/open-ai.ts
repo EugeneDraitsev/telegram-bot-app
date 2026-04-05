@@ -103,11 +103,11 @@ export const generateImage = async (
 
       logger.warn(
         {
-          metadata: JSON.stringify({
+          metadata: {
             hasB64: Boolean(imageData?.b64_json),
             hasUrl: Boolean(imageData?.url),
             revised_prompt: imageData?.revised_prompt,
-          }),
+          },
         },
         `OpenAI image generation attempt ${attempt}/${maxRetries} failed - no image in response`,
       )
