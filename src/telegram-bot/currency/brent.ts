@@ -1,3 +1,5 @@
+import { logger } from '@tg-bot/common'
+
 const timeout = 10_000
 const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
 
@@ -17,7 +19,7 @@ const fetchYahoo = async () => {
 
   const data = await res.json()
   const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice
-  console.log(`[Source: Yahoo] Price: ${price}`)
+  logger.info(`[Source: Yahoo] Price: ${price}`)
   return price
 }
 
@@ -32,7 +34,7 @@ const fetchCnbc = async () => {
 
   const data = await res.json()
   const price = data?.FormattedQuoteResult?.FormattedQuote?.[0]?.last
-  console.log(`[Source: CNBC] Price: ${price}`)
+  logger.info(`[Source: CNBC] Price: ${price}`)
   return price ? Number(price) : undefined
 }
 
@@ -41,14 +43,17 @@ export const fetchBrentPrice = async () => {
     const priceCnbc = await fetchCnbc()
     if (priceCnbc !== undefined) return priceCnbc
   } catch (e) {
-    console.warn('CNBC failed, falling back to Yahoo...', getErrorMessage(e))
+    logger.warn(
+      { error: getErrorMessage(e) },
+      'CNBC failed, falling back to Yahoo...',
+    )
   }
 
   try {
     const priceYahoo = await fetchYahoo()
     if (priceYahoo !== undefined) return priceYahoo
   } catch (e) {
-    console.error('Yahoo also failed...', getErrorMessage(e))
+    logger.error({ error: getErrorMessage(e) }, 'Yahoo also failed...')
   }
 
   return undefined

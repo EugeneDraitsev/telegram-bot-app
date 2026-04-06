@@ -6,6 +6,7 @@
 import { Bot, type Context, type NextFunction } from 'grammy/web'
 import type { Message } from 'telegram-typings'
 
+import { logger } from '../logger'
 import { saveMessage } from '../upstash'
 import { cleanGeminiMessage, isAiEnabledChat } from './ai.utils'
 
@@ -99,7 +100,7 @@ export async function saveBotReplyToHistory(messageLike: unknown) {
   }
 
   await saveMessage(message, chatId).catch((error) =>
-    console.error('saveHistory error: ', error),
+    logger.error({ err: error }, 'saveHistory error'),
   )
 }
 

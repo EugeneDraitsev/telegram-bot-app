@@ -10,10 +10,10 @@ import {
   hasBotAddressSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
+  logger,
   mentionsAnotherAccount,
   mentionsOurBot,
 } from '@tg-bot/common'
-import { logger } from '../logger'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
 import { ai, FAST_MODEL } from './models'
 import { withTimeout } from './utils'

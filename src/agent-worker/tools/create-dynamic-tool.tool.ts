@@ -5,9 +5,9 @@
 import {
   getDynamicToolsRawByScope,
   getErrorMessage,
+  logger,
   saveDynamicToolsRaw,
 } from '@tg-bot/common'
-import { logger } from '../logger'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 import {

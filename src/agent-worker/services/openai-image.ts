@@ -8,8 +8,11 @@ import OpenAi from 'openai'
 import { toFile, type Uploadable } from 'openai/uploads'
 import type { ImageModel } from 'openai/resources'
 
-import { buildOpenAiImagePrompt, OPENAI_GPT_IMAGE_SIZE } from '@tg-bot/common'
-import { logger } from '../logger'
+import {
+  buildOpenAiImagePrompt,
+  logger,
+  OPENAI_GPT_IMAGE_SIZE,
+} from '@tg-bot/common'
 
 /** Model used by the generate_or_edit_image agent tool */
 export const IMAGE_MODEL: ImageModel = 'gpt-image-1.5'

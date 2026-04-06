@@ -5,6 +5,7 @@
 
 import type { Message } from 'telegram-typings'
 
+import { logger } from '../logger'
 import { isAiEnabledChat } from '../utils'
 import { getRedisClient } from './client'
 
@@ -132,7 +133,7 @@ async function readRawHistory(
 
     return normalizedLimit ? rawMessages.slice(-normalizedLimit) : rawMessages
   } catch (error) {
-    console.error('Error getting raw chat history:', error)
+    logger.error({ error }, 'Error getting raw chat history')
     return []
   }
 }
@@ -159,7 +160,7 @@ export const getHistory = async (chatId: string | number) => {
     const rawMessages = await getRawHistory(chatId)
     return getFormattedHistory(rawMessages)
   } catch (error) {
-    console.error('Error getting chat history:', error)
+    logger.error({ error }, 'Error getting chat history')
     return []
   }
 }
@@ -177,7 +178,7 @@ function getFormattedHistory(chatHistory: Message[]) {
       }
     })
   } catch (error) {
-    console.error('Error parsing or formatting chat history:', error)
+    logger.error({ error }, 'Error parsing or formatting chat history')
     return []
   }
 }

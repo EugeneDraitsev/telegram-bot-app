@@ -8,6 +8,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  logger,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
   startCommandReaction,
@@ -40,7 +41,7 @@ export const setupMultimodalGeminiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
@@ -81,7 +82,8 @@ export const setupMultimodalGeminiCommands = async (
         return ctx.reply(message, { reply_parameters: { message_id: replyId } })
       })
       .catch((err) => {
-        console.error(`Error (Gemini AI): ${err.message}`)
+        const error = err instanceof Error ? err : new Error(String(err))
+        logger.error({ err: error }, 'Error (Gemini AI)')
       })
   } finally {
     stopReaction()
@@ -100,7 +102,7 @@ export const setupImageGenerationGeminiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()

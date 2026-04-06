@@ -4,6 +4,7 @@ import {
   geminiSystemInstructions,
   getHistory,
   isAiEnabledChat,
+  logger,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
 } from '@tg-bot/common'
@@ -39,7 +40,7 @@ export async function generateGemmaCompletion(
   }
 
   if (!apiKey) {
-    console.error('DAT1CO_API_KEY is not set')
+    logger.error('DAT1CO_API_KEY is not set')
     return DEFAULT_ERROR_MESSAGE
   }
 
@@ -124,7 +125,7 @@ export async function generateGemmaCompletion(
 
     return cleanGeminiMessage(responseText)
   } catch (e) {
-    console.error('Error generating gemma completion with dat1co: ', e)
+    logger.error({ error: e }, 'Error generating gemma completion with dat1co')
     return DEFAULT_ERROR_MESSAGE
   }
 }
@@ -174,7 +175,7 @@ export async function generateImageDat1co(
     const data = await res.json()
     return Buffer.from(data.response, 'base64')
   } catch (e) {
-    console.error('Error generating image with dat1co: ', e)
+    logger.error({ error: e }, 'Error generating image with dat1co')
     return DEFAULT_ERROR_MESSAGE
   }
 }

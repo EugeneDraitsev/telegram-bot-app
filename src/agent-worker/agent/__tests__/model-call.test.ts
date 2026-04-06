@@ -1,16 +1,14 @@
 const mockGenerateContent = jest.fn()
 const mockRecordMetric = jest.fn()
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+}
 
 jest.mock('@tg-bot/common', () => ({
+  logger: mockLogger,
   recordMetric: mockRecordMetric,
-}))
-
-jest.mock('../../logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
 }))
 
 jest.mock('../config', () => ({

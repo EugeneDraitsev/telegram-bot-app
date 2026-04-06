@@ -6,6 +6,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  logger,
   startCommandReaction,
 } from '@tg-bot/common'
 import { generateGemmaCompletion, generateImageDat1co } from './dat1co'
@@ -22,7 +23,7 @@ export const setupGemmaDat1coCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
@@ -50,7 +51,8 @@ export const setupGemmaDat1coCommands = async (
         return ctx.reply(message, { reply_parameters: { message_id: replyId } })
       })
       .catch((err) => {
-        console.error(`Error (Gemma Dat1co): ${err.message}`)
+        const error = err instanceof Error ? err : new Error(String(err))
+        logger.error({ err: error }, 'Error (Gemma Dat1co)')
       })
   } finally {
     stopReaction()
@@ -68,7 +70,7 @@ export const setupImageGenerationDat1coCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
@@ -88,9 +90,9 @@ export const setupImageGenerationDat1coCommands = async (
         { reply_parameters: { message_id: replyId } },
       )
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE
-      console.error(`Generate Image error (Dat1co): ${errorMessage}`)
+      const err = error instanceof Error ? error : new Error(String(error))
+      const errorMessage = err.message || DEFAULT_ERROR_MESSAGE
+      logger.error({ err }, 'Generate Image error (Dat1co)')
       return ctx.reply(errorMessage, {
         reply_parameters: { message_id: replyId },
       })

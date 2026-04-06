@@ -13,14 +13,15 @@ import {
   formatHistoryForDisplay,
   getChatMemory,
   getGlobalMemory,
+  getMessageLogMeta,
   getMetricStatusFromError,
   getRecentRawHistory,
+  logger,
   type MetricStatus,
   recordMetric,
   resolveHistoryMediaAttachments,
   startTypingIndicator,
 } from '@tg-bot/common'
-import { getMessageLogMeta, logger } from '../logger'
 import { IMAGE_MODEL } from '../services/openai-image'
 import { VOICE_MODEL } from '../services/openai-tts'
 import {

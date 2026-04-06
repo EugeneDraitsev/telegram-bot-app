@@ -6,6 +6,7 @@ import {
   createBot,
   findCommand,
   isAiEnabledChat,
+  logger,
   saveBotMessageMiddleware,
   saveEvent,
   saveMessage,
@@ -33,13 +34,13 @@ async function trackActivity(message: Message, chat: Chat) {
   if (isAiEnabledChat(chat.id)) {
     tasks.push(
       saveMessage(message, chat.id).catch((error) =>
-        console.error('saveHistory error: ', error),
+        logger.error({ err: error }, 'saveHistory error'),
       ),
     )
   }
 
   await Promise.allSettled(tasks).catch((error) =>
-    console.error('Tracking error: ', error),
+    logger.error({ err: error }, 'Tracking error'),
   )
 }
 
@@ -47,14 +48,25 @@ bot.use(async (ctx, next) => {
   const { chat } = ctx
   const message = ctx.message as Message
   if (chat && message) {
-    const chat = await ctx
-      .getChat()
-      .catch((error) => console.error('getChat error: ', error))
+    const resolvedChat =
+      (await ctx.getChat().catch((error) => {
+        logger.error({ err: error }, 'getChat error')
+        return undefined
+      })) ?? chat
+
+    if (!resolvedChat?.id) {
+      logger.warn(
+        { chatId: chat.id },
+        'Skipping activity tracking: missing chat id',
+      )
+      await next()
+      return
+    }
 
     try {
-      await Promise.all([trackActivity(message, chat as Chat), next?.()])
+      await Promise.all([trackActivity(message, resolvedChat), next?.()])
     } catch (error) {
-      console.error('Root error: ', error)
+      logger.error({ error }, 'Root error')
     }
   }
 })
@@ -76,7 +88,7 @@ const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
       body: JSON.stringify({ body: event.body ?? '' }),
     }
   } catch (e) {
-    console.error('Bot handler error: ', e)
+    logger.error({ error: e }, 'Bot handler error')
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),
       // we need to send 200 here to avoid issue with telegram attempts to resend you a message

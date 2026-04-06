@@ -1,7 +1,7 @@
 import { webhookCallback } from 'grammy/web'
 import type { LambdaFunctionURLHandler } from 'aws-lambda'
 
-import { createBot, saveBotMessageMiddleware } from '@tg-bot/common'
+import { createBot, logger, saveBotMessageMiddleware } from '@tg-bot/common'
 import { setupAllCommands } from './setup-commands'
 
 const bot = createBot()
@@ -27,7 +27,7 @@ const telegramReplyWorker: LambdaFunctionURLHandler = async (
       body: JSON.stringify({ body: event.body ?? '' }),
     }
   } catch (e) {
-    console.error('telegramReplyWorker error: ', e)
+    logger.error({ error: e }, 'telegramReplyWorker error')
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),
       // we need to send 200 here to avoid issue with telegram attempts to resend you a message

@@ -1,6 +1,7 @@
 import type { Context } from 'grammy/web'
 import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
+import { logger } from '../logger'
 import type { ExtendedMessage } from '../types'
 
 export const isLink = (text = '') => text.includes('https://')
@@ -97,7 +98,15 @@ export const getMultimodalCommandData = async (
     if (result.status === 'fulfilled') {
       files.push(result.value as { file_path?: string })
     } else {
-      console.warn('getFile error: ', result.reason)
+      logger.warn(
+        {
+          err:
+            result.reason instanceof Error
+              ? result.reason
+              : new Error(String(result.reason)),
+        },
+        'getFile error',
+      )
     }
   }
 
@@ -123,12 +132,20 @@ export const getMultimodalCommandData = async (
 export async function getImageBuffers(imagesUrls: string[]) {
   const imagesData = await Promise.all(
     imagesUrls.map(async (url) => {
+      const toError = (value: unknown) =>
+        value instanceof Error ? value : new Error(String(value))
       try {
         const res = await fetch(url)
         const arrayBuffer = await res.arrayBuffer()
         return Buffer.from(arrayBuffer)
       } catch (error) {
-        console.error(error)
+        logger.error(
+          {
+            err: toError(error),
+            imageUrl: url,
+          },
+          'getImageBuffers fetch error',
+        )
         return undefined
       }
     }),
@@ -366,7 +383,7 @@ export async function resolveMediaBuffers(
 ): Promise<MediaBuffer[]> {
   const token = process.env.TOKEN
   if (!token) {
-    console.warn(
+    logger.warn(
       'resolveMediaBuffers: TOKEN env var is not set, skipping all media downloads',
     )
     return []
@@ -382,7 +399,7 @@ export async function resolveMediaBuffers(
       const res = await fetch(url)
 
       if (!res.ok) {
-        console.warn(
+        logger.warn(
           `Skipping file ${ref.fileId}: HTTP ${res.status} ${res.statusText}`,
         )
         return undefined
@@ -391,7 +408,7 @@ export async function resolveMediaBuffers(
       const arrayBuffer = await res.arrayBuffer()
 
       if (arrayBuffer.byteLength > MAX_INLINE_BYTES) {
-        console.warn(
+        logger.warn(
           `Skipping file ${ref.fileId}: ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)} MB exceeds limit`,
         )
         return undefined
@@ -411,9 +428,13 @@ export async function resolveMediaBuffers(
     if (r.status === 'fulfilled' && r.value) {
       buffers.push(r.value)
     } else if (r.status === 'rejected') {
-      console.warn(
+      logger.warn(
+        {
+          err:
+            r.reason instanceof Error ? r.reason : new Error(String(r.reason)),
+          fileId: refs[i]?.fileId,
+        },
         `resolveMediaBuffers: download failed for ${refs[i]?.fileId}`,
-        r.reason,
       )
     }
   }

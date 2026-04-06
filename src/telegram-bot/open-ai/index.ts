@@ -7,6 +7,7 @@ import {
   getMediaGroupMessages,
   getMultimodalCommandData,
   invokeReplyLambda,
+  logger,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
   startCommandReaction,
@@ -19,6 +20,9 @@ const OPENAI_FAILURE_MESSAGES = new Set([
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
 ])
+
+const toError = (value: unknown) =>
+  value instanceof Error ? value : new Error(String(value))
 
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
@@ -33,7 +37,7 @@ export const setupMultimodalOpenAiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
@@ -75,13 +79,15 @@ export const setupMultimodalOpenAiCommands = async (
         parse_mode: normalizedMessage ? 'MarkdownV2' : undefined,
       })
       .catch((err) => {
-        console.error(err)
+        const error = toError(err)
+        logger.error({ err: error }, 'Error (Open AI)')
         return ctx.reply(normalizedMessage || DEFAULT_ERROR_MESSAGE, {
           reply_parameters: { message_id: replyId },
         })
       })
       .catch((err) => {
-        console.error(`Error (Open AI): ${err.message}`)
+        const error = toError(err)
+        logger.error({ err: error }, 'Error (Open AI)')
       })
   } finally {
     stopReaction()
@@ -101,7 +107,7 @@ export const setupImageGenerationOpenAiCommands = async (
     try {
       // Wait only for Lambda async invoke ACK, not for worker execution.
       await invokeReplyLambda(commandData).catch((error) =>
-        console.error('Failed to invoke reply worker', error),
+        logger.error({ err: error }, 'Failed to invoke reply worker'),
       )
     } finally {
       stopReaction()
@@ -135,9 +141,9 @@ export const setupImageGenerationOpenAiCommands = async (
         },
       )
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE
-      console.error(`Generate Image error (Open AI): ${errorMessage}`)
+      const err = toError(error)
+      const errorMessage = err.message || DEFAULT_ERROR_MESSAGE
+      logger.error({ err }, 'Generate Image error (Open AI)')
       return ctx.reply(errorMessage, {
         reply_parameters: { message_id: replyId },
       })

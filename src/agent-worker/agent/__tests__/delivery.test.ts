@@ -1,17 +1,15 @@
 const mockSaveBotReplyToHistory = jest.fn()
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+}
 
 jest.mock('@tg-bot/common', () => ({
   cleanGeminiMessage: (text: string) => text,
   formatTelegramMarkdownV2: (text: string) => text,
+  logger: mockLogger,
   saveBotReplyToHistory: mockSaveBotReplyToHistory,
-}))
-
-jest.mock('../../logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
 }))
 
 import type { TelegramApi } from '../../types'

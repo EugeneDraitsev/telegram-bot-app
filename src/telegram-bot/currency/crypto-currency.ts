@@ -1,4 +1,4 @@
-import { round } from '@tg-bot/common'
+import { logger, round } from '@tg-bot/common'
 
 export interface OkxResponse {
   code: string
@@ -153,7 +153,7 @@ export const getCryptoCurrency = async (): Promise<string> => {
   try {
     return await getOkxData()
   } catch (e) {
-    console.error('OKX error: ', e)
+    logger.error({ error: e }, 'OKX error')
     return getPoloniexData()
   }
 }
