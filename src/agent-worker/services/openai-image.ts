@@ -6,16 +6,22 @@
 
 import OpenAi from 'openai'
 import { toFile, type Uploadable } from 'openai/uploads'
-import type { ImageModel } from 'openai/resources'
 
 import {
   buildOpenAiImagePrompt,
+  isOpenAiGptImageModel,
   logger,
+  OPENAI_GPT_IMAGE_MODEL,
   OPENAI_GPT_IMAGE_SIZE,
+  usesOpenAiMediumImageQuality,
 } from '@tg-bot/common'
 
+type SupportedImageModel = NonNullable<
+  OpenAi.Images.ImageGenerateParams['model']
+>
+
 /** Model used by the generate_or_edit_image agent tool */
-export const IMAGE_MODEL: ImageModel = 'gpt-image-1.5'
+export const IMAGE_MODEL: SupportedImageModel = OPENAI_GPT_IMAGE_MODEL
 
 const MAX_RETRIES = 3
 
@@ -39,7 +45,7 @@ export async function generateImageOpenAi(
   const requestPrompt = buildOpenAiImagePrompt(prompt)
 
   const requestImage = async (): Promise<OpenAi.Images.ImagesResponse> => {
-    if (inputImages?.length && IMAGE_MODEL === 'gpt-image-1.5') {
+    if (inputImages?.length && isOpenAiGptImageModel(IMAGE_MODEL)) {
       const images: Uploadable[] = []
       for (const buf of inputImages) {
         images.push(await toFile(buf, 'image.jpg', { type: 'image/jpeg' }))
@@ -58,7 +64,9 @@ export async function generateImageOpenAi(
     return openAi.images.generate({
       prompt: requestPrompt,
       model: IMAGE_MODEL,
-      quality: IMAGE_MODEL === 'gpt-image-1.5' ? 'medium' : 'standard',
+      quality: usesOpenAiMediumImageQuality(IMAGE_MODEL)
+        ? 'medium'
+        : 'standard',
       n: 1,
       size: OPENAI_GPT_IMAGE_SIZE,
     })

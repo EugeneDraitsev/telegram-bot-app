@@ -1,5 +1,6 @@
 import type { Context } from 'grammy/web'
 
+import { OPENAI_GPT_IMAGE_MODEL } from '@tg-bot/common'
 import {
   GEMMA_MODEL,
   setupImageGenerationGeminiCommands,
@@ -30,7 +31,7 @@ const photoRoutes: PhotoRoute[] = [
   {
     prefix: '/e',
     handler: (ctx, deferred) =>
-      setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', deferred),
+      setupImageGenerationOpenAiCommands(ctx, OPENAI_GPT_IMAGE_MODEL, deferred),
   },
   {
     prefix: '/gemma',

@@ -1,25 +1,32 @@
 import * as common from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from '../open-ai'
 
+const mockImageGenerate = jest.fn().mockResolvedValue({
+  data: [{ url: 'https://example.com/image.png' }],
+})
+const mockImageEdit = jest.fn().mockResolvedValue({
+  data: [{ url: 'https://example.com/image.png' }],
+})
+const mockChatCompletionCreate = jest.fn().mockResolvedValue({
+  choices: [{ message: { content: 'Test response' } }],
+})
+
 // Mock OpenAI
 jest.mock('openai', () => {
-  return jest.fn().mockImplementation(() => ({
-    images: {
-      generate: jest.fn().mockResolvedValue({
-        data: [{ url: 'https://example.com/image.png' }],
-      }),
-      edit: jest.fn().mockResolvedValue({
-        data: [{ url: 'https://example.com/image.png' }],
-      }),
-    },
-    chat: {
-      completions: {
-        create: jest.fn().mockResolvedValue({
-          choices: [{ message: { content: 'Test response' } }],
-        }),
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => ({
+      images: {
+        generate: mockImageGenerate,
+        edit: mockImageEdit,
       },
-    },
-  }))
+      chat: {
+        completions: {
+          create: mockChatCompletionCreate,
+        },
+      },
+    })),
+  }
 })
 
 const mockIsAiEnabledChat = jest.spyOn(common, 'isAiEnabledChat')
@@ -28,8 +35,15 @@ const NOT_ALLOWED_ERROR =
   'AI is not allowed for this chat. Contact @drrrrrrrr for details'
 
 describe('open-ai AI access control', () => {
+  beforeAll(() => {
+    process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key'
+  })
+
   beforeEach(() => {
     mockIsAiEnabledChat.mockReset()
+    mockImageGenerate.mockClear()
+    mockImageEdit.mockClear()
+    mockChatCompletionCreate.mockClear()
   })
 
   describe('generateImage', () => {
@@ -42,8 +56,44 @@ describe('open-ai AI access control', () => {
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(999)
     })
 
-    // Note: "proceeds" test skipped - requires complex OpenAI SDK mocking.
-    // The critical test (NOT_ALLOWED check) is covered above.
+    test('uses chatgpt-image-latest with wrapped prompt and auto size', async () => {
+      mockIsAiEnabledChat.mockReturnValue(true)
+
+      await generateImage(
+        'Draw album cover art',
+        123,
+        common.OPENAI_GPT_IMAGE_MODEL,
+      )
+
+      expect(mockImageGenerate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: common.OPENAI_GPT_IMAGE_MODEL,
+          quality: 'medium',
+          size: common.OPENAI_GPT_IMAGE_SIZE,
+          prompt: expect.stringContaining('Composition note:'),
+        }),
+      )
+    })
+
+    test('edits input images with chatgpt-image-latest', async () => {
+      mockIsAiEnabledChat.mockReturnValue(true)
+
+      await generateImage(
+        'Extend this image',
+        123,
+        common.OPENAI_GPT_IMAGE_MODEL,
+        [Buffer.from('image')],
+      )
+
+      expect(mockImageEdit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: common.OPENAI_GPT_IMAGE_MODEL,
+          quality: 'medium',
+          size: common.OPENAI_GPT_IMAGE_SIZE,
+          prompt: expect.stringContaining('Composition note:'),
+        }),
+      )
+    })
   })
 
   describe('generateMultimodalCompletion', () => {

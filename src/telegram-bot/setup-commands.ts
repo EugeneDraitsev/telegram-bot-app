@@ -55,7 +55,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /f <text?> - get weather forecast
   setupExternalApisCommands(bot)
 
-  // /e, /ee <text, image> - generate or edit images with gpt-image-1.5
+  // /e, /ee <text, image> - generate or edit images with chatgpt-image-latest
   setupOpenAiCommands(bot, { deferredCommands })
 
   // /de <text> - generate image with dat1co

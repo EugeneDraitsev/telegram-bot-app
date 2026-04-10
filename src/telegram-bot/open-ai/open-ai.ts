@@ -1,21 +1,23 @@
 import OpenAi from 'openai'
 import { toFile, type Uploadable } from 'openai/uploads'
-import type {
-  ChatCompletionContentPart,
-  ChatModel,
-  ImageModel,
-} from 'openai/resources'
+import type { ChatCompletionContentPart, ChatModel } from 'openai/resources'
 
 import {
   buildOpenAiImagePrompt,
   DEFAULT_ERROR_MESSAGE,
   isAiEnabledChat,
+  isOpenAiGptImageModel,
   logger,
   NOT_ALLOWED_ERROR,
   OPENAI_GPT_IMAGE_SIZE,
   PROMPT_MISSING_ERROR,
   systemInstructions,
+  usesOpenAiMediumImageQuality,
 } from '@tg-bot/common'
+
+export type SupportedImageModel = NonNullable<
+  OpenAi.Images.ImageGenerateParams['model']
+>
 
 let openAiClient: OpenAi | null = null
 
@@ -36,7 +38,7 @@ function getOpenAiClient(): OpenAi {
 export const generateImage = async (
   prompt: string,
   chatId: string | number,
-  model: ImageModel,
+  model: SupportedImageModel,
   imagesData?: Buffer[],
 ): Promise<{ image: string | Buffer; text?: string }> => {
   if (!isAiEnabledChat(chatId)) {
@@ -47,7 +49,7 @@ export const generateImage = async (
   }
 
   const openAi = getOpenAiClient()
-  const isGptImageModel = model.startsWith('gpt-image-')
+  const isGptImageModel = isOpenAiGptImageModel(model)
   const requestPrompt = isGptImageModel
     ? buildOpenAiImagePrompt(prompt)
     : prompt
@@ -59,7 +61,7 @@ export const generateImage = async (
     error instanceof Error ? error : new Error(String(error))
 
   const requestImage = async (): Promise<OpenAi.Images.ImagesResponse> => {
-    if (imagesData?.length && model === 'gpt-image-1.5') {
+    if (imagesData?.length && isGptImageModel) {
       const image: Uploadable[] = []
       for (const imageData of imagesData) {
         image.push(await toFile(imageData, 'image.jpg', { type: 'image/jpeg' }))
@@ -77,7 +79,7 @@ export const generateImage = async (
 
     return openAi.images.generate({
       prompt: requestPrompt,
-      quality: model === 'gpt-image-1.5' ? 'medium' : 'standard',
+      quality: usesOpenAiMediumImageQuality(model) ? 'medium' : 'standard',
       model,
       n: 1,
       size: isGptImageModel ? OPENAI_GPT_IMAGE_SIZE : '1024x1024',

@@ -1,5 +1,5 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
-import type { ChatModel, ImageModel } from 'openai/resources'
+import type { ChatModel } from 'openai/resources'
 
 import {
   DEFAULT_ERROR_MESSAGE,
@@ -9,11 +9,16 @@ import {
   invokeReplyLambda,
   logger,
   NOT_ALLOWED_ERROR,
+  OPENAI_GPT_IMAGE_MODEL,
   PROMPT_MISSING_ERROR,
   startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
-import { generateImage, generateMultimodalCompletion } from './open-ai'
+import {
+  generateImage,
+  generateMultimodalCompletion,
+  type SupportedImageModel,
+} from './open-ai'
 
 const OPENAI_FAILURE_MESSAGES = new Set([
   DEFAULT_ERROR_MESSAGE,
@@ -96,7 +101,7 @@ export const setupMultimodalOpenAiCommands = async (
 
 export const setupImageGenerationOpenAiCommands = async (
   ctx: Context,
-  model: ImageModel = 'gpt-image-1.5',
+  model: SupportedImageModel = OPENAI_GPT_IMAGE_MODEL,
   deferredCommands = false,
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
@@ -158,10 +163,18 @@ const setupOpenAiCommands = (
   { deferredCommands } = { deferredCommands: false },
 ) => {
   bot.command('e', (ctx) =>
-    setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', deferredCommands),
+    setupImageGenerationOpenAiCommands(
+      ctx,
+      OPENAI_GPT_IMAGE_MODEL,
+      deferredCommands,
+    ),
   )
   bot.command('ee', (ctx) =>
-    setupImageGenerationOpenAiCommands(ctx, 'gpt-image-1.5', deferredCommands),
+    setupImageGenerationOpenAiCommands(
+      ctx,
+      OPENAI_GPT_IMAGE_MODEL,
+      deferredCommands,
+    ),
   )
 }
 
