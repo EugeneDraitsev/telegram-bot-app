@@ -4,8 +4,6 @@ import * as utils from '../../utils'
 import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
-  getHistory,
-  getRawHistory,
   getRecentRawHistory,
 } from '../chat-history'
 import * as client from '../client'
@@ -131,15 +129,6 @@ describe('formatHistoryForDisplay', () => {
 })
 
 describe('getRecentRawHistory', () => {
-  test('returns full raw history when no explicit limit is provided', async () => {
-    const messages = [createMessage(1), createMessage(2), createMessage(3)]
-    mockZrange.mockResolvedValue(messages)
-
-    const history = await getRawHistory(777)
-
-    expect(history).toEqual(messages)
-  })
-
   test('reads recent history through the same raw-history path and slices locally', async () => {
     mockZrange.mockResolvedValue([
       createMessage(1),
@@ -158,32 +147,5 @@ describe('getRecentRawHistory', () => {
       },
     )
     expect(history.map((message) => message.message_id)).toEqual([2, 3])
-  })
-
-  test('formats raw history entries for model interactions', async () => {
-    const messages = [
-      createMessage(1),
-      createMessage(2, {
-        from: {
-          id: 1002,
-          is_bot: true,
-          first_name: 'Bot',
-        },
-      }),
-    ]
-    mockZrange.mockResolvedValue(messages)
-
-    const history = await getHistory(777)
-
-    expect(history).toEqual([
-      {
-        role: 'user',
-        content: [{ type: 'text', text: JSON.stringify(messages[0]) }],
-      },
-      {
-        role: 'model',
-        content: [{ type: 'text', text: JSON.stringify(messages[1]) }],
-      },
-    ])
   })
 })
