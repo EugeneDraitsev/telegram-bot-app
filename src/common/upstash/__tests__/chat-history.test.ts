@@ -161,9 +161,14 @@ describe('getRecentRawHistory', () => {
     const recentHistory = await getRecentRawHistory(777, 2)
     const formattedHistory = await getHistory(777)
 
-    expect(mockZrange).toHaveBeenCalledTimes(3)
-    expect(mockZrange.mock.calls[0]).toEqual(mockZrange.mock.calls[1])
-    expect(mockZrange.mock.calls[1]).toEqual(mockZrange.mock.calls[2])
+    expect(mockZrange).toHaveBeenCalledWith(
+      'chat-history:777',
+      expect.any(Number),
+      expect.any(Number),
+      {
+        byScore: true,
+      },
+    )
 
     expect(rawHistory).toEqual(messages)
     expect(recentHistory).toEqual(messages.slice(-2))
