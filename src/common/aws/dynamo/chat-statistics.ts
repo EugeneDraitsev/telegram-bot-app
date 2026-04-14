@@ -22,14 +22,26 @@ const getChatStatistic = async (
   return result.Items?.[0] as ChatStat
 }
 
+export const getChatUsers = async (
+  chat_id: number | string,
+): Promise<UserStat[]> => {
+  try {
+    const result = await getChatStatistic(chat_id)
+    return result?.users ?? []
+  } catch (error) {
+    logger.error({ error }, 'Error while fetching chat users')
+    return []
+  }
+}
+
 export const getUsersList = async (
   chat_id: number | string,
   query: string,
 ): Promise<string> => {
   try {
-    const result = await getChatStatistic(chat_id)
+    const users = await getChatUsers(chat_id)
     return (
-      result.users
+      users
         .map((user: UserStat) => `@${user.username}`)
         .join(' ')
         .concat('\n') + query
