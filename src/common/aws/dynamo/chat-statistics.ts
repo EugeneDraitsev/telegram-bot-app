@@ -66,7 +66,7 @@ export const getChatUsers = async (
   }
 }
 
-export const getChatUsersOrThrow = (chat_id: number | string) =>
+export const getStoredChatUsers = (chat_id: number | string) =>
   readChatUsers(chat_id)
 
 export const getUsersList = async (
@@ -74,7 +74,7 @@ export const getUsersList = async (
   query: string,
 ): Promise<string> => {
   try {
-    const users = await getChatUsersOrThrow(chat_id)
+    const users = await getStoredChatUsers(chat_id)
     const mentions = users
       .map((user: UserStat) => `@${user.username}`)
       .join(' ')

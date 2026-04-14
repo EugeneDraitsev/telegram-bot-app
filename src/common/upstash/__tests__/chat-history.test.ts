@@ -4,6 +4,7 @@ import * as utils from '../../utils'
 import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
+  getRawHistory,
   getRecentRawHistory,
 } from '../chat-history'
 import * as client from '../client'
@@ -129,6 +130,36 @@ describe('formatHistoryForDisplay', () => {
 })
 
 describe('getRecentRawHistory', () => {
+  test('getRawHistory and getRecentRawHistory share the same Redis range query', async () => {
+    mockZrange.mockResolvedValue([
+      createMessage(1),
+      createMessage(2),
+      createMessage(3),
+    ])
+
+    await getRawHistory(777)
+    await getRecentRawHistory(777, 2)
+
+    expect(mockZrange).toHaveBeenNthCalledWith(
+      1,
+      'chat-history:777',
+      expect.any(Number),
+      expect.any(Number),
+      {
+        byScore: true,
+      },
+    )
+    expect(mockZrange).toHaveBeenNthCalledWith(
+      2,
+      'chat-history:777',
+      expect.any(Number),
+      expect.any(Number),
+      {
+        byScore: true,
+      },
+    )
+  })
+
   test('reads recent history through the same raw-history path and slices locally', async () => {
     mockZrange.mockResolvedValue([
       createMessage(1),

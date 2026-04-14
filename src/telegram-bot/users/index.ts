@@ -3,10 +3,10 @@ import type { Bot } from 'grammy/web'
 
 import {
   getChatName,
-  getChatUsersOrThrow,
   getCommandData,
   getFormattedChatStatistics,
   getFormattedMetrics,
+  getStoredChatUsers,
   isAiEnabledChat,
   logger,
 } from '@tg-bot/common'
@@ -139,20 +139,20 @@ const setupUsersCommands = (bot: Bot) => {
     }
 
     let mentionableUsers: Array<{ username: string }>
+    let totalMentionableUsers = 0
     try {
       mentionableUsers = filterMentionableUsers(
-        await getChatUsersOrThrow(chatId),
+        await getStoredChatUsers(chatId),
       )
     } catch (error) {
       logger.error({ chatId, error }, 'Failed to fetch /all chat users')
       return ctx.reply('Error while fetching users', replyOptions)
     }
 
-    if (mentionableUsers.length > MAX_ALL_MENTION_USERS) {
-      return ctx.reply(
-        `Too many valid usernames found for /all. Limit is ${MAX_ALL_MENTION_USERS} users.`,
-        replyOptions,
-      )
+    totalMentionableUsers = mentionableUsers.length
+    const isTruncated = totalMentionableUsers > MAX_ALL_MENTION_USERS
+    if (isTruncated) {
+      mentionableUsers = mentionableUsers.slice(0, MAX_ALL_MENTION_USERS)
     }
 
     const mentionBatches = buildAllMentionBatches(mentionableUsers, text)
@@ -173,6 +173,13 @@ const setupUsersCommands = (bot: Bot) => {
           chatId,
           message,
           buildBatchSendOptions(lastMessage.message_id, messageThreadId),
+        )
+      }
+
+      if (isTruncated) {
+        await ctx.reply(
+          `Sent mentions for first ${MAX_ALL_MENTION_USERS} of ${totalMentionableUsers} valid usernames.`,
+          replyOptions,
         )
       }
 
