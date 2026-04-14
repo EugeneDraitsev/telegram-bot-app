@@ -36,7 +36,6 @@ describe('users /all helpers', () => {
           { username: 'delta_4' },
           { username: 'echo_5' },
           { username: 'foxtrot_6' },
-          { username: 'shrt' },
         ],
         'wake up',
       ),

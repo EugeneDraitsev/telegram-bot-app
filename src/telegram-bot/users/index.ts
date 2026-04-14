@@ -16,6 +16,8 @@ const USERNAME_REGEX = /^[A-Za-z0-9_]+$/
 const TELEGRAM_USERNAME_MIN_LENGTH = 5
 const TELEGRAM_USERNAME_MAX_LENGTH = 32
 const ALL_MENTION_BATCH_SIZE = 5
+const MAX_ALL_MENTION_BATCHES = 10
+const MAX_ALL_MENTION_USERS = ALL_MENTION_BATCH_SIZE * MAX_ALL_MENTION_BATCHES
 
 interface MentionableUser {
   username?: string
@@ -76,12 +78,11 @@ function chunkUsers<T>(users: T[], chunkSize: number): T[][] {
 }
 
 export function buildAllMentionBatches(
-  users: MentionableUser[],
+  users: Array<{ username: string }>,
   query = '',
   chunkSize = ALL_MENTION_BATCH_SIZE,
 ): string[] {
-  const validUsers = filterMentionableUsers(users)
-  return chunkUsers(validUsers, chunkSize).map((userChunk, index) =>
+  return chunkUsers(users, chunkSize).map((userChunk, index) =>
     buildAllMessage(userChunk, index === 0 ? query : ''),
   )
 }
@@ -137,17 +138,24 @@ const setupUsersCommands = (bot: Bot) => {
       return
     }
 
-    let mentionBatches: string[]
+    let mentionableUsers: Array<{ username: string }>
     try {
-      mentionBatches = buildAllMentionBatches(
+      mentionableUsers = filterMentionableUsers(
         await getChatUsersOrThrow(chatId),
-        text,
       )
     } catch (error) {
       logger.error({ chatId, error }, 'Failed to fetch /all chat users')
       return ctx.reply('Error while fetching users', replyOptions)
     }
 
+    if (mentionableUsers.length > MAX_ALL_MENTION_USERS) {
+      return ctx.reply(
+        `Too many valid usernames found for /all. Limit is ${MAX_ALL_MENTION_USERS} users.`,
+        replyOptions,
+      )
+    }
+
+    const mentionBatches = buildAllMentionBatches(mentionableUsers, text)
     const [firstMessage, ...restMessages] = mentionBatches
     if (!firstMessage) {
       return ctx.reply('No valid usernames found', replyOptions)

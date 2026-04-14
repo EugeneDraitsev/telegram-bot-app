@@ -58,7 +58,10 @@ export const getChatUsers = async (
   try {
     return await readChatUsers(chat_id)
   } catch (error) {
-    logger.error({ error }, 'Error while fetching chat users')
+    logger.error(
+      { chatId: String(chat_id), error },
+      'Error while fetching chat users',
+    )
     return []
   }
 }
