@@ -9,6 +9,11 @@ interface ChatStat {
   id: string
 }
 
+const readChatUsers = async (chat_id: number | string): Promise<UserStat[]> => {
+  const result = await getChatStatistic(chat_id)
+  return result?.users ?? []
+}
+
 const getChatStatistic = async (
   chat_id: number | string,
 ): Promise<ChatStat> => {
@@ -26,26 +31,26 @@ export const getChatUsers = async (
   chat_id: number | string,
 ): Promise<UserStat[]> => {
   try {
-    const result = await getChatStatistic(chat_id)
-    return result?.users ?? []
+    return await readChatUsers(chat_id)
   } catch (error) {
     logger.error({ error }, 'Error while fetching chat users')
     return []
   }
 }
 
+export const getChatUsersOrThrow = (chat_id: number | string) =>
+  readChatUsers(chat_id)
+
 export const getUsersList = async (
   chat_id: number | string,
   query: string,
 ): Promise<string> => {
   try {
-    const users = await getChatUsers(chat_id)
-    return (
-      users
-        .map((user: UserStat) => `@${user.username}`)
-        .join(' ')
-        .concat('\n') + query
-    )
+    const users = await getChatUsersOrThrow(chat_id)
+    const mentions = users
+      .map((user: UserStat) => `@${user.username}`)
+      .join(' ')
+    return mentions ? `${mentions}\n${query}` : query
   } catch (_e) {
     return 'Error while fetching users'
   }

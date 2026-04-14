@@ -3,7 +3,7 @@ import type { Bot } from 'grammy/web'
 
 import {
   getChatName,
-  getChatUsers,
+  getChatUsersOrThrow,
   getCommandData,
   getFormattedChatStatistics,
   getFormattedMetrics,
@@ -11,20 +11,52 @@ import {
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 
-const USERNAME_REGEX = /^[A-Za-z0-9_]{3,}$/
+const USERNAME_REGEX = /^[A-Za-z0-9_]+$/
+const TELEGRAM_USERNAME_MIN_LENGTH = 5
+const TELEGRAM_USERNAME_MAX_LENGTH = 32
 const ALL_MENTION_BATCH_SIZE = 5
 
-function getMentionLabel(user: { username: string }): string {
-  const normalized = user.username.trim()
-  return normalized.startsWith('@') ? normalized : `@${normalized}`
+interface MentionableUser {
+  id?: number
+  username?: string
 }
 
-function isTelegramUsername(username: string): boolean {
-  return USERNAME_REGEX.test(username.trim().replace(/^@/, ''))
+export function normalizeTelegramUsername(username: string): string {
+  return username.trim().replace(/^@/, '')
+}
+
+export function getMentionLabel(user: { username: string }): string {
+  return `@${normalizeTelegramUsername(user.username)}`
+}
+
+export function isTelegramUsername(username: string): boolean {
+  const normalized = normalizeTelegramUsername(username)
+  return (
+    normalized.length >= TELEGRAM_USERNAME_MIN_LENGTH &&
+    normalized.length <= TELEGRAM_USERNAME_MAX_LENGTH &&
+    USERNAME_REGEX.test(normalized)
+  )
 }
 
 function buildMentionMessage(users: Array<{ username: string }>) {
   return users.map((user) => getMentionLabel(user)).join(' ')
+}
+
+export function buildAllMessage(
+  users: Array<{ username: string }>,
+  query = '',
+): string {
+  const mentions = buildMentionMessage(users)
+  const normalizedQuery = query.trim()
+  return normalizedQuery ? `${mentions}\n${normalizedQuery}` : mentions
+}
+
+export function filterMentionableUsers(users: MentionableUser[]) {
+  return users.filter((user): user is { id: number; username: string } =>
+    Boolean(
+      user.id && user.username?.trim() && isTelegramUsername(user.username),
+    ),
+  )
 }
 
 function chunkUsers<T>(users: T[], chunkSize: number): T[][] {
@@ -35,6 +67,17 @@ function chunkUsers<T>(users: T[], chunkSize: number): T[][] {
   }
 
   return chunks
+}
+
+export function buildAllMentionBatches(
+  users: MentionableUser[],
+  query = '',
+  chunkSize = ALL_MENTION_BATCH_SIZE,
+): string[] {
+  const validUsers = filterMentionableUsers(users)
+  return chunkUsers(validUsers, chunkSize).map((userChunk, index) =>
+    buildAllMessage(userChunk, index === 0 ? query : ''),
+  )
 }
 
 const setupUsersCommands = (bot: Bot) => {
@@ -67,33 +110,36 @@ const setupUsersCommands = (bot: Bot) => {
 
   bot.command('all', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
-    const users = (await getChatUsers(ctx.chat?.id ?? '')).filter(
-      (user) =>
-        user.id && user.username?.trim() && isTelegramUsername(user.username),
-    )
+    const chatId = ctx.chat?.id
+    if (!chatId) {
+      return
+    }
 
-    if (users.length === 0) {
+    let fetchedUsers: Awaited<ReturnType<typeof getChatUsersOrThrow>>
+    try {
+      fetchedUsers = await getChatUsersOrThrow(chatId)
+    } catch {
       return ctx.reply('Error while fetching users', {
         reply_parameters: { message_id: replyId },
       })
     }
 
-    const userChunks = chunkUsers(users, ALL_MENTION_BATCH_SIZE)
-    const query = text.trim()
-    const [firstChunk, ...restChunks] = userChunks
+    const users = filterMentionableUsers(fetchedUsers)
 
-    const firstMentions = buildMentionMessage(firstChunk)
-    const firstMessage = query ? `${firstMentions}\n${query}` : firstMentions
+    if (users.length === 0) {
+      return ctx.reply('No valid usernames found', {
+        reply_parameters: { message_id: replyId },
+      })
+    }
 
-    let lastMessage = await ctx.api.sendMessage(ctx.chat.id, firstMessage, {
+    const [firstMessage, ...restMessages] = buildAllMentionBatches(users, text)
+
+    let lastMessage = await ctx.api.sendMessage(chatId, firstMessage, {
       reply_parameters: { message_id: replyId },
     })
 
-    for (const userChunk of restChunks) {
-      const mentions = buildMentionMessage(userChunk)
-      const message = query ? `${mentions}\n${query}` : mentions
-
-      lastMessage = await ctx.api.sendMessage(ctx.chat.id, message)
+    for (const message of restMessages) {
+      lastMessage = await ctx.api.sendMessage(chatId, message)
     }
 
     return lastMessage
