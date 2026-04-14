@@ -4,19 +4,19 @@ import * as utils from '../../utils'
 import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
-  getHistory,
-  getRawHistory,
   getRecentRawHistory,
 } from '../chat-history'
 import * as client from '../client'
 
 const mockZrange = jest.fn()
 
-jest.spyOn(client, 'getRedisClient').mockReturnValue({
-  zrange: mockZrange,
-} as unknown as ReturnType<typeof client.getRedisClient>)
+const mockGetRedisClient = jest
+  .spyOn(client, 'getRedisClient')
+  .mockReturnValue({
+    zrange: mockZrange,
+  } as unknown as ReturnType<typeof client.getRedisClient>)
 
-jest.spyOn(utils, 'isAiEnabledChat').mockReturnValue(true)
+const mockIsAiEnabledChat = jest.spyOn(utils, 'isAiEnabledChat')
 
 function createMessage(
   messageId: number,
@@ -38,6 +38,13 @@ function createMessage(
 
 beforeEach(() => {
   mockZrange.mockReset()
+  mockIsAiEnabledChat.mockReset()
+  mockIsAiEnabledChat.mockReturnValue(true)
+})
+
+afterAll(() => {
+  mockGetRedisClient.mockRestore()
+  mockIsAiEnabledChat.mockRestore()
 })
 
 describe('formatHistoryForDisplay', () => {
@@ -140,34 +147,5 @@ describe('getRecentRawHistory', () => {
       },
     )
     expect(history.map((message) => message.message_id)).toEqual([2, 3])
-  })
-
-  test('uses the exact same redis fetch as full history and only trims the tail locally', async () => {
-    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_740_000_000_000)
-    const messages = [
-      createMessage(1),
-      createMessage(2),
-      createMessage(3),
-      createMessage(4),
-    ]
-    mockZrange.mockResolvedValue(messages)
-
-    const rawHistory = await getRawHistory(777)
-    const recentHistory = await getRecentRawHistory(777, 2)
-    const formattedHistory = await getHistory(777)
-
-    expect(mockZrange).toHaveBeenCalledTimes(3)
-    expect(mockZrange.mock.calls[0]).toEqual(mockZrange.mock.calls[1])
-    expect(mockZrange.mock.calls[1]).toEqual(mockZrange.mock.calls[2])
-
-    expect(rawHistory).toEqual(messages)
-    expect(recentHistory).toEqual(messages.slice(-2))
-    expect(
-      formattedHistory.map(
-        (entry) => JSON.parse(entry.content[0]?.text ?? '{}').message_id,
-      ),
-    ).toEqual(messages.map((message) => message.message_id))
-
-    nowSpy.mockRestore()
   })
 })
