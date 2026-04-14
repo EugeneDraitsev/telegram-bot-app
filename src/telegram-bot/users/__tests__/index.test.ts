@@ -17,29 +17,26 @@ describe('users /all helpers', () => {
   test('filterMentionableUsers keeps only users with valid Telegram usernames', () => {
     expect(
       filterMentionableUsers([
-        { id: 1, username: 'alpha1' },
-        { id: 2, username: '@bravo_2' },
-        { id: 3, username: 'shrt' },
-        { id: 4, username: 'bad name' },
-        { id: 0, username: 'charlie_3' },
+        { username: 'alpha1' },
+        { username: '@bravo_2' },
+        { username: 'shrt' },
+        { username: 'bad name' },
+        {},
       ]),
-    ).toEqual([
-      { id: 1, username: 'alpha1' },
-      { id: 2, username: '@bravo_2' },
-    ])
+    ).toEqual([{ username: 'alpha1' }, { username: '@bravo_2' }])
   })
 
   test('buildAllMentionBatches batches by five and keeps query only in the first batch', () => {
     expect(
       buildAllMentionBatches(
         [
-          { id: 1, username: 'alpha1' },
-          { id: 2, username: '@bravo_2' },
-          { id: 3, username: 'charlie_3' },
-          { id: 4, username: 'delta_4' },
-          { id: 5, username: 'echo_5' },
-          { id: 6, username: 'foxtrot_6' },
-          { id: 7, username: 'shrt' },
+          { username: 'alpha1' },
+          { username: '@bravo_2' },
+          { username: 'charlie_3' },
+          { username: 'delta_4' },
+          { username: 'echo_5' },
+          { username: 'foxtrot_6' },
+          { username: 'shrt' },
         ],
         'wake up',
       ),
@@ -53,12 +50,12 @@ describe('users /all helpers', () => {
     expect(
       buildAllMentionBatches(
         [
-          { id: 1, username: 'alpha1' },
-          { id: 2, username: 'bravo_2' },
-          { id: 3, username: 'charlie_3' },
-          { id: 4, username: 'delta_4' },
-          { id: 5, username: 'echo_5' },
-          { id: 6, username: 'foxtrot_6' },
+          { username: 'alpha1' },
+          { username: 'bravo_2' },
+          { username: 'charlie_3' },
+          { username: 'delta_4' },
+          { username: 'echo_5' },
+          { username: 'foxtrot_6' },
         ],
         'wake up',
         0,

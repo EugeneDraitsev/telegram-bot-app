@@ -5,18 +5,43 @@ import type { UserStat } from '../../types'
 import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
 
 interface ChatStat {
+  chatId: string
+  chatInfo?: Chat
   users: UserStat[]
-  id: string
 }
 
-const readChatUsers = async (chat_id: number | string): Promise<UserStat[]> => {
-  const result = await getChatStatistic(chat_id)
-  return result?.users ?? []
+const isUserStat = (value: unknown): value is UserStat =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as Partial<UserStat>).id === 'number' &&
+  typeof (value as Partial<UserStat>).msgCount === 'number' &&
+  typeof (value as Partial<UserStat>).username === 'string'
+
+const toChatStat = (value: unknown): ChatStat | undefined => {
+  const chatStat = value as Partial<ChatStat> | null
+  if (
+    typeof chatStat !== 'object' ||
+    chatStat === null ||
+    typeof chatStat.chatId !== 'string'
+  ) {
+    return undefined
+  }
+
+  return {
+    chatId: chatStat.chatId,
+    chatInfo: chatStat.chatInfo,
+    users: Array.isArray(chatStat.users)
+      ? chatStat.users.filter(isUserStat)
+      : [],
+  }
 }
+
+const readChatUsers = async (chat_id: number | string): Promise<UserStat[]> =>
+  (await getChatStatistic(chat_id))?.users ?? []
 
 const getChatStatistic = async (
   chat_id: number | string,
-): Promise<ChatStat> => {
+): Promise<ChatStat | undefined> => {
   const params = {
     TableName: 'chat-statistics',
     ExpressionAttributeValues: { ':chatId': String(chat_id) },
@@ -24,7 +49,7 @@ const getChatStatistic = async (
   }
 
   const result = await dynamoQuery(params)
-  return result.Items?.[0] as ChatStat
+  return toChatStat(result.Items?.[0])
 }
 
 export const getChatUsers = async (
@@ -50,7 +75,7 @@ export const getUsersList = async (
     const mentions = users
       .map((user: UserStat) => `@${user.username}`)
       .join(' ')
-    return mentions ? `${mentions}\n${query}` : query
+    return [mentions, query].filter(Boolean).join('\n')
   } catch (_e) {
     return 'Error while fetching users'
   }

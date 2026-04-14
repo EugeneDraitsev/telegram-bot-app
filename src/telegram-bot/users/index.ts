@@ -8,6 +8,7 @@ import {
   getFormattedChatStatistics,
   getFormattedMetrics,
   isAiEnabledChat,
+  logger,
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 
@@ -17,16 +18,11 @@ const TELEGRAM_USERNAME_MAX_LENGTH = 32
 const ALL_MENTION_BATCH_SIZE = 5
 
 interface MentionableUser {
-  id?: number
   username?: string
 }
 
-export function normalizeTelegramUsername(username: string): string {
+function normalizeTelegramUsername(username: string): string {
   return username.trim().replace(/^@/, '')
-}
-
-export function getMentionLabel(user: { username: string }): string {
-  return `@${normalizeTelegramUsername(user.username)}`
 }
 
 export function isTelegramUsername(username: string): boolean {
@@ -39,10 +35,12 @@ export function isTelegramUsername(username: string): boolean {
 }
 
 function buildMentionMessage(users: Array<{ username: string }>) {
-  return users.map((user) => getMentionLabel(user)).join(' ')
+  return users
+    .map(({ username }) => `@${normalizeTelegramUsername(username)}`)
+    .join(' ')
 }
 
-export function buildAllMessage(
+function buildAllMessage(
   users: Array<{ username: string }>,
   query = '',
 ): string {
@@ -52,10 +50,8 @@ export function buildAllMessage(
 }
 
 export function filterMentionableUsers(users: MentionableUser[]) {
-  return users.filter((user): user is { id: number; username: string } =>
-    Boolean(
-      user.id && user.username?.trim() && isTelegramUsername(user.username),
-    ),
+  return users.filter((user): user is { username: string } =>
+    Boolean(user.username?.trim() && isTelegramUsername(user.username)),
   )
 }
 
@@ -136,45 +132,47 @@ const setupUsersCommands = (bot: Bot) => {
     const { text, replyId } = getCommandData(ctx.message)
     const chatId = ctx.chat?.id
     const messageThreadId = ctx.message?.message_thread_id
+    const replyOptions = buildBatchSendOptions(replyId, messageThreadId)
     if (!chatId) {
       return
     }
 
-    let fetchedUsers: Awaited<ReturnType<typeof getChatUsersOrThrow>>
+    let mentionBatches: string[]
     try {
-      fetchedUsers = await getChatUsersOrThrow(chatId)
-    } catch {
-      return ctx.reply('Error while fetching users', {
-        reply_parameters: { message_id: replyId },
-      })
-    }
-
-    const [firstMessage, ...restMessages] = buildAllMentionBatches(
-      fetchedUsers,
-      text,
-    )
-
-    if (!firstMessage) {
-      return ctx.reply('No valid usernames found', {
-        reply_parameters: { message_id: replyId },
-      })
-    }
-
-    let lastMessage = await ctx.api.sendMessage(
-      chatId,
-      firstMessage,
-      buildBatchSendOptions(replyId, messageThreadId),
-    )
-
-    for (const message of restMessages) {
-      lastMessage = await ctx.api.sendMessage(
-        chatId,
-        message,
-        buildBatchSendOptions(lastMessage.message_id, messageThreadId),
+      mentionBatches = buildAllMentionBatches(
+        await getChatUsersOrThrow(chatId),
+        text,
       )
+    } catch (error) {
+      logger.error({ chatId, error }, 'Failed to fetch /all chat users')
+      return ctx.reply('Error while fetching users', replyOptions)
     }
 
-    return lastMessage
+    const [firstMessage, ...restMessages] = mentionBatches
+    if (!firstMessage) {
+      return ctx.reply('No valid usernames found', replyOptions)
+    }
+
+    try {
+      let lastMessage = await ctx.api.sendMessage(
+        chatId,
+        firstMessage,
+        replyOptions,
+      )
+
+      for (const message of restMessages) {
+        lastMessage = await ctx.api.sendMessage(
+          chatId,
+          message,
+          buildBatchSendOptions(lastMessage.message_id, messageThreadId),
+        )
+      }
+
+      return lastMessage
+    } catch (error) {
+      logger.error({ chatId, error }, 'Failed to send /all mention batches')
+      return ctx.reply('Failed to send all mention batches', replyOptions)
+    }
   })
 
   bot.command('x', async (ctx) => {
