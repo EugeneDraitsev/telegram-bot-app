@@ -59,11 +59,21 @@ export function filterMentionableUsers(users: MentionableUser[]) {
   )
 }
 
+function normalizeChunkSize(chunkSize: number): number {
+  if (!Number.isFinite(chunkSize)) {
+    return ALL_MENTION_BATCH_SIZE
+  }
+
+  const normalizedChunkSize = Math.trunc(chunkSize)
+  return normalizedChunkSize > 0 ? normalizedChunkSize : ALL_MENTION_BATCH_SIZE
+}
+
 function chunkUsers<T>(users: T[], chunkSize: number): T[][] {
   const chunks: T[][] = []
+  const safeChunkSize = normalizeChunkSize(chunkSize)
 
-  for (let index = 0; index < users.length; index += chunkSize) {
-    chunks.push(users.slice(index, index + chunkSize))
+  for (let index = 0; index < users.length; index += safeChunkSize) {
+    chunks.push(users.slice(index, index + safeChunkSize))
   }
 
   return chunks
@@ -78,6 +88,20 @@ export function buildAllMentionBatches(
   return chunkUsers(validUsers, chunkSize).map((userChunk, index) =>
     buildAllMessage(userChunk, index === 0 ? query : ''),
   )
+}
+
+export function buildBatchSendOptions(
+  replyToMessageId?: number,
+  messageThreadId?: number,
+) {
+  return {
+    ...(typeof replyToMessageId === 'number'
+      ? { reply_parameters: { message_id: replyToMessageId } }
+      : {}),
+    ...(typeof messageThreadId === 'number'
+      ? { message_thread_id: messageThreadId }
+      : {}),
+  }
 }
 
 const setupUsersCommands = (bot: Bot) => {
@@ -111,6 +135,7 @@ const setupUsersCommands = (bot: Bot) => {
   bot.command('all', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     const chatId = ctx.chat?.id
+    const messageThreadId = ctx.message?.message_thread_id
     if (!chatId) {
       return
     }
@@ -124,22 +149,29 @@ const setupUsersCommands = (bot: Bot) => {
       })
     }
 
-    const users = filterMentionableUsers(fetchedUsers)
+    const [firstMessage, ...restMessages] = buildAllMentionBatches(
+      fetchedUsers,
+      text,
+    )
 
-    if (users.length === 0) {
+    if (!firstMessage) {
       return ctx.reply('No valid usernames found', {
         reply_parameters: { message_id: replyId },
       })
     }
 
-    const [firstMessage, ...restMessages] = buildAllMentionBatches(users, text)
-
-    let lastMessage = await ctx.api.sendMessage(chatId, firstMessage, {
-      reply_parameters: { message_id: replyId },
-    })
+    let lastMessage = await ctx.api.sendMessage(
+      chatId,
+      firstMessage,
+      buildBatchSendOptions(replyId, messageThreadId),
+    )
 
     for (const message of restMessages) {
-      lastMessage = await ctx.api.sendMessage(chatId, message)
+      lastMessage = await ctx.api.sendMessage(
+        chatId,
+        message,
+        buildBatchSendOptions(lastMessage.message_id, messageThreadId),
+      )
     }
 
     return lastMessage
