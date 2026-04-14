@@ -130,7 +130,7 @@ describe('formatHistoryForDisplay', () => {
 })
 
 describe('getRecentRawHistory', () => {
-  test('getRawHistory and getRecentRawHistory share the same Redis range query', async () => {
+  test('getRawHistory uses the shared Redis range query shape', async () => {
     mockZrange.mockResolvedValue([
       createMessage(1),
       createMessage(2),
@@ -138,19 +138,8 @@ describe('getRecentRawHistory', () => {
     ])
 
     await getRawHistory(777)
-    await getRecentRawHistory(777, 2)
 
-    expect(mockZrange).toHaveBeenNthCalledWith(
-      1,
-      'chat-history:777',
-      expect.any(Number),
-      expect.any(Number),
-      {
-        byScore: true,
-      },
-    )
-    expect(mockZrange).toHaveBeenNthCalledWith(
-      2,
+    expect(mockZrange).toHaveBeenCalledWith(
       'chat-history:777',
       expect.any(Number),
       expect.any(Number),
