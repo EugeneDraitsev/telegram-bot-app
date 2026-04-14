@@ -1,18 +1,6 @@
 import type { Message } from 'telegram-typings'
 
-const mockIsAiEnabledChat = jest.fn()
-const mockZrange = jest.fn()
-
-jest.mock('../../utils', () => ({
-  isAiEnabledChat: mockIsAiEnabledChat,
-}))
-
-jest.mock('../client', () => ({
-  getRedisClient: jest.fn(() => ({
-    zrange: mockZrange,
-  })),
-}))
-
+import * as utils from '../../utils'
 import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
@@ -20,6 +8,17 @@ import {
   getRawHistory,
   getRecentRawHistory,
 } from '../chat-history'
+import * as client from '../client'
+
+const mockZrange = jest.fn()
+
+const mockGetRedisClient = jest
+  .spyOn(client, 'getRedisClient')
+  .mockReturnValue({
+    zrange: mockZrange,
+  } as unknown as ReturnType<typeof client.getRedisClient>)
+
+const mockIsAiEnabledChat = jest.spyOn(utils, 'isAiEnabledChat')
 
 function createMessage(
   messageId: number,
@@ -43,6 +42,11 @@ beforeEach(() => {
   mockZrange.mockReset()
   mockIsAiEnabledChat.mockReset()
   mockIsAiEnabledChat.mockReturnValue(true)
+})
+
+afterAll(() => {
+  mockGetRedisClient.mockRestore()
+  mockIsAiEnabledChat.mockRestore()
 })
 
 describe('formatHistoryForDisplay', () => {
