@@ -55,7 +55,11 @@ function buildAllMessage(
 
 export function filterMentionableUsers(users: MentionableUser[]) {
   return users.filter((user): user is { username: string } =>
-    Boolean(user.username?.trim() && isTelegramUsername(user.username) && !user.optedOut),
+    Boolean(
+      user.username?.trim() &&
+        isTelegramUsername(user.username) &&
+        !user.optedOut,
+    ),
   )
 }
 
