@@ -208,7 +208,7 @@ const setupUsersCommands = (bot: Bot) => {
     })
   })
 
-  bot.command('opt_out', async (ctx) => {
+  bot.command('all_opt_out', async (ctx) => {
     const chatId = ctx.chat?.id
     const userId = ctx.from?.id
     if (!chatId || !userId) return
@@ -223,12 +223,12 @@ const setupUsersCommands = (bot: Bot) => {
       }
       return ctx.reply('You have been removed from /all mentions.')
     } catch (error) {
-      logger.error({ chatId, userId, error }, 'Failed to process /opt_out')
+      logger.error({ chatId, userId, error }, 'Failed to process /all_opt_out')
       return ctx.reply('Failed to update your preference. Please try again.')
     }
   })
 
-  bot.command('opt_in', async (ctx) => {
+  bot.command('all_opt_in', async (ctx) => {
     const chatId = ctx.chat?.id
     const userId = ctx.from?.id
     if (!chatId || !userId) return
@@ -243,7 +243,7 @@ const setupUsersCommands = (bot: Bot) => {
       }
       return ctx.reply('You have been added back to /all mentions.')
     } catch (error) {
-      logger.error({ chatId, userId, error }, 'Failed to process /opt_in')
+      logger.error({ chatId, userId, error }, 'Failed to process /all_opt_in')
       return ctx.reply('Failed to update your preference. Please try again.')
     }
   })
