@@ -9,6 +9,7 @@ import {
   getStoredChatUsers,
   isAiEnabledChat,
   logger,
+  setUserOptOut,
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 
@@ -21,6 +22,7 @@ const MAX_ALL_MENTION_USERS = ALL_MENTION_BATCH_SIZE * MAX_ALL_MENTION_BATCHES
 
 interface MentionableUser {
   username?: string
+  optedOut?: boolean
 }
 
 function normalizeTelegramUsername(username: string): string {
@@ -53,7 +55,7 @@ function buildAllMessage(
 
 export function filterMentionableUsers(users: MentionableUser[]) {
   return users.filter((user): user is { username: string } =>
-    Boolean(user.username?.trim() && isTelegramUsername(user.username)),
+    Boolean(user.username?.trim() && isTelegramUsername(user.username) && !user.optedOut),
   )
 }
 
@@ -200,6 +202,46 @@ const setupUsersCommands = (bot: Bot) => {
       reply_parameters: { message_id: replyId },
       parse_mode: 'HTML',
     })
+  })
+
+  bot.command('opt_out', async (ctx) => {
+    const chatId = ctx.chat?.id
+    const userId = ctx.from?.id
+    if (!chatId || !userId) return
+
+    try {
+      const result = await setUserOptOut(chatId, userId, true)
+      if (result === 'no_chat' || result === 'no_user') {
+        return ctx.reply('You have no activity recorded in this chat.')
+      }
+      if (result === 'already_set') {
+        return ctx.reply('You are already excluded from /all mentions.')
+      }
+      return ctx.reply('You have been removed from /all mentions.')
+    } catch (error) {
+      logger.error({ chatId, userId, error }, 'Failed to process /opt_out')
+      return ctx.reply('Failed to update your preference. Please try again.')
+    }
+  })
+
+  bot.command('opt_in', async (ctx) => {
+    const chatId = ctx.chat?.id
+    const userId = ctx.from?.id
+    if (!chatId || !userId) return
+
+    try {
+      const result = await setUserOptOut(chatId, userId, false)
+      if (result === 'no_chat' || result === 'no_user') {
+        return ctx.reply('You have no activity recorded in this chat.')
+      }
+      if (result === 'already_set') {
+        return ctx.reply('You are already included in /all mentions.')
+      }
+      return ctx.reply('You have been added back to /all mentions.')
+    } catch (error) {
+      logger.error({ chatId, userId, error }, 'Failed to process /opt_in')
+      return ctx.reply('Failed to update your preference. Please try again.')
+    }
   })
 }
 

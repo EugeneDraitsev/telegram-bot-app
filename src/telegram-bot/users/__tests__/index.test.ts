@@ -26,6 +26,33 @@ describe('users /all helpers', () => {
     ).toEqual([{ username: 'alpha1' }, { username: '@bravo_2' }])
   })
 
+  test('filterMentionableUsers excludes users with optedOut set to true', () => {
+    const result = filterMentionableUsers([
+      { username: 'alpha1' },
+      { username: 'bravo_2', optedOut: true },
+      { username: 'charlie_3', optedOut: false },
+      { username: 'delta_44', optedOut: undefined },
+    ])
+    expect(result.map((u) => u.username)).toEqual([
+      'alpha1',
+      'charlie_3',
+      'delta_44',
+    ])
+  })
+
+  test('buildAllMentionBatches never includes opted-out users', () => {
+    const users = filterMentionableUsers([
+      { username: 'alpha1' },
+      { username: 'bravo_2', optedOut: true },
+      { username: 'charlie_3' },
+    ])
+    const batches = buildAllMentionBatches(users, 'hello')
+    const combined = batches.join(' ')
+    expect(combined).toContain('@alpha1')
+    expect(combined).toContain('@charlie_3')
+    expect(combined).not.toContain('@bravo_2')
+  })
+
   test('buildAllMentionBatches batches by five and keeps query only in the first batch', () => {
     expect(
       buildAllMentionBatches(

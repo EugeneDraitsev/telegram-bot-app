@@ -4,6 +4,7 @@ export interface UserStat {
   id: number
   msgCount: number
   username: string
+  optedOut?: boolean
 }
 
 export interface ChatEvent {
