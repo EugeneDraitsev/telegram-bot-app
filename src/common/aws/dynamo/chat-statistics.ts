@@ -69,6 +69,38 @@ export const getChatUsers = async (
 export const getStoredChatUsers = (chat_id: number | string) =>
   readChatUsers(chat_id)
 
+export const setUserOptOut = async (
+  chat_id: number | string,
+  user_id: number,
+  optedOut: boolean,
+): Promise<'updated' | 'no_chat' | 'no_user' | 'already_set'> => {
+  const chatStatistics = await getChatStatistic(chat_id)
+
+  if (!chatStatistics) {
+    return 'no_chat'
+  }
+
+  const user = chatStatistics.users.find((u) => u.id === user_id)
+
+  if (!user) {
+    return 'no_user'
+  }
+
+  if (Boolean(user.optedOut) === optedOut) {
+    return 'already_set'
+  }
+
+  // NOTE: This is a read-modify-write. The root middleware runs updateStatistics
+  // (also a read-modify-write) concurrently with the command handler via Promise.all.
+  // If updateStatistics reads the old snapshot and its PutItem lands after this one,
+  // it will silently overwrite the optedOut flag. A proper fix requires changing
+  // updateStatistics to use DynamoDB UpdateItem (atomic attribute-level updates)
+  // instead of PutItem so the two writes target disjoint attributes.
+  user.optedOut = optedOut
+  await dynamoPutItem({ TableName: 'chat-statistics', Item: chatStatistics })
+  return 'updated'
+}
+
 export const getUsersList = async (
   chat_id: number | string,
   query: string,
