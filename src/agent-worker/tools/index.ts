@@ -11,7 +11,10 @@ import { codeExecutionTool } from './code-execution.tool'
 import { createDynamicToolTool } from './create-dynamic-tool.tool'
 import { dateTimeTool } from './datetime.tool'
 import { telegramDiceTool } from './dice.tool'
-import { loadDynamicTools } from './dynamic-tools'
+import {
+  executeDynamicCommandFromMessage,
+  loadDynamicTools,
+} from './dynamic-tools'
 import { generateImageTool } from './generate-image.tool'
 import { generateVoiceTool } from './generate-voice.tool'
 import { getHistoryTool } from './get-history.tool'
@@ -38,6 +41,7 @@ export {
   codeExecutionTool,
   createDynamicToolTool,
   dateTimeTool,
+  executeDynamicCommandFromMessage,
   generateImageTool,
   generateVoiceTool,
   getHistoryTool,

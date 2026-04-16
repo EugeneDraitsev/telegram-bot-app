@@ -32,6 +32,11 @@ export const getHistoryTool: AgentTool = {
           description:
             'Set to true to retrieve all available history from the last 24 hours.',
         },
+        raw: {
+          type: 'boolean',
+          description:
+            'Set to true to return raw message JSON instead of human-readable text. Use this when you need exact media metadata like sticker.file_id.',
+        },
       },
     },
   },
@@ -46,6 +51,7 @@ export const getHistoryTool: AgentTool = {
     try {
       const limit = args.limit as number | undefined
       const wantsAll = args.all === true
+      const wantsRaw = args.raw === true
       const normalizedLimit = Number.isFinite(limit)
         ? Math.min(
             Math.max(Math.trunc(limit ?? DEFAULT_AGENT_HISTORY_LIMIT), 1),
@@ -55,6 +61,9 @@ export const getHistoryTool: AgentTool = {
 
       if (wantsAll) {
         const rawHistory = await getRawHistory(chatId)
+        if (wantsRaw) {
+          return JSON.stringify(rawHistory, null, 2)
+        }
         return formatHistoryForDisplay(rawHistory, {
           limit: rawHistory.length || DEFAULT_AGENT_HISTORY_LIMIT,
           headerLabel: 'Available history',
@@ -62,6 +71,9 @@ export const getHistoryTool: AgentTool = {
       }
 
       const recentHistory = await getRecentRawHistory(chatId, normalizedLimit)
+      if (wantsRaw) {
+        return JSON.stringify(recentHistory, null, 2)
+      }
       return formatHistoryForDisplay(recentHistory, normalizedLimit)
     } catch (error) {
       return `Error getting history: ${getErrorMessage(error)}`

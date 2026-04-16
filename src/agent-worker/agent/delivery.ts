@@ -255,7 +255,11 @@ export async function sendResponses(
       await sendDice({ ...base, dice: bundle.dice })
       if (bundle.text) await sendText(mediaParams)
     } else if (bundle.sticker) {
-      await sendSticker({ ...base, sticker: bundle.sticker })
+      try {
+        await sendSticker({ ...base, sticker: bundle.sticker })
+      } catch (error) {
+        logger.warn({ error, chatId: params.chatId }, 'delivery.sticker_failed')
+      }
       if (bundle.text) await sendText(mediaParams)
     } else if (bundle.animation) {
       await sendAnimation({ ...mediaParams, animation: bundle.animation })

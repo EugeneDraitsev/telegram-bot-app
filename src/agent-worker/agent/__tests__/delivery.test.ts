@@ -118,4 +118,29 @@ describe('sendResponses', () => {
     })
     expect(api.sendVoice).toHaveBeenCalledTimes(1)
   })
+  test('still sends text when sticker delivery fails', async () => {
+    const api = createApi()
+    api.sendSticker.mockRejectedValueOnce(new Error('bad sticker'))
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        { type: 'text', text: 'hello there' },
+        { type: 'sticker', fileId: 'broken-file-id' },
+      ],
+    })
+
+    expect(api.sendSticker).toHaveBeenCalledTimes(1)
+    expect(api.sendMessage).toHaveBeenCalledTimes(1)
+    expect(api.sendMessage).toHaveBeenCalledWith(
+      123,
+      'hello there',
+      expect.objectContaining({
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      }),
+    )
+  })
 })

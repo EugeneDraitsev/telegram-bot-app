@@ -104,4 +104,21 @@ describe('getHistoryTool', () => {
       `Recent ${common.MAX_HISTORY_TOOL_LIMIT} messages:`,
     )
   })
+
+  test('can return raw message json for exact media metadata', async () => {
+    mockedGetRecentRawHistory.mockResolvedValue([
+      {
+        ...createHistoryMessage(1),
+        sticker: { file_id: 'sticker-123' },
+      } as Message,
+    ])
+
+    const result = await runWithToolContext(TEST_MESSAGE, undefined, () =>
+      getHistoryTool.execute({ raw: true, limit: 1 }),
+    )
+
+    expect(mockedGetRecentRawHistory).toHaveBeenCalledWith(777, 1)
+    expect(result).toContain('"file_id": "sticker-123"')
+    expect(result).toContain('"sticker"')
+  })
 })

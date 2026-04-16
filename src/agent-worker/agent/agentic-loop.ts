@@ -25,6 +25,7 @@ import {
 import { IMAGE_MODEL } from '../services/openai-image'
 import { VOICE_MODEL } from '../services/openai-tts'
 import {
+  executeDynamicCommandFromMessage,
   getAgentTools,
   getCollectedResponses,
   runWithToolContext,
@@ -472,6 +473,40 @@ export async function runAgenticLoop(
       const textContent = message.text || message.caption || ''
       const hasMedia =
         !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
+
+      const dynamicCommand = await executeDynamicCommandFromMessage(message)
+      if (dynamicCommand.matched) {
+        const responsesToSend: AgentResponse[] = [...getCollectedResponses()]
+        if (responsesToSend.length === 0) {
+          responsesToSend.push({
+            type: 'text',
+            text: cleanGeminiMessage(
+              dynamicCommand.result ||
+                `Команда /${dynamicCommand.name} ничего не вернула.`,
+            ),
+          })
+        }
+
+        const deliveryStart = Date.now()
+        await sendResponses({
+          responses: responsesToSend,
+          chatId,
+          replyToMessageId: message.message_id,
+          api,
+        })
+
+        logger.info(
+          {
+            ...messageMeta,
+            durationMs: Date.now() - startedAt,
+            deliveryDurationMs: Date.now() - deliveryStart,
+            commandName: dynamicCommand.name,
+            responseCount: responsesToSend.length,
+          },
+          'loop.dynamic_command_done',
+        )
+        return
+      }
 
       // Load memory first — needed by the reply gate
       const [chatMemory, globalMemory] = await Promise.all([

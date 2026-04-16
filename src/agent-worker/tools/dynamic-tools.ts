@@ -1,8 +1,11 @@
 import { z } from 'zod'
+import type { Message } from 'telegram-typings'
 
 import {
+  findCommand,
   formatWeatherText,
   getDynamicToolsRaw,
+  getParsedText,
   getWeather,
 } from '@tg-bot/common'
 import { searchWeb } from '../services'
@@ -26,10 +29,47 @@ export const dynamicToolDefinitionSchema = z.object({
   action: DYNAMIC_ACTIONS,
   template: z.string().trim().max(2000).optional(),
   searchFormat: z.enum(['brief', 'detailed', 'list']).optional(),
+  stickerFileId: z.string().trim().min(1).max(512).optional(),
   enabled: z.boolean().optional(),
 })
 
 export type DynamicToolDefinition = z.infer<typeof dynamicToolDefinitionSchema>
+export interface DynamicCommandExecutionResult {
+  matched: boolean
+  name?: string
+  result?: string
+}
+
+function normalizeDynamicToolName(value: string): string {
+  return value.trim().replace(/^\/+/, '').replace(/@.*/, '').toLowerCase()
+}
+
+export function normalizeDynamicToolInput(
+  rawTool: Record<string, unknown>,
+): Record<string, unknown> {
+  const normalized = { ...rawTool }
+
+  if (typeof normalized.name === 'string') {
+    normalized.name = normalizeDynamicToolName(normalized.name)
+  }
+
+  if (typeof normalized.stickerFileId === 'string') {
+    normalized.stickerFileId = normalized.stickerFileId.trim()
+  }
+
+  return normalized
+}
+
+function parseDynamicTool(rawTool: unknown): DynamicToolDefinition | undefined {
+  if (!rawTool || typeof rawTool !== 'object') {
+    return undefined
+  }
+
+  const parsed = dynamicToolDefinitionSchema.safeParse(
+    normalizeDynamicToolInput(rawTool as Record<string, unknown>),
+  )
+  return parsed.success ? parsed.data : undefined
+}
 
 function buildPrompt(template: string | undefined, input: string): string {
   const normalizedInput = input.trim()
@@ -51,7 +91,14 @@ function buildPrompt(template: string | undefined, input: string): string {
 }
 
 function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
-  const { name, description, action, template, searchFormat } = definition
+  const { name, description, action, template, searchFormat, stickerFileId } =
+    definition
+
+  function addStickerResponseIfPresent() {
+    if (stickerFileId) {
+      addResponse({ type: 'sticker', fileId: stickerFileId })
+    }
+  }
 
   if (action === 'send_text') {
     return {
@@ -73,12 +120,15 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
       execute: async (args) => {
         requireToolContext()
         const text = buildPrompt(template, args.input as string)
-        if (!text) {
+        if (!text && !stickerFileId) {
           return `Error: Dynamic tool "${name}" produced empty text`
         }
 
-        addResponse({ type: 'text', text })
-        return `Dynamic tool "${name}" added text response`
+        if (text) {
+          addResponse({ type: 'text', text })
+        }
+        addStickerResponseIfPresent()
+        return `Dynamic tool "${name}" added response`
       },
     }
   }
@@ -117,6 +167,7 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
           (args.format as 'brief' | 'detailed' | 'list') ?? searchFormat,
         )
         addResponse({ type: 'text', text })
+        addStickerResponseIfPresent()
         return `Dynamic tool "${name}" completed web search`
       },
     }
@@ -151,9 +202,63 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
         type: 'text',
         text: formatWeatherText(weather),
       })
+      addStickerResponseIfPresent()
       return `Dynamic tool "${name}" got weather for ${weather.city}`
     },
   }
+}
+
+export async function executeDynamicCommandFromMessage(
+  message: Message,
+  reservedNames: Set<string> = new Set(),
+): Promise<DynamicCommandExecutionResult> {
+  const chatId = message.chat?.id
+  if (!chatId) {
+    return { matched: false }
+  }
+
+  const sourceText =
+    typeof message.text === 'string'
+      ? message.text
+      : typeof message.caption === 'string'
+        ? message.caption
+        : ''
+
+  if (!sourceText.trimStart().startsWith('/')) {
+    return { matched: false }
+  }
+
+  const rawCommand = findCommand(sourceText)
+  if (!rawCommand.startsWith('/')) {
+    return { matched: false }
+  }
+
+  const normalizedName = normalizeDynamicToolName(rawCommand)
+  const definition = (await getDynamicToolsRaw(chatId))
+    .map(parseDynamicTool)
+    .find(
+      (tool) =>
+        tool &&
+        tool.enabled !== false &&
+        !reservedNames.has(tool.name) &&
+        tool.name === normalizedName,
+    )
+
+  if (!definition) {
+    return { matched: false }
+  }
+
+  const tool = createDynamicTool(definition)
+  const input = getParsedText(sourceText).trim()
+  const args =
+    definition.action === 'send_text'
+      ? { input }
+      : definition.action === 'web_search'
+        ? { query: input, format: definition.searchFormat }
+        : { location: input }
+
+  const result = await tool.execute(args)
+  return { matched: true, name: definition.name, result }
 }
 
 export async function loadDynamicTools(
@@ -177,12 +282,11 @@ export async function loadDynamicTools(
       break
     }
 
-    const parsed = dynamicToolDefinitionSchema.safeParse(rawTool)
-    if (!parsed.success) {
+    const definition = parseDynamicTool(rawTool)
+    if (!definition) {
       continue
     }
 
-    const definition = parsed.data
     if (definition.enabled === false) {
       continue
     }

@@ -13,6 +13,7 @@ import { requireToolContext } from './context'
 import {
   type DynamicToolDefinition,
   dynamicToolDefinitionSchema,
+  normalizeDynamicToolInput,
 } from './dynamic-tools'
 
 const RESERVED_TOOL_NAMES = new Set<string>([
@@ -48,7 +49,13 @@ function uniqueByName(tools: DynamicToolDefinition[]): DynamicToolDefinition[] {
 function parseDynamicToolList(rawTools: unknown[]): DynamicToolDefinition[] {
   const parsedTools: DynamicToolDefinition[] = []
   for (const rawTool of rawTools) {
-    const parsed = dynamicToolDefinitionSchema.safeParse(rawTool)
+    if (!rawTool || typeof rawTool !== 'object') {
+      continue
+    }
+
+    const parsed = dynamicToolDefinitionSchema.safeParse(
+      normalizeDynamicToolInput(rawTool as Record<string, unknown>),
+    )
     if (!parsed.success) {
       continue
     }
@@ -91,6 +98,11 @@ export const createDynamicToolTool: AgentTool = {
           description: 'Search format for web_search action',
           enum: ['brief', 'detailed', 'list'],
         },
+        stickerFileId: {
+          type: 'string',
+          description:
+            'Optional Telegram sticker file_id to send together with the command response',
+        },
         enabled: {
           type: 'boolean',
           description: 'Whether the tool is enabled. Default: true',
@@ -106,7 +118,9 @@ export const createDynamicToolTool: AgentTool = {
       return 'Error creating dynamic tool: Chat ID is missing'
     }
 
-    const parsed = dynamicToolDefinitionSchema.safeParse(args)
+    const parsed = dynamicToolDefinitionSchema.safeParse(
+      normalizeDynamicToolInput(args),
+    )
     if (!parsed.success) {
       return `Error creating dynamic tool: ${parsed.error.message}`
     }
@@ -139,11 +153,12 @@ export const createDynamicToolTool: AgentTool = {
           chatId,
           toolName: definition.name,
           action: definition.action,
+          hasSticker: Boolean(definition.stickerFileId),
         },
         'Dynamic tool saved',
       )
 
-      return `Dynamic tool "${definition.name}" saved to chat scope`
+      return `Dynamic tool "/${definition.name}" saved to chat scope`
     } catch (error) {
       const errorMsg = getErrorMessage(error)
       logger.error(
