@@ -46,6 +46,15 @@ function uniqueByName(tools: DynamicToolDefinition[]): DynamicToolDefinition[] {
   return [...byName.values()]
 }
 
+function getRawToolName(rawTool: unknown): string | undefined {
+  if (!rawTool || typeof rawTool !== 'object') {
+    return undefined
+  }
+
+  const normalized = normalizeDynamicToolInput(rawTool as Record<string, unknown>)
+  return typeof normalized.name === 'string' ? normalized.name : undefined
+}
+
 function parseDynamicToolList(rawTools: unknown[]): DynamicToolDefinition[] {
   const parsedTools: DynamicToolDefinition[] = []
   for (const rawTool of rawTools) {
@@ -145,10 +154,12 @@ export const createDynamicToolTool: AgentTool = {
         return `Error creating dynamic tool: "${definition.name}" conflicts with built-in tool name`
       }
 
-      const mergedTools = uniqueByName([
-        ...existingTools.filter((tool) => tool.name !== definition.name),
+      const mergedTools = [
+        ...existingRawTools.filter(
+          (rawTool) => getRawToolName(rawTool) !== definition.name,
+        ),
         definition,
-      ])
+      ]
 
       const saved = await saveDynamicToolsRaw(mergedTools, chatId)
       if (!saved) {

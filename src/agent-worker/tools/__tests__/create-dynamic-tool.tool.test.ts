@@ -116,4 +116,59 @@ describe('createDynamicToolTool', () => {
     expect(result).toContain('Error creating dynamic tool:')
     expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
   })
+
+  test('preserves unrelated legacy raw tools when updating another command', async () => {
+    mockedGetDynamicToolsRawByScope.mockResolvedValue([
+      {
+        name: 'legacy_weather',
+        description: 'Legacy weather command',
+        action: 'get_weather',
+        enabled: true,
+      },
+      {
+        name: 'val',
+        description: 'Command for Valorant party',
+        action: 'send_text',
+        template: 'ВАЛОРАНТЫ ОБЩИЙ СБОР @drrrrrr',
+        enabled: true,
+      },
+    ])
+    mockedSaveDynamicToolsRaw.mockResolvedValue(true)
+
+    await runWithToolContext(
+      {
+        message_id: 1,
+        chat: { id: 777, type: 'group' },
+      } as Message,
+      undefined,
+      () =>
+        createDynamicToolTool.execute({
+          name: 'val',
+          description: 'Command for Valorant party',
+          action: 'send_text',
+          template: 'ВАЛОРАНТЫ ОБЩИЙ СБОР @drrrrrr',
+          stickerFileId: 'sticker-456',
+        }),
+    )
+
+    expect(mockedSaveDynamicToolsRaw).toHaveBeenCalledWith(
+      [
+        {
+          name: 'legacy_weather',
+          description: 'Legacy weather command',
+          action: 'get_weather',
+          enabled: true,
+        },
+        {
+          name: 'val',
+          description: 'Command for Valorant party',
+          action: 'send_text',
+          template: 'ВАЛОРАНТЫ ОБЩИЙ СБОР @drrrrrr',
+          stickerFileId: 'sticker-456',
+          enabled: true,
+        },
+      ],
+      777,
+    )
+  })
 })
