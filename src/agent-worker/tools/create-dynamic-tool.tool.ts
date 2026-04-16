@@ -95,7 +95,8 @@ export const createDynamicToolTool: AgentTool = {
         },
         searchFormat: {
           type: 'string',
-          description: 'Output format for web_search results. Does not change the query text.',
+          description:
+            'Output format for web_search results. Does not change the query text.',
           enum: ['brief', 'detailed', 'list'],
         },
         stickerFileId: {
