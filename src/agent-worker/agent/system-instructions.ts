@@ -28,6 +28,7 @@ DYNAMIC COMMANDS:
 - Never claim a dynamic command was saved, updated, or changed unless create_dynamic_tool actually succeeded in this conversation.
 - If you need an exact sticker or media file_id from chat context, call get_chat_history with raw=true and a small limit, then pass that file_id into create_dynamic_tool.
 - For send_text dynamic commands, the final saved object must contain template. Do not drop template on updates.
+- For web_search dynamic commands, template is the exact search query text that will be passed into web_search. If the command accepts extra user arguments, use {{input}} inside template.
 - stickerFileId must be copied exactly from sticker.file_id in raw chat history. Never invent, shorten, paraphrase, or transform it.
 - If you cannot find the needed file_id, say so briefly instead of pretending the command was updated.
 

@@ -70,7 +70,7 @@ export const createDynamicToolTool: AgentTool = {
     type: 'function',
     name: 'create_dynamic_tool',
     description:
-      'Create or update a dynamic command in Redis for the current chat. Persist the final command object, not a partial patch. For send_text commands, template is required in the final saved object. stickerFileId must be the exact full Telegram sticker.file_id value.',
+      'Create or update a dynamic command in Redis for the current chat. Persist the final command object, not a partial patch. template is required. For web_search commands, template is the exact query text sent into web_search and may include {{input}}. stickerFileId must be the exact full Telegram sticker.file_id value.',
     parameters: {
       type: 'object',
       properties: {
@@ -91,11 +91,11 @@ export const createDynamicToolTool: AgentTool = {
         template: {
           type: 'string',
           description:
-            'Final template text for the command. Required. May include {{input}} placeholder. Max 2000 chars.',
+            'Required final template. For send_text this is the outgoing message. For web_search this is the exact search query text sent into web_search. Use {{input}} only when extra command arguments should be inserted. Max 2000 chars.',
         },
         searchFormat: {
           type: 'string',
-          description: 'Search format for web_search action',
+          description: 'Output format for web_search results. Does not change the query text.',
           enum: ['brief', 'detailed', 'list'],
         },
         stickerFileId: {
