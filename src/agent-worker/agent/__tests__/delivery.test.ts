@@ -143,4 +143,43 @@ describe('sendResponses', () => {
       }),
     )
   })
+
+  test('splits texts with more than five mentions into follow-up messages', async () => {
+    const api = createApi()
+    api.sendMessage
+      .mockResolvedValueOnce({ message_id: 1 })
+      .mockResolvedValueOnce({ message_id: 2 })
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'text',
+          text: 'ВАЛОРАНТЫ ОБЩИЙ СБОР @user01 @user02 @user03 @user04 @user05 @user06 @user07',
+        },
+      ],
+    })
+
+    expect(api.sendMessage).toHaveBeenCalledTimes(2)
+    expect(api.sendMessage).toHaveBeenNthCalledWith(
+      1,
+      123,
+      'ВАЛОРАНТЫ ОБЩИЙ СБОР\n@user01 @user02 @user03 @user04 @user05',
+      expect.objectContaining({
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      }),
+    )
+    expect(api.sendMessage).toHaveBeenNthCalledWith(
+      2,
+      123,
+      '@user06 @user07',
+      expect.objectContaining({
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 1 },
+      }),
+    )
+  })
 })

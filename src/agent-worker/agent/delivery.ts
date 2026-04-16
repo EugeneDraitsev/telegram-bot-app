@@ -49,6 +49,27 @@ function formatCaption(text?: string): string | undefined {
   return formatTelegramMarkdownV2(normalized.slice(0, MAX_CAPTION_LENGTH))
 }
 
+function splitMentionBatches(text: string): string[] {
+  const normalized = text.trim()
+  const mentions = normalized.match(/@[A-Za-z0-9_]{5,32}\b/g) ?? []
+  if (mentions.length <= 5) {
+    return [normalized]
+  }
+
+  const body = normalized
+    .replace(/@[A-Za-z0-9_]{5,32}\b/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+  const batches: string[] = []
+  for (let index = 0; index < mentions.length; index += 5) {
+    const chunk = mentions.slice(index, index + 5).join(' ')
+    batches.push(index === 0 ? [body, chunk].filter(Boolean).join('\n') : chunk)
+  }
+
+  return batches
+}
+
 function collectBundle(responses: AgentResponse[]): DeliveryBundle {
   const bundle: DeliveryBundle = {
     text: '',
@@ -78,28 +99,32 @@ async function sendText(params: DeliveryParams & { text: string }) {
     return
   }
 
-  try {
-    const sentMessage = await params.api.sendMessage(
-      params.chatId,
-      formatText(text),
-      {
-        parse_mode: 'MarkdownV2',
-        ...getReplyOptions(params.replyToMessageId),
-      },
-    )
-    await saveBotReplyToHistory(sentMessage)
-  } catch (err) {
-    // Fallback: send as plain text if MarkdownV2 parsing fails
-    logger.warn(
-      { chatId: params.chatId, error: (err as Error).message },
-      'delivery.markdown_fallback',
-    )
-    const sentMessage = await params.api.sendMessage(
-      params.chatId,
-      text.slice(0, MAX_TEXT_LENGTH),
-      getReplyOptions(params.replyToMessageId),
-    )
-    await saveBotReplyToHistory(sentMessage)
+  let replyToMessageId = params.replyToMessageId
+  for (const chunk of splitMentionBatches(text)) {
+    try {
+      const sentMessage = await params.api.sendMessage(
+        params.chatId,
+        formatText(chunk),
+        {
+          parse_mode: 'MarkdownV2',
+          ...getReplyOptions(replyToMessageId),
+        },
+      )
+      await saveBotReplyToHistory(sentMessage)
+      replyToMessageId = sentMessage.message_id
+    } catch (err) {
+      logger.warn(
+        { chatId: params.chatId, error: (err as Error).message },
+        'delivery.markdown_fallback',
+      )
+      const sentMessage = await params.api.sendMessage(
+        params.chatId,
+        chunk.slice(0, MAX_TEXT_LENGTH),
+        getReplyOptions(replyToMessageId),
+      )
+      await saveBotReplyToHistory(sentMessage)
+      replyToMessageId = sentMessage.message_id
+    }
   }
 }
 
