@@ -14,20 +14,14 @@ import { addResponse, requireToolContext } from './context'
 
 const MAX_DYNAMIC_TOOLS = 16
 
-export const DYNAMIC_ACTIONS = z.enum([
-  'send_text',
-  'web_search',
-  'get_weather',
-])
-
 export const dynamicToolDefinitionSchema = z.object({
   name: z
     .string()
     .trim()
     .regex(/^[a-z][a-z0-9_]{2,63}$/),
   description: z.string().trim().min(8).max(500),
-  action: DYNAMIC_ACTIONS,
-  template: z.string().trim().max(2000).optional(),
+  action: z.enum(['send_text', 'web_search', 'get_weather']),
+  template: z.string().trim().min(1).max(2000),
   searchFormat: z.enum(['brief', 'detailed', 'list']).optional(),
   stickerFileId: z.string().trim().min(1).max(512).optional(),
   enabled: z.boolean().optional(),
@@ -68,16 +62,16 @@ function parseDynamicTool(rawTool: unknown): DynamicToolDefinition | undefined {
   const parsed = dynamicToolDefinitionSchema.safeParse(
     normalizeDynamicToolInput(rawTool as Record<string, unknown>),
   )
-  return parsed.success ? parsed.data : undefined
+  if (!parsed.success) {
+    return undefined
+  }
+
+  return parsed.data
 }
 
-function buildPrompt(template: string | undefined, input: string): string {
+function buildPrompt(template: string, input: string): string {
   const normalizedInput = input.trim()
-  const normalizedTemplate = template?.trim()
-
-  if (!normalizedTemplate) {
-    return normalizedInput
-  }
+  const normalizedTemplate = template.trim()
 
   if (normalizedTemplate.includes('{{input}}')) {
     return normalizedTemplate.replaceAll('{{input}}', normalizedInput).trim()
@@ -91,8 +85,7 @@ function buildPrompt(template: string | undefined, input: string): string {
 }
 
 function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
-  const { name, description, action, template, searchFormat, stickerFileId } =
-    definition
+  const { name, description, action, template, stickerFileId } = definition
 
   function addStickerResponseIfPresent() {
     if (stickerFileId) {
@@ -164,7 +157,8 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
 
         const text = await searchWeb(
           preparedQuery,
-          (args.format as 'brief' | 'detailed' | 'list') ?? searchFormat,
+          (args.format as 'brief' | 'detailed' | 'list') ??
+            definition.searchFormat,
         )
         addResponse({ type: 'text', text })
         addStickerResponseIfPresent()

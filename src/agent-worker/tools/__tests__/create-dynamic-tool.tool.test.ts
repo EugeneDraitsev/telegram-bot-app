@@ -52,4 +52,68 @@ describe('createDynamicToolTool', () => {
       777,
     )
   })
+
+  test('preserves existing template when updating only stickerFileId', async () => {
+    mockedGetDynamicToolsRawByScope.mockResolvedValue([
+      {
+        name: 'val',
+        description: 'Command for Valorant party',
+        action: 'send_text',
+        template: 'ВАЛОРАНТЫ ОБЩИЙ СБОР @drrrrrr',
+        enabled: true,
+      },
+    ])
+    mockedSaveDynamicToolsRaw.mockResolvedValue(true)
+
+    const result = await runWithToolContext(
+      {
+        message_id: 1,
+        chat: { id: 777, type: 'group' },
+      } as Message,
+      undefined,
+      () =>
+        createDynamicToolTool.execute({
+          name: 'val',
+          description: 'Command for Valorant party',
+          action: 'send_text',
+          stickerFileId: 'sticker-456',
+        }),
+    )
+
+    expect(result).toBe('Dynamic tool "/val" saved to chat scope')
+    expect(mockedSaveDynamicToolsRaw).toHaveBeenCalledWith(
+      [
+        {
+          name: 'val',
+          description: 'Command for Valorant party',
+          action: 'send_text',
+          template: 'ВАЛОРАНТЫ ОБЩИЙ СБОР @drrrrrr',
+          stickerFileId: 'sticker-456',
+          enabled: true,
+        },
+      ],
+      777,
+    )
+  })
+
+  test('rejects new send_text command without template', async () => {
+    mockedGetDynamicToolsRawByScope.mockResolvedValue([])
+
+    const result = await runWithToolContext(
+      {
+        message_id: 1,
+        chat: { id: 777, type: 'group' },
+      } as Message,
+      undefined,
+      () =>
+        createDynamicToolTool.execute({
+          name: 'val',
+          description: 'Command for Valorant party',
+          action: 'send_text',
+        }),
+    )
+
+    expect(result).toContain('Error creating dynamic tool:')
+    expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
+  })
 })

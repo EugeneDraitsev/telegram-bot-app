@@ -70,7 +70,7 @@ export const createDynamicToolTool: AgentTool = {
     type: 'function',
     name: 'create_dynamic_tool',
     description:
-      'Create or update dynamic tool in Redis for current chat. Use only when the current user message explicitly asks for reusable automation.',
+      'Create or update a dynamic command in Redis for the current chat. Persist the final command object, not a partial patch. For send_text commands, template is required in the final saved object. stickerFileId must be the exact full Telegram sticker.file_id value.',
     parameters: {
       type: 'object',
       properties: {
@@ -91,7 +91,7 @@ export const createDynamicToolTool: AgentTool = {
         template: {
           type: 'string',
           description:
-            'Optional template with {{input}} placeholder (max 2000 chars)',
+            'Final template text for the command. Required. May include {{input}} placeholder. Max 2000 chars.',
         },
         searchFormat: {
           type: 'string',
@@ -108,7 +108,7 @@ export const createDynamicToolTool: AgentTool = {
           description: 'Whether the tool is enabled. Default: true',
         },
       },
-      required: ['name', 'description', 'action'],
+      required: ['name', 'description', 'action', 'template'],
     },
   },
   execute: async (args) => {
@@ -118,25 +118,31 @@ export const createDynamicToolTool: AgentTool = {
       return 'Error creating dynamic tool: Chat ID is missing'
     }
 
-    const parsed = dynamicToolDefinitionSchema.safeParse(
-      normalizeDynamicToolInput(args),
-    )
-    if (!parsed.success) {
-      return `Error creating dynamic tool: ${parsed.error.message}`
-    }
-
-    const definition: DynamicToolDefinition = {
-      ...parsed.data,
-      enabled: parsed.data.enabled ?? true,
-    }
-
-    if (RESERVED_TOOL_NAMES.has(definition.name)) {
-      return `Error creating dynamic tool: "${definition.name}" conflicts with built-in tool name`
-    }
-
     try {
+      const normalizedArgs = normalizeDynamicToolInput(args)
       const existingRawTools = await getDynamicToolsRawByScope(chatId)
       const existingTools = parseDynamicToolList(existingRawTools)
+      const existingTool =
+        typeof normalizedArgs.name === 'string'
+          ? existingTools.find((tool) => tool.name === normalizedArgs.name)
+          : undefined
+
+      const parsed = dynamicToolDefinitionSchema.safeParse({
+        ...existingTool,
+        ...normalizedArgs,
+      })
+      if (!parsed.success) {
+        return `Error creating dynamic tool: ${parsed.error.message}`
+      }
+
+      const definition: DynamicToolDefinition = {
+        ...parsed.data,
+        enabled: parsed.data.enabled ?? existingTool?.enabled ?? true,
+      }
+
+      if (RESERVED_TOOL_NAMES.has(definition.name)) {
+        return `Error creating dynamic tool: "${definition.name}" conflicts with built-in tool name`
+      }
 
       const mergedTools = uniqueByName([
         ...existingTools.filter((tool) => tool.name !== definition.name),
@@ -164,7 +170,10 @@ export const createDynamicToolTool: AgentTool = {
       logger.error(
         {
           chatId,
-          toolName: definition.name,
+          toolName:
+            typeof args.name === 'string'
+              ? normalizeDynamicToolInput(args).name
+              : undefined,
           error,
         },
         'Dynamic tool save failed',
