@@ -1,4 +1,4 @@
-export const OPENAI_GPT_IMAGE_MODEL = 'chatgpt-image-latest' as const
+export const OPENAI_GPT_IMAGE_MODEL = 'gpt-image-2' as const
 export const OPENAI_GPT_IMAGE_SIZE = 'auto' as const
 
 export function isOpenAiGptImageModel(model: string): boolean {
@@ -6,7 +6,7 @@ export function isOpenAiGptImageModel(model: string): boolean {
 }
 
 export function usesOpenAiMediumImageQuality(model: string): boolean {
-  return model === OPENAI_GPT_IMAGE_MODEL || model === 'gpt-image-1.5'
+  return model === OPENAI_GPT_IMAGE_MODEL || model === 'gpt-image-2'
 }
 
 const SAFE_FRAMING_NOTE =

@@ -51,7 +51,9 @@ function getRawToolName(rawTool: unknown): string | undefined {
     return undefined
   }
 
-  const normalized = normalizeDynamicToolInput(rawTool as Record<string, unknown>)
+  const normalized = normalizeDynamicToolInput(
+    rawTool as Record<string, unknown>,
+  )
   return typeof normalized.name === 'string' ? normalized.name : undefined
 }
 

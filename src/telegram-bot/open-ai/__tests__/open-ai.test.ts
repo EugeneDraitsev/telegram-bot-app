@@ -56,7 +56,7 @@ describe('open-ai AI access control', () => {
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(999)
     })
 
-    test('uses chatgpt-image-latest with wrapped prompt and auto size', async () => {
+    test('uses gpt-image-2 with wrapped prompt and auto size', async () => {
       mockIsAiEnabledChat.mockReturnValue(true)
 
       await generateImage(
@@ -75,7 +75,7 @@ describe('open-ai AI access control', () => {
       )
     })
 
-    test('edits input images with chatgpt-image-latest', async () => {
+    test('edits input images with gpt-image-2', async () => {
       mockIsAiEnabledChat.mockReturnValue(true)
 
       await generateImage(
