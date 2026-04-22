@@ -8,7 +8,7 @@ import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 export const generateImageTool: AgentTool = {
-  timeoutMs: 60_000,
+  timeoutMs: 120_000,
   declaration: {
     type: 'function',
     name: 'generate_or_edit_image',
