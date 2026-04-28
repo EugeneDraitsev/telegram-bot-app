@@ -4,6 +4,7 @@ import type {
   ResponseCreateParamsNonStreaming,
   ResponseInputContent,
   ResponseInputItem,
+  Tool,
 } from 'openai/resources/responses/responses'
 import type { Message } from 'telegram-typings'
 
@@ -51,6 +52,13 @@ type GenerateMultimodalCompletionContext = {
 let openAiClient: OpenAi | null = null
 
 const OPENAI_HISTORY_LIMIT = 40
+const OPENAI_MULTIMODAL_TOOLS: Tool[] = [
+  { type: 'web_search', search_context_size: 'high' },
+]
+const openAiMultimodalInstructions = `${systemInstructions}
+  - IMPORTANT: /o has OpenAI web search enabled. Use it for current, uncertain, ambiguous, newly released, or possibly misspelled real-world facts.
+  - IMPORTANT: If the user includes or asks about a URL, use web search/open-page behavior to inspect the referenced page before answering. Treat retrieved page/search evidence as stronger than memory.
+`
 
 function getOpenAiClient(): OpenAi {
   if (openAiClient) {
@@ -360,8 +368,11 @@ export const generateMultimodalCompletion = async (
     const response = await openAi.responses.create(
       {
         model,
-        instructions: systemInstructions,
+        instructions: openAiMultimodalInstructions,
         input,
+        tools: OPENAI_MULTIMODAL_TOOLS,
+        tool_choice: 'auto',
+        include: ['web_search_call.action.sources'],
         reasoning: { effort: reasoningEffort },
         safety_identifier: String(chatId),
         store: false,
