@@ -79,24 +79,83 @@ export const getCommandData = (
 export const getLargestPhoto = (m?: Message) =>
   (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
 
+type TelegramImageFile = {
+  file_id: string
+  file_unique_id?: string
+}
+
+type CommandImageRef = {
+  image: TelegramImageFile
+  label: string
+  mimeType: string
+}
+
+export type CommandImageInput = {
+  data: Buffer
+  label: string
+  mimeType: string
+  fileId: string
+  fileUniqueId?: string
+}
+
+function getShortMessageText(message: Message | undefined): string {
+  return (message?.caption || message?.text || '').trim().slice(0, 180)
+}
+
+function getMessageLabel(message: Message | undefined): string {
+  const messageId = message?.message_id
+  const text = getShortMessageText(message)
+  return [
+    typeof messageId === 'number' ? `message_id=${messageId}` : undefined,
+    text ? `text=${JSON.stringify(text)}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(' | ')
+}
+
+export function getCommandImageRefs(
+  message: Message | undefined,
+  extraMessages: Message[] = [],
+): CommandImageRef[] {
+  return getCommandMediaRefs(message, extraMessages)
+    .filter((ref) => ref.mediaType === 'image')
+    .map((ref) => ({
+      image: { file_id: ref.fileId, file_unique_id: ref.fileUniqueId },
+      label: ref.label || 'Image',
+      mimeType: ref.mimeType,
+    }))
+}
+
 export const getMultimodalCommandData = async (
   ctx: Context,
   extraMessages: Message[] = [],
 ) => {
-  const { combinedText, images, replyId } = getCommandData(
-    ctx.message,
-    extraMessages,
-  )
+  const { combinedText, replyId } = getCommandData(ctx.message, extraMessages)
   const chatId = ctx?.chat?.id ?? ''
+  const imageRefs = getCommandImageRefs(ctx.message, extraMessages)
 
   const fileResults = await Promise.allSettled(
-    images?.map((image) => ctx.api.getFile(image.file_id)) ?? [],
+    imageRefs.map(({ image }) => ctx.api.getFile(image.file_id)),
   )
 
-  const files: Array<{ file_path?: string }> = []
-  for (const result of fileResults) {
+  const files: Array<{
+    file_path?: string
+    label: string
+    mimeType: string
+    fileId: string
+    fileUniqueId?: string
+  }> = []
+  for (let index = 0; index < fileResults.length; index++) {
+    const result = fileResults[index]
+    const imageRef = imageRefs[index]
     if (result.status === 'fulfilled') {
-      files.push(result.value as { file_path?: string })
+      files.push({
+        ...(result.value as { file_path?: string }),
+        label: imageRef?.label || 'Command image',
+        mimeType: imageRef?.mimeType || 'image/jpeg',
+        fileId: imageRef?.image.file_id || '',
+        fileUniqueId: imageRef?.image.file_unique_id,
+      })
     } else {
       logger.warn(
         {
@@ -110,19 +169,32 @@ export const getMultimodalCommandData = async (
     }
   }
 
-  const imagesUrls = files
-    .map((file) =>
-      file.file_path
-        ? `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
-        : undefined,
-    )
-    .filter((url): url is string => Boolean(url))
+  const imageInputs = (
+    await Promise.all(
+      files.map(async (file): Promise<CommandImageInput | undefined> => {
+        if (!file.file_path) return undefined
 
-  const imagesData = await getImageBuffers(imagesUrls)
+        const url = `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
+        const [data] = await getImageBuffers([url])
+
+        return data
+          ? {
+              data,
+              label: file.label,
+              mimeType: file.mimeType,
+              fileId: file.fileId,
+              fileUniqueId: file.fileUniqueId,
+            }
+          : undefined
+      }),
+    )
+  ).filter((input): input is CommandImageInput => Boolean(input))
+  const imagesData = imageInputs.map(({ data }) => data)
 
   return {
     combinedText,
     imagesData,
+    imageInputs,
     replyId,
     chatId,
     message: ctx.message,
@@ -160,8 +232,10 @@ export const getChatName = (chat?: Chat) => chat?.title || getUserName(chat)
 
 export interface MediaFileRef {
   fileId: string
+  fileUniqueId?: string
   mimeType: string
   mediaType: 'image' | 'audio' | 'video'
+  label?: string
 }
 
 export interface HistoryMediaFileRef {
@@ -171,11 +245,145 @@ export interface HistoryMediaFileRef {
 
 const IMAGE_MIME_PREFIXES = ['image/']
 
+function getMediaKey(ref: MediaFileRef): string {
+  return ref.fileUniqueId ? `unique:${ref.fileUniqueId}` : `id:${ref.fileId}`
+}
+
+function getMediaKindLabel(ref: MediaFileRef): string {
+  if (ref.mediaType === 'audio') return 'audio'
+  if (ref.mediaType === 'video') return 'video'
+  if (ref.mimeType === 'image/webp') return 'sticker'
+  return 'image'
+}
+
 function isImageDocument(
   doc: { mime_type?: string; file_id?: string } | undefined,
 ): doc is { mime_type: string; file_id: string } {
   if (!doc?.file_id || !doc.mime_type) return false
   return IMAGE_MIME_PREFIXES.some((prefix) => doc.mime_type?.startsWith(prefix))
+}
+
+function collectSingleMessageMediaFileRefs(
+  message: Message | undefined,
+): MediaFileRef[] {
+  if (!message) return []
+
+  const refs: MediaFileRef[] = []
+  const photo = getLargestPhoto(message)
+
+  if (photo?.file_id) {
+    refs.push({
+      fileId: photo.file_id,
+      fileUniqueId: photo.file_unique_id,
+      mimeType: 'image/jpeg',
+      mediaType: 'image',
+    })
+  }
+
+  const sticker = message.sticker as
+    | (typeof message.sticker & { is_animated?: boolean; is_video?: boolean })
+    | undefined
+  if (sticker?.file_id && !sticker.is_animated) {
+    refs.push({
+      fileId: sticker.file_id,
+      fileUniqueId: sticker.file_unique_id,
+      mimeType: sticker.is_video ? 'video/webm' : 'image/webp',
+      mediaType: sticker.is_video ? 'video' : 'image',
+    })
+  }
+
+  if (isImageDocument(message.document)) {
+    refs.push({
+      fileId: message.document.file_id,
+      ...(message.document.file_unique_id
+        ? { fileUniqueId: message.document.file_unique_id }
+        : {}),
+      mimeType: message.document.mime_type,
+      mediaType: 'image',
+    })
+  }
+
+  if (message.voice?.file_id) {
+    refs.push({
+      fileId: message.voice.file_id,
+      ...(message.voice.file_unique_id
+        ? { fileUniqueId: message.voice.file_unique_id }
+        : {}),
+      mimeType: message.voice.mime_type || 'audio/ogg',
+      mediaType: 'audio',
+    })
+  }
+
+  if (message.video?.file_id) {
+    refs.push({
+      fileId: message.video.file_id,
+      ...(message.video.file_unique_id
+        ? { fileUniqueId: message.video.file_unique_id }
+        : {}),
+      mimeType: message.video.mime_type || 'video/mp4',
+      mediaType: 'video',
+    })
+  }
+
+  if (message.video_note?.file_id) {
+    refs.push({
+      fileId: message.video_note.file_id,
+      ...(message.video_note.file_unique_id
+        ? { fileUniqueId: message.video_note.file_unique_id }
+        : {}),
+      mimeType: 'video/mp4',
+      mediaType: 'video',
+    })
+  }
+
+  return refs
+}
+
+function appendMediaRefs(
+  refs: MediaFileRef[],
+  seen: Set<string>,
+  sourceMessage: Message | undefined,
+  sourceLabel: string,
+) {
+  const messageLabel = getMessageLabel(sourceMessage) || `source=${sourceLabel}`
+
+  for (const ref of collectSingleMessageMediaFileRefs(sourceMessage)) {
+    const key = getMediaKey(ref)
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    refs.push({
+      ...ref,
+      label: `${sourceLabel} ${getMediaKindLabel(ref)} (${messageLabel})`,
+    })
+  }
+}
+
+export function getCommandMediaRefs(
+  message: Message | undefined,
+  extraMessages: Message[] = [],
+): MediaFileRef[] {
+  const refs: MediaFileRef[] = []
+  const seen = new Set<string>()
+  const currentMediaGroupId = message?.media_group_id
+  const replyMessage = message?.reply_to_message
+  const replyMediaGroupId = replyMessage?.media_group_id
+
+  appendMediaRefs(refs, seen, message, 'Current command')
+  appendMediaRefs(refs, seen, replyMessage, 'Reply message')
+
+  for (const extraMessage of extraMessages) {
+    const source =
+      currentMediaGroupId && extraMessage.media_group_id === currentMediaGroupId
+        ? 'Current command album'
+        : replyMediaGroupId && extraMessage.media_group_id === replyMediaGroupId
+          ? 'Reply message album'
+          : 'Related album'
+
+    appendMediaRefs(refs, seen, extraMessage, source)
+  }
+
+  return refs
 }
 
 /**
@@ -189,11 +397,12 @@ export function collectMediaFileRefs(
   if (!message) return initialRefs
 
   const refs: MediaFileRef[] = [...initialRefs]
-  const seenIds = new Set(initialRefs.map((r) => r.fileId))
+  const seenIds = new Set(initialRefs.map(getMediaKey))
 
   function add(ref: MediaFileRef) {
-    if (!seenIds.has(ref.fileId)) {
-      seenIds.add(ref.fileId)
+    const key = getMediaKey(ref)
+    if (!seenIds.has(key)) {
+      seenIds.add(key)
       refs.push(ref)
     }
   }
@@ -204,7 +413,12 @@ export function collectMediaFileRefs(
     // Photos
     const photo = getLargestPhoto(m)
     if (photo?.file_id) {
-      add({ fileId: photo.file_id, mimeType: 'image/jpeg', mediaType: 'image' })
+      add({
+        fileId: photo.file_id,
+        fileUniqueId: photo.file_unique_id,
+        mimeType: 'image/jpeg',
+        mediaType: 'image',
+      })
     }
 
     // Stickers — skip animated (.tgs/Lottie), handle video (.webm) and raster (.webp)
@@ -215,12 +429,14 @@ export function collectMediaFileRefs(
       if (sticker.is_video) {
         add({
           fileId: sticker.file_id,
+          fileUniqueId: sticker.file_unique_id,
           mimeType: 'video/webm',
           mediaType: 'video',
         })
       } else {
         add({
           fileId: sticker.file_id,
+          fileUniqueId: sticker.file_unique_id,
           mimeType: 'image/webp',
           mediaType: 'image',
         })
@@ -231,6 +447,9 @@ export function collectMediaFileRefs(
     if (isImageDocument(m.document)) {
       add({
         fileId: m.document.file_id,
+        ...(m.document.file_unique_id
+          ? { fileUniqueId: m.document.file_unique_id }
+          : {}),
         mimeType: m.document.mime_type,
         mediaType: 'image',
       })
@@ -240,6 +459,9 @@ export function collectMediaFileRefs(
     if (m.voice?.file_id) {
       add({
         fileId: m.voice.file_id,
+        ...(m.voice.file_unique_id
+          ? { fileUniqueId: m.voice.file_unique_id }
+          : {}),
         mimeType: m.voice.mime_type || 'audio/ogg',
         mediaType: 'audio',
       })
@@ -249,6 +471,9 @@ export function collectMediaFileRefs(
     if (m.video?.file_id) {
       add({
         fileId: m.video.file_id,
+        ...(m.video.file_unique_id
+          ? { fileUniqueId: m.video.file_unique_id }
+          : {}),
         mimeType: m.video.mime_type || 'video/mp4',
         mediaType: 'video',
       })
@@ -258,6 +483,9 @@ export function collectMediaFileRefs(
     if (m.video_note?.file_id) {
       add({
         fileId: m.video_note.file_id,
+        ...(m.video_note.file_unique_id
+          ? { fileUniqueId: m.video_note.file_unique_id }
+          : {}),
         mimeType: 'video/mp4',
         mediaType: 'video',
       })
@@ -274,6 +502,8 @@ export function collectHistoryMediaFileRefs(
   messages: Message[],
   options: {
     excludeMessageId?: number
+    excludeFileIds?: Iterable<string>
+    excludeFileUniqueIds?: Iterable<string>
     limit?: number
     mediaTypes?: MediaFileRef['mediaType'][]
   } = {},
@@ -295,16 +525,25 @@ export function collectHistoryMediaFileRefs(
   const allowedMediaTypes = options.mediaTypes?.length
     ? new Set(options.mediaTypes)
     : undefined
+  const excludedFileIds = new Set(options.excludeFileIds ?? [])
+  const excludedFileUniqueIds = new Set(options.excludeFileUniqueIds ?? [])
   const refsById = new Map<string, HistoryMediaFileRef>()
 
   for (const message of limitedMessages) {
-    const refs = collectMediaFileRefs(message).filter(
-      (ref) => !allowedMediaTypes || allowedMediaTypes.has(ref.mediaType),
-    )
+    const refs = collectMediaFileRefs(message)
+      .filter(
+        (ref) => !allowedMediaTypes || allowedMediaTypes.has(ref.mediaType),
+      )
+      .filter(
+        (ref) =>
+          !excludedFileIds.has(ref.fileId) &&
+          !(ref.fileUniqueId && excludedFileUniqueIds.has(ref.fileUniqueId)),
+      )
 
     for (const ref of refs) {
-      if (!refsById.has(ref.fileId)) {
-        refsById.set(ref.fileId, { ref, message })
+      const key = getMediaKey(ref)
+      if (!refsById.has(key)) {
+        refsById.set(key, { ref, message })
       }
     }
   }
@@ -338,6 +577,9 @@ export interface MediaBuffer {
   buffer: Buffer
   mimeType: string
   mediaType: 'image' | 'audio' | 'video'
+  fileId?: string
+  fileUniqueId?: string
+  label?: string
 }
 
 export interface HistoryMediaAttachment {
@@ -362,11 +604,7 @@ export async function getMultimodalMediaData(
   const { combinedText, replyId } = getCommandData(ctx.message, extraMessages)
   const chatId = ctx?.chat?.id ?? ''
 
-  // Collect all media refs from the message, reply, and album extras
-  let refs = collectMediaFileRefs(ctx.message)
-  for (const extra of extraMessages) {
-    refs = collectMediaFileRefs(extra, refs)
-  }
+  const refs = getCommandMediaRefs(ctx.message, extraMessages)
 
   const mediaBuffers = await resolveMediaBuffers(refs, ctx.api)
 
@@ -418,6 +656,9 @@ export async function resolveMediaBuffers(
         buffer: Buffer.from(arrayBuffer),
         mimeType: ref.mimeType,
         mediaType: ref.mediaType,
+        fileId: ref.fileId,
+        fileUniqueId: ref.fileUniqueId,
+        label: ref.label,
       }
     }),
   )

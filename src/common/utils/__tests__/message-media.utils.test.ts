@@ -66,7 +66,12 @@ describe('collectMediaFileRefs', () => {
 
     const refs = collectMediaFileRefs(message)
     expect(refs).toEqual([
-      { fileId: 'p_big', mimeType: 'image/jpeg', mediaType: 'image' },
+      {
+        fileId: 'p_big',
+        fileUniqueId: 'p',
+        mimeType: 'image/jpeg',
+        mediaType: 'image',
+      },
     ])
   })
 
@@ -270,7 +275,12 @@ describe('collectHistoryMediaFileRefs', () => {
 
     expect(refs).toEqual([
       {
-        ref: { fileId: 'old_big', mimeType: 'image/jpeg', mediaType: 'image' },
+        ref: {
+          fileId: 'old_big',
+          fileUniqueId: 'old',
+          mimeType: 'image/jpeg',
+          mediaType: 'image',
+        },
         message: messages[0],
       },
       {
@@ -329,6 +339,41 @@ describe('collectHistoryMediaFileRefs', () => {
     ])
   })
 
+  test('excludes request media ids from history refs', () => {
+    const messages = [
+      {
+        message_id: 1,
+        photo: [
+          {
+            file_id: 'reply_photo',
+            width: 1000,
+            height: 1000,
+            file_unique_id: 'reply-unique',
+          },
+        ],
+      },
+      {
+        message_id: 2,
+        photo: [
+          {
+            file_id: 'other_photo',
+            width: 1000,
+            height: 1000,
+            file_unique_id: 'other-unique',
+          },
+        ],
+      },
+    ] as unknown as Message[]
+
+    const refs = collectHistoryMediaFileRefs(messages, {
+      excludeFileIds: new Set(['reply_photo']),
+      excludeFileUniqueIds: new Set(['reply-unique']),
+      mediaTypes: ['image'],
+    })
+
+    expect(refs.map((entry) => entry.ref.fileId)).toEqual(['other_photo'])
+  })
+
   test('can pull replied-to image into history context for a recent reply', () => {
     const originalImageMessage = {
       message_id: 1,
@@ -360,6 +405,7 @@ describe('collectHistoryMediaFileRefs', () => {
       {
         ref: {
           fileId: 'reply_context_image',
+          fileUniqueId: 'reply-context',
           mimeType: 'image/jpeg',
           mediaType: 'image',
         },

@@ -34,7 +34,7 @@ export const invokeLambda = ({
 // The worker lambda will re-fetch images from Telegram API when processing.
 // biome-ignore lint: we can pass any payload here
 const stripLargeFields = (payload: Record<string, any>) => {
-  const { imagesData, ...rest } = payload
+  const { imagesData, imageInputs, ...rest } = payload
   return rest
 }
 

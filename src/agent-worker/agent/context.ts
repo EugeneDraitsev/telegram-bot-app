@@ -33,6 +33,9 @@ export function buildContextBlock(
       .map(([type, count]) => `${type}: ${count}`)
       .join(', ')
   }
+  const mediaLabels = mediaBuffers?.map(
+    (media, index) => media.label || `Media ${index + 1}`,
+  )
 
   const lines = [
     'CONTEXT:',
@@ -42,6 +45,10 @@ export function buildContextBlock(
     `- Message: "${textContent}"`,
     `- Has attached media: ${mediaSummary}`,
   ]
+
+  if (mediaLabels?.length) {
+    lines.push(`- Attached media labels:\n${mediaLabels.join('\n')}`)
+  }
 
   if (message.reply_to_message) {
     const quoteText = (message as ExtendedMessage).quote?.text
@@ -55,6 +62,9 @@ export function buildContextBlock(
         `- Replying to: "${message.reply_to_message.text || message.reply_to_message.caption || '[media]'}"`,
       )
     }
+    lines.push(
+      '- Media priority: if the user refers to media/image/photo/video/audio and this message is a reply, inspect Reply message media before history or unrelated chat media.',
+    )
   }
 
   if (options.recentHistory) {

@@ -6,6 +6,9 @@ import { generateImage, generateMultimodalCompletion } from '../gemini'
 const mockInteractionsCreate = jest.fn().mockResolvedValue({
   outputs: [{ type: 'text', text: 'Test response' }],
 })
+const mockContentCreate = jest.fn().mockResolvedValue({
+  text: 'Test response',
+})
 
 const mockIsAiEnabledChat = jest.spyOn(common, 'isAiEnabledChat')
 const mockGetHistory = jest
@@ -33,6 +36,10 @@ describe('gemini AI access control', () => {
     mockInteractionsCreate.mockReset()
     mockInteractionsCreate.mockResolvedValue({
       outputs: [{ type: 'text', text: 'Test response' }],
+    })
+    mockContentCreate.mockReset()
+    mockContentCreate.mockResolvedValue({
+      text: 'Test response',
     })
   })
 
@@ -80,10 +87,22 @@ describe('gemini AI access control', () => {
         prompt: 'test prompt',
         message,
         model: 'gemini-3.1-flash-lite-preview',
-        createInteraction: mockInteractionsCreate,
+        createContent: mockContentCreate,
       })
 
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(123)
+      expect(mockContentCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            serviceTier: 'priority',
+            tools: [{ googleSearch: {} }, { urlContext: {} }],
+            httpOptions: {
+              timeout: 240_000,
+              retryOptions: { attempts: 1 },
+            },
+          }),
+        }),
+      )
       expect(result).not.toBe(NOT_ALLOWED_ERROR)
       consoleSpy.mockRestore()
     })
@@ -131,7 +150,7 @@ describe('gemini AI access control', () => {
         message,
         imagesData: [Buffer.from('current-image')],
         model: 'gemini-3.1-flash-lite-preview',
-        createInteraction: mockInteractionsCreate,
+        createContent: mockContentCreate,
         api,
       })
 
@@ -141,6 +160,7 @@ describe('gemini AI access control', () => {
           {
             ref: {
               fileId: 'history_photo',
+              fileUniqueId: 'history_photo',
               mimeType: 'image/jpeg',
               mediaType: 'image',
             },
@@ -150,42 +170,106 @@ describe('gemini AI access control', () => {
         api,
       )
 
-      const request = mockInteractionsCreate.mock.calls[0]?.[0] as {
-        input: Array<{
+      const request = mockContentCreate.mock.calls[0]?.[0] as {
+        contents: Array<{
           role: 'user' | 'model'
-          content: Array<
-            | { type: 'text'; text: string }
-            | { type: 'image'; data: string; mime_type: string }
+          parts: Array<
+            | { text: string }
+            | { inlineData: { data: string; mimeType: string } }
           >
         }>
       }
 
-      expect(request.input).toHaveLength(3)
-      expect(request.input[0]?.content).toEqual([
+      expect(request.contents).toHaveLength(4)
+      expect(request.contents[0]?.parts).toEqual([
         {
-          type: 'text',
           text: 'Context image from recent chat history. Related message text: old screenshot',
         },
         {
-          type: 'image',
-          data: Buffer.from('history-image').toString('base64'),
-          mime_type: 'image/png',
+          inlineData: {
+            data: Buffer.from('history-image').toString('base64'),
+            mimeType: 'image/png',
+          },
         },
       ])
-      expect(request.input[1]?.content).toEqual([
+      expect(request.contents[1]?.parts).toEqual([
         {
-          type: 'image',
-          data: Buffer.from('current-image').toString('base64'),
-          mime_type: 'image/jpeg',
+          text: 'Request image 1 (current command, reply, or album media; source label unavailable)',
+        },
+        {
+          inlineData: {
+            data: Buffer.from('current-image').toString('base64'),
+            mimeType: 'image/jpeg',
+          },
+        },
+      ])
+      expect(request.contents[2]?.parts).toEqual([
+        {
+          text: expect.stringContaining('Media priority'),
         },
       ])
       expect(
-        JSON.parse(
-          (request.input[2]?.content[0] as { type: 'text'; text: string }).text,
-        ),
+        JSON.parse((request.contents[3]?.parts[0] as { text: string }).text),
       ).toEqual(expect.objectContaining({ text: 'test prompt' }))
 
       consoleSpy.mockRestore()
+    })
+
+    test('does not duplicate reply image from history when request image is labeled', async () => {
+      mockIsAiEnabledChat.mockReturnValue(true)
+      mockGetHistory.mockResolvedValue([] as never)
+      mockGetRawHistory.mockResolvedValue([
+        {
+          message_id: 41,
+          photo: [
+            {
+              file_id: 'reply_photo',
+              file_unique_id: 'reply-photo',
+              width: 1000,
+              height: 1000,
+            },
+          ],
+        },
+      ] as never)
+
+      await generateMultimodalCompletion({
+        prompt: 'что на фото?',
+        message: { chat: { id: 123 }, message_id: 42 } as Message,
+        imageInputs: [
+          {
+            data: Buffer.from('reply-image'),
+            label: 'Reply message image (message_id=41)',
+            mimeType: 'image/jpeg',
+            fileId: 'reply_photo',
+            fileUniqueId: 'reply-photo',
+          },
+        ],
+        model: 'gemini-3.1-flash-lite-preview',
+        createContent: mockContentCreate,
+        api: { getFile: jest.fn() },
+      })
+
+      expect(mockResolveHistoryMediaAttachments).not.toHaveBeenCalled()
+
+      const request = mockContentCreate.mock.calls[0]?.[0] as {
+        contents: Array<{
+          parts: Array<
+            | { text: string }
+            | { inlineData: { data: string; mimeType: string } }
+          >
+        }>
+      }
+
+      expect(request.contents[0]?.parts).toEqual([
+        { text: 'Reply message image (message_id=41)' },
+        {
+          inlineData: {
+            data: Buffer.from('reply-image').toString('base64'),
+            mimeType: 'image/jpeg',
+          },
+        },
+      ])
+      expect(JSON.stringify(request.contents)).not.toContain('History image')
     })
 
     test('passes text formatting instructions to gemma models without enabling tools', async () => {
@@ -200,28 +284,38 @@ describe('gemini AI access control', () => {
         prompt: 'test prompt',
         message,
         model: 'gemma-4-31b-it',
-        createInteraction: mockInteractionsCreate,
+        createContent: mockContentCreate,
       })
 
-      expect(mockInteractionsCreate).toHaveBeenCalledWith(
+      expect(mockContentCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gemma-4-31b-it',
-          system_instruction: expect.stringContaining(
-            'Format responses for Telegram MarkdownV2',
-          ),
+          config: expect.objectContaining({
+            systemInstruction: expect.stringContaining(
+              'Format responses for Telegram MarkdownV2',
+            ),
+            httpOptions: {
+              timeout: 240_000,
+              retryOptions: { attempts: 1 },
+            },
+          }),
         }),
       )
 
-      const request = mockInteractionsCreate.mock.calls[0]?.[0] as {
-        system_instruction?: string
-        tools?: unknown
+      const request = mockContentCreate.mock.calls[0]?.[0] as {
+        config?: {
+          systemInstruction?: string
+          tools?: unknown
+        }
       }
 
-      expect(request.tools).toBeUndefined()
-      expect(request.system_instruction).toContain(
+      expect(request.config?.tools).toBeUndefined()
+      expect(request.config?.systemInstruction).toContain(
         'do not have access to web search or tools',
       )
-      expect(request.system_instruction).not.toContain('use search first')
+      expect(request.config?.systemInstruction).not.toContain(
+        'use search first',
+      )
 
       consoleSpy.mockRestore()
     })

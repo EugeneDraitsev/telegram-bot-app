@@ -104,7 +104,7 @@ describe('invokeReplyLambda', () => {
     jest.restoreAllMocks()
   })
 
-  test('should remove imagesData from payload to avoid exceeding 6MB limit', async () => {
+  test('should remove inline image buffers from payload to avoid exceeding 6MB limit', async () => {
     let capturedPayload: Buffer | undefined
 
     mockLambdaSend((command) => {
@@ -118,6 +118,13 @@ describe('invokeReplyLambda', () => {
         Buffer.from('large image data 1'),
         Buffer.from('large image data 2'),
       ],
+      imageInputs: [
+        {
+          data: Buffer.from('large image data 3'),
+          label: 'Reply message image',
+          mimeType: 'image/jpeg',
+        },
+      ],
       replyId: 123,
       chatId: 456,
       message: { text: 'test' },
@@ -129,6 +136,7 @@ describe('invokeReplyLambda', () => {
     const parsedPayload = JSON.parse(capturedPayload?.toString() ?? '')
 
     expect(parsedPayload).not.toHaveProperty('imagesData')
+    expect(parsedPayload).not.toHaveProperty('imageInputs')
     expect(parsedPayload).toHaveProperty('combinedText', 'test text')
     expect(parsedPayload).toHaveProperty('replyId', 123)
     expect(parsedPayload).toHaveProperty('chatId', 456)
@@ -169,7 +177,7 @@ describe('invokeAgentLambda', () => {
     ).toThrow('AGENT_WORKER_FUNCTION_NAME is not set')
   })
 
-  test('should invoke lambda with async mode and strip imagesData', async () => {
+  test('should invoke lambda with async mode and strip inline image buffers', async () => {
     process.env = { ...originalEnv, AGENT_WORKER_FUNCTION_NAME: 'agent-worker' }
 
     let capturedCommand: InvokeCommand | undefined
@@ -182,6 +190,13 @@ describe('invokeAgentLambda', () => {
     await invokeAgentLambda({
       message: { text: 'hello' },
       imagesData: [Buffer.from('image')],
+      imageInputs: [
+        {
+          data: Buffer.from('image'),
+          label: 'Current command image',
+          mimeType: 'image/jpeg',
+        },
+      ],
     })
 
     expect(capturedCommand?.input.InvocationType).toBe('Event')
@@ -191,6 +206,7 @@ describe('invokeAgentLambda', () => {
       Buffer.from(capturedCommand?.input.Payload as Buffer).toString(),
     )
     expect(parsed).not.toHaveProperty('imagesData')
+    expect(parsed).not.toHaveProperty('imageInputs')
     expect(parsed).toHaveProperty('message')
   })
 })

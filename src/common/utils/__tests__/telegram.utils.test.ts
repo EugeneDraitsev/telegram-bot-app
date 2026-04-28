@@ -4,6 +4,8 @@ import {
   findCommand,
   getChatName,
   getCommandData,
+  getCommandImageRefs,
+  getCommandMediaRefs,
   getParsedText,
   getUserName,
   isBotCommand,
@@ -18,6 +20,109 @@ describe('findCommand', () => {
     expect(findCommand('g')).toEqual('g')
     expect(findCommand(undefined)).toEqual('')
     expect(findCommand('/t multi \n\n\r line')).toEqual('/t')
+  })
+})
+
+describe('getCommandImageRefs', () => {
+  it('labels direct reply photos as reply message media', () => {
+    const replyPhoto = [
+      { file_id: 'reply_small', width: 100, height: 100, file_unique_id: 'r' },
+      {
+        file_id: 'reply_big',
+        width: 1000,
+        height: 1000,
+        file_unique_id: 'r',
+      },
+    ]
+
+    const refs = getCommandImageRefs({
+      text: '/o что на фото?',
+      reply_to_message: {
+        message_id: 321,
+        caption: 'дерево у дороги',
+        photo: replyPhoto,
+      },
+    } as unknown as Message)
+
+    expect(refs).toEqual([
+      {
+        image: { file_id: 'reply_big', file_unique_id: 'r' },
+        label: expect.stringContaining('Reply message image'),
+        mimeType: 'image/jpeg',
+      },
+    ])
+    expect(refs[0].label).toContain('message_id=321')
+    expect(refs[0].label).toContain('дерево у дороги')
+  })
+
+  it('labels reply album photos separately from current command media', () => {
+    const replyPhoto = [
+      {
+        file_id: 'album_main',
+        width: 1000,
+        height: 1000,
+        file_unique_id: 'a1',
+      },
+    ]
+    const extraPhoto = [
+      {
+        file_id: 'album_next',
+        width: 1000,
+        height: 1000,
+        file_unique_id: 'a2',
+      },
+    ]
+
+    const refs = getCommandImageRefs(
+      {
+        text: '/o что за дерево?',
+        reply_to_message: {
+          message_id: 321,
+          media_group_id: 'reply_album',
+          caption: 'альбом дерево 1',
+          photo: replyPhoto,
+        },
+      } as unknown as Message,
+      [
+        {
+          message_id: 322,
+          media_group_id: 'reply_album',
+          caption: 'альбом дерево 2',
+          photo: extraPhoto,
+        },
+      ] as unknown as Message[],
+    )
+
+    expect(refs.map(({ label }) => label)).toEqual([
+      expect.stringContaining('Reply message image'),
+      expect.stringContaining('Reply message album image'),
+    ])
+    expect(refs[1].label).toContain('message_id=322')
+    expect(refs[1].label).toContain('альбом дерево 2')
+  })
+
+  it('labels direct reply non-image media as reply message media', () => {
+    const refs = getCommandMediaRefs({
+      text: '/o что в видосе?',
+      reply_to_message: {
+        message_id: 777,
+        caption: 'reply video',
+        video: {
+          file_id: 'reply_video',
+          file_unique_id: 'reply-video-unique',
+          mime_type: 'video/mp4',
+        },
+      },
+    } as unknown as Message)
+
+    expect(refs).toEqual([
+      expect.objectContaining({
+        fileId: 'reply_video',
+        fileUniqueId: 'reply-video-unique',
+        mediaType: 'video',
+        label: expect.stringContaining('Reply message video'),
+      }),
+    ])
   })
 })
 

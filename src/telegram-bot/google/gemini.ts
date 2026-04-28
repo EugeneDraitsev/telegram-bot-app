@@ -1,7 +1,14 @@
-import { GoogleGenAI } from '@google/genai'
+import {
+  type Content,
+  type GenerateContentParameters,
+  type GenerateContentResponse,
+  GoogleGenAI,
+  type ServiceTier,
+} from '@google/genai'
 import type { Message } from 'telegram-typings'
 
 import {
+  type CommandImageInput,
   cleanGeminiMessage,
   collectHistoryMediaFileRefs,
   DEFAULT_ERROR_MESSAGE,
@@ -13,6 +20,9 @@ import {
   getRawHistory,
   isAiEnabledChat,
   logger,
+  MAX_HISTORY_IMAGE_ATTACHMENTS,
+  MAX_HISTORY_IMAGE_INLINE_BYTES,
+  MULTIMODAL_TIMEOUT_MS,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
   resolveHistoryMediaAttachments,
@@ -49,9 +59,19 @@ type InteractionResponse = {
   outputs?: InteractionOutput[]
 }
 
+type InteractionRequestOptions = {
+  timeout?: number
+  maxRetries?: number
+}
+
 type CreateInteraction = (
   request: Record<string, unknown>,
+  options?: InteractionRequestOptions,
 ) => Promise<InteractionResponse>
+
+type CreateContent = (
+  request: GenerateContentParameters,
+) => Promise<GenerateContentResponse>
 
 type HistoryMediaApi = {
   getFile: (fileId: string) => Promise<{ file_path?: string }>
@@ -61,19 +81,23 @@ interface GenerateMultimodalCompletionOptions {
   prompt: string
   message?: Message
   imagesData?: Buffer[]
+  imageInputs?: CommandImageInput[]
   model?: string
-  createInteraction?: CreateInteraction
+  createContent?: CreateContent
   api?: HistoryMediaApi
 }
 
-const MAX_HISTORY_IMAGE_ATTACHMENTS = 8
-const MAX_HISTORY_IMAGE_INLINE_BYTES = 12 * 1024 * 1024
+const createGeminiInteraction: CreateInteraction = (request, options) =>
+  ai.interactions.create(
+    {
+      ...request,
+      service_tier: GEMINI_SERVICE_TIER,
+    } as never,
+    options as never,
+  ) as Promise<InteractionResponse>
 
-const createGeminiInteraction: CreateInteraction = (request) =>
-  ai.interactions.create({
-    ...request,
-    service_tier: GEMINI_SERVICE_TIER,
-  } as never) as Promise<InteractionResponse>
+const createGeminiContent: CreateContent = (request) =>
+  ai.models.generateContent(request)
 
 function getHistoryImagePrompt(message: Message): string {
   const sourceText = (message.caption || message.text || '').trim()
@@ -85,6 +109,7 @@ function getHistoryImagePrompt(message: Message): string {
 async function getHistoryImageInputs(
   message: Message | undefined,
   api: HistoryMediaApi | undefined,
+  excludedImages: CommandImageInput[] = [],
 ): Promise<InteractionInput[]> {
   const chatId = message?.chat?.id
   if (!chatId || !api) {
@@ -92,8 +117,18 @@ async function getHistoryImageInputs(
   }
 
   const rawHistory = await getRawHistory(chatId)
+  const excludeFileIds = new Set(
+    excludedImages.map(({ fileId }) => fileId).filter(Boolean),
+  )
+  const excludeFileUniqueIds = new Set(
+    excludedImages
+      .map(({ fileUniqueId }) => fileUniqueId)
+      .filter((id): id is string => Boolean(id)),
+  )
   const historyImageRefs = collectHistoryMediaFileRefs(rawHistory, {
     excludeMessageId: message.message_id,
+    excludeFileIds,
+    excludeFileUniqueIds,
     mediaTypes: ['image'],
   })
 
@@ -116,8 +151,11 @@ async function getHistoryImageInputs(
     const attachment = attachments[index]
     const size = attachment?.media.buffer.byteLength ?? 0
 
-    if (!attachment || selected.length >= MAX_HISTORY_IMAGE_ATTACHMENTS) {
+    if (selected.length >= MAX_HISTORY_IMAGE_ATTACHMENTS) {
       break
+    }
+    if (!attachment) {
+      continue
     }
 
     if (totalBytes + size > MAX_HISTORY_IMAGE_INLINE_BYTES) {
@@ -141,12 +179,29 @@ async function getHistoryImageInputs(
   }))
 }
 
+function toGenerateContentInputs(inputs: InteractionInput[]): Content[] {
+  return inputs.map(({ role, content }) => ({
+    role,
+    parts: content.map((part) =>
+      part.type === 'text'
+        ? { text: part.text }
+        : {
+            inlineData: {
+              data: part.data,
+              mimeType: part.mime_type,
+            },
+          },
+    ),
+  }))
+}
+
 export const generateMultimodalCompletion = async ({
   prompt,
   message,
   imagesData,
+  imageInputs,
   model = 'gemini-3.1-flash-lite-preview',
-  createInteraction = createGeminiInteraction,
+  createContent = createGeminiContent,
   api,
 }: GenerateMultimodalCompletionOptions) => {
   try {
@@ -157,12 +212,22 @@ export const generateMultimodalCompletion = async ({
     }
 
     const history = (await getHistory(chatId)) as InteractionInput[]
-    const historyImageInputs = await getHistoryImageInputs(message, api).catch(
-      (error) => {
-        logger.warn({ error }, 'getHistoryImageInputs error')
-        return [] as InteractionInput[]
-      },
-    )
+    const requestImages = imageInputs?.length
+      ? imageInputs
+      : (imagesData ?? []).map((data, index) => ({
+          data,
+          label: `Request image ${index + 1} (current command, reply, or album media; source label unavailable)`,
+          mimeType: 'image/jpeg',
+          fileId: '',
+        }))
+    const historyImageInputs = await getHistoryImageInputs(
+      message,
+      api,
+      requestImages,
+    ).catch((error) => {
+      logger.warn({ error }, 'getHistoryImageInputs error')
+      return [] as InteractionInput[]
+    })
 
     // Add a placeholder for the first message if the first message is from the model
     if (history?.[0]?.role === 'model') {
@@ -175,18 +240,32 @@ export const generateMultimodalCompletion = async ({
     history.push(...historyImageInputs)
 
     // Add images to history
-    for (const image of imagesData ?? []) {
+    for (const image of requestImages) {
       history.push({
         role: 'user',
         content: [
           {
+            type: 'text',
+            text: image.label,
+          },
+          {
             type: 'image',
-            data: image.toString('base64'),
-            mime_type: 'image/jpeg',
+            data: image.data.toString('base64'),
+            mime_type: image.mimeType,
           },
         ],
       })
     }
+
+    history.push({
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: 'Media priority: reply/current/album media is intentional request media; history images are background. If the user refers to media and the current Telegram message is a reply, inspect reply media first.',
+        },
+      ],
+    })
 
     // Add current prompt
     history.push({
@@ -202,22 +281,27 @@ export const generateMultimodalCompletion = async ({
       ],
     })
 
-    const interaction = await createInteraction({
+    const response = await createContent({
       model,
-      input: history,
-      service_tier: GEMINI_SERVICE_TIER,
-      system_instruction: isGemmaModel
-        ? gemmaSystemInstructions
-        : geminiSystemInstructions,
-      ...(!isGemmaModel
-        ? {
-            tools: [{ type: 'google_search' }, { type: 'url_context' }],
-          }
-        : {}),
+      contents: toGenerateContentInputs(history),
+      config: {
+        systemInstruction: isGemmaModel
+          ? gemmaSystemInstructions
+          : geminiSystemInstructions,
+        serviceTier: GEMINI_SERVICE_TIER as ServiceTier,
+        httpOptions: {
+          timeout: MULTIMODAL_TIMEOUT_MS,
+          retryOptions: { attempts: 1 },
+        },
+        ...(!isGemmaModel
+          ? {
+              tools: [{ googleSearch: {} }, { urlContext: {} }],
+            }
+          : {}),
+      },
     })
 
-    const textOutput = interaction.outputs?.find((o) => o.type === 'text')
-    const text = textOutput?.text
+    const text = response.text
 
     if (!text) {
       return DEFAULT_ERROR_MESSAGE

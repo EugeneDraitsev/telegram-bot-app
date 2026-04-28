@@ -2,11 +2,17 @@ import type { Context } from 'grammy/web'
 
 import { OPENAI_GPT_IMAGE_MODEL } from '@tg-bot/common'
 import {
+  GEMINI_Q_MODEL,
   GEMMA_MODEL,
   setupImageGenerationGeminiCommands,
   setupMultimodalGeminiCommands,
 } from './google'
-import { setupImageGenerationOpenAiCommands } from './open-ai'
+import {
+  OPENAI_O_MODEL,
+  OPENAI_O_REASONING_EFFORT,
+  setupImageGenerationOpenAiCommands,
+  setupMultimodalOpenAiCommands,
+} from './open-ai'
 
 type PhotoRoute = {
   prefix: string
@@ -17,16 +23,18 @@ const photoRoutes: PhotoRoute[] = [
   {
     prefix: '/o',
     handler: (ctx, deferred) =>
-      setupMultimodalGeminiCommands(ctx, deferred, 'gemini-3.1-pro-preview'),
+      setupMultimodalOpenAiCommands(
+        ctx,
+        OPENAI_O_MODEL,
+        deferred,
+        '/o',
+        OPENAI_O_REASONING_EFFORT,
+      ),
   },
   {
     prefix: '/q',
     handler: (ctx, deferred) =>
-      setupMultimodalGeminiCommands(
-        ctx,
-        deferred,
-        'gemini-3.1-flash-lite-preview',
-      ),
+      setupMultimodalGeminiCommands(ctx, deferred, GEMINI_Q_MODEL, '/q'),
   },
   {
     prefix: '/e',
@@ -36,7 +44,7 @@ const photoRoutes: PhotoRoute[] = [
   {
     prefix: '/gemma',
     handler: (ctx, deferred) =>
-      setupMultimodalGeminiCommands(ctx, deferred, GEMMA_MODEL),
+      setupMultimodalGeminiCommands(ctx, deferred, GEMMA_MODEL, '/gemma'),
   },
   {
     prefix: '/ge',

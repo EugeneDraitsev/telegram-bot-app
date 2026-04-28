@@ -11,8 +11,12 @@ const setupImageGenerationGeminiCommandsMock = jest.fn((..._args: unknown[]) =>
 const setupImageGenerationOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
   Promise.resolve(undefined),
 )
+const setupMultimodalOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
+  Promise.resolve(undefined),
+)
 
 jest.mock('../google', () => ({
+  GEMINI_Q_MODEL: 'gemini-3.1-flash-lite-preview',
   GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -21,8 +25,12 @@ jest.mock('../google', () => ({
 }))
 
 jest.mock('../open-ai', () => ({
+  OPENAI_O_MODEL: 'gpt-5.5',
+  OPENAI_O_REASONING_EFFORT: 'medium',
   setupImageGenerationOpenAiCommands: (...args: unknown[]) =>
     setupImageGenerationOpenAiCommandsMock(...args),
+  setupMultimodalOpenAiCommands: (...args: unknown[]) =>
+    setupMultimodalOpenAiCommandsMock(...args),
 }))
 
 describe('handlePhotoMessage', () => {
@@ -30,6 +38,7 @@ describe('handlePhotoMessage', () => {
     setupMultimodalGeminiCommandsMock.mockClear()
     setupImageGenerationGeminiCommandsMock.mockClear()
     setupImageGenerationOpenAiCommandsMock.mockClear()
+    setupMultimodalOpenAiCommandsMock.mockClear()
   })
 
   test('routes /gemma photo captions to Google Gemma handler', async () => {
@@ -44,7 +53,29 @@ describe('handlePhotoMessage', () => {
       ctx,
       true,
       'gemma-4-31b-it',
+      '/gemma',
     )
+    expect(setupImageGenerationGeminiCommandsMock).not.toHaveBeenCalled()
+    expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
+    expect(setupMultimodalOpenAiCommandsMock).not.toHaveBeenCalled()
+  })
+
+  test('routes /o photo captions to OpenAI SOTA vision handler', async () => {
+    const ctx = {
+      message: { caption: '/o what tree is this' },
+    } as unknown as Context
+
+    const handled = await handlePhotoMessage(ctx, true)
+
+    expect(handled).toBe(true)
+    expect(setupMultimodalOpenAiCommandsMock).toHaveBeenCalledWith(
+      ctx,
+      'gpt-5.5',
+      true,
+      '/o',
+      'medium',
+    )
+    expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
   })
@@ -63,5 +94,6 @@ describe('handlePhotoMessage', () => {
     )
     expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
+    expect(setupMultimodalOpenAiCommandsMock).not.toHaveBeenCalled()
   })
 })

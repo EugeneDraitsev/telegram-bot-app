@@ -33,7 +33,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   setupTextCommands(bot)
 
   // /q /qq <text, image> - generate chat completion with gemini-3.1-flash-lite-preview
-  // /o <text, image> - generate chat completion with gemini-3.1-pro-preview
+  // /o <text, image> - generate chat completion with gpt-5.5 medium reasoning
   // /g <text> - search random image in google search
   // /t <text> - translate detected language to russian / english
   // /tb, /tr, /tp, /ts, /td, /te - translate to specific languages

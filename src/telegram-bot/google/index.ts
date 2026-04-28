@@ -27,11 +27,13 @@ const GEMINI_FAILURE_MESSAGES = new Set([
 ])
 
 export const GEMMA_MODEL = 'gemma-4-31b-it'
+export const GEMINI_Q_MODEL = 'gemini-3.1-flash-lite-preview'
 
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
   deferredCommands = false,
-  model: string = 'gemini-3.1-flash-lite-preview',
+  model: string = GEMINI_Q_MODEL,
+  commandName = '/q',
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
@@ -51,12 +53,13 @@ export const setupMultimodalGeminiCommands = async (
 
   const stopReaction = startCommandReaction(ctx)
   try {
-    const { combinedText, imagesData, replyId, chatId } = commandData
+    const { combinedText, imagesData, imageInputs, replyId, chatId } =
+      commandData
     const message = await timedCall(
       {
         type: 'model_call',
         source: 'command',
-        name: `/${model.includes('pro') ? 'o' : 'q'}`,
+        name: commandName,
         model,
         chatId: Number(chatId),
         classifyResult: (result) =>
@@ -67,6 +70,7 @@ export const setupMultimodalGeminiCommands = async (
           prompt: combinedText,
           message: ctx.message,
           imagesData,
+          imageInputs,
           model,
           api: ctx.api,
         }),
@@ -187,23 +191,11 @@ const setupGoogleCommands = (
   })
 
   bot.command(['q', 'qq'], (ctx) =>
-    setupMultimodalGeminiCommands(
-      ctx,
-      deferredCommands,
-      'gemini-3.1-flash-lite-preview',
-    ),
+    setupMultimodalGeminiCommands(ctx, deferredCommands, GEMINI_Q_MODEL, '/q'),
   )
 
   bot.command('gemma', (ctx) =>
-    setupMultimodalGeminiCommands(ctx, deferredCommands, GEMMA_MODEL),
-  )
-
-  bot.command('o', (ctx) =>
-    setupMultimodalGeminiCommands(
-      ctx,
-      deferredCommands,
-      'gemini-3.1-pro-preview',
-    ),
+    setupMultimodalGeminiCommands(ctx, deferredCommands, GEMMA_MODEL, '/gemma'),
   )
 
   bot.command('ge', (ctx) =>

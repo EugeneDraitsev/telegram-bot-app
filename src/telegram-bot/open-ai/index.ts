@@ -1,5 +1,4 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
-import type { ChatModel } from 'openai/resources'
 
 import {
   DEFAULT_ERROR_MESSAGE,
@@ -17,7 +16,9 @@ import {
 import {
   generateImage,
   generateMultimodalCompletion,
+  type OpenAiReasoningEffort,
   type SupportedImageModel,
+  type SupportedTextModel,
 } from './open-ai'
 
 const OPENAI_FAILURE_MESSAGES = new Set([
@@ -29,10 +30,15 @@ const OPENAI_FAILURE_MESSAGES = new Set([
 const toError = (value: unknown) =>
   value instanceof Error ? value : new Error(String(value))
 
+export const OPENAI_O_MODEL = 'gpt-5.5' as const
+export const OPENAI_O_REASONING_EFFORT = 'medium' as const
+
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
-  model: ChatModel = 'gpt-5-mini',
+  model: SupportedTextModel = OPENAI_O_MODEL,
   deferredCommands = false,
+  commandName = '/o',
+  reasoningEffort: OpenAiReasoningEffort = OPENAI_O_REASONING_EFFORT,
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
@@ -52,13 +58,20 @@ export const setupMultimodalOpenAiCommands = async (
 
   const stopReaction = startCommandReaction(ctx)
   try {
-    const { combinedText, imagesData, chatId, replyId } = commandData
+    const {
+      combinedText,
+      imagesData,
+      imageInputs,
+      chatId,
+      replyId,
+      message: commandMessage,
+    } = commandData
 
-    const message = await timedCall(
+    const responseMessage = await timedCall(
       {
         type: 'model_call',
         source: 'command',
-        name: '/e',
+        name: commandName,
         model: String(model),
         chatId: Number(chatId),
         classifyResult: (result) =>
@@ -70,10 +83,16 @@ export const setupMultimodalOpenAiCommands = async (
           Number(chatId),
           model,
           imagesData,
+          reasoningEffort,
+          {
+            message: commandMessage,
+            imageInputs,
+            api: ctx.api,
+          },
         ),
     )
 
-    const normalizedMessage = message?.trim() || ''
+    const normalizedMessage = responseMessage?.trim() || ''
     const replyText = normalizedMessage
       ? formatTelegramMarkdownV2(normalizedMessage)
       : DEFAULT_ERROR_MESSAGE
@@ -174,6 +193,15 @@ const setupOpenAiCommands = (
       ctx,
       OPENAI_GPT_IMAGE_MODEL,
       deferredCommands,
+    ),
+  )
+  bot.command('o', (ctx) =>
+    setupMultimodalOpenAiCommands(
+      ctx,
+      OPENAI_O_MODEL,
+      deferredCommands,
+      '/o',
+      OPENAI_O_REASONING_EFFORT,
     ),
   )
 }

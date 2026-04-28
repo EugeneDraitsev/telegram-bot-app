@@ -51,6 +51,7 @@ jest.mock('../google', () => ({
   __esModule: true,
   default: (bot: unknown, ...args: unknown[]) =>
     setupGoogleCommandsMock(bot, ...args),
+  GEMINI_Q_MODEL: 'gemini-3.1-flash-lite-preview',
   GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -126,6 +127,7 @@ describe('setupAllCommands', () => {
       ctx,
       true,
       'gemini-3.1-flash-lite-preview',
+      '/q',
     )
     expect(next).toHaveBeenCalledTimes(1)
   })

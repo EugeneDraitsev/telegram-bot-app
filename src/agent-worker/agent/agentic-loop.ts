@@ -289,6 +289,7 @@ function buildInitialContents(
   const mediaParts: Content[] = (mediaBuffers ?? []).map((m) => ({
     role: 'user',
     parts: [
+      ...(m.label ? [{ text: m.label }] : []),
       {
         inlineData: { mimeType: m.mimeType, data: m.buffer.toString('base64') },
       } as Part,
@@ -560,9 +561,21 @@ export async function runAgenticLoop(
         rawHistory,
         message.message_id,
       )
+      const requestMediaFileIds = new Set(
+        (mediaBuffers ?? [])
+          .map(({ fileId }) => fileId)
+          .filter((id): id is string => Boolean(id)),
+      )
+      const requestMediaFileUniqueIds = new Set(
+        (mediaBuffers ?? [])
+          .map(({ fileUniqueId }) => fileUniqueId)
+          .filter((id): id is string => Boolean(id)),
+      )
 
       const historyImageRefs = collectHistoryMediaFileRefs(rawHistory, {
         excludeMessageId: message.message_id,
+        excludeFileIds: requestMediaFileIds,
+        excludeFileUniqueIds: requestMediaFileUniqueIds,
         limit: DEFAULT_AGENT_HISTORY_LIMIT,
         mediaTypes: ['image'],
       }).slice(-MAX_HISTORY_IMAGE_ATTACHMENTS)
