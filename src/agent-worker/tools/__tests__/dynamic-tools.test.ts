@@ -6,10 +6,6 @@ import { executeDynamicCommandFromMessage } from '../dynamic-tools'
 
 const mockSearchWeb = jest.fn()
 
-jest.mock('../../services', () => ({
-  searchWeb: mockSearchWeb,
-}))
-
 const mockedGetDynamicToolsRaw = jest.spyOn(common, 'getDynamicToolsRaw')
 
 describe('executeDynamicCommandFromMessage', () => {
@@ -75,7 +71,13 @@ describe('executeDynamicCommandFromMessage', () => {
     } as Message
 
     const result = await runWithToolContext(message, undefined, async () => {
-      const execution = await executeDynamicCommandFromMessage(message)
+      const execution = await executeDynamicCommandFromMessage(
+        message,
+        new Set(),
+        {
+          searchWeb: mockSearchWeb,
+        },
+      )
       return {
         execution,
         responses: getCollectedResponses(),

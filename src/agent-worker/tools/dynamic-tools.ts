@@ -8,11 +8,19 @@ import {
   getParsedText,
   getWeather,
 } from '@tg-bot/common'
-import { searchWeb } from '../services'
+import { searchWeb } from '../services/gemini'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const MAX_DYNAMIC_TOOLS = 16
+
+export interface DynamicToolDependencies {
+  searchWeb: typeof searchWeb
+}
+
+const defaultDynamicToolDependencies: DynamicToolDependencies = {
+  searchWeb,
+}
 
 export const dynamicToolDefinitionSchema = z.object({
   name: z
@@ -92,7 +100,10 @@ function buildPrompt(
   return `${normalizedTemplate}\n${normalizedInput}`.trim()
 }
 
-function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
+function createDynamicTool(
+  definition: DynamicToolDefinition,
+  dependencies: DynamicToolDependencies = defaultDynamicToolDependencies,
+): AgentTool {
   const { name, description, action, template, stickerFileId } = definition
 
   function addStickerResponseIfPresent() {
@@ -165,7 +176,7 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
           return `Error: Dynamic tool "${name}" has empty query`
         }
 
-        const text = await searchWeb(
+        const text = await dependencies.searchWeb(
           preparedQuery,
           (args.format as 'brief' | 'detailed' | 'list') ??
             definition.searchFormat,
@@ -211,6 +222,7 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
 export async function executeDynamicCommandFromMessage(
   message: Message,
   reservedNames: Set<string> = new Set(),
+  dependencies: DynamicToolDependencies = defaultDynamicToolDependencies,
 ): Promise<DynamicCommandExecutionResult> {
   const chatId = message.chat?.id
   if (!chatId) {
@@ -248,7 +260,7 @@ export async function executeDynamicCommandFromMessage(
     return { matched: false }
   }
 
-  const tool = createDynamicTool(definition)
+  const tool = createDynamicTool(definition, dependencies)
   const input = getParsedText(sourceText).trim()
   const args =
     definition.action === 'send_text'
