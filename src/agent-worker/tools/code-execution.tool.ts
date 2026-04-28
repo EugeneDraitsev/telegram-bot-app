@@ -3,7 +3,7 @@
  * Replaces the old calculator tool — can run real Python, not just basic math.
  */
 
-import { getErrorMessage } from '@tg-bot/common'
+import { GEMINI_SERVICE_TIER, getErrorMessage } from '@tg-bot/common'
 import { ai, FAST_MODEL } from '../agent/models'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
@@ -38,6 +38,7 @@ export const codeExecutionTool: AgentTool = {
         model: FAST_MODEL,
         input: task,
         tools: [{ type: 'code_execution' }],
+        service_tier: GEMINI_SERVICE_TIER,
       })
 
       const textOutput = interaction.outputs?.find((o) => o.type === 'text')

@@ -46,6 +46,7 @@ describe('codeExecutionTool', () => {
       model: 'gemini-2.5-flash-lite',
       input: '6 * 7',
       tools: [{ type: 'code_execution' }],
+      service_tier: 'priority',
     })
   })
 

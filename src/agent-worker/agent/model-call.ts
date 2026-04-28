@@ -1,6 +1,11 @@
-import type { GenerateContentResponse } from '@google/genai'
+import type { GenerateContentResponse, ServiceTier } from '@google/genai'
 
-import { logger, type MetricStatus, recordMetric } from '@tg-bot/common'
+import {
+  GEMINI_SERVICE_TIER,
+  logger,
+  type MetricStatus,
+  recordMetric,
+} from '@tg-bot/common'
 import { MAX_RETRIES, RETRY_BASE_DELAY_MS } from './config'
 import {
   ai,
@@ -25,6 +30,18 @@ export function isRetryableModelError(error: unknown): boolean {
   return status === 429 || status === 503
 }
 
+function withPriorityServiceTier(
+  params: Parameters<typeof ai.models.generateContent>[0],
+): Parameters<typeof ai.models.generateContent>[0] {
+  return {
+    ...params,
+    config: {
+      ...params.config,
+      serviceTier: GEMINI_SERVICE_TIER as ServiceTier,
+    },
+  }
+}
+
 function getModelErrorStatus(error: unknown): MetricStatus {
   return error instanceof ModelCallTimeoutError ? 'timeout' : 'error'
 }
@@ -37,7 +54,8 @@ async function generateSingleModelWithRetry(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const promise = ai.models.generateContent(params)
+      const priorityParams = withPriorityServiceTier(params)
+      const promise = ai.models.generateContent(priorityParams)
       return await (params.model === CHAT_MODEL
         ? withTimeout(
             promise,

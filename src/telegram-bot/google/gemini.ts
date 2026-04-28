@@ -6,6 +6,7 @@ import {
   collectHistoryMediaFileRefs,
   DEFAULT_ERROR_MESSAGE,
   EMPTY_RESPONSE_ERROR,
+  GEMINI_SERVICE_TIER,
   geminiSystemInstructions,
   gemmaSystemInstructions,
   getHistory,
@@ -69,7 +70,10 @@ const MAX_HISTORY_IMAGE_ATTACHMENTS = 8
 const MAX_HISTORY_IMAGE_INLINE_BYTES = 12 * 1024 * 1024
 
 const createGeminiInteraction: CreateInteraction = (request) =>
-  ai.interactions.create(request as never) as Promise<InteractionResponse>
+  ai.interactions.create({
+    ...request,
+    service_tier: GEMINI_SERVICE_TIER,
+  } as never) as Promise<InteractionResponse>
 
 function getHistoryImagePrompt(message: Message): string {
   const sourceText = (message.caption || message.text || '').trim()
@@ -201,6 +205,7 @@ export const generateMultimodalCompletion = async ({
     const interaction = await createInteraction({
       model,
       input: history,
+      service_tier: GEMINI_SERVICE_TIER,
       system_instruction: isGemmaModel
         ? gemmaSystemInstructions
         : geminiSystemInstructions,
@@ -274,6 +279,7 @@ export async function generateImage(
         model: 'gemini-3.1-flash-image-preview',
         input: history,
         response_modalities: ['image', 'text'],
+        service_tier: GEMINI_SERVICE_TIER,
         system_instruction: imageGenerationSystemInstruction,
       })
 

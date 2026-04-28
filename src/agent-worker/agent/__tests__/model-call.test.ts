@@ -7,6 +7,7 @@ const mockLogger = {
 }
 
 jest.mock('@tg-bot/common', () => ({
+  GEMINI_SERVICE_TIER: 'priority',
   logger: mockLogger,
   recordMetric: mockRecordMetric,
 }))
@@ -70,6 +71,11 @@ describe('model-call', () => {
       'gemini-3.1-flash-lite-preview',
       'gemini-2.5-flash',
     ])
+    expect(
+      mockGenerateContent.mock.calls.map(
+        ([params]) => params.config?.serviceTier,
+      ),
+    ).toEqual(['priority', 'priority', 'priority', 'priority'])
     expect(mockRecordMetric).toHaveBeenCalledTimes(1)
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({

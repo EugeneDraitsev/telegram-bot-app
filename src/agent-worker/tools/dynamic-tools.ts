@@ -69,9 +69,17 @@ function parseDynamicTool(rawTool: unknown): DynamicToolDefinition | undefined {
   return parsed.data
 }
 
-function buildPrompt(template: string, input: string): string {
+function buildPrompt(
+  template: string,
+  input: string,
+  options: { stripOutputPlaceholder?: boolean } = {},
+): string {
   const normalizedInput = input.trim()
-  const normalizedTemplate = template.trim()
+  const normalizedTemplate = (
+    options.stripOutputPlaceholder
+      ? template.replaceAll('{{output}}', '')
+      : template
+  ).trim()
 
   if (normalizedTemplate.includes('{{input}}')) {
     return normalizedTemplate.replaceAll('{{input}}', normalizedInput).trim()
@@ -150,7 +158,9 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
       },
       execute: async (args) => {
         requireToolContext()
-        const preparedQuery = buildPrompt(template, args.query as string)
+        const preparedQuery = buildPrompt(template, args.query as string, {
+          stripOutputPlaceholder: true,
+        })
         if (!preparedQuery) {
           return `Error: Dynamic tool "${name}" has empty query`
         }
@@ -160,9 +170,8 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
           (args.format as 'brief' | 'detailed' | 'list') ??
             definition.searchFormat,
         )
-        addResponse({ type: 'text', text })
         addStickerResponseIfPresent()
-        return `Dynamic tool "${name}" completed web search`
+        return text
       },
     }
   }
@@ -192,12 +201,9 @@ function createDynamicTool(definition: DynamicToolDefinition): AgentTool {
       }
 
       const weather = await getWeather(preparedLocation)
-      addResponse({
-        type: 'text',
-        text: formatWeatherText(weather),
-      })
+      const text = formatWeatherText(weather)
       addStickerResponseIfPresent()
-      return `Dynamic tool "${name}" got weather for ${weather.city}`
+      return text
     },
   }
 }

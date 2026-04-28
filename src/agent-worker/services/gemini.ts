@@ -5,8 +5,9 @@
  */
 
 import { GoogleGenAI } from '@google/genai'
+import type { ServiceTier } from '@google/genai'
 
-import { getErrorMessage, logger } from '@tg-bot/common'
+import { GEMINI_SERVICE_TIER, getErrorMessage, logger } from '@tg-bot/common'
 import {
   SEARCH_MODEL_FALLBACK,
   SEARCH_MODEL_PRIMARY,
@@ -277,6 +278,7 @@ async function runGroundedSearch(
       model,
       contents: prompt,
       config: {
+        serviceTier: GEMINI_SERVICE_TIER as ServiceTier,
         tools: [{ googleSearch: {} }],
       },
     }),
@@ -529,6 +531,7 @@ export async function generateImage(
       model: 'gemini-3.1-flash-image-preview',
       input,
       response_modalities: ['image', 'text'],
+      service_tier: GEMINI_SERVICE_TIER,
     })
 
     result =

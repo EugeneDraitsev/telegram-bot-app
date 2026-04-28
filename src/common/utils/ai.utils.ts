@@ -8,6 +8,7 @@ export const EMPTY_RESPONSE_ERROR =
 export const PROMPT_MISSING_ERROR = 'Prompt is required'
 export const NOT_ALLOWED_ERROR =
   'AI is not allowed for this chat. Contact @drrrrrrrr for details'
+export const GEMINI_SERVICE_TIER = 'priority' as const
 
 const AI_ALLOWED_CHAT_IDS = (process.env.OPENAI_CHAT_IDS ?? '')
   .split(',')

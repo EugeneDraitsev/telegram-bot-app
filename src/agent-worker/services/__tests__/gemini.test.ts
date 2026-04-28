@@ -20,6 +20,7 @@ jest.mock('@google/genai', () => ({
 }))
 
 jest.mock('@tg-bot/common', () => ({
+  GEMINI_SERVICE_TIER: 'priority',
   getErrorMessage: (error: unknown) =>
     error instanceof Error ? error.message : String(error),
   logger: mockLogger,
@@ -67,6 +68,7 @@ describe('searchWeb', () => {
       model: 'gemini-3.1-flash-lite-preview',
       contents: expect.stringContaining('Query: btc price today'),
       config: {
+        serviceTier: 'priority',
         tools: [{ googleSearch: {} }],
       },
     })
@@ -129,6 +131,7 @@ describe('searchWeb', () => {
       model: 'gemini-3.1-flash-lite-preview',
       contents: 'Find one relevant source.\nQuery: real fallback query',
       config: {
+        serviceTier: 'priority',
         tools: [{ googleSearch: {} }],
       },
     })
@@ -196,6 +199,7 @@ describe('searchWeb', () => {
       model: 'gemini-3.1-flash-lite-preview',
       contents: prompt,
       config: {
+        serviceTier: 'priority',
         tools: [{ googleSearch: {} }],
       },
     })

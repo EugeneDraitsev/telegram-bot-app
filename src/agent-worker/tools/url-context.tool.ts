@@ -3,7 +3,7 @@
  * Fetches and summarizes web page content.
  */
 
-import { getErrorMessage } from '@tg-bot/common'
+import { GEMINI_SERVICE_TIER, getErrorMessage } from '@tg-bot/common'
 import { ai, FAST_MODEL } from '../agent/models'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
@@ -46,6 +46,7 @@ export const urlContextTool: AgentTool = {
         model: FAST_MODEL,
         input: prompt,
         tools: [{ type: 'url_context' }],
+        service_tier: GEMINI_SERVICE_TIER,
       })
 
       const textOutput = interaction.outputs?.find((o) => o.type === 'text')

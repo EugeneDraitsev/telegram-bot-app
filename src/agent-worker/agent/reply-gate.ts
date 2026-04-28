@@ -7,6 +7,7 @@ import type { Message } from 'telegram-typings'
 
 import {
   type BotIdentity,
+  GEMINI_SERVICE_TIER,
   hasBotAddressSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
@@ -128,6 +129,7 @@ export async function shouldEngageWithMessage(params: {
         system_instruction: systemPrompt,
         tools: replyGateTools,
         generation_config: { temperature: 0 },
+        service_tier: GEMINI_SERVICE_TIER,
       }),
       REPLY_GATE_TIMEOUT_MS,
       'reply_gate timeout',

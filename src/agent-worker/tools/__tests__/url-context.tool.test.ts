@@ -48,6 +48,7 @@ describe('urlContextTool', () => {
       model: 'gemini-2.5-flash-lite',
       input: 'Summarize the content of this page: https://example.com/article',
       tools: [{ type: 'url_context' }],
+      service_tier: 'priority',
     })
   })
 
@@ -66,6 +67,7 @@ describe('urlContextTool', () => {
       model: 'gemini-2.5-flash-lite',
       input: 'What is the main claim?\n\nURL: https://example.com/post',
       tools: [{ type: 'url_context' }],
+      service_tier: 'priority',
     })
   })
 

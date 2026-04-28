@@ -477,7 +477,10 @@ export async function runAgenticLoop(
       const dynamicCommand = await executeDynamicCommandFromMessage(message)
       if (dynamicCommand.matched) {
         const responsesToSend: AgentResponse[] = [...getCollectedResponses()]
-        if (responsesToSend.length === 0) {
+        const hasTextResponse = responsesToSend.some(
+          (response) => response.type === 'text',
+        )
+        if (!hasTextResponse) {
           responsesToSend.push({
             type: 'text',
             text: cleanGeminiMessage(
