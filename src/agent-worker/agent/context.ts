@@ -51,19 +51,24 @@ export function buildContextBlock(
   }
 
   if (message.reply_to_message) {
+    const replyTarget = message.reply_to_message
+    const replyText = replyTarget.text || replyTarget.caption || '[media]'
+    const replyLabel =
+      typeof replyTarget.message_id === 'number'
+        ? `message_id=${replyTarget.message_id}`
+        : 'message_id=unknown'
     const quoteText = (message as ExtendedMessage).quote?.text
     if (quoteText) {
       lines.push(
-        `- Quoting a specific part of the message: "${quoteText}"`,
-        `- Original message being replied to: "${message.reply_to_message.text || message.reply_to_message.caption || '[media]'}"`,
+        `- Telegram reply target (${replyLabel}): "${replyText}"`,
+        `- Quoted fragment from reply target: "${quoteText}"`,
       )
     } else {
-      lines.push(
-        `- Replying to: "${message.reply_to_message.text || message.reply_to_message.caption || '[media]'}"`,
-      )
+      lines.push(`- Telegram reply target (${replyLabel}): "${replyText}"`)
     }
     lines.push(
-      '- Media priority: if the user refers to media/image/photo/video/audio and this message is a reply, inspect Reply message media before history or unrelated chat media.',
+      '- Reply rule: answer the current user message about this reply target first. Treat recent history and history media as background unless the user explicitly asks about other messages.',
+      '- Media priority: if the reply target has media, inspect explicitly labeled Reply message media before history media.',
     )
   }
 

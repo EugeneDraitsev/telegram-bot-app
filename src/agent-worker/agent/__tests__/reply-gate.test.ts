@@ -90,14 +90,15 @@ describe('shouldEngageWithMessage', () => {
     })
 
     const message = {
-      text: 'бот какой ща курс кардано',
+      text: 'бот что тут в кратце ИМЕННО в этом сообщении',
       chat: { id: 777 },
+      reply_to_message: { message_id: 55, text: 'article text to summarize' },
     } as Message
 
     await expect(
       shouldEngageWithMessage({
         message,
-        textContent: 'бот какой ща курс кардано',
+        textContent: 'бот что тут в кратце ИМЕННО в этом сообщении',
         hasMedia: false,
         botInfo: OUR_BOT,
       }),
@@ -106,6 +107,9 @@ describe('shouldEngageWithMessage', () => {
     expect(mockResponsesCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gpt-5.4-nano',
+        input: expect.stringContaining(
+          'Replied-to message: article text to summarize',
+        ),
         reasoning: { effort: 'low' },
         tool_choice: 'required',
         safety_identifier: '777',

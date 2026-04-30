@@ -49,6 +49,7 @@ function buildReplyGatePrompt(params: {
   mentionsOther: boolean
   hasMedia: boolean
   textContent: string
+  replyTargetText?: string
   memoryBlock?: string
 }): string {
   return `You are the reply gate for a Telegram group bot.
@@ -66,6 +67,7 @@ You must call exactly one tool:
 ENGAGE only if at least one is true:
 - User directly asks THIS bot a question.
 - User gives THIS bot an explicit actionable request (help/explain/summarize/draw/generate/etc.).
+- User asks THIS bot a follow-up or clarification about the replied-to message.
 - User greets THIS bot in a way that expects a conversational response.
 - Message with media clearly asks THIS bot something in caption/text.
 
@@ -88,7 +90,22 @@ Context:
 - Mentions other account: ${params.mentionsOther}
 - Has media: ${params.hasMedia}
 - Message: "${params.textContent || '[media without text]'}"
+- Replied-to message: "${params.replyTargetText || '[not a reply]'}"
 ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
+}
+
+function buildReplyGateInput(message: Message, textContent: string): string {
+  const replyTargetText =
+    message.reply_to_message?.text || message.reply_to_message?.caption
+
+  if (!replyTargetText) {
+    return textContent || '[media without text]'
+  }
+
+  return [
+    `Current message: ${textContent || '[media without text]'}`,
+    `Replied-to message: ${replyTargetText}`,
+  ].join('\n')
 }
 
 function getChatId(message: Message): number | undefined {
@@ -139,6 +156,7 @@ export async function shouldEngageWithMessage(params: {
   const isReplyToOur = isReplyToOurBot(message, botInfo?.id)
   const isReplyToAnother = isReplyToAnotherBot(message, botInfo?.id)
   const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
+  const mentionsOther = mentionsAnotherAccount(textContent, botInfo?.username)
 
   if (isReplyToAnother && !hasOurMention) {
     logger.info({ chatId, reason: 'reply_to_another_bot' }, 'reply_gate.skip')
@@ -159,9 +177,11 @@ export async function shouldEngageWithMessage(params: {
     const instructions = buildReplyGatePrompt({
       isReplyToOur,
       hasOurMention,
-      mentionsOther: mentionsAnotherAccount(textContent, botInfo?.username),
+      mentionsOther,
       hasMedia,
       textContent,
+      replyTargetText:
+        message.reply_to_message?.text || message.reply_to_message?.caption,
       memoryBlock,
     })
 
@@ -179,7 +199,7 @@ export async function shouldEngageWithMessage(params: {
       getOpenAiClient().responses.create(
         {
           model: REPLY_GATE_MODEL,
-          input: textContent || '[media without text]',
+          input: buildReplyGateInput(message, textContent),
           instructions,
           tools: replyGateTools,
           tool_choice: 'required',

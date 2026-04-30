@@ -322,19 +322,34 @@ function pushImageContent(
 }
 
 function buildInitialInput(
-  _message: Message,
+  message: Message,
   textContent: string,
   mediaBuffers: MediaBuffer[] | undefined,
   historyMediaAttachments: HistoryMediaAttachment[],
 ): ResponseInputItem[] {
   const content: ResponseInputContent[] = []
 
-  for (const { media, message: srcMsg } of historyMediaAttachments) {
-    pushImageContent(content, getHistoryMediaPrompt(srcMsg), media)
-  }
-
   for (const media of mediaBuffers ?? []) {
     pushImageContent(content, media.label || 'Request media', media)
+  }
+
+  if (message.reply_to_message) {
+    const replyText =
+      message.reply_to_message.text || message.reply_to_message.caption
+    const replyId = message.reply_to_message.message_id
+    const replyLabel =
+      typeof replyId === 'number'
+        ? `Telegram reply target message_id=${replyId}`
+        : 'Telegram reply target'
+
+    content.push({
+      type: 'input_text',
+      text: `${replyLabel}: ${replyText || '[media]'}`,
+    })
+  }
+
+  for (const { media, message: srcMsg } of historyMediaAttachments) {
+    pushImageContent(content, getHistoryMediaPrompt(srcMsg), media)
   }
 
   content.push({
@@ -657,8 +672,8 @@ export async function runAgenticLoop(
         : []
 
       const allMediaBuffers = [
-        ...historyMediaAttachments.map((e) => e.media),
         ...(mediaBuffers ?? []),
+        ...historyMediaAttachments.map((e) => e.media),
       ]
 
       const contextBlock = buildContextBlock(
