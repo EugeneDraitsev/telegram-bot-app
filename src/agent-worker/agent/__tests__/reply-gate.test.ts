@@ -84,6 +84,51 @@ describe('shouldEngageWithMessage', () => {
     ).toEqual(false)
   })
 
+  test('returns false when reply to our bot addresses another account', async () => {
+    const message = {
+      text: '@otheruser rank',
+      reply_to_message: {
+        from: { is_bot: true, id: OUR_BOT.id },
+      },
+    } as Message
+
+    expect(
+      await shouldEngageWithMessage({
+        message,
+        textContent: '@otheruser rank',
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).toEqual(false)
+
+    expect(mockResponsesCreate).not.toHaveBeenCalled()
+  })
+
+  test('uses OpenAI model when reply mentions another account and the bot', async () => {
+    mockResponsesCreate.mockResolvedValueOnce({
+      output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],
+    })
+
+    const message = {
+      text: '@otheruser rank and bot too',
+      chat: { id: 777 },
+      reply_to_message: {
+        from: { is_bot: true, id: OUR_BOT.id },
+      },
+    } as Message
+
+    await expect(
+      shouldEngageWithMessage({
+        message,
+        textContent: '@otheruser rank and bot too',
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(true)
+
+    expect(mockResponsesCreate).toHaveBeenCalled()
+  })
+
   test('uses OpenAI model for addressed reply gate decisions', async () => {
     mockResponsesCreate.mockResolvedValueOnce({
       output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],

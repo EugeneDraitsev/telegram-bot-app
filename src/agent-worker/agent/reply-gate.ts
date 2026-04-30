@@ -157,14 +157,22 @@ export async function shouldEngageWithMessage(params: {
   const isReplyToAnother = isReplyToAnotherBot(message, botInfo?.id)
   const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
   const mentionsOther = mentionsAnotherAccount(textContent, botInfo?.username)
+  const hasBotAddress = hasBotAddressSignal(textContent, botInfo?.username)
 
   if (isReplyToAnother && !hasOurMention) {
     logger.info({ chatId, reason: 'reply_to_another_bot' }, 'reply_gate.skip')
     return false
   }
 
-  const addressedToBot =
-    isReplyToOur || hasBotAddressSignal(textContent, botInfo?.username)
+  if (isReplyToOur && mentionsOther && !hasBotAddress) {
+    logger.info(
+      { chatId, reason: 'reply_to_our_bot_but_addressed_to_other' },
+      'reply_gate.skip',
+    )
+    return false
+  }
+
+  const addressedToBot = isReplyToOur || hasBotAddress
 
   if (!addressedToBot) {
     logger.info({ chatId, reason: 'not_addressed_to_bot' }, 'reply_gate.skip')
