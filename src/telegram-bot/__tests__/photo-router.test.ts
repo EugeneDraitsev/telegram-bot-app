@@ -16,7 +16,6 @@ const setupMultimodalOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
 )
 
 jest.mock('../google', () => ({
-  GEMINI_Q_MODEL: 'gemini-3.1-flash-lite-preview',
   GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -27,6 +26,8 @@ jest.mock('../google', () => ({
 jest.mock('../open-ai', () => ({
   OPENAI_O_MODEL: 'gpt-5.5',
   OPENAI_O_REASONING_EFFORT: 'medium',
+  OPENAI_Q_MODEL: 'gpt-5.4-nano',
+  OPENAI_Q_REASONING_EFFORT: 'low',
   setupImageGenerationOpenAiCommands: (...args: unknown[]) =>
     setupImageGenerationOpenAiCommandsMock(...args),
   setupMultimodalOpenAiCommands: (...args: unknown[]) =>
@@ -74,6 +75,26 @@ describe('handlePhotoMessage', () => {
       true,
       '/o',
       'medium',
+    )
+    expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
+    expect(setupImageGenerationGeminiCommandsMock).not.toHaveBeenCalled()
+    expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
+  })
+
+  test('routes /q photo captions to OpenAI nano vision handler', async () => {
+    const ctx = {
+      message: { caption: '/q what tree is this' },
+    } as unknown as Context
+
+    const handled = await handlePhotoMessage(ctx, true)
+
+    expect(handled).toBe(true)
+    expect(setupMultimodalOpenAiCommandsMock).toHaveBeenCalledWith(
+      ctx,
+      'gpt-5.4-nano',
+      true,
+      '/q',
+      'low',
     )
     expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationGeminiCommandsMock).not.toHaveBeenCalled()

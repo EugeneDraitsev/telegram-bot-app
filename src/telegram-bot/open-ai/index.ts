@@ -32,6 +32,8 @@ const toError = (value: unknown) =>
 
 export const OPENAI_O_MODEL = 'gpt-5.5' as const
 export const OPENAI_O_REASONING_EFFORT = 'medium' as const
+export const OPENAI_Q_MODEL = 'gpt-5.4-nano' as const
+export const OPENAI_Q_REASONING_EFFORT = 'low' as const
 
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
@@ -202,6 +204,15 @@ const setupOpenAiCommands = (
       deferredCommands,
       '/o',
       OPENAI_O_REASONING_EFFORT,
+    ),
+  )
+  bot.command(['q', 'qq'], (ctx) =>
+    setupMultimodalOpenAiCommands(
+      ctx,
+      OPENAI_Q_MODEL,
+      deferredCommands,
+      '/q',
+      OPENAI_Q_REASONING_EFFORT,
     ),
   )
 }

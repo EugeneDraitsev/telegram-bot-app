@@ -1,5 +1,9 @@
-// import { ThinkingLevel } from '@google/genai'
-import type { Content, FunctionCall, Part, Tool } from '@google/genai'
+import type {
+  ResponseFunctionToolCall,
+  ResponseInputContent,
+  ResponseInputItem,
+  Tool,
+} from 'openai/resources/responses/responses'
 import type { Message } from 'telegram-typings'
 
 import type { HistoryMediaAttachment, MediaBuffer } from '@tg-bot/common'
@@ -23,6 +27,7 @@ import {
   startTypingIndicator,
 } from '@tg-bot/common'
 import { IMAGE_MODEL } from '../services/openai-image'
+import { OPENAI_WEB_SEARCH_TOOLS } from '../services/openai-tools'
 import { VOICE_MODEL } from '../services/openai-tts'
 import {
   executeDynamicCommandFromMessage,
@@ -46,9 +51,9 @@ import {
 } from './model-call'
 import {
   CHAT_MODEL,
-  CHAT_MODEL_FALLBACK,
+  CHAT_MODEL_REASONING_EFFORT,
   FAST_MODEL,
-  SEARCH_MODEL_PRIMARY,
+  REPLY_GATE_MODEL,
 } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
@@ -78,33 +83,29 @@ function getRecentHistoryContext(
 }
 
 function buildNativeTools(agentTools: AgentTool[]): Tool[] {
-  if (agentTools.length === 0) return []
-  return [
-    {
-      functionDeclarations: agentTools.map((t) => {
-        // Strip 'type' field — generateContent API doesn't accept it
-        // (it was added for Interactions API compatibility)
-        const { type: _, ...declaration } = t.declaration as unknown as Record<
-          string,
-          unknown
-        >
-        return declaration
-        // biome-ignore lint/suspicious/noExplicitAny: structurally compatible at runtime
-      }) as any,
-    },
-  ]
+  const functionTools = agentTools
+    .filter((tool) => tool.exposeToModel !== false)
+    .map(
+      (tool): Tool => ({
+        type: 'function',
+        name: tool.declaration.name,
+        description: tool.declaration.description,
+        parameters: tool.declaration.parameters ?? null,
+        strict: false,
+      }),
+    )
+
+  return [...OPENAI_WEB_SEARCH_TOOLS, ...functionTools]
 }
 
 /** Maps tool names to their underlying AI model for metrics */
 const TOOL_MODELS: Record<string, string> = {
   generate_or_edit_image: IMAGE_MODEL,
   generate_voice: VOICE_MODEL,
-  web_search: SEARCH_MODEL_PRIMARY,
-  search_video: SEARCH_MODEL_PRIMARY,
+  search_video: CHAT_MODEL,
   code_execution: FAST_MODEL,
-  url_context: FAST_MODEL,
 }
-const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
+const RATE_LIMITED_TOOLS = new Set(['search_video'])
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
 
@@ -113,6 +114,10 @@ function getHistoryMediaPrompt(message: Message): string {
   return sourceText
     ? `Context image from recent chat history. Related message text: ${sourceText.slice(0, 200)}`
     : 'Context image from recent chat history.'
+}
+
+function getToolModel(toolName: string): string {
+  return TOOL_MODELS[toolName] ?? 'none'
 }
 
 function getToolResultStatus(result: string): MetricStatus {
@@ -134,22 +139,66 @@ function getToolResultStatus(result: string): MetricStatus {
   return 'success'
 }
 
+function parseToolArguments(
+  rawArguments: string,
+  chatId: number,
+  toolName: string,
+): { ok: true; args: Record<string, unknown> } | { ok: false; result: string } {
+  try {
+    const parsed = JSON.parse(rawArguments)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      const result = `Error: invalid tool arguments JSON for "${toolName}". Arguments must be a JSON object.`
+      logger.warn(
+        { chatId, tool: toolName, rawArguments },
+        'tool.arguments_parse_failed',
+      )
+      return { ok: false, result }
+    }
+    return { ok: true, args: parsed as Record<string, unknown> }
+  } catch (error) {
+    const result = `Error: invalid tool arguments JSON for "${toolName}". Re-call the tool with valid JSON arguments.`
+    logger.warn(
+      { chatId, tool: toolName, rawArguments, error: extractErrorInfo(error) },
+      'tool.arguments_parse_failed',
+    )
+    return { ok: false, result }
+  }
+}
+
 async function executeToolCall(
-  toolCall: FunctionCall,
+  toolCall: ResponseFunctionToolCall,
   toolByName: Map<string, AgentTool>,
   chatId: number,
 ): Promise<{ name: string; result: string }> {
-  const name = toolCall.name ?? ''
+  const name = toolCall.name
   const tool = toolByName.get(name)
   if (!tool) return { name, result: `Error: tool "${name}" not found` }
 
-  logger.info({ chatId, tool: name, payload: toolCall.args }, 'tool.call')
+  const model = getToolModel(name)
+  const parsedArgs = parseToolArguments(toolCall.arguments, chatId, name)
+  if (!parsedArgs.ok) {
+    void recordMetric({
+      type: 'tool_call',
+      source: 'agentic',
+      name,
+      model,
+      chatId,
+      durationMs: 0,
+      success: false,
+      status: 'error',
+      timestamp: Date.now(),
+    })
+    return { name, result: parsedArgs.result }
+  }
+
+  const args = parsedArgs.args
+  logger.info({ chatId, tool: name, model, payload: args }, 'tool.call')
 
   const toolStart = Date.now()
   try {
     const timeout = tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS
     const result = await withTimeout(
-      tool.execute((toolCall.args as Record<string, unknown>) ?? {}),
+      tool.execute(args),
       timeout,
       `Tool timed out after ${timeout}ms`,
     )
@@ -157,10 +206,13 @@ async function executeToolCall(
     const durationMs = Date.now() - toolStart
     const status = getToolResultStatus(result)
     if (status === 'success') {
-      logger.info({ chatId, tool: name, durationMs, result }, 'tool.done')
+      logger.info(
+        { chatId, tool: name, model, durationMs, result },
+        'tool.done',
+      )
     } else {
       logger.warn(
-        { chatId, tool: name, durationMs, result, status },
+        { chatId, tool: name, model, durationMs, result, status },
         'tool.done_non_success',
       )
     }
@@ -168,7 +220,7 @@ async function executeToolCall(
       type: 'tool_call',
       source: 'agentic',
       name,
-      model: TOOL_MODELS[name],
+      model,
       chatId,
       durationMs,
       success: status === 'success',
@@ -181,14 +233,14 @@ async function executeToolCall(
     const errorMsg = error instanceof Error ? error.message : String(error)
     const status = getMetricStatusFromError(error)
     logger.error(
-      { chatId, tool: name, durationMs, error: errorMsg, status },
+      { chatId, tool: name, model, durationMs, error: errorMsg, status },
       'tool.failed',
     )
     void recordMetric({
       type: 'tool_call',
       source: 'agentic',
       name,
-      model: TOOL_MODELS[name],
+      model,
       chatId,
       durationMs,
       success: false,
@@ -200,20 +252,25 @@ async function executeToolCall(
 }
 
 async function executeToolCalls(
-  calls: Array<Part & { functionCall: FunctionCall }>,
+  calls: ResponseFunctionToolCall[],
   toolByName: Map<string, AgentTool>,
   chatId: number,
-): Promise<Array<{ call: FunctionCall; name: string; result: string }>> {
-  const run = (call: Part & { functionCall: FunctionCall }) =>
-    executeToolCall(call.functionCall, toolByName, chatId).then((r) => ({
-      call: call.functionCall,
+): Promise<
+  Array<{ call: ResponseFunctionToolCall; name: string; result: string }>
+> {
+  const run = (call: ResponseFunctionToolCall) =>
+    executeToolCall(call, toolByName, chatId).then((r) => ({
+      call,
       ...r,
     }))
 
   // Run sequentially when search-backed tools are present (rate limiting).
-  if (calls.some((c) => RATE_LIMITED_TOOLS.has(c.functionCall.name ?? ''))) {
-    const results: Array<{ call: FunctionCall; name: string; result: string }> =
-      []
+  if (calls.some((c) => RATE_LIMITED_TOOLS.has(c.name))) {
+    const results: Array<{
+      call: ResponseFunctionToolCall
+      name: string
+      result: string
+    }> = []
     for (const call of calls) results.push(await run(call))
     return results
   }
@@ -233,27 +290,13 @@ function extractErrorInfo(error: unknown): unknown {
   }
 }
 
-function extractFallbackTextFromToolResults(
-  contents: Content[],
-): string | null {
-  const results: string[] = []
-  for (let i = contents.length - 1; i >= 0; i--) {
-    for (const part of [...(contents[i]?.parts ?? [])].reverse()) {
-      const rawResult = (
-        part as unknown as {
-          functionResponse?: { response?: { result?: unknown } }
-        }
-      ).functionResponse?.response?.result
-      if (
-        typeof rawResult === 'string' &&
-        rawResult.trim() &&
-        !rawResult.startsWith('Error:')
-      ) {
-        results.push(rawResult.trim())
-      }
-    }
-  }
-  return results.length ? [...new Set(results)].slice(0, 2).join('\n\n') : null
+function extractFallbackTextFromToolResults(results: string[]): string | null {
+  const successfulResults = results.filter(
+    (result) => result.trim() && !result.startsWith('Error:'),
+  )
+  return successfulResults.length
+    ? [...new Set(successfulResults)].slice(0, 2).join('\n\n')
+    : null
 }
 
 function getLoopFailureReply(error: unknown): string {
@@ -265,91 +308,102 @@ function getLoopFailureReply(error: unknown): string {
 
 // ── Content building ─────────────────────────────────────────
 
-function buildInitialContents(
+function pushImageContent(
+  content: ResponseInputContent[],
+  label: string,
+  media: MediaBuffer,
+) {
+  content.push({ type: 'input_text', text: label })
+  content.push({
+    type: 'input_image',
+    image_url: `data:${media.mimeType};base64,${media.buffer.toString('base64')}`,
+    detail: 'high',
+  })
+}
+
+function buildInitialInput(
   _message: Message,
   textContent: string,
   mediaBuffers: MediaBuffer[] | undefined,
   historyMediaAttachments: HistoryMediaAttachment[],
-): Content[] {
-  const historyParts: Content[] = historyMediaAttachments.map(
-    ({ media, message: srcMsg }) => ({
-      role: 'user',
-      parts: [
-        { text: getHistoryMediaPrompt(srcMsg) },
-        {
-          inlineData: {
-            mimeType: media.mimeType,
-            data: media.buffer.toString('base64'),
-          },
-        } as Part,
-      ],
-    }),
-  )
+): ResponseInputItem[] {
+  const content: ResponseInputContent[] = []
 
-  const mediaParts: Content[] = (mediaBuffers ?? []).map((m) => ({
-    role: 'user',
-    parts: [
-      ...(m.label ? [{ text: m.label }] : []),
-      {
-        inlineData: { mimeType: m.mimeType, data: m.buffer.toString('base64') },
-      } as Part,
-    ],
-  }))
+  for (const { media, message: srcMsg } of historyMediaAttachments) {
+    pushImageContent(content, getHistoryMediaPrompt(srcMsg), media)
+  }
 
-  return [
-    ...historyParts,
-    ...mediaParts,
-    {
-      role: 'user',
-      parts: [{ text: textContent || '[User sent media without text]' }],
-    },
-  ]
+  for (const media of mediaBuffers ?? []) {
+    pushImageContent(content, media.label || 'Request media', media)
+  }
+
+  content.push({
+    type: 'input_text',
+    text: textContent || '[User sent media without text]',
+  })
+
+  return [{ role: 'user', content }]
 }
 
 // ── Model loop ───────────────────────────────────────────────
 
 async function runToolLoop(
-  contents: Content[],
+  input: ResponseInputItem[],
   systemInstruction: string,
   tools: Tool[],
   toolByName: Map<string, AgentTool>,
   chatId: number,
-): Promise<string> {
+): Promise<{ finalText: string; toolResults: string[] }> {
   let finalText = ''
-  const followUpModel = CHAT_MODEL_FALLBACK
+  const toolResults: string[] = []
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const response = await generateWithRetry(
       {
-        model: iteration === 0 ? CHAT_MODEL : followUpModel,
-        contents,
-        config: {
-          systemInstruction,
-          tools,
-          temperature: iteration === 0 ? 1.0 : 0.2,
-        },
+        model: CHAT_MODEL,
+        input,
+        instructions: systemInstruction,
+        tools,
+        tool_choice: 'auto',
+        parallel_tool_calls: true,
+        include: [
+          'web_search_call.action.sources',
+          'reasoning.encrypted_content',
+        ],
+        reasoning: { effort: CHAT_MODEL_REASONING_EFFORT },
+        safety_identifier: String(chatId),
+        store: false,
+        truncation: 'auto',
       },
       chatId,
       iteration === 0 ? 'routing' : `iteration_${iteration}`,
     )
 
-    const candidateContent = response.candidates?.[0]?.content
-    const parts = candidateContent?.parts ?? []
-    const functionCalls = parts.filter(
-      (p): p is Part & { functionCall: FunctionCall } => !!p.functionCall,
+    const output = response.output ?? []
+    const functionCalls = output.filter(
+      (item): item is ResponseFunctionToolCall => item.type === 'function_call',
     )
-    const textParts = parts.filter((p) => p.text).map((p) => p.text ?? '')
+    logger.info(
+      {
+        chatId,
+        model: CHAT_MODEL,
+        iteration,
+        outputTypes: output.map((item) => item.type),
+        functionCalls: functionCalls.map((call) => call.name),
+        usedWebSearch: output.some((item) => item.type === 'web_search_call'),
+      },
+      'loop.model_response',
+    )
+    const text = response.output_text?.trim() ?? ''
 
-    if (textParts.length > 0) finalText = textParts.join('\n')
+    if (text) finalText = text
     if (functionCalls.length === 0) break
 
     // If a round has both data-gathering and content-creating tools, defer
     // content tools so they run after data is available in the next iteration.
-    const dataCalls = functionCalls.filter(
-      (fc) => !CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
-    )
+    const dataCalls = functionCalls.filter((fc) => !CONTENT_TOOLS.has(fc.name))
     const contentCalls = functionCalls.filter((fc) =>
-      CONTENT_TOOLS.has(fc.functionCall.name ?? ''),
+      CONTENT_TOOLS.has(fc.name),
     )
     const hasDeferred = dataCalls.length > 0 && contentCalls.length > 0
     const callsToExecute = hasDeferred ? dataCalls : functionCalls
@@ -358,50 +412,55 @@ async function runToolLoop(
       logger.info(
         {
           chatId,
+          model: CHAT_MODEL,
           iteration,
-          deferred: contentCalls.map((fc) => fc.functionCall.name),
+          deferred: contentCalls.map((fc) => fc.name),
         },
         'loop.deferred_content_tools',
       )
     }
 
-    contents.push(candidateContent ?? { role: 'model', parts })
+    input.push(...(output as ResponseInputItem[]))
 
     const executionResults = await executeToolCalls(
       callsToExecute,
       toolByName,
       chatId,
     )
+    toolResults.push(...executionResults.map((tr) => tr.result))
 
     const functionResponses = [
       ...executionResults.map((tr) => ({
-        functionResponse: { name: tr.name, response: { result: tr.result } },
+        type: 'function_call_output' as const,
+        call_id: tr.call.call_id,
+        output: tr.result,
       })),
       ...(hasDeferred
         ? contentCalls.map((fc) => ({
-            functionResponse: {
-              name: fc.functionCall.name ?? '',
-              response: {
-                result:
-                  'NOT EXECUTED YET — data was just fetched. Call this tool again now with the actual data.',
-              },
-            },
+            type: 'function_call_output' as const,
+            call_id: fc.call_id,
+            output:
+              'NOT EXECUTED YET - data was just fetched. Call this tool again now with the actual data.',
           }))
         : []),
     ]
 
     const allTerminal = callsToExecute.every((fc) =>
-      TERMINAL_TOOLS.has(fc.functionCall.name ?? ''),
+      TERMINAL_TOOLS.has(fc.name),
     )
     if (allTerminal && getCollectedResponses().length > 0 && !hasDeferred) {
       logger.info(
-        { chatId, tools: callsToExecute.map((fc) => fc.functionCall.name) },
+        {
+          chatId,
+          model: CHAT_MODEL,
+          tools: callsToExecute.map((fc) => fc.name),
+        },
         'loop.terminal_tools_skip',
       )
       break
     }
 
-    contents.push({ role: 'user', parts: functionResponses })
+    input.push(...functionResponses)
   }
 
   // If no text came out of the loop, force a final synthesis pass without tools.
@@ -409,44 +468,40 @@ async function runToolLoop(
     try {
       const finalizeResponse = await generateWithRetry(
         {
-          model: followUpModel,
-          contents: [
-            ...contents,
+          model: CHAT_MODEL,
+          input: [
+            ...input,
             {
               role: 'user',
-              parts: [
-                {
-                  text: 'Provide the final user-facing answer now. Use plain text only and do not call tools. Use successful tool results as the primary evidence. If any tool failed or timed out, explicitly say you could not verify that part instead of guessing.',
-                },
-              ],
+              content:
+                'Provide the final user-facing answer now. Use plain text only and do not call tools. Use successful tool results as the primary evidence. If any tool failed or timed out, explicitly say you could not verify that part instead of guessing.',
             },
           ],
-          config: { systemInstruction, temperature: 0.2 },
+          instructions: systemInstruction,
+          include: ['reasoning.encrypted_content'],
+          reasoning: { effort: CHAT_MODEL_REASONING_EFFORT },
+          safety_identifier: String(chatId),
+          store: false,
+          truncation: 'auto',
         },
         chatId,
         'finalize',
       )
-      const finalizeText = (
-        finalizeResponse.candidates?.[0]?.content?.parts ?? []
-      )
-        .filter((p) => p.text)
-        .map((p) => p.text ?? '')
-        .join('\n')
-        .trim()
+      const finalizeText = finalizeResponse.output_text?.trim() ?? ''
       if (finalizeText) {
         finalText = finalizeText
       } else {
-        logger.warn({ chatId }, 'loop.finalize_empty')
+        logger.warn({ chatId, model: CHAT_MODEL }, 'loop.finalize_empty')
       }
     } catch (error) {
       logger.warn(
-        { chatId, error: extractErrorInfo(error) },
+        { chatId, model: CHAT_MODEL, error: extractErrorInfo(error) },
         'loop.finalize_failed',
       )
     }
   }
 
-  return finalText
+  return { finalText, toolResults }
 }
 
 // ── Main entry ───────────────────────────────────────────────
@@ -465,7 +520,15 @@ export async function runAgenticLoop(
   }
 
   const messageMeta = getMessageLogMeta(message)
-  logger.info(messageMeta, 'loop.start')
+  logger.info(
+    {
+      ...messageMeta,
+      model: CHAT_MODEL,
+      reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+      replyGateModel: REPLY_GATE_MODEL,
+    },
+    'loop.start',
+  )
 
   let stopTyping: (() => void) | undefined
 
@@ -505,6 +568,7 @@ export async function runAgenticLoop(
             durationMs: Date.now() - startedAt,
             deliveryDurationMs: Date.now() - deliveryStart,
             commandName: dynamicCommand.name,
+            ...(dynamicCommand.model ? { model: dynamicCommand.model } : {}),
             responseCount: responsesToSend.length,
           },
           'loop.dynamic_command_done',
@@ -527,7 +591,10 @@ export async function runAgenticLoop(
         botInfo,
       })
       if (!shouldRespond) {
-        logger.info({ ...messageMeta, reason: 'reply_gate' }, 'loop.skipped')
+        logger.info(
+          { ...messageMeta, reason: 'reply_gate', model: REPLY_GATE_MODEL },
+          'loop.skipped',
+        )
         return
       }
 
@@ -610,19 +677,35 @@ export async function runAgenticLoop(
       const tools = buildNativeTools(agentTools)
       const toolByName = new Map<string, AgentTool>(
         agentTools
-          .filter((t) => t.declaration.name != null)
+          .filter(
+            (t) => t.exposeToModel !== false && t.declaration.name != null,
+          )
           .map((t) => [t.declaration.name ?? '', t]),
       )
+      logger.info(
+        {
+          chatId,
+          model: CHAT_MODEL,
+          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+          exposedTools: tools.map((tool) =>
+            tool.type === 'function' ? tool.name : tool.type,
+          ),
+          hiddenTools: agentTools
+            .filter((tool) => tool.exposeToModel === false)
+            .map((tool) => tool.declaration.name),
+        },
+        'loop.tools_ready',
+      )
 
-      const contents = buildInitialContents(
+      const input = buildInitialInput(
         message,
         textContent,
         mediaBuffers,
         historyMediaAttachments,
       )
 
-      const finalText = await runToolLoop(
-        contents,
+      const { finalText, toolResults } = await runToolLoop(
+        input,
         systemInstruction,
         tools,
         toolByName,
@@ -639,10 +722,13 @@ export async function runAgenticLoop(
       if (finalText.trim()) {
         allTextParts.push(cleanGeminiMessage(finalText))
       } else {
-        const fallback = extractFallbackTextFromToolResults(contents)
+        const fallback = extractFallbackTextFromToolResults(toolResults)
         if (fallback) {
           allTextParts.push(cleanGeminiMessage(fallback))
-          logger.warn({ chatId }, 'loop.fallback_from_tool_result')
+          logger.warn(
+            { chatId, model: CHAT_MODEL },
+            'loop.fallback_from_tool_result',
+          )
         }
       }
 
@@ -656,7 +742,11 @@ export async function runAgenticLoop(
           text: 'Не смог собрать ответ по этому запросу. Попробуй переформулировать.',
         })
         logger.warn(
-          { ...messageMeta, durationMs: Date.now() - startedAt },
+          {
+            ...messageMeta,
+            model: CHAT_MODEL,
+            durationMs: Date.now() - startedAt,
+          },
           'loop.no_response_fallback_text',
         )
       }
@@ -672,6 +762,8 @@ export async function runAgenticLoop(
       logger.info(
         {
           ...messageMeta,
+          model: CHAT_MODEL,
+          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
           durationMs: Date.now() - startedAt,
           deliveryDurationMs: Date.now() - deliveryStart,
           responseCount: responsesToSend.length,
@@ -686,6 +778,8 @@ export async function runAgenticLoop(
     logger.error(
       {
         ...messageMeta,
+        model: CHAT_MODEL,
+        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         durationMs: Date.now() - startedAt,
         error: extractErrorInfo(error),
       },

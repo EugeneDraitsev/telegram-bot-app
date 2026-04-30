@@ -1,7 +1,6 @@
 /**
  * Tool for finding video links with grounded web search.
- * Now uses native google_search grounding via the main model call,
- * but provides a specialized prompt for video search.
+ * Uses OpenAI web search with a specialized prompt for video search.
  */
 
 import { getErrorMessage } from '@tg-bot/common'

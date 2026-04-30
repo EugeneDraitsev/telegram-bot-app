@@ -1,38 +1,45 @@
 /**
- * Reply gate — LLM-based filter using Interactions API with gemini-2.5-flash-lite.
- * Deterministic pre-filter + LLM engage/ignore decision.
+ * Reply gate - deterministic pre-filter + OpenAI engage/ignore decision.
  */
 
+import type {
+  ResponseFunctionToolCall,
+  Tool,
+} from 'openai/resources/responses/responses'
 import type { Message } from 'telegram-typings'
 
 import {
   type BotIdentity,
-  GEMINI_SERVICE_TIER,
+  getMetricStatusFromError,
   hasBotAddressSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
   logger,
   mentionsAnotherAccount,
   mentionsOurBot,
+  recordMetric,
 } from '@tg-bot/common'
+import { getOpenAiClient } from '../services/openai-client'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
-import { ai, FAST_MODEL } from './models'
+import { REPLY_GATE_MODEL, REPLY_GATE_REASONING_EFFORT } from './models'
 import { withTimeout } from './utils'
 
-const replyGateTools = [
+const replyGateTools: Tool[] = [
   {
-    type: 'function' as const,
+    type: 'function',
     name: 'engage',
     description:
       'The message is addressed to the bot and contains something meaningful.',
     parameters: { type: 'object', properties: {} },
+    strict: false,
   },
   {
-    type: 'function' as const,
+    type: 'function',
     name: 'ignore',
     description:
       'Ignore the message. Use for clear noise: spam, meaningless characters, or messages clearly not meant for the bot.',
     parameters: { type: 'object', properties: {} },
+    strict: false,
   },
 ]
 
@@ -59,15 +66,15 @@ You must call exactly one tool:
 ENGAGE only if at least one is true:
 - User directly asks THIS bot a question.
 - User gives THIS bot an explicit actionable request (help/explain/summarize/draw/generate/etc.).
-- User greets THIS bot in a way that expects a conversational response ("ботик ты как?", "привет бот").
+- User greets THIS bot in a way that expects a conversational response.
 - Message with media clearly asks THIS bot something in caption/text.
 
 IGNORE if any of these apply:
 - Message talks ABOUT the bot in third person, not TO the bot.
-- Meta statements about bot behavior/triggering: "нас бот тригернулся", "бот триггернулся", "бот опять ответил".
-- Short mention fragments without a clear ask: "@username журнал макмилена", "@botname <noun phrase>".
+- Meta statements about bot behavior/triggering.
+- Short mention fragments without a clear ask.
 - Reply/mention is aimed mainly at another person/account, even if THIS bot is present.
-- Praise/thanks/reactions without explicit question/request ("молодец", "спасибо", "красиво", "харош" и т.д).
+- Praise/thanks/reactions without explicit question/request.
 - Pure noise/spam/random chars/single emoji without context.
 - Any uncertainty.
 
@@ -84,6 +91,36 @@ Context:
 ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
 }
 
+function getChatId(message: Message): number | undefined {
+  const chatId = message.chat?.id
+  return typeof chatId === 'number' ? chatId : undefined
+}
+
+function recordReplyGateMetric(params: {
+  chatId?: number
+  durationMs: number
+  success: boolean
+  error?: unknown
+}) {
+  if (params.chatId === undefined) return
+
+  const status = params.success
+    ? 'success'
+    : getMetricStatusFromError(params.error)
+
+  void recordMetric({
+    type: 'model_call',
+    source: 'agentic',
+    name: 'reply_gate',
+    model: REPLY_GATE_MODEL,
+    chatId: params.chatId,
+    durationMs: params.durationMs,
+    success: params.success,
+    status,
+    timestamp: Date.now(),
+  })
+}
+
 export async function shouldEngageWithMessage(params: {
   message: Message
   textContent: string
@@ -92,8 +129,10 @@ export async function shouldEngageWithMessage(params: {
   botInfo?: BotIdentity
 }): Promise<boolean> {
   const { message, textContent, hasMedia, memoryBlock, botInfo } = params
+  const chatId = getChatId(message)
 
   if (!textContent.trim() && !hasMedia) {
+    logger.info({ chatId, reason: 'empty_message' }, 'reply_gate.skip')
     return false
   }
 
@@ -102,6 +141,7 @@ export async function shouldEngageWithMessage(params: {
   const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
 
   if (isReplyToAnother && !hasOurMention) {
+    logger.info({ chatId, reason: 'reply_to_another_bot' }, 'reply_gate.skip')
     return false
   }
 
@@ -109,11 +149,14 @@ export async function shouldEngageWithMessage(params: {
     isReplyToOur || hasBotAddressSignal(textContent, botInfo?.username)
 
   if (!addressedToBot) {
+    logger.info({ chatId, reason: 'not_addressed_to_bot' }, 'reply_gate.skip')
     return false
   }
 
+  const startedAt = Date.now()
+
   try {
-    const systemPrompt = buildReplyGatePrompt({
+    const instructions = buildReplyGatePrompt({
       isReplyToOur,
       hasOurMention,
       mentionsOther: mentionsAnotherAccount(textContent, botInfo?.username),
@@ -122,30 +165,64 @@ export async function shouldEngageWithMessage(params: {
       memoryBlock,
     })
 
-    const interaction = await withTimeout(
-      ai.interactions.create({
-        model: FAST_MODEL,
-        input: textContent || '[media without text]',
-        system_instruction: systemPrompt,
-        tools: replyGateTools,
-        generation_config: { temperature: 0 },
-        service_tier: GEMINI_SERVICE_TIER,
-      }),
+    logger.info(
+      {
+        chatId,
+        model: REPLY_GATE_MODEL,
+        reasoningEffort: REPLY_GATE_REASONING_EFFORT,
+        timeoutMs: REPLY_GATE_TIMEOUT_MS,
+      },
+      'reply_gate.model_call',
+    )
+
+    const response = await withTimeout(
+      getOpenAiClient().responses.create(
+        {
+          model: REPLY_GATE_MODEL,
+          input: textContent || '[media without text]',
+          instructions,
+          tools: replyGateTools,
+          tool_choice: 'required',
+          parallel_tool_calls: false,
+          reasoning: { effort: REPLY_GATE_REASONING_EFFORT },
+          safety_identifier: chatId === undefined ? undefined : String(chatId),
+          store: false,
+          truncation: 'auto',
+        },
+        {
+          timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
+          maxRetries: 0,
+        },
+      ),
       REPLY_GATE_TIMEOUT_MS,
       'reply_gate timeout',
     )
 
-    const functionCall = interaction.outputs?.find(
-      (o) => o.type === 'function_call',
+    const functionCall = response.output?.find(
+      (item): item is ResponseFunctionToolCall => item.type === 'function_call',
     )
+    const decision = functionCall?.name ?? 'none'
+    const durationMs = Date.now() - startedAt
 
-    if (!functionCall) {
-      return false
-    }
+    logger.info(
+      {
+        chatId,
+        model: REPLY_GATE_MODEL,
+        decision,
+        durationMs,
+      },
+      'reply_gate.done',
+    )
+    recordReplyGateMetric({ chatId, durationMs, success: true })
 
-    return (functionCall as { name?: string }).name === 'engage'
+    return decision === 'engage'
   } catch (error) {
-    logger.error({ error }, 'reply_gate.failed')
+    const durationMs = Date.now() - startedAt
+    logger.error(
+      { chatId, model: REPLY_GATE_MODEL, durationMs, error },
+      'reply_gate.failed',
+    )
+    recordReplyGateMetric({ chatId, durationMs, success: false, error })
     return false
   }
 }

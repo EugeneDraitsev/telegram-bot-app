@@ -2,7 +2,10 @@ import type { Message } from 'telegram-typings'
 
 import * as common from '@tg-bot/common'
 import { getCollectedResponses, runWithToolContext } from '../context'
-import { executeDynamicCommandFromMessage } from '../dynamic-tools'
+import {
+  executeDynamicCommandFromMessage,
+  loadDynamicTools,
+} from '../dynamic-tools'
 
 const mockSearchWeb = jest.fn()
 
@@ -87,12 +90,33 @@ describe('executeDynamicCommandFromMessage', () => {
     expect(mockSearchWeb).toHaveBeenCalledWith(
       'Курс Cardano\nCardano ADA price',
       'brief',
+      { chatId: 777 },
     )
     expect(result.execution).toEqual({
       matched: true,
       name: 'ada',
       result: 'ADA is $0.44 right now',
+      model: 'gpt-5.4-nano',
     })
     expect(result.responses).toEqual([])
+  })
+
+  test('keeps dynamic web_search commands out of main model tool list', async () => {
+    mockedGetDynamicToolsRaw.mockResolvedValue([
+      {
+        name: 'ada',
+        description: 'Check Cardano ADA price',
+        action: 'web_search',
+        template: 'Cardano ADA price',
+        searchFormat: 'brief',
+        enabled: true,
+      },
+    ])
+
+    const tools = await loadDynamicTools(777, new Set())
+
+    expect(tools).toHaveLength(1)
+    expect(tools[0]?.declaration.name).toBe('ada')
+    expect(tools[0]?.exposeToModel).toBe(false)
   })
 })

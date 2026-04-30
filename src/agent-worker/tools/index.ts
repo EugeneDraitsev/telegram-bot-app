@@ -24,9 +24,7 @@ import { randomChoiceTool, randomNumberTool } from './random.tool'
 import { searchGifTool } from './search-gif.tool'
 import { searchImageTool } from './search-image.tool'
 import { searchVideoTool } from './search-video.tool'
-import { urlContextTool } from './url-context.tool'
 import { weatherTool } from './weather.tool'
-import { webSearchTool } from './web-search.tool'
 
 // Context management
 export {
@@ -55,9 +53,7 @@ export {
   searchVideoTool,
   telegramDiceTool,
   updateMemoryTool,
-  urlContextTool,
   weatherTool,
-  webSearchTool,
 }
 
 const baseAgentTools: AgentTool[] = [
@@ -78,8 +74,6 @@ const baseAgentTools: AgentTool[] = [
   getMemoryTool,
   updateMemoryTool,
   createDynamicToolTool,
-  webSearchTool,
-  urlContextTool,
 ]
 
 const baseToolNames = new Set<string>(

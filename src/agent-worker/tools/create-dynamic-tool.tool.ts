@@ -35,7 +35,6 @@ const RESERVED_TOOL_NAMES = new Set<string>([
   'update_memory',
   'create_dynamic_tool',
   'web_search',
-  'url_context',
 ])
 
 function uniqueByName(tools: DynamicToolDefinition[]): DynamicToolDefinition[] {

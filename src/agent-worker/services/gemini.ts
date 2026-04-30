@@ -1,6 +1,6 @@
 /**
  * Google Gemini AI for image and voice generation.
- * Text generation for the main loop is now in agentic-loop.ts via @google/genai directly.
+ * Main agent text generation now uses OpenAI Responses in agentic-loop.ts.
  * This file keeps specialized generation functions that tools still need.
  */
 

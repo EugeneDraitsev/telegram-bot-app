@@ -56,7 +56,7 @@ const OPENAI_MULTIMODAL_TOOLS: Tool[] = [
   { type: 'web_search', search_context_size: 'high' },
 ]
 const openAiMultimodalInstructions = `${systemInstructions}
-  - IMPORTANT: /o has OpenAI web search enabled. Use it for current, uncertain, ambiguous, newly released, or possibly misspelled real-world facts.
+  - IMPORTANT: This OpenAI command has web search enabled. Use it for current, uncertain, ambiguous, newly released, or possibly misspelled real-world facts.
   - IMPORTANT: If the user includes or asks about a URL, use web search/open-page behavior to inspect the referenced page before answering. Treat retrieved page/search evidence as stronger than memory.
 `
 

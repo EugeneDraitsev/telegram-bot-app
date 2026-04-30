@@ -8,14 +8,23 @@ import {
   getParsedText,
   getWeather,
 } from '@tg-bot/common'
-import { searchWeb } from '../services/gemini'
+import {
+  type SearchWebOptions,
+  searchWebOpenAi as searchWeb,
+  WEB_SEARCH_MODEL,
+  type WebSearchResponseFormat,
+} from '../services/openai-web-search'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 const MAX_DYNAMIC_TOOLS = 16
 
 export interface DynamicToolDependencies {
-  searchWeb: typeof searchWeb
+  searchWeb: (
+    query: string,
+    format?: WebSearchResponseFormat,
+    options?: SearchWebOptions,
+  ) => Promise<string>
 }
 
 const defaultDynamicToolDependencies: DynamicToolDependencies = {
@@ -40,6 +49,7 @@ export interface DynamicCommandExecutionResult {
   matched: boolean
   name?: string
   result?: string
+  model?: string
 }
 
 function normalizeDynamicToolName(value: string): string {
@@ -147,6 +157,7 @@ function createDynamicTool(
 
   if (action === 'web_search') {
     return {
+      exposeToModel: false,
       declaration: {
         type: 'function',
         name,
@@ -168,7 +179,7 @@ function createDynamicTool(
         },
       },
       execute: async (args) => {
-        requireToolContext()
+        const { message } = requireToolContext()
         const preparedQuery = buildPrompt(template, args.query as string, {
           stripOutputPlaceholder: true,
         })
@@ -180,6 +191,7 @@ function createDynamicTool(
           preparedQuery,
           (args.format as 'brief' | 'detailed' | 'list') ??
             definition.searchFormat,
+          { chatId: message.chat?.id },
         )
         addStickerResponseIfPresent()
         return text
@@ -270,7 +282,12 @@ export async function executeDynamicCommandFromMessage(
         : { location: input }
 
   const result = await tool.execute(args)
-  return { matched: true, name: definition.name, result }
+  return {
+    matched: true,
+    name: definition.name,
+    result,
+    ...(definition.action === 'web_search' ? { model: WEB_SEARCH_MODEL } : {}),
+  }
 }
 
 export async function loadDynamicTools(

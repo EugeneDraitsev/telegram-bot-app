@@ -11,7 +11,12 @@ import {
   isAgenticChatEnabled,
   logger,
 } from '@tg-bot/common'
-import { runAgenticLoop } from './agent'
+import {
+  CHAT_MODEL,
+  CHAT_MODEL_REASONING_EFFORT,
+  REPLY_GATE_MODEL,
+  runAgenticLoop,
+} from './agent'
 
 const bot = createBot()
 
@@ -76,6 +81,9 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     logger.info(
       {
         ...messageMeta,
+        model: CHAT_MODEL,
+        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+        replyGateModel: REPLY_GATE_MODEL,
         hasInlineImages: Boolean(imagesData?.length),
         imageFileIdsCount: imageFileIds?.length ?? 0,
       },
@@ -102,6 +110,9 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     logger.info(
       {
         ...messageMeta,
+        model: CHAT_MODEL,
+        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+        replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
         mediaCount: mediaData.mediaBuffers.length,
       },
@@ -112,6 +123,9 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   } catch (error) {
     logger.error(
       {
+        model: CHAT_MODEL,
+        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+        replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
         error,
       },

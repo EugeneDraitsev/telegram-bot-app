@@ -4,8 +4,8 @@
  * Change IMAGE_MODEL to switch the underlying model.
  */
 
-import OpenAi from 'openai'
 import { toFile, type Uploadable } from 'openai/uploads'
+import type OpenAi from 'openai'
 
 import {
   buildOpenAiImagePrompt,
@@ -15,6 +15,7 @@ import {
   OPENAI_GPT_IMAGE_SIZE,
   usesOpenAiMediumImageQuality,
 } from '@tg-bot/common'
+import { getOpenAiClient } from './openai-client'
 
 type SupportedImageModel = NonNullable<
   OpenAi.Images.ImageGenerateParams['model']
@@ -25,23 +26,11 @@ export const IMAGE_MODEL: SupportedImageModel = OPENAI_GPT_IMAGE_MODEL
 
 const MAX_RETRIES = 3
 
-let client: OpenAi | null = null
-
-function getClient(): OpenAi {
-  if (client) return client
-
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) throw new Error('OPENAI_API_KEY is not set')
-
-  client = new OpenAi({ apiKey })
-  return client
-}
-
 export async function generateImageOpenAi(
   prompt: string,
   inputImages?: Buffer[],
 ): Promise<{ image?: Buffer; text?: string }> {
-  const openAi = getClient()
+  const openAi = getOpenAiClient()
   const requestPrompt = buildOpenAiImagePrompt(prompt)
 
   const requestImage = async (): Promise<OpenAi.Images.ImagesResponse> => {

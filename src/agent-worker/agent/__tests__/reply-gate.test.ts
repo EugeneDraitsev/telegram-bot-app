@@ -1,10 +1,34 @@
 import type { Message } from 'telegram-typings'
 
+const mockResponsesCreate = jest.fn()
+
+jest.mock('openai', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    responses: {
+      create: mockResponsesCreate,
+    },
+  })),
+}))
+
+import { resetOpenAiClientForTests } from '../../services/openai-client'
 import { shouldEngageWithMessage } from '../reply-gate'
 
 const OUR_BOT = { id: 123456, username: 'testbot' }
 
 describe('shouldEngageWithMessage', () => {
+  beforeAll(() => {
+    process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key'
+  })
+
+  beforeEach(() => {
+    resetOpenAiClientForTests()
+    mockResponsesCreate.mockReset()
+    mockResponsesCreate.mockResolvedValue({
+      output: [{ type: 'function_call', name: 'ignore', arguments: '{}' }],
+    })
+  })
+
   test('returns false for empty message without media', async () => {
     const message = { text: '' } as Message
 
@@ -58,5 +82,35 @@ describe('shouldEngageWithMessage', () => {
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)
+  })
+
+  test('uses OpenAI model for addressed reply gate decisions', async () => {
+    mockResponsesCreate.mockResolvedValueOnce({
+      output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],
+    })
+
+    const message = {
+      text: 'бот какой ща курс кардано',
+      chat: { id: 777 },
+    } as Message
+
+    await expect(
+      shouldEngageWithMessage({
+        message,
+        textContent: 'бот какой ща курс кардано',
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(true)
+
+    expect(mockResponsesCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'gpt-5.4-nano',
+        reasoning: { effort: 'medium' },
+        tool_choice: 'required',
+        safety_identifier: '777',
+      }),
+      { timeout: 16_000, maxRetries: 0 },
+    )
   })
 })

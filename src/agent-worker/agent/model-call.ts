@@ -1,18 +1,12 @@
-import type { GenerateContentResponse, ServiceTier } from '@google/genai'
+import type {
+  Response as OpenAiResponse,
+  ResponseCreateParamsNonStreaming,
+} from 'openai/resources/responses/responses'
 
-import {
-  GEMINI_SERVICE_TIER,
-  logger,
-  type MetricStatus,
-  recordMetric,
-} from '@tg-bot/common'
+import { logger, type MetricStatus, recordMetric } from '@tg-bot/common'
+import { getOpenAiClient } from '../services/openai-client'
 import { MAX_RETRIES, RETRY_BASE_DELAY_MS } from './config'
-import {
-  ai,
-  CHAT_MODEL,
-  CHAT_MODEL_FALLBACK,
-  CHAT_MODEL_TIMEOUT_MS,
-} from './models'
+import { CHAT_MODEL, CHAT_MODEL_TIMEOUT_MS } from './models'
 import { withTimeout } from './utils'
 
 export class ModelCallTimeoutError extends Error {
@@ -27,19 +21,11 @@ export class ModelCallTimeoutError extends Error {
 
 export function isRetryableModelError(error: unknown): boolean {
   const status = (error as { status?: number })?.status
-  return status === 429 || status === 503
-}
-
-function withPriorityServiceTier(
-  params: Parameters<typeof ai.models.generateContent>[0],
-): Parameters<typeof ai.models.generateContent>[0] {
-  return {
-    ...params,
-    config: {
-      ...params.config,
-      serviceTier: GEMINI_SERVICE_TIER as ServiceTier,
-    },
-  }
+  return (
+    status === 408 ||
+    status === 429 ||
+    (typeof status === 'number' && status >= 500)
+  )
 }
 
 function getModelErrorStatus(error: unknown): MetricStatus {
@@ -47,25 +33,30 @@ function getModelErrorStatus(error: unknown): MetricStatus {
 }
 
 async function generateSingleModelWithRetry(
-  params: Parameters<typeof ai.models.generateContent>[0],
+  params: ResponseCreateParamsNonStreaming,
   chatId: number,
-): Promise<GenerateContentResponse> {
+): Promise<OpenAiResponse> {
   let lastError: unknown
+  const model = typeof params.model === 'string' ? params.model : CHAT_MODEL
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const priorityParams = withPriorityServiceTier(params)
-      const promise = ai.models.generateContent(priorityParams)
-      return await (params.model === CHAT_MODEL
-        ? withTimeout(
-            promise,
-            CHAT_MODEL_TIMEOUT_MS,
-            new ModelCallTimeoutError(
-              params.model as string,
-              CHAT_MODEL_TIMEOUT_MS,
-            ),
-          )
-        : promise)
+      const promise = getOpenAiClient().responses.create(
+        {
+          ...params,
+          model,
+          store: params.store ?? false,
+        },
+        {
+          timeout: CHAT_MODEL_TIMEOUT_MS + 1_000,
+          maxRetries: 0,
+        },
+      )
+      return await withTimeout(
+        promise,
+        CHAT_MODEL_TIMEOUT_MS,
+        new ModelCallTimeoutError(model, CHAT_MODEL_TIMEOUT_MS),
+      )
     } catch (error) {
       lastError = error
       const isTimeout = error instanceof ModelCallTimeoutError
@@ -74,8 +65,8 @@ async function generateSingleModelWithRetry(
       if (!isRetryable || attempt === MAX_RETRIES) {
         if (isTimeout) {
           logger.error(
-            { chatId, model: params.model, timeoutMs: CHAT_MODEL_TIMEOUT_MS },
-            'model.failed_timeout_over_20s',
+            { chatId, model, timeoutMs: CHAT_MODEL_TIMEOUT_MS },
+            'model.failed_timeout',
           )
         }
         throw error
@@ -85,6 +76,7 @@ async function generateSingleModelWithRetry(
       logger.warn(
         {
           chatId,
+          model,
           attempt: attempt + 1,
           status: (error as { status?: number })?.status,
           delayMs: delay,
@@ -99,28 +91,30 @@ async function generateSingleModelWithRetry(
 }
 
 export async function generateWithRetry(
-  params: Parameters<typeof ai.models.generateContent>[0],
+  params: ResponseCreateParamsNonStreaming,
   chatId: number,
   metricName: string,
-): Promise<GenerateContentResponse> {
+): Promise<OpenAiResponse> {
   const primaryModel =
     typeof params.model === 'string' ? params.model : undefined
-  const fallbackModel: string = CHAT_MODEL_FALLBACK
-  const canFallback =
-    primaryModel === CHAT_MODEL && fallbackModel !== primaryModel
   const startedAt = Date.now()
 
-  const track = (
-    model?: string,
-    fallbackFrom?: string,
-    status: MetricStatus = 'success',
-  ) => {
+  logger.info(
+    {
+      chatId,
+      name: metricName,
+      model: primaryModel,
+      timeoutMs: CHAT_MODEL_TIMEOUT_MS,
+    },
+    'model.call_start',
+  )
+
+  const track = (model?: string, status: MetricStatus = 'success') => {
     void recordMetric({
       type: 'model_call',
       source: 'agentic',
       name: metricName,
       model,
-      fallbackFrom,
       chatId,
       durationMs: Date.now() - startedAt,
       success: status === 'success',
@@ -133,31 +127,8 @@ export async function generateWithRetry(
     const response = await generateSingleModelWithRetry(params, chatId)
     track(primaryModel)
     return response
-  } catch (primaryError) {
-    const isTransient =
-      primaryError instanceof ModelCallTimeoutError ||
-      isRetryableModelError(primaryError)
-
-    if (!canFallback || !isTransient) {
-      track(primaryModel, undefined, getModelErrorStatus(primaryError))
-      throw primaryError
-    }
-
-    logger.warn(
-      { chatId, model: primaryModel, fallbackModel },
-      'model.primary_fallback',
-    )
-
-    try {
-      const response = await generateSingleModelWithRetry(
-        { ...params, model: fallbackModel },
-        chatId,
-      )
-      track(fallbackModel, primaryModel)
-      return response
-    } catch (fallbackError) {
-      track(fallbackModel, primaryModel, getModelErrorStatus(fallbackError))
-      throw fallbackError
-    }
+  } catch (error) {
+    track(primaryModel, getModelErrorStatus(error))
+    throw error
   }
 }

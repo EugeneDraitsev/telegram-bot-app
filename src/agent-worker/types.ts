@@ -96,4 +96,6 @@ export interface AgentTool {
   execute: (args: Record<string, unknown>) => Promise<string>
   /** Override default tool timeout (ms). Used for slow tools like image generation. */
   timeoutMs?: number
+  /** Internal tools can be executable without being exposed to the main model. */
+  exposeToModel?: boolean
 }

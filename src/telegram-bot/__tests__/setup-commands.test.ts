@@ -13,7 +13,7 @@ const setupGoogleCommandsMock = jest.fn((bot: unknown, ..._args: unknown[]) => {
     bot as {
       command: (command: string | string[], ...middleware: unknown[]) => Bot
     }
-  ).command(['q', 'qq', 'ge'], jest.fn())
+  ).command('ge', jest.fn())
 })
 const setupMultimodalGeminiCommandsMock = jest.fn((..._args: unknown[]) =>
   Promise.resolve(undefined),
@@ -23,6 +23,9 @@ const setupImageGenerationGeminiCommandsMock = jest.fn((..._args: unknown[]) =>
 )
 const setupOpenAiCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupImageGenerationOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
+  Promise.resolve(undefined),
+)
+const setupMultimodalOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
   Promise.resolve(undefined),
 )
 const setupTextCommandsMock = jest.fn((..._args: unknown[]) => undefined)
@@ -51,7 +54,6 @@ jest.mock('../google', () => ({
   __esModule: true,
   default: (bot: unknown, ...args: unknown[]) =>
     setupGoogleCommandsMock(bot, ...args),
-  GEMINI_Q_MODEL: 'gemini-3.1-flash-lite-preview',
   GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -61,9 +63,22 @@ jest.mock('../google', () => ({
 
 jest.mock('../open-ai', () => ({
   __esModule: true,
-  default: (...args: unknown[]) => setupOpenAiCommandsMock(...args),
+  default: (bot: unknown, ...args: unknown[]) => {
+    ;(
+      bot as {
+        command: (command: string | string[], ...middleware: unknown[]) => Bot
+      }
+    ).command(['q', 'qq'], jest.fn())
+    return setupOpenAiCommandsMock(bot, ...args)
+  },
+  OPENAI_O_MODEL: 'gpt-5.5',
+  OPENAI_O_REASONING_EFFORT: 'medium',
+  OPENAI_Q_MODEL: 'gpt-5.4-nano',
+  OPENAI_Q_REASONING_EFFORT: 'low',
   setupImageGenerationOpenAiCommands: (...args: unknown[]) =>
     setupImageGenerationOpenAiCommandsMock(...args),
+  setupMultimodalOpenAiCommands: (...args: unknown[]) =>
+    setupMultimodalOpenAiCommandsMock(...args),
 }))
 
 jest.mock('../text', () => ({
@@ -105,6 +120,7 @@ describe('setupAllCommands', () => {
     setupImageGenerationGeminiCommandsMock.mockClear()
     setupOpenAiCommandsMock.mockClear()
     setupImageGenerationOpenAiCommandsMock.mockClear()
+    setupMultimodalOpenAiCommandsMock.mockClear()
     setupTextCommandsMock.mockClear()
     setupUsersCommandsMock.mockClear()
   })
@@ -123,11 +139,12 @@ describe('setupAllCommands', () => {
 
     await photoHandler?.(ctx, next as NextFunction)
 
-    expect(setupMultimodalGeminiCommandsMock).toHaveBeenCalledWith(
+    expect(setupMultimodalOpenAiCommandsMock).toHaveBeenCalledWith(
       ctx,
+      'gpt-5.4-nano',
       true,
-      'gemini-3.1-flash-lite-preview',
       '/q',
+      'low',
     )
     expect(next).toHaveBeenCalledTimes(1)
   })
@@ -148,6 +165,7 @@ describe('setupAllCommands', () => {
     await photoHandler?.(ctx, next as NextFunction)
 
     expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
+    expect(setupMultimodalOpenAiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
     expect(next).toHaveBeenCalledTimes(1)

@@ -1,4 +1,4 @@
-const mockGenerateContent = jest.fn()
+const mockResponsesCreate = jest.fn()
 const mockRecordMetric = jest.fn()
 const mockLogger = {
   info: jest.fn(),
@@ -6,8 +6,16 @@ const mockLogger = {
   error: jest.fn(),
 }
 
+jest.mock('openai', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    responses: {
+      create: mockResponsesCreate,
+    },
+  })),
+}))
+
 jest.mock('@tg-bot/common', () => ({
-  GEMINI_SERVICE_TIER: 'priority',
   logger: mockLogger,
   recordMetric: mockRecordMetric,
 }))
@@ -18,70 +26,67 @@ jest.mock('../config', () => ({
 }))
 
 jest.mock('../models', () => ({
-  ai: {
-    models: {
-      generateContent: mockGenerateContent,
-    },
-  },
-  CHAT_MODEL: 'gemini-3.1-flash-lite-preview',
-  CHAT_MODEL_FALLBACK: 'gemini-2.5-flash',
-  CHAT_MODEL_TIMEOUT_MS: 20_000,
+  CHAT_MODEL: 'gpt-5.4-nano',
+  CHAT_MODEL_TIMEOUT_MS: 45_000,
 }))
 
+import { resetOpenAiClientForTests } from '../../services/openai-client'
 import { generateWithRetry, isRetryableModelError } from '../model-call'
 
 describe('model-call', () => {
+  beforeAll(() => {
+    process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key'
+  })
+
   beforeEach(() => {
     jest.useRealTimers()
-    mockGenerateContent.mockReset()
+    resetOpenAiClientForTests()
+    mockResponsesCreate.mockReset()
     mockRecordMetric.mockReset()
     jest.clearAllMocks()
   })
 
-  test('falls back to stable chat model after repeated 503 errors', async () => {
+  test('retries retryable OpenAI response errors', async () => {
     const overloadedError = Object.assign(new Error('model overloaded'), {
       status: 503,
     })
-    const fallbackResponse = {
-      candidates: [{ content: { parts: [{ text: 'fallback ok' }] } }],
-    }
+    const response = { output_text: 'ok', output: [] }
 
-    mockGenerateContent
+    mockResponsesCreate
       .mockRejectedValueOnce(overloadedError)
       .mockRejectedValueOnce(overloadedError)
-      .mockRejectedValueOnce(overloadedError)
-      .mockResolvedValueOnce(fallbackResponse)
+      .mockResolvedValueOnce(response)
 
     await expect(
       generateWithRetry(
         {
-          model: 'gemini-3.1-flash-lite-preview',
-          contents: [],
+          model: 'gpt-5.4-nano',
+          input: 'hello',
         },
         1305082,
         'routing',
       ),
-    ).resolves.toEqual(fallbackResponse)
+    ).resolves.toEqual(response)
 
+    expect(mockResponsesCreate).toHaveBeenCalledTimes(3)
     expect(
-      mockGenerateContent.mock.calls.map(([params]) => params.model),
-    ).toEqual([
-      'gemini-3.1-flash-lite-preview',
-      'gemini-3.1-flash-lite-preview',
-      'gemini-3.1-flash-lite-preview',
-      'gemini-2.5-flash',
-    ])
-    expect(
-      mockGenerateContent.mock.calls.map(
-        ([params]) => params.config?.serviceTier,
-      ),
-    ).toEqual(['priority', 'priority', 'priority', 'priority'])
+      mockResponsesCreate.mock.calls.map(([params]) => params.model),
+    ).toEqual(['gpt-5.4-nano', 'gpt-5.4-nano', 'gpt-5.4-nano'])
+    expect(mockResponsesCreate.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        model: 'gpt-5.4-nano',
+        store: false,
+      }),
+    )
+    expect(mockResponsesCreate.mock.calls[0]?.[1]).toEqual({
+      timeout: 46_000,
+      maxRetries: 0,
+    })
     expect(mockRecordMetric).toHaveBeenCalledTimes(1)
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'gemini-2.5-flash',
-        fallbackFrom: 'gemini-3.1-flash-lite-preview',
+        model: 'gpt-5.4-nano',
         success: true,
         status: 'success',
       }),
@@ -94,8 +99,13 @@ describe('model-call', () => {
     )
   })
 
-  test('treats 429 and 503 errors as retryable', () => {
+  test('treats transient errors as retryable', () => {
+    expect(isRetryableModelError({ status: 408 })).toBe(true)
     expect(isRetryableModelError({ status: 429 })).toBe(true)
     expect(isRetryableModelError({ status: 503 })).toBe(true)
+  })
+
+  test('does not retry conflict errors', () => {
+    expect(isRetryableModelError({ status: 409 })).toBe(false)
   })
 })
