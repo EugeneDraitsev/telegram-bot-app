@@ -106,7 +106,7 @@ describe('shouldEngageWithMessage', () => {
     expect(mockResponsesCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gpt-5.4-nano',
-        reasoning: { effort: 'medium' },
+        reasoning: { effort: 'low' },
         tool_choice: 'required',
         safety_identifier: '777',
       }),
