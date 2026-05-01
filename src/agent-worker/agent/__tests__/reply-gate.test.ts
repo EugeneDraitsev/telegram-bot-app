@@ -104,6 +104,64 @@ describe('shouldEngageWithMessage', () => {
     expect(mockResponsesCreate).not.toHaveBeenCalled()
   })
 
+  test('lets reply gate model ignore low-signal reaction reply to our bot', async () => {
+    const reactionText = '\u0430\u0445\u0445\u0430'
+    const message = {
+      text: reactionText,
+      chat: { id: 777 },
+      reply_to_message: {
+        from: { is_bot: true, id: OUR_BOT.id },
+        text: 'previous bot answer',
+      },
+    } as Message
+
+    expect(
+      await shouldEngageWithMessage({
+        message,
+        textContent: reactionText,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).toEqual(false)
+
+    expect(mockResponsesCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.stringContaining(`Current message: ${reactionText}`),
+        instructions: expect.stringContaining(
+          'Treat reply-to-THIS-bot as weak context only',
+        ),
+      }),
+      { timeout: 16_000, maxRetries: 0 },
+    )
+  })
+
+  test('uses OpenAI model for reply to our bot with response intent', async () => {
+    mockResponsesCreate.mockResolvedValueOnce({
+      output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],
+    })
+
+    const questionText = '\u043f\u043e\u0447\u0435\u043c\u0443?'
+    const message = {
+      text: questionText,
+      chat: { id: 777 },
+      reply_to_message: {
+        from: { is_bot: true, id: OUR_BOT.id },
+        text: 'previous bot answer',
+      },
+    } as Message
+
+    await expect(
+      shouldEngageWithMessage({
+        message,
+        textContent: questionText,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(true)
+
+    expect(mockResponsesCreate).toHaveBeenCalled()
+  })
+
   test('uses OpenAI model when reply mentions another account and the bot', async () => {
     mockResponsesCreate.mockResolvedValueOnce({
       output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],
