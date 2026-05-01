@@ -13,14 +13,14 @@ export const generateImageTool: AgentTool = {
     type: 'function',
     name: 'generate_or_edit_image',
     description:
-      'Generate a NEW image using AI or EDIT an existing image. Use when user wants to create/draw something new, or edit/modify an attached image.',
+      'Generate a NEW image using AI or EDIT an existing image immediately. Use when user wants to create/draw something new, or edit/modify an attached image. Infer missing aesthetic details and choose sensible defaults instead of asking follow-up style questions.',
     parameters: {
       type: 'object',
       properties: {
         prompt: {
           type: 'string',
           description:
-            'Detailed description of the image to generate or edit instructions.',
+            'Detailed description of the image to generate or edit instructions, including any inferred defaults needed to act now.',
         },
         useAttachedImage: {
           type: 'boolean',
