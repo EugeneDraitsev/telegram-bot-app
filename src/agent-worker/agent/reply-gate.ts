@@ -29,7 +29,7 @@ const replyGateTools: Tool[] = [
     type: 'function',
     name: 'engage',
     description:
-      'The message is addressed to the bot and contains something meaningful.',
+      'The current message clearly asks for or requires a bot response now.',
     parameters: { type: 'object', properties: {} },
     strict: false,
   },
@@ -37,7 +37,7 @@ const replyGateTools: Tool[] = [
     type: 'function',
     name: 'ignore',
     description:
-      'Ignore the message. Use for clear noise: spam, meaningless characters, or messages clearly not meant for the bot.',
+      'Ignore the message. Use for noise, low-signal reactions, or messages not clearly asking the bot to respond.',
     parameters: { type: 'object', properties: {} },
     strict: false,
   },
@@ -58,7 +58,8 @@ Default decision: IGNORE.
 Important:
 - Upstream routing signals (mention/reply/bot words) are heuristic and can be wrong.
 - Do NOT assume the user truly wants a bot reply just because the bot is mentioned or quoted.
-- Engage only when it clearly makes sense that the user is talking TO THIS bot and expects a reply now.
+- Treat reply-to-THIS-bot as weak context only. Engage only if the CURRENT message itself asks, requests, corrects, challenges, or clearly continues a task.
+- Ignore short reactions, laughter, acknowledgements, and side comments even when they reply to THIS bot.
 
 You must call exactly one tool:
 - engage: clear direct question/request/command to THIS bot in the current message
@@ -76,7 +77,7 @@ IGNORE if any of these apply:
 - Meta statements about bot behavior/triggering.
 - Short mention fragments without a clear ask.
 - Reply/mention is aimed mainly at another person/account, even if THIS bot is present.
-- Praise/thanks/reactions without explicit question/request.
+- Praise/thanks/laughter/reactions/acknowledgements without explicit question/request.
 - Pure noise/spam/random chars/single emoji without context.
 - Any uncertainty.
 
