@@ -148,7 +148,9 @@ describe('open-ai AI access control', () => {
       expect(mockResponsesCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-5.5',
-          instructions: expect.any(String),
+          instructions: expect.stringContaining(
+            'This OpenAI command has web search enabled. Use it for current',
+          ),
           input: [
             {
               role: 'user',

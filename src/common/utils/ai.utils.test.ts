@@ -42,7 +42,23 @@ describe('systemInstructions', () => {
       expect(prompt).toContain('informal Telegram group-chat voice')
       expect(prompt).toContain('Profanity is allowed and expected')
       expect(prompt).toContain('Do not neutralize rude nicknames')
+      expect(prompt).toContain(
+        'Search and retrieved sources are for factual grounding only',
+      )
+      expect(prompt).toContain('кто такой пыня плешивый')
+      expect(prompt).toContain('Keep casual chat answers compact')
+      expect(prompt).toContain('Never append opt-in offers')
     }
+  })
+
+  test('keeps eager search guidance', () => {
+    expect(systemInstructions).toContain(
+      'If there is any chance the answer depends on fresh, uncertain, ambiguous, newly released, or possibly misspelled real-world information, use search first',
+    )
+    expect(systemInstructions).toContain('When in doubt, search')
+    expect(systemInstructions).toContain(
+      'For named products, models, companies, or people, search the exact user wording first',
+    )
   })
 })
 
