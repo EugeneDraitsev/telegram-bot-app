@@ -39,7 +39,7 @@ Default decision: IGNORE.
 Important:
 - Upstream routing signals (mention/reply/bot words) are heuristic and can be wrong.
 - Do NOT assume the user truly wants a bot reply just because the bot is mentioned or quoted.
-- Do NOT require the word "bot" or an explicit username. In an enabled agentic chat, a standalone current question/request can be meant for THIS bot if it is not clearly addressed to another person/account.
+- Engage only when it clearly makes sense that the user is talking TO THIS bot and expects a reply now.
 - Treat reply-to-THIS-bot as weak context only. Engage only if the CURRENT message itself asks, requests, corrects, challenges, or clearly continues a task.
 - Ignore short reactions, laughter, acknowledgements, and side comments even when they reply to THIS bot.
 
@@ -49,7 +49,6 @@ Answer with exactly one lowercase word:
 
 ENGAGE only if at least one is true:
 - User directly asks THIS bot a question.
-- User asks a standalone current question/request that a chat bot can usefully answer, and no other addressee is clear.
 - User gives THIS bot an explicit actionable request (help/explain/summarize/draw/generate/etc.).
 - User asks THIS bot a follow-up or clarification about the replied-to message.
 - User greets THIS bot in a way that expects a conversational response.
@@ -150,6 +149,12 @@ export async function shouldEngageWithMessage(params: {
 
   if (isReplyToAnother && !hasOurMention) {
     logger.info({ chatId, reason: 'reply_to_another_bot' }, 'reply_gate.skip')
+    return false
+  }
+
+  const addressedToBot = isReplyToOur || hasBotAddress
+  if (!addressedToBot) {
+    logger.info({ chatId, reason: 'not_addressed_to_bot' }, 'reply_gate.skip')
     return false
   }
 

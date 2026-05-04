@@ -44,7 +44,7 @@ describe('shouldEngageWithMessage', () => {
     ).toEqual(false)
   })
 
-  test('lets Gemini gate decide for non-addressed standalone requests', async () => {
+  test('returns false for non-addressed request', async () => {
     const message = { text: 'can you help?' } as Message
 
     expect(
@@ -56,14 +56,10 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockGenerateContent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        contents: 'can you help?',
-      }),
-    )
+    expect(mockGenerateContent).not.toHaveBeenCalled()
   })
 
-  test('can engage with standalone questions without bot address words', async () => {
+  test('does not engage with standalone questions without bot address words', async () => {
     mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
 
     const text = 'какой курс биткоина ща челик?'
@@ -80,18 +76,25 @@ describe('shouldEngageWithMessage', () => {
         hasMedia: false,
         botInfo: OUR_BOT,
       }),
-    ).resolves.toBe(true)
+    ).resolves.toBe(false)
 
-    expect(mockGenerateContent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        contents: text,
-        config: expect.objectContaining({
-          systemInstruction: expect.stringContaining(
-            'standalone current question/request',
-          ),
-        }),
+    expect(mockGenerateContent).not.toHaveBeenCalled()
+  })
+
+  test('does not engage with standalone project planning chat messages', async () => {
+    const text =
+      'я хочу снять видос как заставка сериала друзья, где мы все бежим и по очереди садимся на диван'
+
+    await expect(
+      shouldEngageWithMessage({
+        message: { text, chat: { id: 777 } } as Message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
       }),
-    )
+    ).resolves.toBe(false)
+
+    expect(mockGenerateContent).not.toHaveBeenCalled()
   })
 
   test('returns false for reply to another bot without our mention', async () => {
