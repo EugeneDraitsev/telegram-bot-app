@@ -17,7 +17,11 @@ import {
   recordMetric,
 } from '@tg-bot/common'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
-import { ai, REPLY_GATE_MODEL, REPLY_GATE_REASONING_EFFORT } from './models'
+import {
+  geminiModels,
+  REPLY_GATE_MODEL,
+  REPLY_GATE_REASONING_EFFORT,
+} from './models'
 import { withTimeout } from './utils'
 
 function buildReplyGatePrompt(params: {
@@ -182,7 +186,7 @@ export async function shouldEngageWithMessage(params: {
     )
 
     const response = await withTimeout(
-      ai.models.generateContent({
+      geminiModels.generateContent({
         model: REPLY_GATE_MODEL,
         contents: buildReplyGateInput(message, textContent),
         config: {

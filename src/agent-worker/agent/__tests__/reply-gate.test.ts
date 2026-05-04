@@ -1,11 +1,11 @@
 import type { GenerateContentResponse } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
-import { ai } from '../models'
+import { geminiModels } from '../models'
 import { shouldEngageWithMessage } from '../reply-gate'
 
 const OUR_BOT = { id: 123456, username: 'testbot' }
-const mockGenerateContent = jest.spyOn(ai.models, 'generateContent')
+const mockGenerateContent = jest.spyOn(geminiModels, 'generateContent')
 const geminiResponse = (text: string) => ({ text }) as GenerateContentResponse
 
 describe('shouldEngageWithMessage', () => {

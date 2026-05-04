@@ -3,7 +3,11 @@
  * Single GoogleGenAI instance shared across all modules.
  */
 
-import { GoogleGenAI } from '@google/genai'
+import {
+  type GenerateContentParameters,
+  type GenerateContentResponse,
+  GoogleGenAI,
+} from '@google/genai'
 
 export {
   CHAT_MODEL,
@@ -23,3 +27,9 @@ export {
 const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
 
 export const ai = new GoogleGenAI({ apiKey })
+
+export const geminiModels = {
+  generateContent: (
+    params: GenerateContentParameters,
+  ): Promise<GenerateContentResponse> => ai.models.generateContent(params),
+}
