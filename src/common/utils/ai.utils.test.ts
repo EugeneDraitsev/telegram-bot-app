@@ -1,4 +1,10 @@
-import { cleanGeminiMessage, isAiEnabledChat } from './ai.utils'
+import {
+  cleanGeminiMessage,
+  geminiSystemInstructions,
+  gemmaSystemInstructions,
+  isAiEnabledChat,
+  systemInstructions,
+} from './ai.utils'
 
 /**
  * Tests for isAiEnabledChat.
@@ -23,6 +29,20 @@ describe('isAiEnabledChat', () => {
 
   test('returns boolean for string chatId', () => {
     expect(typeof isAiEnabledChat('12345')).toBe('boolean')
+  })
+})
+
+describe('systemInstructions', () => {
+  test('keeps rough group-chat style guidance in every shared prompt variant', () => {
+    for (const prompt of [
+      systemInstructions,
+      geminiSystemInstructions,
+      gemmaSystemInstructions,
+    ]) {
+      expect(prompt).toContain('informal Telegram group-chat voice')
+      expect(prompt).toContain('Profanity is allowed and expected')
+      expect(prompt).toContain('Do not neutralize rude nicknames')
+    }
   })
 })
 
