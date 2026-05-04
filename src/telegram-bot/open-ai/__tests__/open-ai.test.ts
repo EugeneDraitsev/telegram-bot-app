@@ -116,6 +116,33 @@ describe('open-ai AI access control', () => {
         }),
       )
     })
+
+    test('/e image editing includes reply media label in the edit prompt', async () => {
+      mockIsAiEnabledChat.mockReturnValue(true)
+
+      await generateImage(
+        'Extend this image',
+        123,
+        common.OPENAI_GPT_IMAGE_MODEL,
+        [],
+        [
+          {
+            data: Buffer.from('reply-image'),
+            label: 'Reply message image (message_id=41)',
+            mimeType: 'image/jpeg',
+            fileId: 'reply_photo',
+          },
+        ],
+      )
+
+      expect(mockImageEdit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: expect.stringContaining(
+            'Reply message image (message_id=41)',
+          ),
+        }),
+      )
+    })
   })
 
   describe('generateMultimodalCompletion', () => {

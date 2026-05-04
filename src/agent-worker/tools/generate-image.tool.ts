@@ -1,11 +1,34 @@
 /**
- * Tool for generating/editing AI images via OpenAI
+ * Tool for generating/editing AI images.
  */
 
-import { getErrorMessage } from '@tg-bot/common'
+import {
+  buildImageEditTargetPrompt,
+  getErrorMessage,
+  type MediaBuffer,
+} from '@tg-bot/common'
 import { generateImageOpenAi } from '../services'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
+
+function isHistoryImage(media: MediaBuffer): boolean {
+  return (media.label ?? '').toLowerCase().includes('recent chat history')
+}
+
+function getImageEditCandidates(
+  mediaBuffers: MediaBuffer[] | undefined,
+): MediaBuffer[] {
+  const images = (mediaBuffers ?? []).filter(
+    (media) => media.mediaType === 'image',
+  )
+  const requestImages = images.filter((media) => !isHistoryImage(media))
+
+  if (requestImages.length) {
+    return requestImages
+  }
+
+  return images.slice(-1)
+}
 
 export const generateImageTool: AgentTool = {
   timeoutMs: 120_000,
@@ -47,12 +70,18 @@ export const generateImageTool: AgentTool = {
 
       const useAttachedImage = (args.useAttachedImage as boolean) ?? true
       const includeTextResponse = args.includeTextResponse as boolean
-      const imageBuffers = mediaBuffers
-        ?.filter((m) => m.mediaType === 'image')
-        .map((m) => m.buffer)
+      const imageCandidates = getImageEditCandidates(mediaBuffers)
       const imagesToEdit =
-        useAttachedImage && imageBuffers?.length ? imageBuffers : undefined
-      const result = await generateImageOpenAi(prompt, imagesToEdit)
+        useAttachedImage && imageCandidates.length ? imageCandidates : undefined
+      const result = await generateImageOpenAi(
+        buildImageEditTargetPrompt(
+          prompt,
+          imagesToEdit?.map(
+            (media) => media.label || 'Unlabeled image context',
+          ) ?? [],
+        ),
+        imagesToEdit?.map((media) => media.buffer),
+      )
 
       if (result.image) {
         addResponse({
@@ -63,7 +92,7 @@ export const generateImageTool: AgentTool = {
             : undefined,
         })
 
-        const action = imagesToEdit ? 'edited' : 'generated'
+        const action = imagesToEdit?.length ? 'edited' : 'generated'
         return `Successfully ${action} image for: "${prompt.slice(0, 50)}..."`
       }
 

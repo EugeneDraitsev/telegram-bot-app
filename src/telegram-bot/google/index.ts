@@ -130,6 +130,7 @@ export const setupImageGenerationGeminiCommands = async (
           commandData.combinedText,
           commandData.chatId,
           commandData.imagesData,
+          commandData.imageInputs,
         ),
     )
 

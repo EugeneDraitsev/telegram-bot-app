@@ -13,7 +13,7 @@ import type { HistoryMediaAttachment, MediaBuffer } from '@tg-bot/common'
 import {
   AGENT_REACTION,
   type BotIdentity,
-  cleanGeminiMessage,
+  cleanModelMessage,
   collectHistoryMediaFileRefs,
   collectMediaFileRefs,
   DEFAULT_AGENT_HISTORY_LIMIT,
@@ -37,6 +37,7 @@ import {
   getAgentTools,
   getCollectedResponses,
   runWithToolContext,
+  setToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, AgentTool, TelegramApi } from '../types'
 import {
@@ -592,7 +593,7 @@ export async function runAgenticLoop(
         if (!hasTextResponse) {
           responsesToSend.push({
             type: 'text',
-            text: cleanGeminiMessage(
+            text: cleanModelMessage(
               dynamicCommand.result ||
                 `Команда /${dynamicCommand.name} ничего не вернула.`,
             ),
@@ -701,10 +702,14 @@ export async function runAgenticLoop(
           )
         : []
 
-      const allMediaBuffers = [
-        ...(mediaBuffers ?? []),
-        ...historyMediaAttachments.map((e) => e.media),
-      ]
+      const historyMediaBuffers = historyMediaAttachments.map(
+        ({ media, message: sourceMessage }) => ({
+          ...media,
+          label: getHistoryMediaPrompt(sourceMessage),
+        }),
+      )
+      const allMediaBuffers = [...(mediaBuffers ?? []), ...historyMediaBuffers]
+      setToolMediaBuffers(allMediaBuffers)
 
       const contextBlock = buildContextBlock(
         message,
@@ -767,11 +772,11 @@ export async function runAgenticLoop(
 
       const allTextParts: string[] = [...textDrafts]
       if (finalText.trim()) {
-        allTextParts.push(cleanGeminiMessage(finalText))
+        allTextParts.push(cleanModelMessage(finalText))
       } else {
         const fallback = extractFallbackTextFromToolResults(toolResults)
         if (fallback) {
-          allTextParts.push(cleanGeminiMessage(fallback))
+          allTextParts.push(cleanModelMessage(fallback))
           logger.warn(
             { chatId, model: CHAT_MODEL },
             'loop.fallback_from_tool_result',

@@ -1,12 +1,14 @@
 /**
- * Reply gate - deterministic pre-filter + Gemini engage/ignore decision.
+ * Reply gate - deterministic pre-filter + structured engage/ignore decision.
  */
 
-import { ServiceTier } from '@google/genai'
+import { generateText, Output } from 'ai'
+import { z } from 'zod'
 import type { Message } from 'telegram-typings'
 
 import {
   type BotIdentity,
+  getAiSdkLanguageModel,
   getMetricStatusFromError,
   hasBotAddressSignal,
   isReplyToAnotherBot,
@@ -18,11 +20,16 @@ import {
 } from '@tg-bot/common'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
 import {
-  geminiModels,
   REPLY_GATE_MODEL,
+  REPLY_GATE_MODEL_CONFIG,
   REPLY_GATE_REASONING_EFFORT,
 } from './models'
-import { withTimeout } from './utils'
+
+const replyGateOutput = Output.object({
+  schema: z.object({
+    decision: z.enum(['engage', 'ignore']),
+  }),
+})
 
 function buildReplyGatePrompt(params: {
   isReplyToOur: boolean
@@ -43,7 +50,7 @@ Important:
 - Treat reply-to-THIS-bot as weak context only. Engage only if the CURRENT message itself asks, requests, corrects, challenges, or clearly continues a task.
 - Ignore short reactions, laughter, acknowledgements, and side comments even when they reply to THIS bot.
 
-Answer with exactly one lowercase word:
+Return exactly one structured decision:
 - engage: clear direct question/request/command to THIS bot in the current message
 - ignore: everything else
 
@@ -76,11 +83,6 @@ Context:
 - Message: "${params.textContent || '[media without text]'}"
 - Replied-to message: "${params.replyTargetText || '[not a reply]'}"
 ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
-}
-
-function parseReplyGateDecision(text: string | undefined): 'engage' | 'ignore' {
-  const normalized = (text ?? '').trim().toLowerCase()
-  return normalized.startsWith('engage') ? 'engage' : 'ignore'
 }
 
 function buildReplyGateInput(message: Message, textContent: string): string {
@@ -185,25 +187,31 @@ export async function shouldEngageWithMessage(params: {
       'reply_gate.model_call',
     )
 
-    const response = await withTimeout(
-      geminiModels.generateContent({
-        model: REPLY_GATE_MODEL,
-        contents: buildReplyGateInput(message, textContent),
-        config: {
-          systemInstruction: instructions,
-          temperature: 0,
-          serviceTier: ServiceTier.PRIORITY,
-          httpOptions: {
-            timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
-            retryOptions: { attempts: 1 },
-          },
-        },
-      }),
-      REPLY_GATE_TIMEOUT_MS,
-      'reply_gate timeout',
-    )
+    const response = await generateText({
+      model: getAiSdkLanguageModel(REPLY_GATE_MODEL_CONFIG),
+      system: instructions,
+      prompt: buildReplyGateInput(message, textContent),
+      output: replyGateOutput,
+      temperature: 0,
+      maxRetries: 0,
+      timeout: REPLY_GATE_TIMEOUT_MS,
+      providerOptions:
+        REPLY_GATE_MODEL_CONFIG.provider === 'google'
+          ? {
+              google: {
+                serviceTier: 'priority',
+              },
+            }
+          : {
+              openai: {
+                reasoningEffort: REPLY_GATE_REASONING_EFFORT,
+                serviceTier: 'priority',
+                store: false,
+              },
+            },
+    })
 
-    const decision = parseReplyGateDecision(response.text)
+    const decision = response.output.decision
     const durationMs = Date.now() - startedAt
 
     logger.info(

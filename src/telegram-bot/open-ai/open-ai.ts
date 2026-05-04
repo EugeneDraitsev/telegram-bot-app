@@ -9,6 +9,7 @@ import type {
 import type { Message } from 'telegram-typings'
 
 import {
+  buildImageEditTargetPrompt,
   buildOpenAiImagePrompt,
   type CommandImageInput,
   collectHistoryMediaFileRefs,
@@ -224,6 +225,7 @@ export const generateImage = async (
   chatId: string | number,
   model: SupportedImageModel,
   imagesData?: Buffer[],
+  imageInputs?: CommandImageInput[],
 ): Promise<{ image: string | Buffer; text?: string }> => {
   if (!isAiEnabledChat(chatId)) {
     throw new Error(NOT_ALLOWED_ERROR)
@@ -234,9 +236,20 @@ export const generateImage = async (
 
   const openAi = getOpenAiClient()
   const isGptImageModel = isOpenAiGptImageModel(model)
+  const requestImages = imageInputs?.length
+    ? imageInputs
+    : getFallbackImageInputs(imagesData)
   const requestPrompt = isGptImageModel
-    ? buildOpenAiImagePrompt(prompt)
-    : prompt
+    ? buildOpenAiImagePrompt(
+        buildImageEditTargetPrompt(
+          prompt,
+          requestImages.map(({ label }) => label),
+        ),
+      )
+    : buildImageEditTargetPrompt(
+        prompt,
+        requestImages.map(({ label }) => label),
+      )
 
   const maxRetries = 3
   let lastError: Error | undefined
@@ -245,10 +258,14 @@ export const generateImage = async (
     error instanceof Error ? error : new Error(String(error))
 
   const requestImage = async (): Promise<OpenAi.Images.ImagesResponse> => {
-    if (imagesData?.length && isGptImageModel) {
+    if (requestImages.length && isGptImageModel) {
       const image: Uploadable[] = []
-      for (const imageData of imagesData) {
-        image.push(await toFile(imageData, 'image.jpg', { type: 'image/jpeg' }))
+      for (const imageInput of requestImages) {
+        image.push(
+          await toFile(imageInput.data, 'image.jpg', {
+            type: imageInput.mimeType,
+          }),
+        )
       }
 
       return openAi.images.edit({

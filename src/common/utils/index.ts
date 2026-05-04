@@ -1,4 +1,6 @@
 export * from './ai.utils'
+export * from './ai-model.utils'
+export * from './ai-sdk.utils'
 export * from './array.utils'
 export * from './bot.utils'
 export * from './command-reaction.utils'

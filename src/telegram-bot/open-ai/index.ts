@@ -122,6 +122,7 @@ export const setupImageGenerationOpenAiCommands = async (
   ctx: Context,
   model: SupportedImageModel = OPENAI_GPT_IMAGE_MODEL,
   deferredCommands = false,
+  commandName = '/e',
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
@@ -141,17 +142,25 @@ export const setupImageGenerationOpenAiCommands = async (
 
   const stopReaction = startCommandReaction(ctx)
   try {
-    const { combinedText, imagesData, chatId, replyId } = commandData
+    const { combinedText, imagesData, imageInputs, chatId, replyId } =
+      commandData
     try {
       const { image, text } = await timedCall(
         {
           type: 'model_call',
           source: 'command',
-          name: '/ee',
+          name: commandName,
           model: String(model),
           chatId: Number(chatId),
         },
-        () => generateImage(combinedText, Number(chatId), model, imagesData),
+        () =>
+          generateImage(
+            combinedText,
+            Number(chatId),
+            model,
+            imagesData,
+            imageInputs,
+          ),
       )
 
       const caption = text ? formatTelegramMarkdownV2(text) : undefined
@@ -186,6 +195,7 @@ const setupOpenAiCommands = (
       ctx,
       OPENAI_GPT_IMAGE_MODEL,
       deferredCommands,
+      '/e',
     ),
   )
   bot.command('ee', (ctx) =>
@@ -193,6 +203,7 @@ const setupOpenAiCommands = (
       ctx,
       OPENAI_GPT_IMAGE_MODEL,
       deferredCommands,
+      '/ee',
     ),
   )
   bot.command('o', (ctx) =>

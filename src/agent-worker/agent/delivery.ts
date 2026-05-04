@@ -1,7 +1,7 @@
 import { InputFile } from 'grammy/web'
 
 import {
-  cleanGeminiMessage,
+  cleanModelMessage,
   formatTelegramMarkdownV2,
   logger,
   saveBotReplyToHistory,
@@ -83,7 +83,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
   const textParts: string[] = []
 
   for (const r of responses) {
-    if (r.type === 'text') textParts.push(cleanGeminiMessage(r.text))
+    if (r.type === 'text') textParts.push(cleanModelMessage(r.text))
     else if (r.type === 'voice') bundle[r.type] = r.buffer
     // biome-ignore lint/suspicious/noExplicitAny: generic mapping
     else bundle[r.type] = r as any
