@@ -1,5 +1,5 @@
-import { GoogleGenAI } from '@google/genai'
 import {
+  type GeneratedFile,
   generateText,
   type JSONValue,
   type LanguageModel,
@@ -15,7 +15,6 @@ import {
   collectHistoryMediaFileRefs,
   DEFAULT_ERROR_MESSAGE,
   EMPTY_RESPONSE_ERROR,
-  GEMINI_SERVICE_TIER,
   getAiSdkGoogleTools,
   getAiSdkLanguageModel,
   getHistory,
@@ -34,8 +33,6 @@ import {
   systemInstructions,
 } from '@tg-bot/common'
 
-const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
-const ai = new GoogleGenAI({ apiKey })
 const imageGenerationSystemInstruction = `
   ${systemInstructions}
 
@@ -54,21 +51,6 @@ type InteractionInput = {
   >
 }
 
-type InteractionOutput = {
-  type: 'text' | 'image'
-  text?: string
-  data?: string
-}
-
-type InteractionResponse = {
-  outputs?: InteractionOutput[]
-}
-
-type InteractionRequestOptions = {
-  timeout?: number
-  maxRetries?: number
-}
-
 type TextCompletionRequest = {
   model: LanguageModel
   messages: ModelMessage[]
@@ -80,14 +62,27 @@ type TextCompletionRequest = {
   providerOptions?: Record<string, Record<string, JSONValue>>
 }
 
-type CreateInteraction = (
-  request: Record<string, unknown>,
-  options?: InteractionRequestOptions,
-) => Promise<InteractionResponse>
-
 type CreateTextCompletion = (
   request: TextCompletionRequest,
 ) => Promise<{ text?: string }>
+
+type ImageCompletionRequest = {
+  model: LanguageModel
+  messages: ModelMessage[]
+  system: string
+  maxRetries?: number
+  timeout?: number
+  providerOptions?: Record<string, Record<string, JSONValue>>
+}
+
+type CreateImageCompletion = (
+  request: ImageCompletionRequest,
+) => Promise<{ text?: string; files?: GeneratedFile[] }>
+
+type GoogleToolFactories = {
+  googleSearch: (options?: unknown) => ToolSet[string]
+  urlContext: (options?: unknown) => ToolSet[string]
+}
 
 type HistoryMediaApi = {
   getFile: (fileId: string) => Promise<{ file_path?: string }>
@@ -103,17 +98,52 @@ interface GenerateMultimodalCompletionOptions {
   api?: HistoryMediaApi
 }
 
-const createGeminiInteraction: CreateInteraction = (request, options) =>
-  ai.interactions.create(
-    {
-      ...request,
-      service_tier: GEMINI_SERVICE_TIER,
-    } as never,
-    options as never,
-  ) as Promise<InteractionResponse>
-
 const createAiSdkTextCompletion: CreateTextCompletion = (request) =>
   generateText(request)
+
+const createAiSdkImageCompletion: CreateImageCompletion = (request) =>
+  generateText(request)
+
+function getTextCompletionModel(
+  modelConfig: ReturnType<typeof parseAiModelConfig>,
+  createTextCompletion: CreateTextCompletion,
+): LanguageModel {
+  if (createTextCompletion !== createAiSdkTextCompletion) {
+    return `${modelConfig.provider}/${modelConfig.model}` as unknown as LanguageModel
+  }
+
+  return getAiSdkLanguageModel(modelConfig)
+}
+
+function getTextCompletionGoogleTools(
+  createTextCompletion: CreateTextCompletion,
+): GoogleToolFactories {
+  if (createTextCompletion !== createAiSdkTextCompletion) {
+    return {
+      googleSearch: () =>
+        ({
+          inputSchema: { type: 'object', properties: {} },
+        }) as unknown as ToolSet[string],
+      urlContext: () =>
+        ({
+          inputSchema: { type: 'object', properties: {} },
+        }) as unknown as ToolSet[string],
+    }
+  }
+
+  const googleTools = getAiSdkGoogleTools()
+
+  return {
+    googleSearch: (options?: unknown) =>
+      googleTools.googleSearch(
+        options as Parameters<typeof googleTools.googleSearch>[0],
+      ) as ToolSet[string],
+    urlContext: (options?: unknown) =>
+      googleTools.urlContext(
+        options as Parameters<typeof googleTools.urlContext>[0],
+      ) as ToolSet[string],
+  }
+}
 
 function getHistoryImagePrompt(message: Message): string {
   const sourceText = (message.caption || message.text || '').trim()
@@ -302,10 +332,10 @@ export const generateMultimodalCompletion = async ({
     })
     const googleTools =
       !isGemmaModel && modelConfig.provider === 'google'
-        ? getAiSdkGoogleTools()
+        ? getTextCompletionGoogleTools(createTextCompletion)
         : undefined
     const response = await createTextCompletion({
-      model: getAiSdkLanguageModel(modelConfig),
+      model: getTextCompletionModel(modelConfig, createTextCompletion),
       messages: toModelMessages(history),
       system: isGemmaModel
         ? offlineMultimodalSystemInstructions
@@ -348,7 +378,7 @@ export async function generateImage(
   chatId: string | number,
   imagesData?: Buffer[],
   imageInputs?: CommandImageInput[],
-  createInteraction: CreateInteraction = createGeminiInteraction,
+  createImageCompletion: CreateImageCompletion = createAiSdkImageCompletion,
 ) {
   try {
     if (!isAiEnabledChat(chatId)) {
@@ -409,26 +439,25 @@ export async function generateImage(
     let fallbackText = ''
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const interaction = await createInteraction({
-        model: 'gemini-3.1-flash-image-preview',
-        input: history,
-        response_modalities: ['image', 'text'],
-        service_tier: GEMINI_SERVICE_TIER,
-        system_instruction: imageGenerationSystemInstruction,
+      const response = await createImageCompletion({
+        model: getAiSdkLanguageModel({
+          provider: 'google',
+          model: 'gemini-3.1-flash-image-preview',
+        }),
+        messages: toModelMessages(history),
+        system: imageGenerationSystemInstruction,
+        maxRetries: 0,
+        timeout: MULTIMODAL_TIMEOUT_MS,
+        providerOptions: { google: { serviceTier: 'priority' } },
       })
 
-      const parsedResponse = interaction.outputs?.reduce(
-        (acc, output) => {
-          if (output.type === 'text' && output.text) {
-            acc.text += `${output.text}\n`
-          }
-          if (output.type === 'image' && output.data) {
-            acc.image = Buffer.from(output.data, 'base64')
-          }
-          return acc
-        },
-        { text: '' } as { text: string; image?: Buffer },
-      ) || { text: '' }
+      const imageFile = response.files?.find((file) =>
+        file.mediaType?.startsWith('image/'),
+      )
+      const parsedResponse = {
+        text: response.text ?? '',
+        image: imageFile ? Buffer.from(imageFile.uint8Array) : undefined,
+      }
 
       const parsedText = cleanModelMessage(parsedResponse.text).trim()
       if (parsedText) {
@@ -447,7 +476,7 @@ export async function generateImage(
           metadata: {
             hasText: Boolean(parsedText),
             parsedText,
-            outputs: interaction.outputs,
+            fileCount: response.files?.length ?? 0,
           },
         },
         `Gemini image generation attempt ${attempt}/${maxRetries} failed - no image in response`,

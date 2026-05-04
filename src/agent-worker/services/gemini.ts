@@ -1,15 +1,20 @@
 /**
- * Google Gemini AI for image and voice generation.
- * Main agent text generation now uses OpenAI Responses in agentic-loop.ts.
- * This file keeps specialized generation functions that tools still need.
+ * Google-backed search and image generation through AI SDK.
  */
 
-import { GoogleGenAI, ServiceTier } from '@google/genai'
+import { generateText, type ModelMessage } from 'ai'
 
-import { GEMINI_SERVICE_TIER, getErrorMessage, logger } from '@tg-bot/common'
 import {
-  SEARCH_MODEL_FALLBACK,
+  DEFAULT_IMAGE_GENERATION_MODEL,
+  getAiSdkGoogleTools,
+  getAiSdkLanguageModel,
+  getErrorMessage,
+  logger,
+} from '@tg-bot/common'
+import {
+  SEARCH_MODEL_FALLBACK_CONFIG,
   SEARCH_MODEL_PRIMARY,
+  SEARCH_MODEL_PRIMARY_CONFIG,
 } from '../agent/model-constants'
 import { withTimeout } from '../agent/utils'
 
@@ -53,13 +58,15 @@ interface TavilySearchResponse {
 }
 
 const GROUNDED_SEARCH_TIMEOUT_MS = 6_000
+const IMAGE_GENERATION_TIMEOUT_MS = 120_000
 const TAVILY_SEARCH_TIMEOUT_MS = 5_000
 const CUSTOM_SEARCH_TIMEOUT_MS = 5_000
 const CUSTOM_SEARCH_RESULT_LIMIT = 5
 
-const SEARCH_MODELS = [SEARCH_MODEL_PRIMARY, SEARCH_MODEL_FALLBACK] as const
-let aiClient: GoogleGenAI | undefined
-let aiClientApiKey = ''
+const SEARCH_MODEL_CONFIGS = [
+  SEARCH_MODEL_PRIMARY_CONFIG,
+  SEARCH_MODEL_FALLBACK_CONFIG,
+] as const
 
 function getGeminiApiKey(): string {
   return process.env.GEMINI_API_KEY || ''
@@ -77,20 +84,6 @@ function getCustomSearchCredentials(): {
     googleApiKey: process.env.COMMON_GOOGLE_API_KEY || '',
     cxToken: process.env.GOOGLE_CX_TOKEN || '',
   }
-}
-
-function getAi(): GoogleGenAI {
-  const currentApiKey = getGeminiApiKey()
-  if (!currentApiKey) {
-    throw new Error('Gemini API key not configured')
-  }
-
-  if (!aiClient || aiClientApiKey !== currentApiKey) {
-    aiClient = new GoogleGenAI({ apiKey: currentApiKey })
-    aiClientApiKey = currentApiKey
-  }
-
-  return aiClient
 }
 
 function normalizeQuery(query: string): string {
@@ -273,13 +266,15 @@ async function runGroundedSearch(
   prompt: string,
 ): Promise<string> {
   const response = await withTimeout(
-    getAi().models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        serviceTier: ServiceTier.PRIORITY,
-        tools: [{ googleSearch: {} }],
+    generateText({
+      model: getAiSdkLanguageModel({ provider: 'google', model }),
+      prompt,
+      tools: {
+        google_search: getAiSdkGoogleTools().googleSearch({}),
       },
+      maxRetries: 0,
+      timeout: GROUNDED_SEARCH_TIMEOUT_MS,
+      providerOptions: { google: { serviceTier: 'priority' } },
     }),
     GROUNDED_SEARCH_TIMEOUT_MS,
     new Error(
@@ -287,7 +282,7 @@ async function runGroundedSearch(
     ),
   )
 
-  const text = response.text?.trim()
+  const text = response.text.trim()
   if (!text) {
     throw new Error('Empty response from grounded web search')
   }
@@ -398,7 +393,8 @@ export async function searchWeb(
 
   let groundedError: unknown
   if (geminiApiKey) {
-    for (const model of SEARCH_MODELS) {
+    for (const modelConfig of SEARCH_MODEL_CONFIGS) {
+      const model = modelConfig.model
       try {
         const text = await runGroundedSearch(model, groundedPrompt)
         const searchType = getGroundedSearchType(model)
@@ -494,30 +490,24 @@ export async function generateImage(
     throw new Error('Gemini API key not configured')
   }
 
-  const input: Array<{
-    role: 'user'
-    content: Array<
-      | { type: 'text'; text: string }
-      | { type: 'image'; data: string; mime_type: 'image/jpeg' }
-    >
-  }> = []
+  const messages: ModelMessage[] = []
 
   if (inputImages?.length) {
     for (const image of inputImages) {
-      input.push({
+      messages.push({
         role: 'user',
         content: [
           {
             type: 'image',
-            data: image.toString('base64'),
-            mime_type: 'image/jpeg',
+            image,
+            mediaType: 'image/jpeg',
           },
         ],
       })
     }
   }
 
-  input.push({
+  messages.push({
     role: 'user',
     content: [{ type: 'text', text: prompt }],
   })
@@ -526,26 +516,21 @@ export async function generateImage(
   let result: { image?: Buffer; text?: string } = {}
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const interaction = await getAi().interactions.create({
-      model: 'gemini-3.1-flash-image-preview',
-      input,
-      response_modalities: ['image', 'text'],
-      service_tier: GEMINI_SERVICE_TIER,
+    const response = await generateText({
+      model: getAiSdkLanguageModel(DEFAULT_IMAGE_GENERATION_MODEL),
+      messages,
+      maxRetries: 0,
+      timeout: IMAGE_GENERATION_TIMEOUT_MS,
+      providerOptions: { google: { serviceTier: 'priority' } },
     })
 
-    result =
-      interaction.outputs?.reduce(
-        (acc, output) => {
-          if (output.type === 'text' && output.text) {
-            acc.text = (acc.text || '') + output.text
-          }
-          if (output.type === 'image' && output.data) {
-            acc.image = Buffer.from(output.data, 'base64')
-          }
-          return acc
-        },
-        {} as { image?: Buffer; text?: string },
-      ) || {}
+    const imageFile = response.files.find((file) =>
+      file.mediaType?.startsWith('image/'),
+    )
+    result = {
+      image: imageFile ? Buffer.from(imageFile.uint8Array) : undefined,
+      text: response.text,
+    }
 
     if (result.image) {
       break

@@ -1,13 +1,8 @@
 /**
  * AI model configuration for the agent.
- * The manual tool loop still uses the Google SDK until that loop is migrated.
+ *
+ * Model values are provider-neutral and resolved through the AI SDK helpers.
  */
-
-import {
-  type GenerateContentParameters,
-  type GenerateContentResponse,
-  GoogleGenAI,
-} from '@google/genai'
 
 export {
   CHAT_MODEL,
@@ -33,13 +28,3 @@ export {
   WEB_SEARCH_MODEL_CONFIG,
   WEB_SEARCH_MODEL_ID,
 } from './model-constants'
-
-const apiKey = process.env.GEMINI_API_KEY || 'set_your_token'
-
-export const ai = new GoogleGenAI({ apiKey })
-
-export const geminiModels = {
-  generateContent: (
-    params: GenerateContentParameters,
-  ): Promise<GenerateContentResponse> => ai.models.generateContent(params),
-}

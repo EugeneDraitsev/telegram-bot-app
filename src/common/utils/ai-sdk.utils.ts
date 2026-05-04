@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
-import type { LanguageModel } from 'ai'
+import type { ImageModel, LanguageModel, SpeechModel } from 'ai'
 
 import type { AiModelConfig } from './ai-model.utils'
 
@@ -13,7 +13,7 @@ function getGoogleApiKey(): string | undefined {
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
 }
 
-function getGoogleProvider() {
+export function getAiSdkGoogleProvider() {
   const apiKey = getGoogleApiKey()
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set')
@@ -27,7 +27,7 @@ function getGoogleProvider() {
   return googleProvider
 }
 
-function getOpenAiProvider() {
+export function getAiSdkOpenAiProvider() {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not set')
@@ -43,14 +43,26 @@ function getOpenAiProvider() {
 
 export function getAiSdkLanguageModel(config: AiModelConfig): LanguageModel {
   if (config.provider === 'google') {
-    return getGoogleProvider().chat(config.model)
+    return getAiSdkGoogleProvider().chat(config.model)
   }
 
-  return getOpenAiProvider().responses(config.model)
+  return getAiSdkOpenAiProvider().responses(config.model)
 }
 
 export function getAiSdkGoogleTools() {
-  return getGoogleProvider().tools
+  return getAiSdkGoogleProvider().tools
+}
+
+export function getAiSdkOpenAiTools() {
+  return getAiSdkOpenAiProvider().tools
+}
+
+export function getAiSdkOpenAiImageModel(model: string): ImageModel {
+  return getAiSdkOpenAiProvider().image(model)
+}
+
+export function getAiSdkOpenAiSpeechModel(model: string): SpeechModel {
+  return getAiSdkOpenAiProvider().speech(model)
 }
 
 export function resetAiSdkProvidersForTests() {

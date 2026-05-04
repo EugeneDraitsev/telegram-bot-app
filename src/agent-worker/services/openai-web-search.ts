@@ -1,11 +1,18 @@
-import { getErrorMessage, logger } from '@tg-bot/common'
+import { generateText, type JSONValue, type ToolSet } from 'ai'
+
+import {
+  getAiSdkGoogleTools,
+  getAiSdkLanguageModel,
+  getAiSdkOpenAiTools,
+  getErrorMessage,
+  logger,
+} from '@tg-bot/common'
 import {
   OPENAI_WEB_SEARCH_MODEL,
   OPENAI_WEB_SEARCH_REASONING_EFFORT,
   OPENAI_WEB_SEARCH_TIMEOUT_MS,
+  WEB_SEARCH_MODEL_CONFIG,
 } from '../agent/models'
-import { getOpenAiClient } from './openai-client'
-import { OPENAI_WEB_SEARCH_TOOLS } from './openai-tools'
 
 export type WebSearchResponseFormat = 'brief' | 'detailed' | 'list'
 
@@ -16,6 +23,37 @@ export interface SearchWebOptions {
 }
 
 export const WEB_SEARCH_MODEL = OPENAI_WEB_SEARCH_MODEL
+
+function getProviderTools(): ToolSet {
+  if (WEB_SEARCH_MODEL_CONFIG.provider === 'google') {
+    return {
+      google_search: getAiSdkGoogleTools().googleSearch({}),
+    }
+  }
+
+  return {
+    web_search: getAiSdkOpenAiTools().webSearch({ searchContextSize: 'high' }),
+  }
+}
+
+function getProviderOptions(
+  chatId: string | number | undefined,
+): Record<string, Record<string, JSONValue>> {
+  if (WEB_SEARCH_MODEL_CONFIG.provider === 'google') {
+    return { google: { serviceTier: 'priority' } }
+  }
+
+  const openaiOptions: Record<string, JSONValue> = {
+    reasoningEffort: OPENAI_WEB_SEARCH_REASONING_EFFORT,
+    store: false,
+    truncation: 'auto',
+  }
+  if (chatId !== undefined) {
+    openaiOptions.safetyIdentifier = String(chatId)
+  }
+
+  return { openai: openaiOptions }
+}
 
 function normalizeQuery(query: string): string {
   return query.trim().replace(/\s+/g, ' ')
@@ -56,26 +94,17 @@ export async function searchWebOpenAi(
   const loggedQuery = options.fallbackQuery?.trim() || normalizedQuery
 
   try {
-    const response = await getOpenAiClient().responses.create(
-      {
-        model: WEB_SEARCH_MODEL,
-        input: prompt,
-        tools: OPENAI_WEB_SEARCH_TOOLS,
-        tool_choice: 'auto',
-        include: ['web_search_call.action.sources'],
-        reasoning: { effort: OPENAI_WEB_SEARCH_REASONING_EFFORT },
-        safety_identifier:
-          options.chatId === undefined ? undefined : String(options.chatId),
-        store: false,
-        truncation: 'auto',
-      },
-      {
-        timeout: OPENAI_WEB_SEARCH_TIMEOUT_MS + 1_000,
-        maxRetries: 0,
-      },
-    )
+    const response = await generateText({
+      model: getAiSdkLanguageModel(WEB_SEARCH_MODEL_CONFIG),
+      prompt,
+      tools: getProviderTools(),
+      toolChoice: 'auto',
+      maxRetries: 0,
+      timeout: OPENAI_WEB_SEARCH_TIMEOUT_MS + 1_000,
+      providerOptions: getProviderOptions(options.chatId),
+    })
 
-    const text = response.output_text?.trim()
+    const text = response.text?.trim()
     if (!text) {
       throw new Error('OpenAI web search returned empty response')
     }
