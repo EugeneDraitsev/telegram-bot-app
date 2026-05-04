@@ -1,15 +1,16 @@
 import { agentSystemInstructions } from '../system-instructions'
 
 describe('agentSystemInstructions', () => {
-  test('keeps compact chat style and eager search guidance', () => {
+  test('matches the restored concise chat style and eager search guidance', () => {
     expect(agentSystemInstructions).toContain(
-      'For casual chat questions, prefer 1-4 short sentences',
+      'try to be concise, you are a chatbot after all',
     )
     expect(agentSystemInstructions).toContain(
       'Use web_search before answering about latest/current info',
     )
     expect(agentSystemInstructions).toContain('Search exact names first')
-    expect(agentSystemInstructions).toContain(
+    expect(agentSystemInstructions).not.toContain('AUTONOMY MODE')
+    expect(agentSystemInstructions).not.toContain(
       'Tool results are evidence, not a style guide',
     )
   })
