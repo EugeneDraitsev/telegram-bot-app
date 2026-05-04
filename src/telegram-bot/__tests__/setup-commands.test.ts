@@ -13,7 +13,9 @@ const setupGoogleCommandsMock = jest.fn((bot: unknown, ..._args: unknown[]) => {
     bot as {
       command: (command: string | string[], ...middleware: unknown[]) => Bot
     }
-  ).command('ge', jest.fn())
+  )
+    .command(['q', 'qq'], jest.fn())
+    .command('ge', jest.fn())
 })
 const setupMultimodalGeminiCommandsMock = jest.fn((..._args: unknown[]) =>
   Promise.resolve(undefined),
@@ -54,6 +56,7 @@ jest.mock('../google', () => ({
   __esModule: true,
   default: (bot: unknown, ...args: unknown[]) =>
     setupGoogleCommandsMock(bot, ...args),
+  GEMINI_FLASH_LITE_MODEL: 'gemini-3.1-flash-lite-preview',
   GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -63,18 +66,10 @@ jest.mock('../google', () => ({
 
 jest.mock('../open-ai', () => ({
   __esModule: true,
-  default: (bot: unknown, ...args: unknown[]) => {
-    ;(
-      bot as {
-        command: (command: string | string[], ...middleware: unknown[]) => Bot
-      }
-    ).command(['q', 'qq'], jest.fn())
-    return setupOpenAiCommandsMock(bot, ...args)
-  },
+  default: (bot: unknown, ...args: unknown[]) =>
+    setupOpenAiCommandsMock(bot, ...args),
   OPENAI_O_MODEL: 'gpt-5.5',
   OPENAI_O_REASONING_EFFORT: 'medium',
-  OPENAI_Q_MODEL: 'gpt-5.4-nano',
-  OPENAI_Q_REASONING_EFFORT: 'low',
   setupImageGenerationOpenAiCommands: (...args: unknown[]) =>
     setupImageGenerationOpenAiCommandsMock(...args),
   setupMultimodalOpenAiCommands: (...args: unknown[]) =>
@@ -139,13 +134,13 @@ describe('setupAllCommands', () => {
 
     await photoHandler?.(ctx, next as NextFunction)
 
-    expect(setupMultimodalOpenAiCommandsMock).toHaveBeenCalledWith(
+    expect(setupMultimodalGeminiCommandsMock).toHaveBeenCalledWith(
       ctx,
-      'gpt-5.4-nano',
       true,
+      'gemini-3.1-flash-lite-preview',
       '/q',
-      'low',
     )
+    expect(setupMultimodalOpenAiCommandsMock).not.toHaveBeenCalled()
     expect(next).toHaveBeenCalledTimes(1)
   })
 

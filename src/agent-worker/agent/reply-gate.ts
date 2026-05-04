@@ -1,11 +1,8 @@
 /**
- * Reply gate - deterministic pre-filter + OpenAI engage/ignore decision.
+ * Reply gate - deterministic pre-filter + Gemini engage/ignore decision.
  */
 
-import type {
-  ResponseFunctionToolCall,
-  Tool,
-} from 'openai/resources/responses/responses'
+import { ServiceTier } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
 import {
@@ -19,29 +16,9 @@ import {
   mentionsOurBot,
   recordMetric,
 } from '@tg-bot/common'
-import { getOpenAiClient } from '../services/openai-client'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
-import { REPLY_GATE_MODEL, REPLY_GATE_REASONING_EFFORT } from './models'
+import { ai, REPLY_GATE_MODEL, REPLY_GATE_REASONING_EFFORT } from './models'
 import { withTimeout } from './utils'
-
-const replyGateTools: Tool[] = [
-  {
-    type: 'function',
-    name: 'engage',
-    description:
-      'The current message clearly asks for or requires a bot response now.',
-    parameters: { type: 'object', properties: {} },
-    strict: false,
-  },
-  {
-    type: 'function',
-    name: 'ignore',
-    description:
-      'Ignore the message. Use for noise, low-signal reactions, or messages not clearly asking the bot to respond.',
-    parameters: { type: 'object', properties: {} },
-    strict: false,
-  },
-]
 
 function buildReplyGatePrompt(params: {
   isReplyToOur: boolean
@@ -58,15 +35,17 @@ Default decision: IGNORE.
 Important:
 - Upstream routing signals (mention/reply/bot words) are heuristic and can be wrong.
 - Do NOT assume the user truly wants a bot reply just because the bot is mentioned or quoted.
+- Do NOT require the word "bot" or an explicit username. In an enabled agentic chat, a standalone current question/request can be meant for THIS bot if it is not clearly addressed to another person/account.
 - Treat reply-to-THIS-bot as weak context only. Engage only if the CURRENT message itself asks, requests, corrects, challenges, or clearly continues a task.
 - Ignore short reactions, laughter, acknowledgements, and side comments even when they reply to THIS bot.
 
-You must call exactly one tool:
+Answer with exactly one lowercase word:
 - engage: clear direct question/request/command to THIS bot in the current message
 - ignore: everything else
 
 ENGAGE only if at least one is true:
 - User directly asks THIS bot a question.
+- User asks a standalone current question/request that a chat bot can usefully answer, and no other addressee is clear.
 - User gives THIS bot an explicit actionable request (help/explain/summarize/draw/generate/etc.).
 - User asks THIS bot a follow-up or clarification about the replied-to message.
 - User greets THIS bot in a way that expects a conversational response.
@@ -93,6 +72,11 @@ Context:
 - Message: "${params.textContent || '[media without text]'}"
 - Replied-to message: "${params.replyTargetText || '[not a reply]'}"
 ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
+}
+
+function parseReplyGateDecision(text: string | undefined): 'engage' | 'ignore' {
+  const normalized = (text ?? '').trim().toLowerCase()
+  return normalized.startsWith('engage') ? 'engage' : 'ignore'
 }
 
 function buildReplyGateInput(message: Message, textContent: string): string {
@@ -173,13 +157,6 @@ export async function shouldEngageWithMessage(params: {
     return false
   }
 
-  const addressedToBot = isReplyToOur || hasBotAddress
-
-  if (!addressedToBot) {
-    logger.info({ chatId, reason: 'not_addressed_to_bot' }, 'reply_gate.skip')
-    return false
-  }
-
   const startedAt = Date.now()
 
   try {
@@ -205,32 +182,24 @@ export async function shouldEngageWithMessage(params: {
     )
 
     const response = await withTimeout(
-      getOpenAiClient().responses.create(
-        {
-          model: REPLY_GATE_MODEL,
-          input: buildReplyGateInput(message, textContent),
-          instructions,
-          tools: replyGateTools,
-          tool_choice: 'required',
-          parallel_tool_calls: false,
-          reasoning: { effort: REPLY_GATE_REASONING_EFFORT },
-          safety_identifier: chatId === undefined ? undefined : String(chatId),
-          store: false,
-          truncation: 'auto',
+      ai.models.generateContent({
+        model: REPLY_GATE_MODEL,
+        contents: buildReplyGateInput(message, textContent),
+        config: {
+          systemInstruction: instructions,
+          temperature: 0,
+          serviceTier: ServiceTier.PRIORITY,
+          httpOptions: {
+            timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
+            retryOptions: { attempts: 1 },
+          },
         },
-        {
-          timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
-          maxRetries: 0,
-        },
-      ),
+      }),
       REPLY_GATE_TIMEOUT_MS,
       'reply_gate timeout',
     )
 
-    const functionCall = response.output?.find(
-      (item): item is ResponseFunctionToolCall => item.type === 'function_call',
-    )
-    const decision = functionCall?.name ?? 'none'
+    const decision = parseReplyGateDecision(response.text)
     const durationMs = Date.now() - startedAt
 
     logger.info(

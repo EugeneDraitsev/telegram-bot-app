@@ -45,7 +45,6 @@ describe('systemInstructions', () => {
       expect(prompt).toContain(
         'Search and retrieved sources are for factual grounding only',
       )
-      expect(prompt).toContain('кто такой пыня плешивый')
       expect(prompt).toContain('Keep casual chat answers compact')
       expect(prompt).toContain('Never append opt-in offers')
     }

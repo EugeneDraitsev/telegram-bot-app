@@ -25,6 +25,7 @@ import { searchGifTool } from './search-gif.tool'
 import { searchImageTool } from './search-image.tool'
 import { searchVideoTool } from './search-video.tool'
 import { weatherTool } from './weather.tool'
+import { webSearchTool } from './web-search.tool'
 
 // Context management
 export {
@@ -54,9 +55,11 @@ export {
   telegramDiceTool,
   updateMemoryTool,
   weatherTool,
+  webSearchTool,
 }
 
 const baseAgentTools: AgentTool[] = [
+  webSearchTool,
   dateTimeTool,
   codeExecutionTool,
   randomNumberTool,

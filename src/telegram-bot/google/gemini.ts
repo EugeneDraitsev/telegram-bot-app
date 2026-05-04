@@ -3,7 +3,7 @@ import {
   type GenerateContentParameters,
   type GenerateContentResponse,
   GoogleGenAI,
-  type ServiceTier,
+  ServiceTier,
 } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
@@ -288,7 +288,7 @@ export const generateMultimodalCompletion = async ({
         systemInstruction: isGemmaModel
           ? gemmaSystemInstructions
           : geminiSystemInstructions,
-        serviceTier: GEMINI_SERVICE_TIER as ServiceTier,
+        serviceTier: ServiceTier.PRIORITY,
         httpOptions: {
           timeout: MULTIMODAL_TIMEOUT_MS,
           retryOptions: { attempts: 1 },

@@ -4,8 +4,7 @@
  * This file keeps specialized generation functions that tools still need.
  */
 
-import { GoogleGenAI } from '@google/genai'
-import type { ServiceTier } from '@google/genai'
+import { GoogleGenAI, ServiceTier } from '@google/genai'
 
 import { GEMINI_SERVICE_TIER, getErrorMessage, logger } from '@tg-bot/common'
 import {
@@ -278,7 +277,7 @@ async function runGroundedSearch(
       model,
       contents: prompt,
       config: {
-        serviceTier: GEMINI_SERVICE_TIER as ServiceTier,
+        serviceTier: ServiceTier.PRIORITY,
         tools: [{ googleSearch: {} }],
       },
     }),

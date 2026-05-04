@@ -2,6 +2,7 @@ import type { Context } from 'grammy/web'
 
 import { OPENAI_GPT_IMAGE_MODEL } from '@tg-bot/common'
 import {
+  GEMINI_FLASH_LITE_MODEL,
   GEMMA_MODEL,
   setupImageGenerationGeminiCommands,
   setupMultimodalGeminiCommands,
@@ -9,8 +10,6 @@ import {
 import {
   OPENAI_O_MODEL,
   OPENAI_O_REASONING_EFFORT,
-  OPENAI_Q_MODEL,
-  OPENAI_Q_REASONING_EFFORT,
   setupImageGenerationOpenAiCommands,
   setupMultimodalOpenAiCommands,
 } from './open-ai'
@@ -35,12 +34,11 @@ const photoRoutes: PhotoRoute[] = [
   {
     prefix: '/q',
     handler: (ctx, deferred) =>
-      setupMultimodalOpenAiCommands(
+      setupMultimodalGeminiCommands(
         ctx,
-        OPENAI_Q_MODEL,
         deferred,
+        GEMINI_FLASH_LITE_MODEL,
         '/q',
-        OPENAI_Q_REASONING_EFFORT,
       ),
   },
   {

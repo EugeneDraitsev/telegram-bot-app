@@ -1,32 +1,21 @@
+import type { GenerateContentResponse } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
-const mockResponsesCreate = jest.fn()
-
-jest.mock('openai', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    responses: {
-      create: mockResponsesCreate,
-    },
-  })),
-}))
-
-import { resetOpenAiClientForTests } from '../../services/openai-client'
+import { ai } from '../models'
 import { shouldEngageWithMessage } from '../reply-gate'
 
 const OUR_BOT = { id: 123456, username: 'testbot' }
+const mockGenerateContent = jest.spyOn(ai.models, 'generateContent')
+const geminiResponse = (text: string) => ({ text }) as GenerateContentResponse
 
 describe('shouldEngageWithMessage', () => {
-  beforeAll(() => {
-    process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key'
+  beforeEach(() => {
+    mockGenerateContent.mockReset()
+    mockGenerateContent.mockResolvedValue(geminiResponse('ignore'))
   })
 
-  beforeEach(() => {
-    resetOpenAiClientForTests()
-    mockResponsesCreate.mockReset()
-    mockResponsesCreate.mockResolvedValue({
-      output: [{ type: 'function_call', name: 'ignore', arguments: '{}' }],
-    })
+  afterAll(() => {
+    mockGenerateContent.mockRestore()
   })
 
   test('returns false for empty message without media', async () => {
@@ -55,7 +44,7 @@ describe('shouldEngageWithMessage', () => {
     ).toEqual(false)
   })
 
-  test('returns false for non-addressed request', async () => {
+  test('lets Gemini gate decide for non-addressed standalone requests', async () => {
     const message = { text: 'can you help?' } as Message
 
     expect(
@@ -66,6 +55,43 @@ describe('shouldEngageWithMessage', () => {
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)
+
+    expect(mockGenerateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contents: 'can you help?',
+      }),
+    )
+  })
+
+  test('can engage with standalone questions without bot address words', async () => {
+    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
+
+    const text = 'какой курс биткоина ща челик?'
+    const message = {
+      text,
+      chat: { id: 1305082, type: 'group' },
+      from: { id: 1305082 },
+    } as Message
+
+    await expect(
+      shouldEngageWithMessage({
+        message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(true)
+
+    expect(mockGenerateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contents: text,
+        config: expect.objectContaining({
+          systemInstruction: expect.stringContaining(
+            'standalone current question/request',
+          ),
+        }),
+      }),
+    )
   })
 
   test('returns false for reply to another bot without our mention', async () => {
@@ -101,7 +127,7 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockResponsesCreate).not.toHaveBeenCalled()
+    expect(mockGenerateContent).not.toHaveBeenCalled()
   })
 
   test('lets reply gate model ignore low-signal reaction reply to our bot', async () => {
@@ -124,21 +150,20 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockResponsesCreate).toHaveBeenCalledWith(
+    expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        input: expect.stringContaining(`Current message: ${reactionText}`),
-        instructions: expect.stringContaining(
-          'Treat reply-to-THIS-bot as weak context only',
-        ),
+        contents: expect.stringContaining(`Current message: ${reactionText}`),
+        config: expect.objectContaining({
+          systemInstruction: expect.stringContaining(
+            'Treat reply-to-THIS-bot as weak context only',
+          ),
+        }),
       }),
-      { timeout: 16_000, maxRetries: 0 },
     )
   })
 
-  test('uses OpenAI model for reply to our bot with response intent', async () => {
-    mockResponsesCreate.mockResolvedValueOnce({
-      output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],
-    })
+  test('uses Gemini model for reply to our bot with response intent', async () => {
+    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
 
     const questionText = '\u043f\u043e\u0447\u0435\u043c\u0443?'
     const message = {
@@ -159,13 +184,11 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(true)
 
-    expect(mockResponsesCreate).toHaveBeenCalled()
+    expect(mockGenerateContent).toHaveBeenCalled()
   })
 
-  test('uses OpenAI model when reply mentions another account and the bot', async () => {
-    mockResponsesCreate.mockResolvedValueOnce({
-      output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],
-    })
+  test('uses Gemini model when reply mentions another account and the bot', async () => {
+    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
 
     const message = {
       text: '@otheruser rank and bot too',
@@ -184,13 +207,11 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(true)
 
-    expect(mockResponsesCreate).toHaveBeenCalled()
+    expect(mockGenerateContent).toHaveBeenCalled()
   })
 
-  test('uses OpenAI model for addressed reply gate decisions', async () => {
-    mockResponsesCreate.mockResolvedValueOnce({
-      output: [{ type: 'function_call', name: 'engage', arguments: '{}' }],
-    })
+  test('uses Gemini model for addressed reply gate decisions', async () => {
+    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
 
     const message = {
       text: 'бот что тут в кратце ИМЕННО в этом сообщении',
@@ -207,17 +228,17 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(true)
 
-    expect(mockResponsesCreate).toHaveBeenCalledWith(
+    expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'gpt-5.4-nano',
-        input: expect.stringContaining(
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: expect.stringContaining(
           'Replied-to message: article text to summarize',
         ),
-        reasoning: { effort: 'low' },
-        tool_choice: 'required',
-        safety_identifier: '777',
+        config: expect.objectContaining({
+          httpOptions: { timeout: 16_000, retryOptions: { attempts: 1 } },
+          temperature: 0,
+        }),
       }),
-      { timeout: 16_000, maxRetries: 0 },
     )
   })
 })

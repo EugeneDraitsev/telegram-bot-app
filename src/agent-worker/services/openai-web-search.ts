@@ -1,8 +1,8 @@
 import { getErrorMessage, logger } from '@tg-bot/common'
 import {
-  CHAT_MODEL,
-  CHAT_MODEL_REASONING_EFFORT,
-  CHAT_MODEL_TIMEOUT_MS,
+  OPENAI_WEB_SEARCH_MODEL,
+  OPENAI_WEB_SEARCH_REASONING_EFFORT,
+  OPENAI_WEB_SEARCH_TIMEOUT_MS,
 } from '../agent/models'
 import { getOpenAiClient } from './openai-client'
 import { OPENAI_WEB_SEARCH_TOOLS } from './openai-tools'
@@ -15,7 +15,7 @@ export interface SearchWebOptions {
   chatId?: string | number
 }
 
-export const WEB_SEARCH_MODEL = CHAT_MODEL
+export const WEB_SEARCH_MODEL = OPENAI_WEB_SEARCH_MODEL
 
 function normalizeQuery(query: string): string {
   return query.trim().replace(/\s+/g, ' ')
@@ -63,14 +63,14 @@ export async function searchWebOpenAi(
         tools: OPENAI_WEB_SEARCH_TOOLS,
         tool_choice: 'auto',
         include: ['web_search_call.action.sources'],
-        reasoning: { effort: CHAT_MODEL_REASONING_EFFORT },
+        reasoning: { effort: OPENAI_WEB_SEARCH_REASONING_EFFORT },
         safety_identifier:
           options.chatId === undefined ? undefined : String(options.chatId),
         store: false,
         truncation: 'auto',
       },
       {
-        timeout: CHAT_MODEL_TIMEOUT_MS + 1_000,
+        timeout: OPENAI_WEB_SEARCH_TIMEOUT_MS + 1_000,
         maxRetries: 0,
       },
     )

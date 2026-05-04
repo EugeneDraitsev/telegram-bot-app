@@ -20,8 +20,8 @@
 - Ingress should not run LLM logic.
 - Ingress should dispatch to worker asynchronously and return.
 - Worker performs:
-  1. single reply gate check with Gemini 3 flash
-  2. agentic loop with main model
+  1. single reply gate check with Gemini 3.1 flash-lite
+  2. agentic loop with Gemini 3.1 flash-lite
 
 ## Performance/Safety
 - Do not allow webhook path to wait on model latency.
