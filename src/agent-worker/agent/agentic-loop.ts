@@ -36,6 +36,7 @@ import {
   getAgentTools,
   getCollectedResponses,
   runWithToolContext,
+  withToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, AgentTool, TelegramApi } from '../types'
 import {
@@ -720,7 +721,7 @@ export async function runAgenticLoop(
         }),
       )
       const allMediaBuffers = [...(mediaBuffers ?? []), ...historyMediaBuffers]
-      await runWithToolContext(message, allMediaBuffers, async () => {
+      await withToolMediaBuffers(allMediaBuffers, async () => {
         const contextBlock = buildContextBlock(
           message,
           textContent,
