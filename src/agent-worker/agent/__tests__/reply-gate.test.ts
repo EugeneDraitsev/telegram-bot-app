@@ -52,7 +52,7 @@ describe('shouldEngageWithMessage', () => {
     ).toEqual(false)
   })
 
-  test('lets structured reply gate decide for non-addressed standalone requests', async () => {
+  test('returns false for non-addressed request', async () => {
     const message = { text: 'can you help?' } as Message
 
     expect(
@@ -64,18 +64,14 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockGenerateText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: 'can you help?',
-        output: expect.objectContaining({ name: 'object' }),
-      }),
-    )
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
-  test('can engage with standalone questions without bot address words', async () => {
+  test('does not engage with standalone questions without bot address words', async () => {
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
-    const text = 'ÐºÐ°ÐºÐ¾Ð¹ ÐºÑƒÑ€Ñ Ð±Ð¸Ñ‚ÐºÐ¾Ð¸Ð½Ð° Ñ‰Ð° Ñ‡ÐµÐ»Ð¸Ðº?'
+    const text =
+      '\u043a\u0430\u043a\u043e\u0439 \u043a\u0443\u0440\u0441 \u0431\u0438\u0442\u043a\u043e\u0438\u043d\u0430 \u0449\u0430 \u0447\u0435\u043b\u0438\u043a?'
     const message = {
       text,
       chat: { id: 1305082, type: 'group' },
@@ -89,14 +85,25 @@ describe('shouldEngageWithMessage', () => {
         hasMedia: false,
         botInfo: OUR_BOT,
       }),
-    ).resolves.toBe(true)
+    ).resolves.toBe(false)
 
-    expect(mockGenerateText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: text,
-        system: expect.stringContaining('standalone current question/request'),
+    expect(mockGenerateText).not.toHaveBeenCalled()
+  })
+
+  test('does not engage with standalone project planning chat messages', async () => {
+    const text =
+      '\u044f \u0445\u043e\u0447\u0443 \u0441\u043d\u044f\u0442\u044c \u0432\u0438\u0434\u043e\u0441 \u043a\u0430\u043a \u0437\u0430\u0441\u0442\u0430\u0432\u043a\u0430 \u0441\u0435\u0440\u0438\u0430\u043b\u0430 \u0434\u0440\u0443\u0437\u044c\u044f, \u0433\u0434\u0435 \u043c\u044b \u0432\u0441\u0435 \u0431\u0435\u0436\u0438\u043c \u0438 \u043f\u043e \u043e\u0447\u0435\u0440\u0435\u0434\u0438 \u0441\u0430\u0434\u0438\u043c\u0441\u044f \u043d\u0430 \u0434\u0438\u0432\u0430\u043d'
+
+    await expect(
+      shouldEngageWithMessage({
+        message: { text, chat: { id: 777 } } as Message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
       }),
-    )
+    ).resolves.toBe(false)
+
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
   test('returns false for reply to another bot without our mention', async () => {
@@ -216,8 +223,10 @@ describe('shouldEngageWithMessage', () => {
   test('uses AI SDK structured output for addressed reply gate decisions', async () => {
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
+    const text =
+      '\u0431\u043e\u0442 \u0447\u0442\u043e \u0442\u0443\u0442 \u0432 \u043a\u0440\u0430\u0442\u0446\u0435 \u0418\u041c\u0415\u041d\u041d\u041e \u0432 \u044d\u0442\u043e\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0438'
     const message = {
-      text: 'Ð±Ð¾Ñ‚ Ñ‡Ñ‚Ð¾ Ñ‚ÑƒÑ‚ Ð² ÐºÑ€Ð°Ñ‚Ñ†Ðµ Ð˜ÐœÐ•ÐÐÐž Ð² ÑÑ‚Ð¾Ð¼ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¸',
+      text,
       chat: { id: 777 },
       reply_to_message: { message_id: 55, text: 'article text to summarize' },
     } as Message
@@ -225,8 +234,7 @@ describe('shouldEngageWithMessage', () => {
     await expect(
       shouldEngageWithMessage({
         message,
-        textContent:
-          'Ð±Ð¾Ñ‚ Ñ‡Ñ‚Ð¾ Ñ‚ÑƒÑ‚ Ð² ÐºÑ€Ð°Ñ‚Ñ†Ðµ Ð˜ÐœÐ•ÐÐÐž Ð² ÑÑ‚Ð¾Ð¼ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¸',
+        textContent: text,
         hasMedia: false,
         botInfo: OUR_BOT,
       }),
