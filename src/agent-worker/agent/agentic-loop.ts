@@ -1,8 +1,8 @@
 import {
-  jsonSchema,
   tool as defineAiTool,
   type JSONSchema7,
   type JSONValue,
+  jsonSchema,
   type ModelMessage,
   type ToolSet,
 } from 'ai'
@@ -95,11 +95,13 @@ export function buildNativeTools(agentTools: AgentTool[]): ToolSet {
         tool.declaration.name,
         defineAiTool({
           description: tool.declaration.description,
-          inputSchema: jsonSchema((tool.declaration.parameters ?? {
-            type: 'object',
-            properties: {},
-            additionalProperties: false,
-          }) as JSONSchema7),
+          inputSchema: jsonSchema(
+            (tool.declaration.parameters ?? {
+              type: 'object',
+              properties: {},
+              additionalProperties: false,
+            }) as JSONSchema7,
+          ),
         }),
       ]),
   )

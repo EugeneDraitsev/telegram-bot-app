@@ -2,8 +2,7 @@ import { asSchema } from 'ai'
 import type { Message } from 'telegram-typings'
 
 import { resolveHistoryMediaAttachments } from '@tg-bot/common'
-import type { TelegramApi } from '../../types'
-import type { AgentTool } from '../../types'
+import type { AgentTool, TelegramApi } from '../../types'
 import { buildNativeTools } from '../agentic-loop'
 
 describe('buildNativeTools', () => {
