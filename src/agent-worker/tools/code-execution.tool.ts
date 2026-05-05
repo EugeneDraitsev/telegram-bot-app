@@ -3,8 +3,14 @@
  * Replaces the old calculator tool — can run real Python, not just basic math.
  */
 
-import { GEMINI_SERVICE_TIER, getErrorMessage } from '@tg-bot/common'
-import { ai, FAST_MODEL } from '../agent/models'
+import { generateText } from 'ai'
+
+import {
+  getAiSdkGoogleTools,
+  getAiSdkLanguageModel,
+  getErrorMessage,
+} from '@tg-bot/common'
+import { HELPER_TEXT_MODEL_CONFIG } from '../agent/models'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
@@ -34,16 +40,23 @@ export const codeExecutionTool: AgentTool = {
     }
 
     try {
-      const interaction = await ai.interactions.create({
-        model: FAST_MODEL,
-        input: task,
-        tools: [{ type: 'code_execution' }],
-        service_tier: GEMINI_SERVICE_TIER,
+      if (HELPER_TEXT_MODEL_CONFIG.provider !== 'google') {
+        return 'Code execution failed: configured helper model provider does not support Google code_execution'
+      }
+
+      const result = await generateText({
+        model: getAiSdkLanguageModel(HELPER_TEXT_MODEL_CONFIG),
+        prompt: task,
+        tools: {
+          code_execution: getAiSdkGoogleTools().codeExecution({}),
+        },
+        toolChoice: 'auto',
+        maxRetries: 0,
+        providerOptions: { google: { serviceTier: 'priority' } },
       })
 
-      const textOutput = interaction.outputs?.find((o) => o.type === 'text')
-      if (textOutput && 'text' in textOutput && textOutput.text) {
-        return textOutput.text
+      if (result.text.trim()) {
+        return result.text.trim()
       }
 
       return 'Code execution produced no output'

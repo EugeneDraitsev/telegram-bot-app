@@ -33,6 +33,7 @@ export {
   getCollectedResponses,
   requireToolContext,
   runWithToolContext,
+  withToolMediaBuffers,
 } from './context'
 // Individual tools
 export {

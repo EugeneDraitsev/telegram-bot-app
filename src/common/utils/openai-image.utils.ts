@@ -1,5 +1,6 @@
 export const OPENAI_GPT_IMAGE_MODEL = 'gpt-image-2' as const
-export const OPENAI_GPT_IMAGE_SIZE = 'auto' as const
+export type OpenAiImageSize = `${number}x${number}` | 'auto'
+export const OPENAI_GPT_IMAGE_SIZE: OpenAiImageSize = 'auto'
 
 export function isOpenAiGptImageModel(model: string): boolean {
   return model === OPENAI_GPT_IMAGE_MODEL || model.startsWith('gpt-image-')
@@ -7,6 +8,12 @@ export function isOpenAiGptImageModel(model: string): boolean {
 
 export function usesOpenAiMediumImageQuality(model: string): boolean {
   return model === OPENAI_GPT_IMAGE_MODEL || model === 'gpt-image-2'
+}
+
+export function getAiSdkOpenAiImageSize(
+  size: OpenAiImageSize = OPENAI_GPT_IMAGE_SIZE,
+): `${number}x${number}` | undefined {
+  return size === 'auto' ? undefined : size
 }
 
 const SAFE_FRAMING_NOTE =
@@ -24,4 +31,21 @@ export function buildOpenAiImagePrompt(prompt: string): string {
   }
 
   return `${trimmedPrompt}\n\nComposition note: ${SAFE_FRAMING_NOTE}`
+}
+
+export function buildImageEditTargetPrompt(
+  prompt: string,
+  targetLabels: string[],
+): string {
+  const labels = targetLabels.map((label) => label.trim()).filter(Boolean)
+  if (labels.length === 0) {
+    return prompt
+  }
+
+  return [
+    prompt,
+    'Image edit target selection:',
+    labels.map((label, index) => `${index + 1}. ${label}`).join('\n'),
+    'Use the image list above as the edit/reference input. Prioritize #1 if multiple images are provided.',
+  ].join('\n\n')
 }

@@ -1,41 +1,15 @@
 import type { Message } from 'telegram-typings'
 
+const mockGenerateAiImage = jest.fn()
+const mockGenerateText = jest.fn()
+
+jest.mock('ai', () => ({
+  generateImage: (...args: unknown[]) => mockGenerateAiImage(...args),
+  generateText: (...args: unknown[]) => mockGenerateText(...args),
+}))
+
 import * as common from '@tg-bot/common'
 import { generateImage, generateMultimodalCompletion } from '../open-ai'
-
-const mockImageGenerate = jest.fn().mockResolvedValue({
-  data: [{ url: 'https://example.com/image.png' }],
-})
-const mockImageEdit = jest.fn().mockResolvedValue({
-  data: [{ url: 'https://example.com/image.png' }],
-})
-const mockChatCompletionCreate = jest.fn().mockResolvedValue({
-  choices: [{ message: { content: 'Test response' } }],
-})
-const mockResponsesCreate = jest.fn().mockResolvedValue({
-  output_text: 'Test response',
-})
-
-// Mock OpenAI
-jest.mock('openai', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      images: {
-        generate: mockImageGenerate,
-        edit: mockImageEdit,
-      },
-      chat: {
-        completions: {
-          create: mockChatCompletionCreate,
-        },
-      },
-      responses: {
-        create: mockResponsesCreate,
-      },
-    })),
-  }
-})
 
 const mockIsAiEnabledChat = jest.spyOn(common, 'isAiEnabledChat')
 const mockGetRawHistory = jest
@@ -48,6 +22,12 @@ const mockResolveHistoryMediaAttachments = jest
 const NOT_ALLOWED_ERROR =
   'AI is not allowed for this chat. Contact @drrrrrrrr for details'
 
+const imageResponse = {
+  image: { uint8Array: Buffer.from('generated-image') },
+  images: [{ uint8Array: Buffer.from('generated-image') }],
+  warnings: [],
+}
+
 describe('open-ai AI access control', () => {
   beforeAll(() => {
     process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key'
@@ -55,17 +35,14 @@ describe('open-ai AI access control', () => {
 
   beforeEach(() => {
     mockIsAiEnabledChat.mockReset()
-    mockImageGenerate.mockClear()
-    mockImageEdit.mockClear()
-    mockChatCompletionCreate.mockClear()
-    mockResponsesCreate.mockClear()
-    mockResponsesCreate.mockResolvedValue({
-      output_text: 'Test response',
-    })
     mockGetRawHistory.mockReset()
     mockGetRawHistory.mockResolvedValue([] as never)
     mockResolveHistoryMediaAttachments.mockReset()
     mockResolveHistoryMediaAttachments.mockResolvedValue([] as never)
+    mockGenerateAiImage.mockReset()
+    mockGenerateAiImage.mockResolvedValue(imageResponse)
+    mockGenerateText.mockReset()
+    mockGenerateText.mockResolvedValue({ text: 'Test response' })
   })
 
   describe('generateImage', () => {
@@ -78,7 +55,7 @@ describe('open-ai AI access control', () => {
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(999)
     })
 
-    test('uses gpt-image-2 with wrapped prompt and auto size', async () => {
+    test('uses gpt-image-2 with wrapped prompt and medium quality', async () => {
       mockIsAiEnabledChat.mockReturnValue(true)
 
       await generateImage(
@@ -87,14 +64,15 @@ describe('open-ai AI access control', () => {
         common.OPENAI_GPT_IMAGE_MODEL,
       )
 
-      expect(mockImageGenerate).toHaveBeenCalledWith(
+      expect(mockGenerateAiImage).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: common.OPENAI_GPT_IMAGE_MODEL,
-          quality: 'medium',
-          size: common.OPENAI_GPT_IMAGE_SIZE,
           prompt: expect.stringContaining('Composition note:'),
+          n: 1,
+          maxRetries: 0,
+          providerOptions: { openai: { quality: 'medium' } },
         }),
       )
+      expect(mockGenerateAiImage.mock.calls[0]?.[0]).not.toHaveProperty('size')
     })
 
     test('edits input images with gpt-image-2', async () => {
@@ -107,12 +85,43 @@ describe('open-ai AI access control', () => {
         [Buffer.from('image')],
       )
 
-      expect(mockImageEdit).toHaveBeenCalledWith(
+      expect(mockGenerateAiImage).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: common.OPENAI_GPT_IMAGE_MODEL,
-          quality: 'medium',
-          size: common.OPENAI_GPT_IMAGE_SIZE,
-          prompt: expect.stringContaining('Composition note:'),
+          prompt: expect.objectContaining({
+            text: expect.stringContaining('Composition note:'),
+            images: [Buffer.from('image')],
+          }),
+          providerOptions: { openai: { quality: 'medium' } },
+        }),
+      )
+      expect(mockGenerateAiImage.mock.calls[0]?.[0]).not.toHaveProperty('size')
+    })
+
+    test('/e image editing includes reply media label in the edit prompt', async () => {
+      mockIsAiEnabledChat.mockReturnValue(true)
+
+      await generateImage(
+        'Extend this image',
+        123,
+        common.OPENAI_GPT_IMAGE_MODEL,
+        [],
+        [
+          {
+            data: Buffer.from('reply-image'),
+            label: 'Reply message image (message_id=41)',
+            mimeType: 'image/jpeg',
+            fileId: 'reply_photo',
+          },
+        ],
+      )
+
+      expect(mockGenerateAiImage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: expect.objectContaining({
+            text: expect.stringContaining(
+              'Reply message image (message_id=41)',
+            ),
+          }),
         }),
       )
     })
@@ -133,9 +142,6 @@ describe('open-ai AI access control', () => {
     })
 
     test('proceeds when chat IS in OPENAI_CHAT_IDS', async () => {
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {})
       mockIsAiEnabledChat.mockReturnValue(true)
 
       const result = await generateMultimodalCompletion(
@@ -145,68 +151,67 @@ describe('open-ai AI access control', () => {
       )
 
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(123)
-      expect(mockResponsesCreate).toHaveBeenCalledWith(
+      expect(mockGenerateText).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-5.5',
-          instructions: expect.stringContaining(
+          system: expect.stringContaining(
             'This OpenAI command has web search enabled. Use it for current',
           ),
-          input: [
+          messages: [
             {
               role: 'user',
               content: [
                 {
-                  type: 'input_text',
+                  type: 'text',
                   text: expect.stringContaining('test prompt'),
                 },
               ],
             },
           ],
-          reasoning: { effort: 'medium' },
-          tools: [{ type: 'web_search', search_context_size: 'high' }],
-          tool_choice: 'auto',
-          include: ['web_search_call.action.sources'],
-          safety_identifier: '123',
-          store: false,
+          toolChoice: 'auto',
+          maxRetries: 0,
+          timeout: 240_000,
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'medium',
+              safetyIdentifier: '123',
+              store: false,
+            },
+          },
         }),
-        { timeout: 240_000, maxRetries: 0 },
       )
-      expect(mockChatCompletionCreate).not.toHaveBeenCalled()
       expect(result).not.toBe(NOT_ALLOWED_ERROR)
-      consoleSpy.mockRestore()
     })
 
-    test('sends images through OpenAI Responses vision input', async () => {
+    test('sends images through AI SDK vision input', async () => {
       mockIsAiEnabledChat.mockReturnValue(true)
 
       await generateMultimodalCompletion('what is this?', 123, 'gpt-5.5', [
         Buffer.from('image'),
       ])
 
-      expect(mockResponsesCreate).toHaveBeenCalledWith(
+      expect(mockGenerateText).toHaveBeenCalledWith(
         expect.objectContaining({
-          input: [
+          messages: [
             {
               role: 'user',
               content: [
                 {
-                  type: 'input_text',
+                  type: 'text',
                   text: expect.stringContaining('Request image 1'),
                 },
                 {
-                  type: 'input_image',
-                  image_url: `data:image/jpeg;base64,${Buffer.from('image').toString('base64')}`,
-                  detail: 'high',
+                  type: 'image',
+                  image: Buffer.from('image'),
+                  mediaType: 'image/jpeg',
                 },
                 {
-                  type: 'input_text',
+                  type: 'text',
                   text: expect.stringContaining('what is this?'),
                 },
               ],
             },
           ],
         }),
-        { timeout: 240_000, maxRetries: 0 },
       )
     })
 
@@ -258,34 +263,34 @@ describe('open-ai AI access control', () => {
         },
       )
 
-      const request = mockResponsesCreate.mock.calls[0]?.[0] as {
-        input: Array<{
+      const request = mockGenerateText.mock.calls[0]?.[0] as {
+        messages: Array<{
           role: 'user'
-          content: Array<{ type: string; text?: string; image_url?: string }>
+          content: Array<{ type: string; text?: string; image?: Buffer }>
         }>
-        reasoning: { effort: string }
+        providerOptions: { openai: { reasoningEffort: string } }
       }
 
       expect(mockGetRawHistory).toHaveBeenCalledWith(123)
       expect(mockResolveHistoryMediaAttachments).toHaveBeenCalled()
-      expect(request.reasoning).toEqual({ effort: 'medium' })
-      expect(request.input[0]?.content).toEqual(
+      expect(request.providerOptions.openai.reasoningEffort).toBe('medium')
+      expect(request.messages[0]?.content).toEqual(
         expect.arrayContaining([
           {
-            type: 'input_text',
+            type: 'text',
             text: expect.stringContaining('Recent Telegram chat history'),
           },
           {
-            type: 'input_text',
+            type: 'text',
             text: expect.stringContaining('History image 1/1'),
           },
           {
-            type: 'input_image',
-            image_url: `data:image/png;base64,${Buffer.from('history-image').toString('base64')}`,
-            detail: 'high',
+            type: 'image',
+            image: Buffer.from('history-image'),
+            mediaType: 'image/png',
           },
           {
-            type: 'input_text',
+            type: 'text',
             text: expect.stringContaining('последней фотке'),
           },
         ]),
@@ -336,17 +341,17 @@ describe('open-ai AI access control', () => {
 
       expect(mockResolveHistoryMediaAttachments).not.toHaveBeenCalled()
 
-      const request = mockResponsesCreate.mock.calls[0]?.[0] as {
-        input: Array<{
-          content: Array<{ type: string; text?: string; image_url?: string }>
+      const request = mockGenerateText.mock.calls[0]?.[0] as {
+        messages: Array<{
+          content: Array<{ type: string; text?: string; image?: Buffer }>
         }>
       }
-      const contentText = JSON.stringify(request.input[0]?.content)
+      const contentText = JSON.stringify(request.messages[0]?.content)
 
       expect(contentText).toContain('Reply message image')
       expect(contentText).not.toContain('History image')
       expect(
-        request.input[0]?.content.filter((part) => part.type === 'input_image'),
+        request.messages[0]?.content.filter((part) => part.type === 'image'),
       ).toHaveLength(1)
     })
   })

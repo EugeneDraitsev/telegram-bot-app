@@ -1,4 +1,5 @@
-const mockGenerateContent = jest.fn()
+const mockGenerateText = jest.fn()
+const mockGoogleSearch = jest.fn(() => ({ type: 'provider' }))
 const mockLogger = {
   info: jest.fn(),
   warn: jest.fn(),
@@ -8,19 +9,18 @@ const mockWithTimeout = jest.fn(
   <T>(promise: Promise<T>, _ms: number, _error: Error | string) => promise,
 )
 
-jest.mock('@google/genai', () => ({
-  GoogleGenAI: jest.fn().mockImplementation(() => ({
-    models: {
-      generateContent: mockGenerateContent,
-    },
-    interactions: {
-      create: jest.fn(),
-    },
-  })),
+jest.mock('ai', () => ({
+  generateText: (...args: unknown[]) => mockGenerateText(...args),
 }))
 
 jest.mock('@tg-bot/common', () => ({
-  GEMINI_SERVICE_TIER: 'priority',
+  DEFAULT_IMAGE_GENERATION_MODEL: {
+    provider: 'google',
+    model: 'gemini-3.1-flash-image-preview',
+  },
+  getAiSdkGoogleTools: () => ({ googleSearch: mockGoogleSearch }),
+  getAiSdkLanguageModel: (config: { provider: string; model: string }) =>
+    `${config.provider}/${config.model}`,
   getErrorMessage: (error: unknown) =>
     error instanceof Error ? error.message : String(error),
   logger: mockLogger,
@@ -42,7 +42,8 @@ describe('searchWeb', () => {
       COMMON_GOOGLE_API_KEY: 'google-key',
       GOOGLE_CX_TOKEN: 'google-cx',
     }
-    mockGenerateContent.mockReset()
+    mockGenerateText.mockReset()
+    mockGoogleSearch.mockClear()
     mockWithTimeout.mockClear()
     mockLogger.info.mockReset()
     mockLogger.warn.mockReset()
@@ -55,7 +56,7 @@ describe('searchWeb', () => {
   })
 
   test('returns grounded search response on primary model success', async () => {
-    mockGenerateContent.mockResolvedValue({
+    mockGenerateText.mockResolvedValue({
       text: '**Fresh** answer with `link`',
     })
 
@@ -63,15 +64,17 @@ describe('searchWeb', () => {
       'Fresh answer with link',
     )
 
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1)
-    expect(mockGenerateContent).toHaveBeenCalledWith({
-      model: 'gemini-3.1-flash-lite-preview',
-      contents: expect.stringContaining('Query: btc price today'),
-      config: {
-        serviceTier: 'priority',
-        tools: [{ googleSearch: {} }],
-      },
-    })
+    expect(mockGenerateText).toHaveBeenCalledTimes(1)
+    expect(mockGenerateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'google/gemini-3.1-flash-lite-preview',
+        prompt: expect.stringContaining('Query: btc price today'),
+        tools: { google_search: { type: 'provider' } },
+        maxRetries: 0,
+        timeout: 6_000,
+        providerOptions: { google: { serviceTier: 'priority' } },
+      }),
+    )
     expect(mockLogger.info).toHaveBeenCalledWith(
       expect.objectContaining({
         query: 'btc price today',
@@ -83,7 +86,7 @@ describe('searchWeb', () => {
   })
 
   test('falls back to preview grounded model before using external search', async () => {
-    mockGenerateContent
+    mockGenerateText
       .mockRejectedValueOnce(new Error('primary overloaded'))
       .mockResolvedValueOnce({
         text: 'backup grounded answer',
@@ -93,14 +96,14 @@ describe('searchWeb', () => {
       'backup grounded answer',
     )
 
-    expect(
-      mockGenerateContent.mock.calls.map(([params]) => params.model),
-    ).toEqual(['gemini-3.1-flash-lite-preview', 'gemini-2.5-flash-lite'])
+    expect(mockGenerateText.mock.calls.map(([params]) => params.model)).toEqual(
+      ['google/gemini-3.1-flash-lite-preview', 'google/gemini-2.5-flash-lite'],
+    )
     expect(global.fetch).not.toHaveBeenCalled()
   })
 
   test('falls back to Tavily results when grounded search fails', async () => {
-    mockGenerateContent
+    mockGenerateText
       .mockRejectedValueOnce(new Error('primary failed'))
       .mockRejectedValueOnce(new Error('preview failed'))
 
@@ -126,15 +129,14 @@ describe('searchWeb', () => {
       }),
     ).resolves.toContain('Short Tavily answer')
 
-    expect(mockGenerateContent).toHaveBeenCalledTimes(2)
-    expect(mockGenerateContent).toHaveBeenNthCalledWith(1, {
-      model: 'gemini-3.1-flash-lite-preview',
-      contents: 'Find one relevant source.\nQuery: real fallback query',
-      config: {
-        serviceTier: 'priority',
-        tools: [{ googleSearch: {} }],
-      },
-    })
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        model: 'google/gemini-3.1-flash-lite-preview',
+        prompt: 'Find one relevant source.\nQuery: real fallback query',
+      }),
+    )
 
     const [url, request] = (global.fetch as jest.Mock).mock.calls[0]
     expect(url).toBe('https://api.tavily.com/search')
@@ -156,7 +158,7 @@ describe('searchWeb', () => {
   })
 
   test('derives fallback query from groundedPrompt when fallbackQuery is omitted', async () => {
-    mockGenerateContent
+    mockGenerateText
       .mockRejectedValueOnce(new Error('primary failed'))
       .mockRejectedValueOnce(new Error('backup failed'))
 
@@ -184,7 +186,7 @@ describe('searchWeb', () => {
   })
 
   test('preserves backward compatibility when query already contains a grounded prompt', async () => {
-    mockGenerateContent.mockResolvedValue({
+    mockGenerateText.mockResolvedValue({
       text: 'grounded prompt result',
     })
 
@@ -195,18 +197,16 @@ describe('searchWeb', () => {
       'grounded prompt result',
     )
 
-    expect(mockGenerateContent).toHaveBeenCalledWith({
-      model: 'gemini-3.1-flash-lite-preview',
-      contents: prompt,
-      config: {
-        serviceTier: 'priority',
-        tools: [{ googleSearch: {} }],
-      },
-    })
+    expect(mockGenerateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'google/gemini-3.1-flash-lite-preview',
+        prompt,
+      }),
+    )
   })
 
   test('falls back to Google Custom Search when Tavily also fails', async () => {
-    mockGenerateContent
+    mockGenerateText
       .mockRejectedValueOnce(new Error('primary failed'))
       .mockRejectedValueOnce(new Error('backup failed'))
 
@@ -252,7 +252,7 @@ describe('searchWeb', () => {
   })
 
   test('throws a single availability error when all search providers fail', async () => {
-    mockGenerateContent
+    mockGenerateText
       .mockRejectedValueOnce(new Error('primary failed'))
       .mockRejectedValueOnce(new Error('preview failed'))
 

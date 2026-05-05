@@ -1,12 +1,17 @@
 /**
- * Reply gate - deterministic pre-filter + Gemini engage/ignore decision.
+ * Reply gate - deterministic pre-filter + structured engage/ignore decision.
  */
 
-import { ServiceTier } from '@google/genai'
+import { generateText, Output } from 'ai'
+import { z } from 'zod'
 import type { Message } from 'telegram-typings'
 
 import {
+  type AiModelConfig,
+  type AiReasoningEffort,
   type BotIdentity,
+  getAiSdkLanguageModel,
+  getAiSdkProviderOptions,
   getMetricStatusFromError,
   hasBotAddressSignal,
   isReplyToAnotherBot,
@@ -18,11 +23,19 @@ import {
 } from '@tg-bot/common'
 import { REPLY_GATE_TIMEOUT_MS } from './config'
 import {
-  geminiModels,
+  REPLY_GATE_FALLBACK_MODEL,
+  REPLY_GATE_FALLBACK_MODEL_CONFIG,
+  REPLY_GATE_FALLBACK_REASONING_EFFORT,
   REPLY_GATE_MODEL,
+  REPLY_GATE_MODEL_CONFIG,
   REPLY_GATE_REASONING_EFFORT,
 } from './models'
-import { withTimeout } from './utils'
+
+const replyGateOutput = Output.object({
+  schema: z.object({
+    decision: z.enum(['engage', 'ignore']),
+  }),
+})
 
 function buildReplyGatePrompt(params: {
   isReplyToOur: boolean
@@ -42,10 +55,6 @@ Important:
 - Engage only when it clearly makes sense that the user is talking TO THIS bot and expects a reply now.
 - Treat reply-to-THIS-bot as weak context only. Engage only if the CURRENT message itself asks, requests, corrects, challenges, or clearly continues a task.
 - Ignore short reactions, laughter, acknowledgements, and side comments even when they reply to THIS bot.
-
-Answer with exactly one lowercase word:
-- engage: clear direct question/request/command to THIS bot in the current message
-- ignore: everything else
 
 ENGAGE only if at least one is true:
 - User directly asks THIS bot a question.
@@ -77,11 +86,6 @@ Context:
 ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
 }
 
-function parseReplyGateDecision(text: string | undefined): 'engage' | 'ignore' {
-  const normalized = (text ?? '').trim().toLowerCase()
-  return normalized.startsWith('engage') ? 'engage' : 'ignore'
-}
-
 function buildReplyGateInput(message: Message, textContent: string): string {
   const replyTargetText =
     message.reply_to_message?.text || message.reply_to_message?.caption
@@ -104,8 +108,10 @@ function getChatId(message: Message): number | undefined {
 function recordReplyGateMetric(params: {
   chatId?: number
   durationMs: number
+  model: string
   success: boolean
   error?: unknown
+  fallbackFrom?: string
 }) {
   if (params.chatId === undefined) return
 
@@ -117,13 +123,78 @@ function recordReplyGateMetric(params: {
     type: 'model_call',
     source: 'agentic',
     name: 'reply_gate',
-    model: REPLY_GATE_MODEL,
+    model: params.model,
+    fallbackFrom: params.fallbackFrom,
     chatId: params.chatId,
     durationMs: params.durationMs,
     success: params.success,
     status,
     timestamp: Date.now(),
   })
+}
+
+async function callReplyGateModel(params: {
+  chatId?: number
+  attempt: 'primary' | 'fallback'
+  model: string
+  modelConfig: AiModelConfig
+  reasoningEffort: AiReasoningEffort
+  instructions: string
+  prompt: string
+  fallbackFrom?: string
+}): Promise<boolean> {
+  const startedAt = Date.now()
+
+  logger.info(
+    {
+      chatId: params.chatId,
+      attempt: params.attempt,
+      model: params.model,
+      reasoningEffort: params.reasoningEffort,
+      timeoutMs: REPLY_GATE_TIMEOUT_MS,
+      fallbackFrom: params.fallbackFrom,
+    },
+    'reply_gate.model_call',
+  )
+
+  const response = await generateText({
+    model: getAiSdkLanguageModel(params.modelConfig),
+    system: params.instructions,
+    prompt: params.prompt,
+    output: replyGateOutput,
+    temperature: 0,
+    maxRetries: 0,
+    timeout: REPLY_GATE_TIMEOUT_MS,
+    providerOptions: getAiSdkProviderOptions(params.modelConfig, {
+      reasoningEffort: params.reasoningEffort,
+      serviceTier: 'priority',
+      store: false,
+    }),
+  })
+
+  const decision = response.output.decision
+  const durationMs = Date.now() - startedAt
+
+  logger.info(
+    {
+      chatId: params.chatId,
+      attempt: params.attempt,
+      model: params.model,
+      decision,
+      durationMs,
+      fallbackFrom: params.fallbackFrom,
+    },
+    'reply_gate.done',
+  )
+  recordReplyGateMetric({
+    chatId: params.chatId,
+    durationMs,
+    model: params.model,
+    fallbackFrom: params.fallbackFrom,
+    success: true,
+  })
+
+  return decision === 'engage'
 }
 
 export async function shouldEngageWithMessage(params: {
@@ -167,69 +238,83 @@ export async function shouldEngageWithMessage(params: {
   }
 
   const startedAt = Date.now()
+  const instructions = buildReplyGatePrompt({
+    isReplyToOur,
+    hasOurMention,
+    mentionsOther,
+    hasMedia,
+    textContent,
+    replyTargetText:
+      message.reply_to_message?.text || message.reply_to_message?.caption,
+    memoryBlock,
+  })
+  const prompt = buildReplyGateInput(message, textContent)
 
   try {
-    const instructions = buildReplyGatePrompt({
-      isReplyToOur,
-      hasOurMention,
-      mentionsOther,
-      hasMedia,
-      textContent,
-      replyTargetText:
-        message.reply_to_message?.text || message.reply_to_message?.caption,
-      memoryBlock,
+    return await callReplyGateModel({
+      chatId,
+      attempt: 'primary',
+      model: REPLY_GATE_MODEL,
+      modelConfig: REPLY_GATE_MODEL_CONFIG,
+      reasoningEffort: REPLY_GATE_REASONING_EFFORT,
+      instructions,
+      prompt,
     })
-
-    logger.info(
-      {
-        chatId,
-        model: REPLY_GATE_MODEL,
-        reasoningEffort: REPLY_GATE_REASONING_EFFORT,
-        timeoutMs: REPLY_GATE_TIMEOUT_MS,
-      },
-      'reply_gate.model_call',
-    )
-
-    const response = await withTimeout(
-      geminiModels.generateContent({
-        model: REPLY_GATE_MODEL,
-        contents: buildReplyGateInput(message, textContent),
-        config: {
-          systemInstruction: instructions,
-          temperature: 0,
-          serviceTier: ServiceTier.PRIORITY,
-          httpOptions: {
-            timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
-            retryOptions: { attempts: 1 },
-          },
-        },
-      }),
-      REPLY_GATE_TIMEOUT_MS,
-      'reply_gate timeout',
-    )
-
-    const decision = parseReplyGateDecision(response.text)
-    const durationMs = Date.now() - startedAt
-
-    logger.info(
-      {
-        chatId,
-        model: REPLY_GATE_MODEL,
-        decision,
-        durationMs,
-      },
-      'reply_gate.done',
-    )
-    recordReplyGateMetric({ chatId, durationMs, success: true })
-
-    return decision === 'engage'
   } catch (error) {
     const durationMs = Date.now() - startedAt
     logger.error(
       { chatId, model: REPLY_GATE_MODEL, durationMs, error },
       'reply_gate.failed',
     )
-    recordReplyGateMetric({ chatId, durationMs, success: false, error })
+    recordReplyGateMetric({
+      chatId,
+      durationMs,
+      model: REPLY_GATE_MODEL,
+      success: false,
+      error,
+    })
+  }
+
+  logger.warn(
+    {
+      chatId,
+      model: REPLY_GATE_FALLBACK_MODEL,
+      fallbackFrom: REPLY_GATE_MODEL,
+    },
+    'reply_gate.fallback_invoked',
+  )
+
+  try {
+    return await callReplyGateModel({
+      chatId,
+      attempt: 'fallback',
+      model: REPLY_GATE_FALLBACK_MODEL,
+      modelConfig: REPLY_GATE_FALLBACK_MODEL_CONFIG,
+      reasoningEffort: REPLY_GATE_FALLBACK_REASONING_EFFORT,
+      instructions,
+      prompt,
+      fallbackFrom: REPLY_GATE_MODEL,
+    })
+  } catch (error) {
+    const durationMs = Date.now() - startedAt
+    logger.error(
+      {
+        chatId,
+        model: REPLY_GATE_FALLBACK_MODEL,
+        fallbackFrom: REPLY_GATE_MODEL,
+        durationMs,
+        error,
+      },
+      'reply_gate.fallback_failed',
+    )
+    recordReplyGateMetric({
+      chatId,
+      durationMs,
+      model: REPLY_GATE_FALLBACK_MODEL,
+      fallbackFrom: REPLY_GATE_MODEL,
+      success: false,
+      error,
+    })
     return false
   }
 }

@@ -1,21 +1,30 @@
-import type { GenerateContentResponse } from '@google/genai'
 import type { Message } from 'telegram-typings'
 
-import { geminiModels } from '../models'
+const mockGenerateText = jest.fn()
+
+jest.mock('ai', () => ({
+  generateText: (...args: unknown[]) => mockGenerateText(...args),
+  Output: {
+    object: (config: unknown) => config,
+  },
+}))
+
 import { shouldEngageWithMessage } from '../reply-gate'
 
 const OUR_BOT = { id: 123456, username: 'testbot' }
-const mockGenerateContent = jest.spyOn(geminiModels, 'generateContent')
-const geminiResponse = (text: string) => ({ text }) as GenerateContentResponse
+const aiSdkResponse = (decision: 'engage' | 'ignore') => ({
+  output: { decision },
+})
 
 describe('shouldEngageWithMessage', () => {
-  beforeEach(() => {
-    mockGenerateContent.mockReset()
-    mockGenerateContent.mockResolvedValue(geminiResponse('ignore'))
+  beforeAll(() => {
+    process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'test-key'
+    process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key'
   })
 
-  afterAll(() => {
-    mockGenerateContent.mockRestore()
+  beforeEach(() => {
+    mockGenerateText.mockReset()
+    mockGenerateText.mockResolvedValue(aiSdkResponse('ignore'))
   })
 
   test('returns false for empty message without media', async () => {
@@ -56,11 +65,11 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockGenerateContent).not.toHaveBeenCalled()
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
   test('does not engage with standalone questions without bot address words', async () => {
-    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
+    mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
     const text = 'какой курс биткоина ща челик?'
     const message = {
@@ -78,7 +87,7 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(false)
 
-    expect(mockGenerateContent).not.toHaveBeenCalled()
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
   test('does not engage with standalone project planning chat messages', async () => {
@@ -94,7 +103,7 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(false)
 
-    expect(mockGenerateContent).not.toHaveBeenCalled()
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
   test('returns false for reply to another bot without our mention', async () => {
@@ -130,11 +139,11 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockGenerateContent).not.toHaveBeenCalled()
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
   test('lets reply gate model ignore low-signal reaction reply to our bot', async () => {
-    const reactionText = '\u0430\u0445\u0445\u0430'
+    const reactionText = 'ахха'
     const message = {
       text: reactionText,
       chat: { id: 777 },
@@ -153,22 +162,20 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockGenerateContent).toHaveBeenCalledWith(
+    expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        contents: expect.stringContaining(`Current message: ${reactionText}`),
-        config: expect.objectContaining({
-          systemInstruction: expect.stringContaining(
-            'Treat reply-to-THIS-bot as weak context only',
-          ),
-        }),
+        prompt: expect.stringContaining(`Current message: ${reactionText}`),
+        system: expect.stringContaining(
+          'Treat reply-to-THIS-bot as weak context only',
+        ),
       }),
     )
   })
 
-  test('uses Gemini model for reply to our bot with response intent', async () => {
-    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
+  test('uses structured reply gate for reply to our bot with response intent', async () => {
+    mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
-    const questionText = '\u043f\u043e\u0447\u0435\u043c\u0443?'
+    const questionText = 'почему?'
     const message = {
       text: questionText,
       chat: { id: 777 },
@@ -187,11 +194,11 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(true)
 
-    expect(mockGenerateContent).toHaveBeenCalled()
+    expect(mockGenerateText).toHaveBeenCalled()
   })
 
-  test('uses Gemini model when reply mentions another account and the bot', async () => {
-    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
+  test('uses structured reply gate when reply mentions another account and the bot', async () => {
+    mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
     const message = {
       text: '@otheruser rank and bot too',
@@ -210,14 +217,88 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(true)
 
-    expect(mockGenerateContent).toHaveBeenCalled()
+    expect(mockGenerateText).toHaveBeenCalled()
   })
 
-  test('uses Gemini model for addressed reply gate decisions', async () => {
-    mockGenerateContent.mockResolvedValueOnce(geminiResponse('engage'))
+  test('uses fallback model on reply gate failure for bot-addressed messages', async () => {
+    mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
+    mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
+    const text = 'бот кто такой плешивый пыня?'
+
+    await expect(
+      shouldEngageWithMessage({
+        message: { text, chat: { id: 1305082 } } as Message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(true)
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        providerOptions: {
+          openai: {
+            reasoningEffort: 'low',
+            serviceTier: 'priority',
+            store: false,
+          },
+        },
+      }),
+    )
+  })
+
+  test('does not fail open for reply-only reactions', async () => {
+    mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
+
+    const text = 'ахха'
     const message = {
-      text: 'бот что тут в кратце ИМЕННО в этом сообщении',
+      text,
+      chat: { id: 777 },
+      reply_to_message: {
+        from: { is_bot: true, id: OUR_BOT.id },
+        text: 'previous bot answer',
+      },
+    } as Message
+
+    await expect(
+      shouldEngageWithMessage({
+        message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(false)
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
+  })
+
+  test('fails closed when both reply gate models fail', async () => {
+    mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
+    mockGenerateText.mockRejectedValueOnce(new Error('fallback timeout'))
+
+    const text = 'бот кто такой плешивый пыня?'
+
+    await expect(
+      shouldEngageWithMessage({
+        message: { text, chat: { id: 1305082 } } as Message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(false)
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
+  })
+
+  test('uses AI SDK structured output for addressed reply gate decisions', async () => {
+    mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
+
+    const text = 'бот что тут в кратце ИМЕННО в этом сообщении'
+    const message = {
+      text,
       chat: { id: 777 },
       reply_to_message: { message_id: 55, text: 'article text to summarize' },
     } as Message
@@ -225,22 +306,21 @@ describe('shouldEngageWithMessage', () => {
     await expect(
       shouldEngageWithMessage({
         message,
-        textContent: 'бот что тут в кратце ИМЕННО в этом сообщении',
+        textContent: text,
         hasMedia: false,
         botInfo: OUR_BOT,
       }),
     ).resolves.toBe(true)
 
-    expect(mockGenerateContent).toHaveBeenCalledWith(
+    expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'gemini-3.1-flash-lite-preview',
-        contents: expect.stringContaining(
+        prompt: expect.stringContaining(
           'Replied-to message: article text to summarize',
         ),
-        config: expect.objectContaining({
-          httpOptions: { timeout: 16_000, retryOptions: { attempts: 1 } },
-          temperature: 0,
-        }),
+        output: expect.anything(),
+        temperature: 0,
+        timeout: 15_000,
+        maxRetries: 0,
       }),
     )
   })
