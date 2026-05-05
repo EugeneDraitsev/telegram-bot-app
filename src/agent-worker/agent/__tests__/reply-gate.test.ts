@@ -19,6 +19,7 @@ const aiSdkResponse = (decision: 'engage' | 'ignore') => ({
 describe('shouldEngageWithMessage', () => {
   beforeAll(() => {
     process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'test-key'
+    process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key'
   })
 
   beforeEach(() => {
@@ -218,6 +219,81 @@ describe('shouldEngageWithMessage', () => {
     ).resolves.toBe(true)
 
     expect(mockGenerateText).toHaveBeenCalled()
+  })
+
+  test('uses fallback model on reply gate failure for bot-addressed messages', async () => {
+    mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
+    mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
+
+    const text =
+      '\u0431\u043e\u0442 \u043a\u0442\u043e \u0442\u0430\u043a\u043e\u0439 \u043f\u043b\u0435\u0448\u0438\u0432\u044b\u0439 \u043f\u044b\u043d\u044f?'
+
+    await expect(
+      shouldEngageWithMessage({
+        message: { text, chat: { id: 1305082 } } as Message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(true)
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        providerOptions: {
+          openai: {
+            reasoningEffort: 'low',
+            serviceTier: 'priority',
+            store: false,
+          },
+        },
+      }),
+    )
+  })
+
+  test('does not fail open for reply-only reactions', async () => {
+    mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
+
+    const text = '\u0430\u0445\u0445\u0430'
+    const message = {
+      text,
+      chat: { id: 777 },
+      reply_to_message: {
+        from: { is_bot: true, id: OUR_BOT.id },
+        text: 'previous bot answer',
+      },
+    } as Message
+
+    await expect(
+      shouldEngageWithMessage({
+        message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(false)
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
+  })
+
+  test('fails closed when both reply gate models fail', async () => {
+    mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
+    mockGenerateText.mockRejectedValueOnce(new Error('fallback timeout'))
+
+    const text =
+      '\u0431\u043e\u0442 \u043a\u0442\u043e \u0442\u0430\u043a\u043e\u0439 \u043f\u043b\u0435\u0448\u0438\u0432\u044b\u0439 \u043f\u044b\u043d\u044f?'
+
+    await expect(
+      shouldEngageWithMessage({
+        message: { text, chat: { id: 1305082 } } as Message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(false)
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
   })
 
   test('uses AI SDK structured output for addressed reply gate decisions', async () => {

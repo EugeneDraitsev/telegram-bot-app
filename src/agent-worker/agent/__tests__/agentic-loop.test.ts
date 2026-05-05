@@ -1,7 +1,42 @@
+import { asSchema } from 'ai'
 import type { Message } from 'telegram-typings'
 
 import { resolveHistoryMediaAttachments } from '@tg-bot/common'
 import type { TelegramApi } from '../../types'
+import type { AgentTool } from '../../types'
+import { buildNativeTools } from '../agentic-loop'
+
+describe('buildNativeTools', () => {
+  test('wraps legacy JSON parameters as AI SDK schemas', async () => {
+    const tools = buildNativeTools([
+      {
+        declaration: {
+          type: 'function',
+          name: 'lookup',
+          description: 'Lookup something',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', description: 'Search query' },
+            },
+            required: ['query'],
+          },
+        },
+        execute: async () => 'ok',
+      } satisfies AgentTool,
+    ])
+
+    const lookupTool = tools.lookup
+    expect(lookupTool).toBeDefined()
+    expect(asSchema(lookupTool?.inputSchema).jsonSchema).toMatchObject({
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+      },
+      required: ['query'],
+    })
+  })
+})
 
 describe('resolveHistoryMediaAttachments', () => {
   const originalFetch = global.fetch

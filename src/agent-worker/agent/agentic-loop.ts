@@ -1,5 +1,7 @@
 import {
+  jsonSchema,
   tool as defineAiTool,
+  type JSONSchema7,
   type JSONValue,
   type ModelMessage,
   type ToolSet,
@@ -85,7 +87,7 @@ function getRecentHistoryContext(
   return history === 'No message history available' ? '' : history
 }
 
-function buildNativeTools(agentTools: AgentTool[]): ToolSet {
+export function buildNativeTools(agentTools: AgentTool[]): ToolSet {
   return Object.fromEntries(
     agentTools
       .filter((tool) => tool.exposeToModel !== false)
@@ -93,10 +95,11 @@ function buildNativeTools(agentTools: AgentTool[]): ToolSet {
         tool.declaration.name,
         defineAiTool({
           description: tool.declaration.description,
-          inputSchema: (tool.declaration.parameters ?? {
+          inputSchema: jsonSchema((tool.declaration.parameters ?? {
             type: 'object',
             properties: {},
-          }) as never,
+            additionalProperties: false,
+          }) as JSONSchema7),
         }),
       ]),
   )
@@ -318,15 +321,6 @@ function extractErrorInfo(error: unknown): unknown {
     ...('statusText' in error ? { statusText: record.statusText } : {}),
     ...('errorDetails' in error ? { errorDetails: record.errorDetails } : {}),
   }
-}
-
-function extractFallbackTextFromToolResults(results: string[]): string | null {
-  const successfulResults = results.filter(
-    (result) => result.trim() && !result.startsWith('Error:'),
-  )
-  return successfulResults.length
-    ? [...new Set(successfulResults)].slice(0, 2).join('\n\n')
-    : null
 }
 
 function getLoopFailureReply(error: unknown): string {
@@ -772,7 +766,7 @@ export async function runAgenticLoop(
         historyMediaAttachments,
       )
 
-      const { finalText, toolResults } = await runToolLoop(
+      const { finalText } = await runToolLoop(
         input,
         systemInstruction,
         tools,
@@ -789,15 +783,6 @@ export async function runAgenticLoop(
       const allTextParts: string[] = [...textDrafts]
       if (finalText.trim()) {
         allTextParts.push(cleanModelMessage(finalText))
-      } else {
-        const fallback = extractFallbackTextFromToolResults(toolResults)
-        if (fallback) {
-          allTextParts.push(cleanModelMessage(fallback))
-          logger.warn(
-            { chatId, model: CHAT_MODEL },
-            'loop.fallback_from_tool_result',
-          )
-        }
       }
 
       const combinedText = allTextParts.join('\n\n').trim()
