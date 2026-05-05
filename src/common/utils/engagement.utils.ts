@@ -7,7 +7,7 @@ export interface BotIdentity {
 
 const TELEGRAM_MENTION_REGEX = /@([A-Za-z0-9_]{3,})/g
 const BOT_WORD_REGEX =
-  /(^|[^A-Za-z\u0400-\u04FF0-9_])(\u0431\u043e\u0442(?:\u0438\u043a)?|bot)(?=[^A-Za-z\u0400-\u04FF0-9_]|$)/i
+  /(^|[^A-Za-z\u0400-\u04FF0-9_])(бот(?:ик)?|bot)(?=[^A-Za-z\u0400-\u04FF0-9_]|$)/i
 
 function normalizeMention(value?: string): string {
   return (value || '').replace(/^@/, '').trim().toLowerCase()

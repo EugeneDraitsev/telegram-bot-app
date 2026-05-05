@@ -1,7 +1,6 @@
 import {
   generateImage as generateAiImage,
   generateText,
-  type JSONValue,
   type ModelMessage,
   type ToolSet,
 } from 'ai'
@@ -18,7 +17,9 @@ import {
   getAiSdkGoogleTools,
   getAiSdkLanguageModel,
   getAiSdkOpenAiImageModel,
+  getAiSdkOpenAiImageSize,
   getAiSdkOpenAiTools,
+  getAiSdkProviderOptions,
   getRawHistory,
   isAiEnabledChat,
   isOpenAiGptImageModel,
@@ -27,7 +28,6 @@ import {
   MAX_HISTORY_IMAGE_INLINE_BYTES,
   MULTIMODAL_TIMEOUT_MS,
   NOT_ALLOWED_ERROR,
-  OPENAI_GPT_IMAGE_SIZE,
   PROMPT_MISSING_ERROR,
   parseAiModelConfig,
   resolveHistoryMediaAttachments,
@@ -219,24 +219,6 @@ function getMultimodalTools(provider: string): ToolSet {
   }
 }
 
-function getMultimodalProviderOptions(
-  provider: string,
-  chatId: string | number,
-  reasoningEffort: OpenAiReasoningEffort,
-): Record<string, Record<string, JSONValue>> {
-  if (provider === 'google') {
-    return { google: { serviceTier: 'priority' } }
-  }
-
-  return {
-    openai: {
-      reasoningEffort,
-      safetyIdentifier: String(chatId),
-      store: false,
-    },
-  }
-}
-
 export const generateImage = async (
   prompt: string,
   chatId: string | number,
@@ -280,6 +262,9 @@ export const generateImage = async (
           images: requestImages.map(({ data }) => data),
         }
       : requestPrompt
+  const imageSize = isGptImageModel
+    ? getAiSdkOpenAiImageSize()
+    : ('1024x1024' as const)
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -287,9 +272,7 @@ export const generateImage = async (
         model: getAiSdkOpenAiImageModel(model),
         prompt: imagePrompt,
         n: 1,
-        size: isGptImageModel
-          ? (OPENAI_GPT_IMAGE_SIZE as unknown as `${number}x${number}`)
-          : '1024x1024',
+        ...(imageSize ? { size: imageSize } : {}),
         maxRetries: 0,
         providerOptions: {
           openai: {
@@ -383,20 +366,22 @@ export const generateMultimodalCompletion = async (
       provider: 'openai',
       model,
     })
+    const messages: ModelMessage[] = [{ role: 'user', content }]
 
     const response = await generateText({
       model: getAiSdkLanguageModel(modelConfig),
       system: openAiMultimodalInstructions,
-      messages: [{ role: 'user', content } as ModelMessage],
+      messages,
       tools: getMultimodalTools(modelConfig.provider),
       toolChoice: 'auto',
       maxRetries: 0,
       timeout: MULTIMODAL_TIMEOUT_MS,
-      providerOptions: getMultimodalProviderOptions(
-        modelConfig.provider,
-        chatId,
+      providerOptions: getAiSdkProviderOptions(modelConfig, {
         reasoningEffort,
-      ),
+        chatId,
+        store: false,
+        serviceTier: modelConfig.provider === 'google' ? 'priority' : undefined,
+      }),
     })
 
     if (!response.text) {

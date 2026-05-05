@@ -2,7 +2,7 @@
  * Reply gate - deterministic pre-filter + structured engage/ignore decision.
  */
 
-import { generateText, type JSONValue, Output } from 'ai'
+import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import type { Message } from 'telegram-typings'
 
@@ -11,6 +11,7 @@ import {
   type AiReasoningEffort,
   type BotIdentity,
   getAiSdkLanguageModel,
+  getAiSdkProviderOptions,
   getMetricStatusFromError,
   hasBotAddressSignal,
   isReplyToAnotherBot,
@@ -36,27 +37,6 @@ const replyGateOutput = Output.object({
   }),
 })
 
-function getReplyGateProviderOptions(
-  modelConfig: AiModelConfig,
-  reasoningEffort: AiReasoningEffort,
-): Record<string, Record<string, JSONValue>> {
-  if (modelConfig.provider === 'google') {
-    return {
-      google: {
-        serviceTier: 'priority',
-      },
-    }
-  }
-
-  return {
-    openai: {
-      reasoningEffort,
-      serviceTier: 'priority',
-      store: false,
-    },
-  }
-}
-
 function buildReplyGatePrompt(params: {
   isReplyToOur: boolean
   hasOurMention: boolean
@@ -75,10 +55,6 @@ Important:
 - Engage only when it clearly makes sense that the user is talking TO THIS bot and expects a reply now.
 - Treat reply-to-THIS-bot as weak context only. Engage only if the CURRENT message itself asks, requests, corrects, challenges, or clearly continues a task.
 - Ignore short reactions, laughter, acknowledgements, and side comments even when they reply to THIS bot.
-
-Return exactly one structured decision:
-- engage: clear direct question/request/command to THIS bot in the current message
-- ignore: everything else
 
 ENGAGE only if at least one is true:
 - User directly asks THIS bot a question.
@@ -189,10 +165,11 @@ async function callReplyGateModel(params: {
     temperature: 0,
     maxRetries: 0,
     timeout: REPLY_GATE_TIMEOUT_MS,
-    providerOptions: getReplyGateProviderOptions(
-      params.modelConfig,
-      params.reasoningEffort,
-    ),
+    providerOptions: getAiSdkProviderOptions(params.modelConfig, {
+      reasoningEffort: params.reasoningEffort,
+      serviceTier: 'priority',
+      store: false,
+    }),
   })
 
   const decision = response.output.decision
@@ -297,6 +274,15 @@ export async function shouldEngageWithMessage(params: {
       error,
     })
   }
+
+  logger.warn(
+    {
+      chatId,
+      model: REPLY_GATE_FALLBACK_MODEL,
+      fallbackFrom: REPLY_GATE_MODEL,
+    },
+    'reply_gate.fallback_invoked',
+  )
 
   try {
     return await callReplyGateModel({

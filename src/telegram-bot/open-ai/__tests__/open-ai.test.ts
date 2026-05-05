@@ -68,11 +68,11 @@ describe('open-ai AI access control', () => {
         expect.objectContaining({
           prompt: expect.stringContaining('Composition note:'),
           n: 1,
-          size: common.OPENAI_GPT_IMAGE_SIZE,
           maxRetries: 0,
           providerOptions: { openai: { quality: 'medium' } },
         }),
       )
+      expect(mockGenerateAiImage.mock.calls[0]?.[0]).not.toHaveProperty('size')
     })
 
     test('edits input images with gpt-image-2', async () => {
@@ -91,10 +91,10 @@ describe('open-ai AI access control', () => {
             text: expect.stringContaining('Composition note:'),
             images: [Buffer.from('image')],
           }),
-          size: common.OPENAI_GPT_IMAGE_SIZE,
           providerOptions: { openai: { quality: 'medium' } },
         }),
       )
+      expect(mockGenerateAiImage.mock.calls[0]?.[0]).not.toHaveProperty('size')
     })
 
     test('/e image editing includes reply media label in the edit prompt', async () => {

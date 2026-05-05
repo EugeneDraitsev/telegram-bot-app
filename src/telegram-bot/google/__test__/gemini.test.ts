@@ -10,6 +10,14 @@ const mockInteractionsCreate = jest.fn().mockResolvedValue({
 const mockTextCompletion = jest.fn().mockResolvedValue({
   text: 'Test response',
 })
+const mockGoogleTools = {
+  googleSearch: jest.fn(() => ({
+    inputSchema: { type: 'object', properties: {} },
+  })),
+  urlContext: jest.fn(() => ({
+    inputSchema: { type: 'object', properties: {} },
+  })),
+}
 
 const mockIsAiEnabledChat = jest.spyOn(common, 'isAiEnabledChat')
 const mockGetHistory = jest
@@ -44,6 +52,8 @@ describe('gemini AI access control', () => {
     mockTextCompletion.mockResolvedValue({
       text: 'Test response',
     })
+    mockGoogleTools.googleSearch.mockClear()
+    mockGoogleTools.urlContext.mockClear()
   })
 
   afterAll(() => {
@@ -90,6 +100,7 @@ describe('gemini AI access control', () => {
         prompt: 'test prompt',
         message,
         model: 'gemini-3.1-flash-lite-preview',
+        googleTools: mockGoogleTools as never,
         createTextCompletion: mockTextCompletion,
       })
 
@@ -152,6 +163,7 @@ describe('gemini AI access control', () => {
         message,
         imagesData: [Buffer.from('current-image')],
         model: 'gemini-3.1-flash-lite-preview',
+        googleTools: mockGoogleTools as never,
         createTextCompletion: mockTextCompletion,
         api,
       })
@@ -251,6 +263,7 @@ describe('gemini AI access control', () => {
           },
         ],
         model: 'gemini-3.1-flash-lite-preview',
+        googleTools: mockGoogleTools as never,
         createTextCompletion: mockTextCompletion,
         api: { getFile: jest.fn() },
       })

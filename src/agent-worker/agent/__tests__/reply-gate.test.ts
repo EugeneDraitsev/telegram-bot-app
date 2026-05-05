@@ -71,8 +71,7 @@ describe('shouldEngageWithMessage', () => {
   test('does not engage with standalone questions without bot address words', async () => {
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
-    const text =
-      '\u043a\u0430\u043a\u043e\u0439 \u043a\u0443\u0440\u0441 \u0431\u0438\u0442\u043a\u043e\u0438\u043d\u0430 \u0449\u0430 \u0447\u0435\u043b\u0438\u043a?'
+    const text = 'какой курс биткоина ща челик?'
     const message = {
       text,
       chat: { id: 1305082, type: 'group' },
@@ -93,7 +92,7 @@ describe('shouldEngageWithMessage', () => {
 
   test('does not engage with standalone project planning chat messages', async () => {
     const text =
-      '\u044f \u0445\u043e\u0447\u0443 \u0441\u043d\u044f\u0442\u044c \u0432\u0438\u0434\u043e\u0441 \u043a\u0430\u043a \u0437\u0430\u0441\u0442\u0430\u0432\u043a\u0430 \u0441\u0435\u0440\u0438\u0430\u043b\u0430 \u0434\u0440\u0443\u0437\u044c\u044f, \u0433\u0434\u0435 \u043c\u044b \u0432\u0441\u0435 \u0431\u0435\u0436\u0438\u043c \u0438 \u043f\u043e \u043e\u0447\u0435\u0440\u0435\u0434\u0438 \u0441\u0430\u0434\u0438\u043c\u0441\u044f \u043d\u0430 \u0434\u0438\u0432\u0430\u043d'
+      'я хочу снять видос как заставка сериала друзья, где мы все бежим и по очереди садимся на диван'
 
     await expect(
       shouldEngageWithMessage({
@@ -144,7 +143,7 @@ describe('shouldEngageWithMessage', () => {
   })
 
   test('lets reply gate model ignore low-signal reaction reply to our bot', async () => {
-    const reactionText = '\u0430\u0445\u0445\u0430'
+    const reactionText = 'ахха'
     const message = {
       text: reactionText,
       chat: { id: 777 },
@@ -176,7 +175,7 @@ describe('shouldEngageWithMessage', () => {
   test('uses structured reply gate for reply to our bot with response intent', async () => {
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
-    const questionText = '\u043f\u043e\u0447\u0435\u043c\u0443?'
+    const questionText = 'почему?'
     const message = {
       text: questionText,
       chat: { id: 777 },
@@ -225,8 +224,7 @@ describe('shouldEngageWithMessage', () => {
     mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
-    const text =
-      '\u0431\u043e\u0442 \u043a\u0442\u043e \u0442\u0430\u043a\u043e\u0439 \u043f\u043b\u0435\u0448\u0438\u0432\u044b\u0439 \u043f\u044b\u043d\u044f?'
+    const text = 'бот кто такой плешивый пыня?'
 
     await expect(
       shouldEngageWithMessage({
@@ -255,7 +253,7 @@ describe('shouldEngageWithMessage', () => {
   test('does not fail open for reply-only reactions', async () => {
     mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
 
-    const text = '\u0430\u0445\u0445\u0430'
+    const text = 'ахха'
     const message = {
       text,
       chat: { id: 777 },
@@ -281,8 +279,7 @@ describe('shouldEngageWithMessage', () => {
     mockGenerateText.mockRejectedValueOnce(new Error('reply gate timeout'))
     mockGenerateText.mockRejectedValueOnce(new Error('fallback timeout'))
 
-    const text =
-      '\u0431\u043e\u0442 \u043a\u0442\u043e \u0442\u0430\u043a\u043e\u0439 \u043f\u043b\u0435\u0448\u0438\u0432\u044b\u0439 \u043f\u044b\u043d\u044f?'
+    const text = 'бот кто такой плешивый пыня?'
 
     await expect(
       shouldEngageWithMessage({
@@ -299,8 +296,7 @@ describe('shouldEngageWithMessage', () => {
   test('uses AI SDK structured output for addressed reply gate decisions', async () => {
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
-    const text =
-      '\u0431\u043e\u0442 \u0447\u0442\u043e \u0442\u0443\u0442 \u0432 \u043a\u0440\u0430\u0442\u0446\u0435 \u0418\u041c\u0415\u041d\u041d\u041e \u0432 \u044d\u0442\u043e\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0438'
+    const text = 'бот что тут в кратце ИМЕННО в этом сообщении'
     const message = {
       text,
       chat: { id: 777 },
@@ -321,9 +317,7 @@ describe('shouldEngageWithMessage', () => {
         prompt: expect.stringContaining(
           'Replied-to message: article text to summarize',
         ),
-        system: expect.stringContaining(
-          'Return exactly one structured decision',
-        ),
+        output: expect.anything(),
         temperature: 0,
         timeout: 15_000,
         maxRetries: 0,

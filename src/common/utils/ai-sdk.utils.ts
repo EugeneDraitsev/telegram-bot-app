@@ -1,8 +1,8 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
-import type { ImageModel, LanguageModel, SpeechModel } from 'ai'
+import type { ImageModel, JSONValue, LanguageModel, SpeechModel } from 'ai'
 
-import type { AiModelConfig } from './ai-model.utils'
+import type { AiModelConfig, AiReasoningEffort } from './ai-model.utils'
 
 let googleProvider: ReturnType<typeof createGoogleGenerativeAI> | undefined
 let googleProviderApiKey = ''
@@ -63,6 +63,45 @@ export function getAiSdkOpenAiImageModel(model: string): ImageModel {
 
 export function getAiSdkOpenAiSpeechModel(model: string): SpeechModel {
   return getAiSdkOpenAiProvider().speech(model)
+}
+
+export function getAiSdkProviderOptions(
+  config: AiModelConfig,
+  options: {
+    reasoningEffort?: AiReasoningEffort
+    chatId?: string | number
+    safetyIdentifier?: string
+    serviceTier?: string
+    store?: boolean
+    truncation?: string
+  } = {},
+): Record<string, Record<string, JSONValue>> {
+  if (config.provider === 'google') {
+    return {
+      google: options.serviceTier ? { serviceTier: options.serviceTier } : {},
+    }
+  }
+
+  const openaiOptions: Record<string, JSONValue> = {}
+  if (options.reasoningEffort) {
+    openaiOptions.reasoningEffort = options.reasoningEffort
+  }
+  if (options.safetyIdentifier) {
+    openaiOptions.safetyIdentifier = options.safetyIdentifier
+  } else if (options.chatId !== undefined) {
+    openaiOptions.safetyIdentifier = String(options.chatId)
+  }
+  if (options.serviceTier) {
+    openaiOptions.serviceTier = options.serviceTier
+  }
+  if (options.store !== undefined) {
+    openaiOptions.store = options.store
+  }
+  if (options.truncation) {
+    openaiOptions.truncation = options.truncation
+  }
+
+  return { openai: openaiOptions }
 }
 
 export function resetAiSdkProvidersForTests() {

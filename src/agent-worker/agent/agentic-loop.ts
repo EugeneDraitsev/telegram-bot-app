@@ -1,7 +1,6 @@
 import {
   tool as defineAiTool,
   type JSONSchema7,
-  type JSONValue,
   jsonSchema,
   type ModelMessage,
   type ToolSet,
@@ -17,6 +16,7 @@ import {
   collectMediaFileRefs,
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
+  getAiSdkProviderOptions,
   getChatMemory,
   getGlobalMemory,
   getMessageLogMeta,
@@ -36,7 +36,6 @@ import {
   getAgentTools,
   getCollectedResponses,
   runWithToolContext,
-  setToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, AgentTool, TelegramApi } from '../types'
 import {
@@ -404,22 +403,6 @@ function buildFunctionResponsePart(
   }
 }
 
-function getAgentProviderOptions(
-  chatId: number,
-): Record<string, Record<string, JSONValue>> {
-  if (CHAT_MODEL_CONFIG.provider === 'google') {
-    return { google: { serviceTier: 'priority' } }
-  }
-
-  return {
-    openai: {
-      reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
-      safetyIdentifier: String(chatId),
-      store: false,
-    },
-  }
-}
-
 async function runToolLoop(
   input: ModelMessage[],
   systemInstruction: string,
@@ -437,7 +420,13 @@ async function runToolLoop(
         system: systemInstruction,
         tools: Object.keys(tools).length ? tools : undefined,
         toolChoice: 'auto',
-        providerOptions: getAgentProviderOptions(chatId),
+        providerOptions: getAiSdkProviderOptions(CHAT_MODEL_CONFIG, {
+          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+          chatId,
+          store: false,
+          serviceTier:
+            CHAT_MODEL_CONFIG.provider === 'google' ? 'priority' : undefined,
+        }),
       },
       chatId,
       iteration === 0 ? 'routing' : `iteration_${iteration}`,
@@ -543,7 +532,13 @@ async function runToolLoop(
           ],
           system: systemInstruction,
           toolChoice: 'none',
-          providerOptions: getAgentProviderOptions(chatId),
+          providerOptions: getAiSdkProviderOptions(CHAT_MODEL_CONFIG, {
+            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+            chatId,
+            store: false,
+            serviceTier:
+              CHAT_MODEL_CONFIG.provider === 'google' ? 'priority' : undefined,
+          }),
         },
         chatId,
         'finalize',
@@ -725,109 +720,109 @@ export async function runAgenticLoop(
         }),
       )
       const allMediaBuffers = [...(mediaBuffers ?? []), ...historyMediaBuffers]
-      setToolMediaBuffers(allMediaBuffers)
+      await runWithToolContext(message, allMediaBuffers, async () => {
+        const contextBlock = buildContextBlock(
+          message,
+          textContent,
+          hasMedia,
+          allMediaBuffers,
+          {
+            recentHistory,
+          },
+        )
+        const systemInstruction = buildSystemInstruction(
+          contextBlock,
+          memoryBlock,
+        )
+        const tools = buildNativeTools(agentTools)
+        const toolByName = new Map<string, AgentTool>(
+          agentTools
+            .filter(
+              (t) => t.exposeToModel !== false && t.declaration.name != null,
+            )
+            .map((t) => [t.declaration.name ?? '', t]),
+        )
+        logger.info(
+          {
+            chatId,
+            model: CHAT_MODEL_LABEL,
+            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+            exposedTools: Object.keys(tools),
+            hiddenTools: agentTools
+              .filter((tool) => tool.exposeToModel === false)
+              .map((tool) => tool.declaration.name),
+          },
+          'loop.tools_ready',
+        )
 
-      const contextBlock = buildContextBlock(
-        message,
-        textContent,
-        hasMedia,
-        allMediaBuffers,
-        {
-          recentHistory,
-        },
-      )
-      const systemInstruction = buildSystemInstruction(
-        contextBlock,
-        memoryBlock,
-      )
-      const tools = buildNativeTools(agentTools)
-      const toolByName = new Map<string, AgentTool>(
-        agentTools
-          .filter(
-            (t) => t.exposeToModel !== false && t.declaration.name != null,
-          )
-          .map((t) => [t.declaration.name ?? '', t]),
-      )
-      logger.info(
-        {
+        const input = buildInitialInput(
+          message,
+          textContent,
+          mediaBuffers,
+          historyMediaAttachments,
+        )
+
+        const { finalText } = await runToolLoop(
+          input,
+          systemInstruction,
+          tools,
+          toolByName,
           chatId,
-          model: CHAT_MODEL_LABEL,
-          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
-          exposedTools: Object.keys(tools),
-          hiddenTools: agentTools
-            .filter((tool) => tool.exposeToModel === false)
-            .map((tool) => tool.declaration.name),
-        },
-        'loop.tools_ready',
-      )
+        )
 
-      const input = buildInitialInput(
-        message,
-        textContent,
-        mediaBuffers,
-        historyMediaAttachments,
-      )
+        // Collect any responses produced by tools (media, text drafts, etc.)
+        const { textDrafts, mediaResponses } = splitResponses(
+          getCollectedResponses(),
+        )
+        const responsesToSend: AgentResponse[] = [...mediaResponses]
 
-      const { finalText } = await runToolLoop(
-        input,
-        systemInstruction,
-        tools,
-        toolByName,
-        chatId,
-      )
+        const allTextParts: string[] = [...textDrafts]
+        if (finalText.trim()) {
+          allTextParts.push(cleanModelMessage(finalText))
+        }
 
-      // Collect any responses produced by tools (media, text drafts, etc.)
-      const { textDrafts, mediaResponses } = splitResponses(
-        getCollectedResponses(),
-      )
-      const responsesToSend: AgentResponse[] = [...mediaResponses]
+        const combinedText = allTextParts.join('\n\n').trim()
+        if (combinedText)
+          responsesToSend.push({ type: 'text', text: combinedText })
 
-      const allTextParts: string[] = [...textDrafts]
-      if (finalText.trim()) {
-        allTextParts.push(cleanModelMessage(finalText))
-      }
+        if (responsesToSend.length === 0) {
+          responsesToSend.push({
+            type: 'text',
+            text: 'Не смог собрать ответ по этому запросу. Попробуй переформулировать.',
+          })
+          logger.warn(
+            {
+              ...messageMeta,
+              model: CHAT_MODEL,
+              durationMs: Date.now() - startedAt,
+            },
+            'loop.no_response_fallback_text',
+          )
+        }
 
-      const combinedText = allTextParts.join('\n\n').trim()
-      if (combinedText)
-        responsesToSend.push({ type: 'text', text: combinedText })
-
-      if (responsesToSend.length === 0) {
-        responsesToSend.push({
-          type: 'text',
-          text: 'Не смог собрать ответ по этому запросу. Попробуй переформулировать.',
+        const deliveryStart = Date.now()
+        await sendResponses({
+          responses: responsesToSend,
+          chatId,
+          replyToMessageId: message.message_id,
+          api,
         })
-        logger.warn(
+
+        logger.info(
           {
             ...messageMeta,
             model: CHAT_MODEL,
+            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
             durationMs: Date.now() - startedAt,
+            deliveryDurationMs: Date.now() - deliveryStart,
+            responseCount: responsesToSend.length,
+            inputMediaCount: allMediaBuffers.length,
+            outputMediaCount: mediaResponses.length,
+            hasFinalText: Boolean(combinedText),
           },
-          'loop.no_response_fallback_text',
+          'loop.done',
         )
-      }
-
-      const deliveryStart = Date.now()
-      await sendResponses({
-        responses: responsesToSend,
-        chatId,
-        replyToMessageId: message.message_id,
-        api,
       })
-
-      logger.info(
-        {
-          ...messageMeta,
-          model: CHAT_MODEL,
-          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
-          durationMs: Date.now() - startedAt,
-          deliveryDurationMs: Date.now() - deliveryStart,
-          responseCount: responsesToSend.length,
-          inputMediaCount: allMediaBuffers.length,
-          outputMediaCount: mediaResponses.length,
-          hasFinalText: Boolean(combinedText),
-        },
-        'loop.done',
-      )
     })
   } catch (error) {
     logger.error(

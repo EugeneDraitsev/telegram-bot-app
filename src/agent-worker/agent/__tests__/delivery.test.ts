@@ -6,7 +6,7 @@ const mockLogger = {
 }
 
 jest.mock('@tg-bot/common', () => ({
-  cleanGeminiMessage: (text: string) => text,
+  cleanModelMessage: (text: string) => text,
   formatTelegramMarkdownV2: (text: string) => text,
   logger: mockLogger,
   saveBotReplyToHistory: mockSaveBotReplyToHistory,

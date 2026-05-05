@@ -28,11 +28,6 @@ export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
 }
 
-export function setToolMediaBuffers(mediaBuffers: MediaBuffer[] | undefined) {
-  const context = requireToolContext()
-  context.mediaBuffers = mediaBuffers
-}
-
 export async function runWithToolContext<T>(
   message: Message,
   mediaBuffers: MediaBuffer[] | undefined,

@@ -1,17 +1,18 @@
-import { generateText, type JSONValue, type ToolSet } from 'ai'
+import { generateText, type ToolSet } from 'ai'
 
 import {
   getAiSdkGoogleTools,
   getAiSdkLanguageModel,
   getAiSdkOpenAiTools,
+  getAiSdkProviderOptions,
   getErrorMessage,
   logger,
 } from '@tg-bot/common'
 import {
-  OPENAI_WEB_SEARCH_MODEL,
   OPENAI_WEB_SEARCH_REASONING_EFFORT,
   OPENAI_WEB_SEARCH_TIMEOUT_MS,
   WEB_SEARCH_MODEL_CONFIG,
+  WEB_SEARCH_MODEL_ID,
 } from '../agent/models'
 
 export type WebSearchResponseFormat = 'brief' | 'detailed' | 'list'
@@ -22,7 +23,7 @@ export interface SearchWebOptions {
   chatId?: string | number
 }
 
-export const WEB_SEARCH_MODEL = OPENAI_WEB_SEARCH_MODEL
+export const WEB_SEARCH_MODEL = WEB_SEARCH_MODEL_ID
 
 function getProviderTools(): ToolSet {
   if (WEB_SEARCH_MODEL_CONFIG.provider === 'google') {
@@ -34,25 +35,6 @@ function getProviderTools(): ToolSet {
   return {
     web_search: getAiSdkOpenAiTools().webSearch({ searchContextSize: 'high' }),
   }
-}
-
-function getProviderOptions(
-  chatId: string | number | undefined,
-): Record<string, Record<string, JSONValue>> {
-  if (WEB_SEARCH_MODEL_CONFIG.provider === 'google') {
-    return { google: { serviceTier: 'priority' } }
-  }
-
-  const openaiOptions: Record<string, JSONValue> = {
-    reasoningEffort: OPENAI_WEB_SEARCH_REASONING_EFFORT,
-    store: false,
-    truncation: 'auto',
-  }
-  if (chatId !== undefined) {
-    openaiOptions.safetyIdentifier = String(chatId)
-  }
-
-  return { openai: openaiOptions }
 }
 
 function normalizeQuery(query: string): string {
@@ -101,7 +83,16 @@ export async function searchWebOpenAi(
       toolChoice: 'auto',
       maxRetries: 0,
       timeout: OPENAI_WEB_SEARCH_TIMEOUT_MS + 1_000,
-      providerOptions: getProviderOptions(options.chatId),
+      providerOptions: getAiSdkProviderOptions(WEB_SEARCH_MODEL_CONFIG, {
+        reasoningEffort: OPENAI_WEB_SEARCH_REASONING_EFFORT,
+        chatId: options.chatId,
+        store: false,
+        truncation: 'auto',
+        serviceTier:
+          WEB_SEARCH_MODEL_CONFIG.provider === 'google'
+            ? 'priority'
+            : undefined,
+      }),
     })
 
     const text = response.text?.trim()

@@ -64,9 +64,6 @@ export const offlineMultimodalSystemInstructions = `
   IMPORTANT: If the answer depends on fresh, uncertain, or real-time information, answer plainly that you cannot verify the latest data right now and suggest using /g for a web-backed lookup.
 `
 
-export const geminiSystemInstructions = multimodalSystemInstructions
-export const gemmaSystemInstructions = offlineMultimodalSystemInstructions
-
 const USER_PREFIX_REGEX =
   /^\s*(?:USER|User ID)\s*:\s*\d+\s*\([^)\r\n]*\)\s*:\s*/i
 const REPLY_SUFFIX_REGEX = /\[In reply to message ID:\s*\d+\]\s*$/i
@@ -199,5 +196,3 @@ export function cleanModelMessage(message: string) {
 
   return cleanedMessage.trim()
 }
-
-export const cleanGeminiMessage = cleanModelMessage

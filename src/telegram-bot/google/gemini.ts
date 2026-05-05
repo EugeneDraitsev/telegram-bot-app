@@ -1,10 +1,12 @@
 import {
+  type AssistantModelMessage,
   type GeneratedFile,
   generateText,
   type JSONValue,
   type LanguageModel,
   type ModelMessage,
   type ToolSet,
+  type UserModelMessage,
 } from 'ai'
 import type { Message } from 'telegram-typings'
 
@@ -79,10 +81,10 @@ type CreateImageCompletion = (
   request: ImageCompletionRequest,
 ) => Promise<{ text?: string; files?: GeneratedFile[] }>
 
-type GoogleToolFactories = {
-  googleSearch: (options?: unknown) => ToolSet[string]
-  urlContext: (options?: unknown) => ToolSet[string]
-}
+type GoogleToolFactories = Pick<
+  ReturnType<typeof getAiSdkGoogleTools>,
+  'googleSearch' | 'urlContext'
+>
 
 type HistoryMediaApi = {
   getFile: (fileId: string) => Promise<{ file_path?: string }>
@@ -94,56 +96,22 @@ interface GenerateMultimodalCompletionOptions {
   imagesData?: Buffer[]
   imageInputs?: CommandImageInput[]
   model?: string
+  languageModel?: LanguageModel
+  googleTools?: GoogleToolFactories
   createTextCompletion?: CreateTextCompletion
   api?: HistoryMediaApi
 }
+type UserContentPart = Exclude<UserModelMessage['content'], string>[number]
+type AssistantContentPart = Exclude<
+  AssistantModelMessage['content'],
+  string
+>[number]
 
 const createAiSdkTextCompletion: CreateTextCompletion = (request) =>
   generateText(request)
 
 const createAiSdkImageCompletion: CreateImageCompletion = (request) =>
   generateText(request)
-
-function getTextCompletionModel(
-  modelConfig: ReturnType<typeof parseAiModelConfig>,
-  createTextCompletion: CreateTextCompletion,
-): LanguageModel {
-  if (createTextCompletion !== createAiSdkTextCompletion) {
-    return `${modelConfig.provider}/${modelConfig.model}` as unknown as LanguageModel
-  }
-
-  return getAiSdkLanguageModel(modelConfig)
-}
-
-function getTextCompletionGoogleTools(
-  createTextCompletion: CreateTextCompletion,
-): GoogleToolFactories {
-  if (createTextCompletion !== createAiSdkTextCompletion) {
-    return {
-      googleSearch: () =>
-        ({
-          inputSchema: { type: 'object', properties: {} },
-        }) as unknown as ToolSet[string],
-      urlContext: () =>
-        ({
-          inputSchema: { type: 'object', properties: {} },
-        }) as unknown as ToolSet[string],
-    }
-  }
-
-  const googleTools = getAiSdkGoogleTools()
-
-  return {
-    googleSearch: (options?: unknown) =>
-      googleTools.googleSearch(
-        options as Parameters<typeof googleTools.googleSearch>[0],
-      ) as ToolSet[string],
-    urlContext: (options?: unknown) =>
-      googleTools.urlContext(
-        options as Parameters<typeof googleTools.urlContext>[0],
-      ) as ToolSet[string],
-  }
-}
 
 function getHistoryImagePrompt(message: Message): string {
   const sourceText = (message.caption || message.text || '').trim()
@@ -225,19 +193,34 @@ async function getHistoryImageInputs(
   }))
 }
 
+function toUserContentPart(
+  part: InteractionInput['content'][number],
+): UserContentPart {
+  return part.type === 'text'
+    ? { type: 'text', text: part.text }
+    : {
+        type: 'image',
+        image: Buffer.from(part.data, 'base64'),
+        mediaType: part.mime_type,
+      }
+}
+
+function toAssistantContent(
+  content: InteractionInput['content'],
+): AssistantModelMessage['content'] {
+  const textParts: AssistantContentPart[] = content.flatMap((part) =>
+    part.type === 'text' ? [{ type: 'text', text: part.text }] : [],
+  )
+
+  return textParts.length ? textParts : ''
+}
+
 function toModelMessages(inputs: InteractionInput[]): ModelMessage[] {
-  return inputs.map(({ role, content }) => ({
-    role: role === 'model' ? 'assistant' : 'user',
-    content: content.map((part) =>
-      part.type === 'text'
-        ? { type: 'text', text: part.text }
-        : {
-            type: 'image',
-            image: Buffer.from(part.data, 'base64'),
-            mediaType: part.mime_type,
-          },
-    ),
-  })) as ModelMessage[]
+  return inputs.map(({ role, content }) =>
+    role === 'model'
+      ? { role: 'assistant', content: toAssistantContent(content) }
+      : { role: 'user', content: content.map(toUserContentPart) },
+  )
 }
 
 export const generateMultimodalCompletion = async ({
@@ -246,6 +229,8 @@ export const generateMultimodalCompletion = async ({
   imagesData,
   imageInputs,
   model = 'gemini-3.1-flash-lite-preview',
+  languageModel,
+  googleTools: injectedGoogleTools,
   createTextCompletion = createAiSdkTextCompletion,
   api,
 }: GenerateMultimodalCompletionOptions) => {
@@ -332,10 +317,10 @@ export const generateMultimodalCompletion = async ({
     })
     const googleTools =
       !isGemmaModel && modelConfig.provider === 'google'
-        ? getTextCompletionGoogleTools(createTextCompletion)
+        ? (injectedGoogleTools ?? getAiSdkGoogleTools())
         : undefined
     const response = await createTextCompletion({
-      model: getTextCompletionModel(modelConfig, createTextCompletion),
+      model: languageModel ?? getAiSdkLanguageModel(modelConfig),
       messages: toModelMessages(history),
       system: isGemmaModel
         ? offlineMultimodalSystemInstructions

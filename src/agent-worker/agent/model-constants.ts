@@ -40,7 +40,6 @@ export const SEARCH_MODEL_FALLBACK_CONFIG = getAiModelConfig(
 )
 
 export const FAST_TEXT_MODEL = formatAiModelConfig(FAST_TEXT_MODEL_CONFIG)
-export const GEMINI_FLASH_LITE_MODEL = FAST_TEXT_MODEL_CONFIG.model
 
 /** Main agent model - current manual tool loop still requires a Google model id. */
 export const CHAT_MODEL = CHAT_MODEL_CONFIG.model
@@ -57,7 +56,6 @@ export const CHAT_MODEL_TIMEOUT_MS = 45_000
 
 /** Model reserved for web-backed search tools. */
 export const WEB_SEARCH_MODEL_ID = WEB_SEARCH_MODEL_CONFIG.model
-export const OPENAI_WEB_SEARCH_MODEL = WEB_SEARCH_MODEL_ID
 export const OPENAI_WEB_SEARCH_REASONING_EFFORT = 'low'
 export const OPENAI_WEB_SEARCH_TIMEOUT_MS = 45_000
 

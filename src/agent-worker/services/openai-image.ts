@@ -9,10 +9,10 @@ import { generateImage } from 'ai'
 import {
   buildOpenAiImagePrompt,
   getAiSdkOpenAiImageModel,
+  getAiSdkOpenAiImageSize,
   isOpenAiGptImageModel,
   logger,
   OPENAI_GPT_IMAGE_MODEL,
-  OPENAI_GPT_IMAGE_SIZE,
   usesOpenAiMediumImageQuality,
 } from '@tg-bot/common'
 
@@ -34,6 +34,7 @@ export async function generateImageOpenAi(
   const imagePrompt = canEdit
     ? { text: requestPrompt, images: inputImages ?? [] }
     : requestPrompt
+  const imageSize = getAiSdkOpenAiImageSize()
 
   let lastError: Error | undefined
 
@@ -43,7 +44,7 @@ export async function generateImageOpenAi(
         model: getAiSdkOpenAiImageModel(IMAGE_MODEL),
         prompt: imagePrompt,
         n: 1,
-        size: OPENAI_GPT_IMAGE_SIZE as unknown as `${number}x${number}`,
+        ...(imageSize ? { size: imageSize } : {}),
         maxRetries: 0,
         providerOptions: {
           openai: {

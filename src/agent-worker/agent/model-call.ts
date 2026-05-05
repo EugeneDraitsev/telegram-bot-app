@@ -12,7 +12,11 @@ import { MAX_RETRIES, RETRY_BASE_DELAY_MS } from './config'
 import { CHAT_MODEL_CONFIG, CHAT_MODEL_TIMEOUT_MS } from './models'
 import { withTimeout } from './utils'
 
-type GenerateTextOptions<TOOLS extends ToolSet> = Omit<
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never
+
+type GenerateTextOptions<TOOLS extends ToolSet> = DistributiveOmit<
   Parameters<typeof generateText<TOOLS>>[0],
   'model' | 'maxRetries' | 'timeout'
 >
@@ -66,12 +70,13 @@ async function generateSingleModelWithRetry<TOOLS extends ToolSet>(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const promise = generateText<TOOLS>({
+      const request: Parameters<typeof generateText<TOOLS>>[0] = {
         ...params,
         model: getAiSdkLanguageModel(modelConfig),
         maxRetries: 0,
         timeout: timeoutMs + 1_000,
-      } as Parameters<typeof generateText<TOOLS>>[0])
+      }
+      const promise = generateText<TOOLS>(request)
       return await withTimeout(
         promise,
         timeoutMs,
