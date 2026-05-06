@@ -3,7 +3,10 @@ import type { Message } from 'telegram-typings'
 
 import { resolveHistoryMediaAttachments } from '@tg-bot/common'
 import type { AgentTool, TelegramApi } from '../../types'
-import { buildNativeTools } from '../agentic-loop'
+import {
+  buildNativeTools,
+  extractFallbackTextFromToolResults,
+} from '../agentic-loop'
 
 describe('buildNativeTools', () => {
   test('wraps legacy JSON parameters as AI SDK schemas', async () => {
@@ -34,6 +37,26 @@ describe('buildNativeTools', () => {
       },
       required: ['query'],
     })
+  })
+})
+
+describe('extractFallbackTextFromToolResults', () => {
+  test('uses successful tool output and ignores tool errors', () => {
+    expect(
+      extractFallbackTextFromToolResults([
+        'Error searching web: service unavailable',
+        'Fresh web result: current value is 42',
+      ]),
+    ).toBe('Fresh web result: current value is 42')
+  })
+
+  test('returns empty text when every tool failed', () => {
+    expect(
+      extractFallbackTextFromToolResults([
+        'Error searching web: service unavailable',
+        'Code execution failed: no output',
+      ]),
+    ).toBe('')
   })
 })
 

@@ -16,6 +16,7 @@ import {
   cleanModelMessage,
   collectHistoryMediaFileRefs,
   DEFAULT_ERROR_MESSAGE,
+  DEFAULT_FAST_TEXT_MODEL,
   EMPTY_RESPONSE_ERROR,
   getAiSdkGoogleTools,
   getAiSdkLanguageModel,
@@ -228,7 +229,7 @@ export const generateMultimodalCompletion = async ({
   message,
   imagesData,
   imageInputs,
-  model = 'gemini-3.1-flash-lite-preview',
+  model = DEFAULT_FAST_TEXT_MODEL.model,
   languageModel,
   googleTools: injectedGoogleTools,
   createTextCompletion = createAiSdkTextCompletion,
@@ -383,8 +384,7 @@ export async function generateImage(
       return { text: PROMPT_MISSING_ERROR }
     }
 
-    // Get message history for context
-    const history: InteractionInput[] = [] // await getHistory(chatId)
+    const history: InteractionInput[] = []
 
     // Add images from the current request
     for (const image of requestImages) {

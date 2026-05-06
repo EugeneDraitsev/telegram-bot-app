@@ -12,7 +12,7 @@ import {
   logger,
 } from '@tg-bot/common'
 import {
-  CHAT_MODEL,
+  CHAT_MODEL_LABEL,
   CHAT_MODEL_REASONING_EFFORT,
   REPLY_GATE_MODEL,
   runAgenticLoop,
@@ -81,7 +81,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     logger.info(
       {
         ...messageMeta,
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         replyGateModel: REPLY_GATE_MODEL,
         hasInlineImages: Boolean(imagesData?.length),
@@ -110,7 +110,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     logger.info(
       {
         ...messageMeta,
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
@@ -123,7 +123,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   } catch (error) {
     logger.error(
       {
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,

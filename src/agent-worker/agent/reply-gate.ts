@@ -30,12 +30,23 @@ import {
   REPLY_GATE_MODEL_CONFIG,
   REPLY_GATE_REASONING_EFFORT,
 } from './models'
+import { withTimeout } from './utils'
 
 const replyGateOutput = Output.object({
   schema: z.object({
     decision: z.enum(['engage', 'ignore']),
   }),
 })
+
+class ReplyGateTimeoutError extends Error {
+  constructor(
+    readonly model: string,
+    readonly timeoutMs: number,
+  ) {
+    super(`Reply gate model ${model} timed out after ${timeoutMs}ms`)
+    this.name = 'ReplyGateTimeoutError'
+  }
+}
 
 function buildReplyGatePrompt(params: {
   isReplyToOur: boolean
@@ -157,44 +168,74 @@ async function callReplyGateModel(params: {
     'reply_gate.model_call',
   )
 
-  const response = await generateText({
-    model: getAiSdkLanguageModel(params.modelConfig),
-    system: params.instructions,
-    prompt: params.prompt,
-    output: replyGateOutput,
-    temperature: 0,
-    maxRetries: 0,
-    timeout: REPLY_GATE_TIMEOUT_MS,
-    providerOptions: getAiSdkProviderOptions(params.modelConfig, {
-      reasoningEffort: params.reasoningEffort,
-      serviceTier: 'priority',
-      store: false,
-    }),
-  })
+  try {
+    const response = await withTimeout(
+      generateText({
+        model: getAiSdkLanguageModel(params.modelConfig),
+        system: params.instructions,
+        prompt: params.prompt,
+        output: replyGateOutput,
+        temperature: 0,
+        maxRetries: 0,
+        timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
+        providerOptions: getAiSdkProviderOptions(params.modelConfig, {
+          reasoningEffort: params.reasoningEffort,
+          serviceTier: 'priority',
+          store: false,
+        }),
+      }),
+      REPLY_GATE_TIMEOUT_MS,
+      new ReplyGateTimeoutError(params.model, REPLY_GATE_TIMEOUT_MS),
+    )
 
-  const decision = response.output.decision
-  const durationMs = Date.now() - startedAt
+    const decision = response.output.decision
+    const durationMs = Date.now() - startedAt
 
-  logger.info(
-    {
+    logger.info(
+      {
+        chatId: params.chatId,
+        attempt: params.attempt,
+        model: params.model,
+        decision,
+        durationMs,
+        fallbackFrom: params.fallbackFrom,
+      },
+      'reply_gate.done',
+    )
+    recordReplyGateMetric({
       chatId: params.chatId,
-      attempt: params.attempt,
-      model: params.model,
-      decision,
       durationMs,
+      model: params.model,
       fallbackFrom: params.fallbackFrom,
-    },
-    'reply_gate.done',
-  )
-  recordReplyGateMetric({
-    chatId: params.chatId,
-    durationMs,
-    model: params.model,
-    fallbackFrom: params.fallbackFrom,
-    success: true,
-  })
+      success: true,
+    })
 
-  return decision === 'engage'
+    return decision === 'engage'
+  } catch (error) {
+    const durationMs = Date.now() - startedAt
+    logger.error(
+      {
+        chatId: params.chatId,
+        attempt: params.attempt,
+        model: params.model,
+        fallbackFrom: params.fallbackFrom,
+        durationMs,
+        error,
+      },
+      params.attempt === 'fallback'
+        ? 'reply_gate.fallback_failed'
+        : 'reply_gate.failed',
+    )
+    recordReplyGateMetric({
+      chatId: params.chatId,
+      durationMs,
+      model: params.model,
+      fallbackFrom: params.fallbackFrom,
+      success: false,
+      error,
+    })
+    throw error
+  }
 }
 
 export async function shouldEngageWithMessage(params: {
@@ -237,7 +278,6 @@ export async function shouldEngageWithMessage(params: {
     return false
   }
 
-  const startedAt = Date.now()
   const instructions = buildReplyGatePrompt({
     isReplyToOur,
     hasOurMention,
@@ -260,19 +300,7 @@ export async function shouldEngageWithMessage(params: {
       instructions,
       prompt,
     })
-  } catch (error) {
-    const durationMs = Date.now() - startedAt
-    logger.error(
-      { chatId, model: REPLY_GATE_MODEL, durationMs, error },
-      'reply_gate.failed',
-    )
-    recordReplyGateMetric({
-      chatId,
-      durationMs,
-      model: REPLY_GATE_MODEL,
-      success: false,
-      error,
-    })
+  } catch {
   }
 
   logger.warn(
@@ -295,26 +323,7 @@ export async function shouldEngageWithMessage(params: {
       prompt,
       fallbackFrom: REPLY_GATE_MODEL,
     })
-  } catch (error) {
-    const durationMs = Date.now() - startedAt
-    logger.error(
-      {
-        chatId,
-        model: REPLY_GATE_FALLBACK_MODEL,
-        fallbackFrom: REPLY_GATE_MODEL,
-        durationMs,
-        error,
-      },
-      'reply_gate.fallback_failed',
-    )
-    recordReplyGateMetric({
-      chatId,
-      durationMs,
-      model: REPLY_GATE_FALLBACK_MODEL,
-      fallbackFrom: REPLY_GATE_MODEL,
-      success: false,
-      error,
-    })
+  } catch {
     return false
   }
 }

@@ -27,7 +27,9 @@
       "version": "1.0.0",
       "dependencies": {
         "@giphy/js-fetch-api": "^5.7.0",
+        "@tg-bot/common": "workspace:*",
         "@upstash/redis": "^1.37.0",
+        "ai": "^6.0.174",
         "grammy": "^1.42.0",
         "sharp": "^0.34.5",
         "zod": "^4.4.1",
@@ -58,6 +60,7 @@
       "name": "@tg-bot/sharp-statictics",
       "version": "0.1.0",
       "dependencies": {
+        "@tg-bot/common": "workspace:*",
         "polished": "^4.3.1",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
@@ -81,7 +84,9 @@
       "name": "@tg-bot/chat-bot",
       "version": "1.0.0",
       "dependencies": {
+        "@tg-bot/common": "workspace:*",
         "@upstash/redis": "^1.37.0",
+        "ai": "^6.0.174",
         "grammy": "^1.42.0",
         "zod": "^4.4.1",
       },

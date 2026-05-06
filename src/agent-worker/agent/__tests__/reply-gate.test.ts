@@ -319,7 +319,7 @@ describe('shouldEngageWithMessage', () => {
         ),
         output: expect.anything(),
         temperature: 0,
-        timeout: 15_000,
+        timeout: 16_000,
         maxRetries: 0,
       }),
     )

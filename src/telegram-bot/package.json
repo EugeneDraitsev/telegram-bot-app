@@ -8,7 +8,9 @@
   "author": "Eugene Draitsev <ddrrai@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@tg-bot/common": "workspace:*",
     "@upstash/redis": "^1.37.0",
+    "ai": "^6.0.174",
     "grammy": "^1.42.0",
     "zod": "^4.4.1"
   },

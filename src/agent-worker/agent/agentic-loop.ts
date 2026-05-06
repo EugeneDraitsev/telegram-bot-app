@@ -53,7 +53,6 @@ import {
   ModelCallTimeoutError,
 } from './model-call'
 import {
-  CHAT_MODEL,
   CHAT_MODEL_CONFIG,
   CHAT_MODEL_LABEL,
   CHAT_MODEL_REASONING_EFFORT,
@@ -118,6 +117,7 @@ const TOOL_MODELS: Record<string, string> = {
 const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
+const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
 
 type ExecutableFunctionCall = {
   toolCallId: string
@@ -164,6 +164,7 @@ function getToolResultStatus(result: string): MetricStatus {
   const normalized = result.trim().toLowerCase()
   if (normalized.includes('timed out')) return 'timeout'
   if (
+    normalized.startsWith('error ') ||
     normalized.startsWith('error:') ||
     normalized.startsWith('error generating image:') ||
     normalized.startsWith('error generating voice:') ||
@@ -177,6 +178,23 @@ function getToolResultStatus(result: string): MetricStatus {
     return 'error'
   }
   return 'success'
+}
+
+export function extractFallbackTextFromToolResults(
+  toolResults: string[],
+): string {
+  const successfulResults = toolResults
+    .map((result) => result.trim())
+    .filter(Boolean)
+    .filter((result) => getToolResultStatus(result) === 'success')
+
+  if (!successfulResults.length) {
+    return ''
+  }
+
+  return cleanModelMessage(successfulResults.join('\n\n'))
+    .slice(0, TOOL_RESULT_FALLBACK_MAX_CHARS)
+    .trim()
 }
 
 function parseToolArguments(
@@ -465,7 +483,7 @@ async function runToolLoop(
       logger.info(
         {
           chatId,
-          model: CHAT_MODEL,
+          model: CHAT_MODEL_LABEL,
           iteration,
           deferred: contentCalls.map((fc) => fc.name),
         },
@@ -581,7 +599,7 @@ export async function runAgenticLoop(
   logger.info(
     {
       ...messageMeta,
-      model: CHAT_MODEL,
+      model: CHAT_MODEL_LABEL,
       reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
       replyGateModel: REPLY_GATE_MODEL,
     },
@@ -763,7 +781,7 @@ export async function runAgenticLoop(
           historyMediaAttachments,
         )
 
-        const { finalText } = await runToolLoop(
+        const { finalText, toolResults } = await runToolLoop(
           input,
           systemInstruction,
           tools,
@@ -780,6 +798,19 @@ export async function runAgenticLoop(
         const allTextParts: string[] = [...textDrafts]
         if (finalText.trim()) {
           allTextParts.push(cleanModelMessage(finalText))
+        } else if (allTextParts.length === 0 && mediaResponses.length === 0) {
+          const fallbackText = extractFallbackTextFromToolResults(toolResults)
+          if (fallbackText) {
+            allTextParts.push(fallbackText)
+            logger.warn(
+              {
+                ...messageMeta,
+                model: CHAT_MODEL_LABEL,
+                toolResultCount: toolResults.length,
+              },
+              'loop.tool_result_fallback_text',
+            )
+          }
         }
 
         const combinedText = allTextParts.join('\n\n').trim()
@@ -794,7 +825,7 @@ export async function runAgenticLoop(
           logger.warn(
             {
               ...messageMeta,
-              model: CHAT_MODEL,
+              model: CHAT_MODEL_LABEL,
               durationMs: Date.now() - startedAt,
             },
             'loop.no_response_fallback_text',
@@ -812,7 +843,7 @@ export async function runAgenticLoop(
         logger.info(
           {
             ...messageMeta,
-            model: CHAT_MODEL,
+            model: CHAT_MODEL_LABEL,
             reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
             durationMs: Date.now() - startedAt,
             deliveryDurationMs: Date.now() - deliveryStart,
@@ -829,7 +860,7 @@ export async function runAgenticLoop(
     logger.error(
       {
         ...messageMeta,
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         durationMs: Date.now() - startedAt,
         error: extractErrorInfo(error),
