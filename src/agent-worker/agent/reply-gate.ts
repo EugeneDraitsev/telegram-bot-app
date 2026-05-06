@@ -300,8 +300,7 @@ export async function shouldEngageWithMessage(params: {
       instructions,
       prompt,
     })
-  } catch {
-  }
+  } catch {}
 
   logger.warn(
     {
