@@ -59,6 +59,7 @@ describe('codeExecutionTool', () => {
         tools: { code_execution: { type: 'provider' } },
         toolChoice: 'auto',
         maxRetries: 0,
+        timeout: 25_000,
         providerOptions: { google: { serviceTier: 'priority' } },
       }),
     )

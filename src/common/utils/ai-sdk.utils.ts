@@ -16,7 +16,7 @@ function getGoogleApiKey(): string | undefined {
 export function getAiSdkGoogleProvider() {
   const apiKey = getGoogleApiKey()
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set')
+    throw new Error('GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY is not set')
   }
 
   if (!googleProvider || googleProviderApiKey !== apiKey) {

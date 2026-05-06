@@ -24,6 +24,8 @@ export interface SearchWebOptions {
 }
 
 export const WEB_SEARCH_MODEL = WEB_SEARCH_MODEL_ID
+const WEB_SEARCH_TYPE = `${WEB_SEARCH_MODEL_CONFIG.provider}_web_search`
+const WEB_SEARCH_MODEL_LABEL = `${WEB_SEARCH_MODEL_CONFIG.provider}/${WEB_SEARCH_MODEL_CONFIG.model}`
 
 function getProviderTools(): ToolSet {
   if (WEB_SEARCH_MODEL_CONFIG.provider === 'google') {
@@ -97,13 +99,15 @@ export async function searchWebOpenAi(
 
     const text = response.text?.trim()
     if (!text) {
-      throw new Error('OpenAI web search returned empty response')
+      throw new Error(
+        `Web search model ${WEB_SEARCH_MODEL_LABEL} returned empty response`,
+      )
     }
 
     logger.info(
       {
         query: loggedQuery,
-        searchType: 'openai_web_search',
+        searchType: WEB_SEARCH_TYPE,
         model: WEB_SEARCH_MODEL,
       },
       'web_search.success',
@@ -113,7 +117,7 @@ export async function searchWebOpenAi(
     logger.error(
       {
         query: loggedQuery,
-        searchType: 'openai_web_search',
+        searchType: WEB_SEARCH_TYPE,
         model: WEB_SEARCH_MODEL,
         error: getErrorMessage(error),
       },

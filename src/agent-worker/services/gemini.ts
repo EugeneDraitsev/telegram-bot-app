@@ -12,10 +12,6 @@ import {
 
 const IMAGE_GENERATION_TIMEOUT_MS = 120_000
 
-function getGeminiApiKey(): string {
-  return process.env.GEMINI_API_KEY || ''
-}
-
 /**
  * Generate image with optional text response.
  * Uses the Interactions API with gemini-3.1-flash-image-preview.
@@ -24,10 +20,6 @@ export async function generateImage(
   prompt: string,
   inputImages?: Buffer[],
 ): Promise<{ image?: Buffer; text?: string }> {
-  if (!getGeminiApiKey()) {
-    throw new Error('Gemini API key not configured')
-  }
-
   const messages: ModelMessage[] = []
 
   if (inputImages?.length) {

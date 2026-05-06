@@ -10,6 +10,7 @@ import {
   getAiSdkLanguageModel,
   getErrorMessage,
 } from '@tg-bot/common'
+import { TOOL_CALL_TIMEOUT_MS } from '../agent/config'
 import { HELPER_TEXT_MODEL_CONFIG } from '../agent/models'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
@@ -52,6 +53,7 @@ export const codeExecutionTool: AgentTool = {
         },
         toolChoice: 'auto',
         maxRetries: 0,
+        timeout: TOOL_CALL_TIMEOUT_MS,
         providerOptions: { google: { serviceTier: 'priority' } },
       })
 
