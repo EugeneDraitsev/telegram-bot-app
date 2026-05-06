@@ -175,12 +175,13 @@ async function callReplyGateModel(params: {
         system: params.instructions,
         prompt: params.prompt,
         output: replyGateOutput,
-        temperature: 0,
+        ...(params.modelConfig.provider === 'openai' ? {} : { temperature: 0 }),
         maxRetries: 0,
         timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
         providerOptions: getAiSdkProviderOptions(params.modelConfig, {
           reasoningEffort: params.reasoningEffort,
-          serviceTier: 'priority',
+          serviceTier:
+            params.modelConfig.provider === 'google' ? 'priority' : undefined,
           store: false,
         }),
       }),

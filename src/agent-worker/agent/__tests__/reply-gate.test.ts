@@ -242,11 +242,13 @@ describe('shouldEngageWithMessage', () => {
         providerOptions: {
           openai: {
             reasoningEffort: 'low',
-            serviceTier: 'priority',
             store: false,
           },
         },
       }),
+    )
+    expect(mockGenerateText.mock.calls[1]?.[0]).not.toHaveProperty(
+      'temperature',
     )
   })
 
