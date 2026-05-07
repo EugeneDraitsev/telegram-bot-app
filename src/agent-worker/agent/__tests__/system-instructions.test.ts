@@ -8,6 +8,9 @@ describe('agentSystemInstructions', () => {
     expect(agentSystemInstructions).toContain(
       'Use web_search before answering about latest/current info',
     )
+    expect(agentSystemInstructions).toContain(
+      'When calling generate_or_edit_image, build the image prompt from the current user message',
+    )
     expect(agentSystemInstructions).toContain('Search exact names first')
     expect(agentSystemInstructions).not.toContain('AUTONOMY MODE')
     expect(agentSystemInstructions).not.toContain(

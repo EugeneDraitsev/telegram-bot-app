@@ -11,23 +11,42 @@ import { generateImageOpenAi } from '../services'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
+type ImageMediaSource = 'none' | 'request' | 'history'
+
 function isHistoryImage(media: MediaBuffer): boolean {
   return (media.label ?? '').toLowerCase().includes('recent chat history')
 }
 
+function getMediaSource(args: Record<string, unknown>): ImageMediaSource {
+  if (
+    args.mediaSource === 'none' ||
+    args.mediaSource === 'request' ||
+    args.mediaSource === 'history'
+  ) {
+    return args.mediaSource
+  }
+
+  return ((args.useAttachedImage as boolean | undefined) ?? true)
+    ? 'request'
+    : 'none'
+}
+
 function getImageEditCandidates(
   mediaBuffers: MediaBuffer[] | undefined,
+  mediaSource: ImageMediaSource,
 ): MediaBuffer[] {
+  if (mediaSource === 'none') {
+    return []
+  }
+
   const images = (mediaBuffers ?? []).filter(
     (media) => media.mediaType === 'image',
   )
-  const requestImages = images.filter((media) => !isHistoryImage(media))
-
-  if (requestImages.length) {
-    return requestImages
+  if (mediaSource === 'history') {
+    return images.filter(isHistoryImage).slice(-1)
   }
 
-  return images.slice(-1)
+  return images.filter((media) => !isHistoryImage(media))
 }
 
 export const generateImageTool: AgentTool = {
@@ -36,19 +55,25 @@ export const generateImageTool: AgentTool = {
     type: 'function',
     name: 'generate_or_edit_image',
     description:
-      'Generate a NEW image using AI or EDIT an existing image immediately. Use when user wants to create/draw something new, or edit/modify an attached image. Infer missing aesthetic details and choose sensible defaults instead of asking follow-up style questions.',
+      'Generate a NEW image using AI or EDIT an existing image immediately. Use when user wants to create/draw something new, or edit/modify an attached image. Infer missing aesthetic details and choose sensible defaults instead of asking follow-up style questions. Build the image prompt only from the current user message, reply target/quote, and tool results intentionally gathered for this request. Do not blend in unrelated recent chat history, emoji, stickers, or history images.',
     parameters: {
       type: 'object',
       properties: {
         prompt: {
           type: 'string',
           description:
-            'Detailed description of the image to generate or edit instructions, including any inferred defaults needed to act now.',
+            'Detailed description of the image to generate or edit instructions. Include only visual details directly requested now or present in the current reply target/quote. Do not include unrelated recent-history text, emoji, stickers, or images.',
+        },
+        mediaSource: {
+          type: 'string',
+          enum: ['none', 'request', 'history'],
+          description:
+            'Which image media to use as edit/reference input. "request" uses only explicit current/reply/album media and is the default. "history" uses the newest recent-history image only when the user explicitly asks for the last/recent chat image. "none" generates from text only.',
         },
         useAttachedImage: {
           type: 'boolean',
           description:
-            'If true and user attached an image, use it as base for editing. Default: true.',
+            'Deprecated compatibility flag. If true, behaves like mediaSource="request"; it never falls back to history images.',
         },
         includeTextResponse: {
           type: 'boolean',
@@ -68,11 +93,11 @@ export const generateImageTool: AgentTool = {
         return 'Error generating image: Prompt cannot be empty'
       }
 
-      const useAttachedImage = (args.useAttachedImage as boolean) ?? true
+      const mediaSource = getMediaSource(args)
       const includeTextResponse = args.includeTextResponse as boolean
-      const imageCandidates = getImageEditCandidates(mediaBuffers)
+      const imageCandidates = getImageEditCandidates(mediaBuffers, mediaSource)
       const imagesToEdit =
-        useAttachedImage && imageCandidates.length ? imageCandidates : undefined
+        imageCandidates.length > 0 ? imageCandidates : undefined
       const result = await generateImageOpenAi(
         buildImageEditTargetPrompt(
           prompt,

@@ -747,12 +747,19 @@ export async function runAgenticLoop(
         }),
       )
       const allMediaBuffers = [...(mediaBuffers ?? []), ...historyMediaBuffers]
+      const includeHistoryMediaInModel = !message.reply_to_message
+      const modelMediaBuffers = includeHistoryMediaInModel
+        ? allMediaBuffers
+        : (mediaBuffers ?? [])
+      const modelHistoryMediaAttachments = includeHistoryMediaInModel
+        ? historyMediaAttachments
+        : []
       await withToolMediaBuffers(allMediaBuffers, async () => {
         const contextBlock = buildContextBlock(
           message,
           textContent,
           hasMedia,
-          allMediaBuffers,
+          modelMediaBuffers,
           {
             recentHistory,
           },
@@ -786,7 +793,7 @@ export async function runAgenticLoop(
           message,
           textContent,
           mediaBuffers,
-          historyMediaAttachments,
+          modelHistoryMediaAttachments,
         )
 
         const { finalText, toolResults } = await runToolLoop(
@@ -856,7 +863,7 @@ export async function runAgenticLoop(
             durationMs: Date.now() - startedAt,
             deliveryDurationMs: Date.now() - deliveryStart,
             responseCount: responsesToSend.length,
-            inputMediaCount: allMediaBuffers.length,
+            inputMediaCount: modelMediaBuffers.length,
             outputMediaCount: mediaResponses.length,
             hasFinalText: Boolean(combinedText),
           },
