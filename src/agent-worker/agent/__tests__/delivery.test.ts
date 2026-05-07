@@ -6,7 +6,7 @@ const mockLogger = {
 }
 
 jest.mock('@tg-bot/common', () => ({
-  cleanGeminiMessage: (text: string) => text,
+  cleanModelMessage: (text: string) => text,
   formatTelegramMarkdownV2: (text: string) => text,
   logger: mockLogger,
   saveBotReplyToHistory: mockSaveBotReplyToHistory,
@@ -180,6 +180,25 @@ describe('sendResponses', () => {
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 1 },
       }),
+    )
+  })
+
+  test('does not swallow text delivery failure', async () => {
+    const api = createApi()
+    api.sendMessage.mockRejectedValue(new Error('telegram unavailable'))
+
+    await expect(
+      sendResponses({
+        api,
+        chatId: 123,
+        replyToMessageId: 456,
+        responses: [{ type: 'text', text: 'hello there' }],
+      }),
+    ).rejects.toThrow('telegram unavailable')
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ chatId: 123 }),
+      'delivery.primary_failed',
     )
   })
 })

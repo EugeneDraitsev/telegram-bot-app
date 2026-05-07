@@ -1,7 +1,7 @@
 import { InputFile } from 'grammy/web'
 
 import {
-  cleanGeminiMessage,
+  cleanModelMessage,
   formatTelegramMarkdownV2,
   logger,
   saveBotReplyToHistory,
@@ -20,7 +20,7 @@ import { MAX_CAPTION_LENGTH, MAX_TEXT_LENGTH } from './config'
 interface DeliveryParams {
   api: TelegramApi
   chatId: number
-  replyToMessageId: number
+  replyToMessageId?: number
 }
 
 interface DeliveryBundle {
@@ -33,7 +33,11 @@ interface DeliveryBundle {
   dice: DiceResponse | null
 }
 
-function getReplyOptions(replyToMessageId: number) {
+function getReplyOptions(replyToMessageId?: number) {
+  if (replyToMessageId === undefined) {
+    return {}
+  }
+
   return { reply_parameters: { message_id: replyToMessageId } }
 }
 
@@ -83,7 +87,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
   const textParts: string[] = []
 
   for (const r of responses) {
-    if (r.type === 'text') textParts.push(cleanGeminiMessage(r.text))
+    if (r.type === 'text') textParts.push(cleanModelMessage(r.text))
     else if (r.type === 'voice') bundle[r.type] = r.buffer
     // biome-ignore lint/suspicious/noExplicitAny: generic mapping
     else bundle[r.type] = r as any
@@ -297,6 +301,9 @@ export async function sendResponses(
     }
   } catch (error) {
     logger.error({ error, chatId: params.chatId }, 'delivery.primary_failed')
+    if (!bundle.voice) {
+      throw error
+    }
   }
 
   if (bundle.voice) {
@@ -304,6 +311,7 @@ export async function sendResponses(
       await sendVoice({ ...base, voice: bundle.voice })
     } catch (error) {
       logger.error({ error, chatId: params.chatId }, 'delivery.voice_failed')
+      throw error
     }
   }
 }

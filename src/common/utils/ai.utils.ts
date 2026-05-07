@@ -4,7 +4,7 @@
 
 export const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
 export const EMPTY_RESPONSE_ERROR =
-  'Gemini returned empty response, please try again'
+  'AI returned empty response, please try again'
 export const PROMPT_MISSING_ERROR = 'Prompt is required'
 export const NOT_ALLOWED_ERROR =
   'AI is not allowed for this chat. Contact @drrrrrrrr for details'
@@ -42,7 +42,7 @@ export const systemInstructions = `${baseSystemInstructions}
   - IMPORTANT: After search, prefer search evidence over memory. If an official source confirms the exact entity, treat it as confirmed. If evidence is weak or conflicting, say so.
 `
 
-export const geminiSystemInstructions = `
+export const multimodalSystemInstructions = `
   ${systemInstructions}
 
   You will be provided with chat history for the last 24 hours (if available) from Telegram in JSON format. You should respond just with text.
@@ -52,7 +52,7 @@ export const geminiSystemInstructions = `
   Make sure you answer in the same language as the prompt and answer only on the last request to you in the chat and try to be concise, you are a chatbot after all.
 `
 
-export const gemmaSystemInstructions = `
+export const offlineMultimodalSystemInstructions = `
   ${baseSystemInstructions}
 
   You will be provided with chat history for the last 24 hours (if available) from Telegram in JSON format. You should respond just with text.
@@ -168,7 +168,7 @@ function stripKnownHtmlTags(input: string): string {
   })
 }
 
-export function cleanGeminiMessage(message: string) {
+export function cleanModelMessage(message: string) {
   let cleanedMessage = removeUserPrefixes(extractTextPayload(message))
   cleanedMessage = removeTrailingMetadata(cleanedMessage)
 

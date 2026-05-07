@@ -1,5 +1,6 @@
 import {
   buildOpenAiImagePrompt,
+  getAiSdkOpenAiImageSize,
   isOpenAiGptImageModel,
   OPENAI_GPT_IMAGE_MODEL,
   OPENAI_GPT_IMAGE_SIZE,
@@ -13,6 +14,8 @@ describe('openai-image.utils', () => {
 
   test('uses auto size for GPT image models', () => {
     expect(OPENAI_GPT_IMAGE_SIZE).toBe('auto')
+    expect(getAiSdkOpenAiImageSize()).toBeUndefined()
+    expect(getAiSdkOpenAiImageSize('1024x1024')).toBe('1024x1024')
   })
 
   test('recognizes GPT image model names including chatgpt image latest', () => {

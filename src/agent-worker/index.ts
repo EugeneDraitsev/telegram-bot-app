@@ -12,7 +12,7 @@ import {
   logger,
 } from '@tg-bot/common'
 import {
-  CHAT_MODEL,
+  CHAT_MODEL_LABEL,
   CHAT_MODEL_REASONING_EFFORT,
   REPLY_GATE_MODEL,
   runAgenticLoop,
@@ -25,6 +25,7 @@ export interface AgentWorkerPayload {
   imagesData?: string[] // base64 encoded images
   imageFileIds?: string[]
   botInfo?: BotIdentity
+  bypassReplyGate?: boolean
 }
 
 let cachedBotInfo: BotIdentity | undefined
@@ -54,7 +55,8 @@ async function resolveBotInfo(
 const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   const startedAt = Date.now()
   try {
-    const { message, imagesData, imageFileIds, botInfo } = event
+    const { message, imagesData, imageFileIds, botInfo, bypassReplyGate } =
+      event
 
     if (!message?.chat?.id) {
       logger.error(
@@ -81,11 +83,12 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
     logger.info(
       {
         ...messageMeta,
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         replyGateModel: REPLY_GATE_MODEL,
         hasInlineImages: Boolean(imagesData?.length),
         imageFileIdsCount: imageFileIds?.length ?? 0,
+        bypassReplyGate: Boolean(bypassReplyGate),
       },
       'worker.start',
     )
@@ -106,15 +109,17 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       bot.api,
       mediaData.mediaBuffers,
       effectiveBotInfo,
+      { bypassReplyGate },
     )
     logger.info(
       {
         ...messageMeta,
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
         mediaCount: mediaData.mediaBuffers.length,
+        bypassReplyGate: Boolean(bypassReplyGate),
       },
       'worker.done',
     )
@@ -123,7 +128,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
   } catch (error) {
     logger.error(
       {
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,

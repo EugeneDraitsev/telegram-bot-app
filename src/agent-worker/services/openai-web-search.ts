@@ -1,11 +1,19 @@
-import { getErrorMessage, logger } from '@tg-bot/common'
+import { generateText, type ToolSet } from 'ai'
+
 import {
-  OPENAI_WEB_SEARCH_MODEL,
+  getAiSdkGoogleTools,
+  getAiSdkLanguageModel,
+  getAiSdkOpenAiTools,
+  getAiSdkProviderOptions,
+  getErrorMessage,
+  logger,
+} from '@tg-bot/common'
+import {
   OPENAI_WEB_SEARCH_REASONING_EFFORT,
   OPENAI_WEB_SEARCH_TIMEOUT_MS,
+  WEB_SEARCH_MODEL_CONFIG,
+  WEB_SEARCH_MODEL_ID,
 } from '../agent/models'
-import { getOpenAiClient } from './openai-client'
-import { OPENAI_WEB_SEARCH_TOOLS } from './openai-tools'
 
 export type WebSearchResponseFormat = 'brief' | 'detailed' | 'list'
 
@@ -15,7 +23,21 @@ export interface SearchWebOptions {
   chatId?: string | number
 }
 
-export const WEB_SEARCH_MODEL = OPENAI_WEB_SEARCH_MODEL
+export const WEB_SEARCH_MODEL = WEB_SEARCH_MODEL_ID
+const WEB_SEARCH_TYPE = `${WEB_SEARCH_MODEL_CONFIG.provider}_web_search`
+const WEB_SEARCH_MODEL_LABEL = `${WEB_SEARCH_MODEL_CONFIG.provider}/${WEB_SEARCH_MODEL_CONFIG.model}`
+
+function getProviderTools(): ToolSet {
+  if (WEB_SEARCH_MODEL_CONFIG.provider === 'google') {
+    return {
+      google_search: getAiSdkGoogleTools().googleSearch({}),
+    }
+  }
+
+  return {
+    web_search: getAiSdkOpenAiTools().webSearch({ searchContextSize: 'high' }),
+  }
+}
 
 function normalizeQuery(query: string): string {
   return query.trim().replace(/\s+/g, ' ')
@@ -56,34 +78,36 @@ export async function searchWebOpenAi(
   const loggedQuery = options.fallbackQuery?.trim() || normalizedQuery
 
   try {
-    const response = await getOpenAiClient().responses.create(
-      {
-        model: WEB_SEARCH_MODEL,
-        input: prompt,
-        tools: OPENAI_WEB_SEARCH_TOOLS,
-        tool_choice: 'auto',
-        include: ['web_search_call.action.sources'],
-        reasoning: { effort: OPENAI_WEB_SEARCH_REASONING_EFFORT },
-        safety_identifier:
-          options.chatId === undefined ? undefined : String(options.chatId),
+    const response = await generateText({
+      model: getAiSdkLanguageModel(WEB_SEARCH_MODEL_CONFIG),
+      prompt,
+      tools: getProviderTools(),
+      toolChoice: 'auto',
+      maxRetries: 0,
+      timeout: OPENAI_WEB_SEARCH_TIMEOUT_MS + 1_000,
+      providerOptions: getAiSdkProviderOptions(WEB_SEARCH_MODEL_CONFIG, {
+        reasoningEffort: OPENAI_WEB_SEARCH_REASONING_EFFORT,
+        chatId: options.chatId,
         store: false,
         truncation: 'auto',
-      },
-      {
-        timeout: OPENAI_WEB_SEARCH_TIMEOUT_MS + 1_000,
-        maxRetries: 0,
-      },
-    )
+        serviceTier:
+          WEB_SEARCH_MODEL_CONFIG.provider === 'google'
+            ? 'priority'
+            : undefined,
+      }),
+    })
 
-    const text = response.output_text?.trim()
+    const text = response.text?.trim()
     if (!text) {
-      throw new Error('OpenAI web search returned empty response')
+      throw new Error(
+        `Web search model ${WEB_SEARCH_MODEL_LABEL} returned empty response`,
+      )
     }
 
     logger.info(
       {
         query: loggedQuery,
-        searchType: 'openai_web_search',
+        searchType: WEB_SEARCH_TYPE,
         model: WEB_SEARCH_MODEL,
       },
       'web_search.success',
@@ -93,7 +117,7 @@ export async function searchWebOpenAi(
     logger.error(
       {
         query: loggedQuery,
-        searchType: 'openai_web_search',
+        searchType: WEB_SEARCH_TYPE,
         model: WEB_SEARCH_MODEL,
         error: getErrorMessage(error),
       },

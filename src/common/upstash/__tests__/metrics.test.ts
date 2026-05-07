@@ -156,7 +156,7 @@ describe('getFormattedMetrics', () => {
         source: 'agentic',
         name: 'routing',
         model: 'gemini-2.5-flash',
-        fallbackFrom: 'gemini-3.1-flash-lite-preview',
+        fallbackFrom: 'gemini-3.1-flash-lite',
         chatId: 1,
         durationMs: 4000,
         success: true,

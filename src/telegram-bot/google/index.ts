@@ -14,6 +14,7 @@ import {
   startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
+import { handleAgenticCommand } from '../agent'
 import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
@@ -27,7 +28,7 @@ const GEMINI_FAILURE_MESSAGES = new Set([
 ])
 
 export const GEMMA_MODEL = 'gemma-4-31b-it'
-export const GEMINI_FLASH_LITE_MODEL = 'gemini-3.1-flash-lite-preview'
+export const GEMINI_FLASH_LITE_MODEL = 'gemini-3.1-flash-lite'
 
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
@@ -130,6 +131,7 @@ export const setupImageGenerationGeminiCommands = async (
           commandData.combinedText,
           commandData.chatId,
           commandData.imagesData,
+          commandData.imageInputs,
         ),
     )
 
@@ -194,14 +196,7 @@ const setupGoogleCommands = (
     setupMultimodalGeminiCommands(ctx, deferredCommands, GEMMA_MODEL, '/gemma'),
   )
 
-  bot.command(['q', 'qq'], (ctx) =>
-    setupMultimodalGeminiCommands(
-      ctx,
-      deferredCommands,
-      GEMINI_FLASH_LITE_MODEL,
-      '/q',
-    ),
-  )
+  bot.command(['q', 'qq'], (ctx) => handleAgenticCommand(ctx))
 
   bot.command('ge', (ctx) =>
     setupImageGenerationGeminiCommands(ctx, deferredCommands),

@@ -1,23 +1,22 @@
 import {
-  type Content,
-  type FunctionCall,
-  FunctionCallingConfigMode,
-  type FunctionDeclaration,
-  type Part,
-  ServiceTier,
-  type Tool,
-} from '@google/genai'
+  tool as defineAiTool,
+  type JSONSchema7,
+  jsonSchema,
+  type ModelMessage,
+  type ToolSet,
+} from 'ai'
 import type { Message } from 'telegram-typings'
 
 import type { HistoryMediaAttachment, MediaBuffer } from '@tg-bot/common'
 import {
   AGENT_REACTION,
   type BotIdentity,
-  cleanGeminiMessage,
+  cleanModelMessage,
   collectHistoryMediaFileRefs,
   collectMediaFileRefs,
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
+  getAiSdkProviderOptions,
   getChatMemory,
   getGlobalMemory,
   getMessageLogMeta,
@@ -37,6 +36,7 @@ import {
   getAgentTools,
   getCollectedResponses,
   runWithToolContext,
+  withToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, AgentTool, TelegramApi } from '../types'
 import {
@@ -48,12 +48,13 @@ import {
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import {
-  generateGeminiWithRetry,
+  generateModelWithRetry,
   isRetryableModelError,
   ModelCallTimeoutError,
 } from './model-call'
 import {
-  CHAT_MODEL,
+  CHAT_MODEL_CONFIG,
+  CHAT_MODEL_LABEL,
   CHAT_MODEL_REASONING_EFFORT,
   FAST_MODEL,
   REPLY_GATE_MODEL,
@@ -85,19 +86,24 @@ function getRecentHistoryContext(
   return history === 'No message history available' ? '' : history
 }
 
-function buildNativeTools(agentTools: AgentTool[]): Tool[] {
-  const functionDeclarations: FunctionDeclaration[] = agentTools
-    .filter((tool) => tool.exposeToModel !== false)
-    .map((tool) => ({
-      name: tool.declaration.name,
-      description: tool.declaration.description,
-      parametersJsonSchema: tool.declaration.parameters ?? {
-        type: 'object',
-        properties: {},
-      },
-    }))
-
-  return functionDeclarations.length ? [{ functionDeclarations }] : []
+export function buildNativeTools(agentTools: AgentTool[]): ToolSet {
+  return Object.fromEntries(
+    agentTools
+      .filter((tool) => tool.exposeToModel !== false)
+      .map((tool) => [
+        tool.declaration.name,
+        defineAiTool({
+          description: tool.declaration.description,
+          inputSchema: jsonSchema(
+            (tool.declaration.parameters ?? {
+              type: 'object',
+              properties: {},
+              additionalProperties: false,
+            }) as JSONSchema7,
+          ),
+        }),
+      ]),
+  )
 }
 
 /** Maps tool names to their underlying AI model for metrics */
@@ -111,25 +117,35 @@ const TOOL_MODELS: Record<string, string> = {
 const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
+const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
 
 type ExecutableFunctionCall = {
-  id?: string
+  toolCallId: string
   name: string
   args: Record<string, unknown>
 }
 
 function getExecutableFunctionCalls(
-  functionCalls: FunctionCall[] | undefined,
+  toolCalls:
+    | Array<{ toolCallId: string; toolName: string; input: unknown }>
+    | undefined,
 ): ExecutableFunctionCall[] {
-  return (functionCalls ?? [])
+  return (toolCalls ?? [])
     .filter(
-      (call): call is FunctionCall & { name: string } =>
-        typeof call.name === 'string' && call.name.length > 0,
+      (
+        call,
+      ): call is { toolCallId: string; toolName: string; input: unknown } =>
+        typeof call.toolName === 'string' && call.toolName.length > 0,
     )
     .map((call) => ({
-      id: call.id,
-      name: call.name,
-      args: call.args ?? {},
+      toolCallId: call.toolCallId,
+      name: call.toolName,
+      args:
+        call.input &&
+        typeof call.input === 'object' &&
+        !Array.isArray(call.input)
+          ? (call.input as Record<string, unknown>)
+          : {},
     }))
 }
 
@@ -148,6 +164,7 @@ function getToolResultStatus(result: string): MetricStatus {
   const normalized = result.trim().toLowerCase()
   if (normalized.includes('timed out')) return 'timeout'
   if (
+    normalized.startsWith('error ') ||
     normalized.startsWith('error:') ||
     normalized.startsWith('error generating image:') ||
     normalized.startsWith('error generating voice:') ||
@@ -161,6 +178,23 @@ function getToolResultStatus(result: string): MetricStatus {
     return 'error'
   }
   return 'success'
+}
+
+export function extractFallbackTextFromToolResults(
+  toolResults: string[],
+): string {
+  const successfulResults = toolResults
+    .map((result) => result.trim())
+    .filter(Boolean)
+    .filter((result) => getToolResultStatus(result) === 'success')
+
+  if (!successfulResults.length) {
+    return ''
+  }
+
+  return cleanModelMessage(successfulResults.join('\n\n'))
+    .slice(0, TOOL_RESULT_FALLBACK_MAX_CHARS)
+    .trim()
 }
 
 function parseToolArguments(
@@ -309,15 +343,6 @@ function extractErrorInfo(error: unknown): unknown {
   }
 }
 
-function extractFallbackTextFromToolResults(results: string[]): string | null {
-  const successfulResults = results.filter(
-    (result) => result.trim() && !result.startsWith('Error:'),
-  )
-  return successfulResults.length
-    ? [...new Set(successfulResults)].slice(0, 2).join('\n\n')
-    : null
-}
-
 function getLoopFailureReply(error: unknown): string {
   if (error instanceof ModelCallTimeoutError || isRetryableModelError(error)) {
     return 'Сервис ответа сейчас перегружен. Попробуй ещё раз чуть позже.'
@@ -327,13 +352,20 @@ function getLoopFailureReply(error: unknown): string {
 
 // ── Content building ─────────────────────────────────────────
 
-function pushImageContent(parts: Part[], label: string, media: MediaBuffer) {
-  parts.push({ text: label })
+type UserContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; image: Buffer; mediaType: string }
+
+function pushImageContent(
+  parts: UserContentPart[],
+  label: string,
+  media: MediaBuffer,
+) {
+  parts.push({ type: 'text', text: label })
   parts.push({
-    inlineData: {
-      data: media.buffer.toString('base64'),
-      mimeType: media.mimeType,
-    },
+    type: 'image',
+    image: media.buffer,
+    mediaType: media.mimeType,
   })
 }
 
@@ -342,8 +374,8 @@ function buildInitialInput(
   textContent: string,
   mediaBuffers: MediaBuffer[] | undefined,
   historyMediaAttachments: HistoryMediaAttachment[],
-): Content[] {
-  const parts: Part[] = []
+): ModelMessage[] {
+  const parts: UserContentPart[] = []
 
   for (const media of mediaBuffers ?? []) {
     pushImageContent(parts, media.label || 'Request media', media)
@@ -358,52 +390,42 @@ function buildInitialInput(
         ? `Telegram reply target message_id=${replyId}`
         : 'Telegram reply target'
 
-    parts.push({ text: `${replyLabel}: ${replyText || '[media]'}` })
+    parts.push({
+      type: 'text',
+      text: `${replyLabel}: ${replyText || '[media]'}`,
+    })
   }
 
   for (const { media, message: srcMsg } of historyMediaAttachments) {
     pushImageContent(parts, getHistoryMediaPrompt(srcMsg), media)
   }
 
-  parts.push({ text: textContent || '[User sent media without text]' })
+  parts.push({
+    type: 'text',
+    text: textContent || '[User sent media without text]',
+  })
 
-  return [{ role: 'user', parts }]
+  return [{ role: 'user', content: parts }]
 }
 
 // ── Model loop ───────────────────────────────────────────────
 
-function buildGeminiConfig(
-  systemInstruction: string,
-  tools: Tool[],
-  mode: FunctionCallingConfigMode = FunctionCallingConfigMode.AUTO,
-) {
-  return {
-    systemInstruction,
-    serviceTier: ServiceTier.PRIORITY,
-    ...(tools.length ? { tools } : {}),
-    toolConfig: {
-      functionCallingConfig: { mode },
-    },
-  }
-}
-
 function buildFunctionResponsePart(
   call: ExecutableFunctionCall,
   output: string,
-): Part {
+) {
   return {
-    functionResponse: {
-      id: call.id,
-      name: call.name,
-      response: { output },
-    },
+    type: 'tool-result' as const,
+    toolCallId: call.toolCallId,
+    toolName: call.name,
+    output: { type: 'text' as const, value: output },
   }
 }
 
 async function runToolLoop(
-  input: Content[],
+  input: ModelMessage[],
   systemInstruction: string,
-  tools: Tool[],
+  tools: ToolSet,
   toolByName: Map<string, AgentTool>,
   chatId: number,
 ): Promise<{ finalText: string; toolResults: string[] }> {
@@ -411,32 +433,39 @@ async function runToolLoop(
   const toolResults: string[] = []
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-    const response = await generateGeminiWithRetry(
+    const response = await generateModelWithRetry(
       {
-        model: CHAT_MODEL,
-        contents: input,
-        config: buildGeminiConfig(systemInstruction, tools),
+        messages: input,
+        system: systemInstruction,
+        tools: Object.keys(tools).length ? tools : undefined,
+        toolChoice: 'auto',
+        providerOptions: getAiSdkProviderOptions(CHAT_MODEL_CONFIG, {
+          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+          chatId,
+          store: false,
+          serviceTier:
+            CHAT_MODEL_CONFIG.provider === 'google' ? 'priority' : undefined,
+        }),
       },
       chatId,
       iteration === 0 ? 'routing' : `iteration_${iteration}`,
+      CHAT_MODEL_CONFIG,
     )
 
-    const responseParts = response.candidates?.[0]?.content?.parts ?? []
-    const functionCalls = getExecutableFunctionCalls(response.functionCalls)
+    const responseMessages = response.response.messages as ModelMessage[]
+    const functionCalls = getExecutableFunctionCalls(response.toolCalls)
     logger.info(
       {
         chatId,
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         iteration,
-        outputTypes: responseParts.map((part) =>
-          part.functionCall ? 'function_call' : part.text ? 'text' : 'part',
-        ),
+        outputTypes: response.content.map((part) => part.type),
         functionCalls: functionCalls.map((call) => call.name),
         usedWebSearch: functionCalls.some((call) => call.name === 'web_search'),
       },
       'loop.model_response',
     )
-    const text = response.text?.trim() ?? ''
+    const text = response.text.trim()
 
     if (text) finalText = text
     if (functionCalls.length === 0) break
@@ -454,7 +483,7 @@ async function runToolLoop(
       logger.info(
         {
           chatId,
-          model: CHAT_MODEL,
+          model: CHAT_MODEL_LABEL,
           iteration,
           deferred: contentCalls.map((fc) => fc.name),
         },
@@ -462,10 +491,7 @@ async function runToolLoop(
       )
     }
 
-    input.push({
-      role: 'model',
-      parts: responseParts,
-    })
+    input.push(...responseMessages)
 
     const executionResults = await executeToolCalls(
       callsToExecute,
@@ -474,7 +500,7 @@ async function runToolLoop(
     )
     toolResults.push(...executionResults.map((tr) => tr.result))
 
-    const functionResponses: Part[] = [
+    const functionResponses = [
       ...executionResults.map((tr) =>
         buildFunctionResponsePart(tr.call, tr.result),
       ),
@@ -495,7 +521,7 @@ async function runToolLoop(
       logger.info(
         {
           chatId,
-          model: CHAT_MODEL,
+          model: CHAT_MODEL_LABEL,
           tools: callsToExecute.map((fc) => fc.name),
         },
         'loop.terminal_tools_skip',
@@ -503,44 +529,49 @@ async function runToolLoop(
       break
     }
 
-    input.push({ role: 'user', parts: functionResponses })
+    input.push({ role: 'tool', content: functionResponses })
   }
 
   // If no text came out of the loop, force a final synthesis pass without tools.
   if (!finalText.trim()) {
     try {
-      const finalizeResponse = await generateGeminiWithRetry(
+      const finalizeResponse = await generateModelWithRetry(
         {
-          model: CHAT_MODEL,
-          contents: [
+          messages: [
             ...input,
             {
               role: 'user',
-              parts: [
+              content: [
                 {
+                  type: 'text',
                   text: 'Provide the final user-facing answer now. Use plain text only and do not call tools. Use successful tool results as the primary evidence. If any tool failed or timed out, explicitly say you could not verify that part instead of guessing.',
                 },
               ],
             },
           ],
-          config: buildGeminiConfig(
-            systemInstruction,
-            [],
-            FunctionCallingConfigMode.NONE,
-          ),
+          system: systemInstruction,
+          toolChoice: 'none',
+          providerOptions: getAiSdkProviderOptions(CHAT_MODEL_CONFIG, {
+            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+            chatId,
+            store: false,
+            serviceTier:
+              CHAT_MODEL_CONFIG.provider === 'google' ? 'priority' : undefined,
+          }),
         },
         chatId,
         'finalize',
+        CHAT_MODEL_CONFIG,
       )
-      const finalizeText = finalizeResponse.text?.trim() ?? ''
+      const finalizeText = finalizeResponse.text.trim()
       if (finalizeText) {
         finalText = finalizeText
       } else {
-        logger.warn({ chatId, model: CHAT_MODEL }, 'loop.finalize_empty')
+        logger.warn({ chatId, model: CHAT_MODEL_LABEL }, 'loop.finalize_empty')
       }
     } catch (error) {
       logger.warn(
-        { chatId, model: CHAT_MODEL, error: extractErrorInfo(error) },
+        { chatId, model: CHAT_MODEL_LABEL, error: extractErrorInfo(error) },
         'loop.finalize_failed',
       )
     }
@@ -556,6 +587,7 @@ export async function runAgenticLoop(
   api: TelegramApi,
   mediaBuffers?: MediaBuffer[],
   botInfo?: BotIdentity,
+  options: { bypassReplyGate?: boolean } = {},
 ): Promise<void> {
   const startedAt = Date.now()
   const chatId = message.chat?.id
@@ -568,7 +600,7 @@ export async function runAgenticLoop(
   logger.info(
     {
       ...messageMeta,
-      model: CHAT_MODEL,
+      model: CHAT_MODEL_LABEL,
       reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
       replyGateModel: REPLY_GATE_MODEL,
     },
@@ -592,7 +624,7 @@ export async function runAgenticLoop(
         if (!hasTextResponse) {
           responsesToSend.push({
             type: 'text',
-            text: cleanGeminiMessage(
+            text: cleanModelMessage(
               dynamicCommand.result ||
                 `Команда /${dynamicCommand.name} ничего не вернула.`,
             ),
@@ -628,19 +660,26 @@ export async function runAgenticLoop(
       ])
       const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
 
-      const shouldRespond = await shouldEngageWithMessage({
-        message,
-        textContent,
-        hasMedia,
-        memoryBlock,
-        botInfo,
-      })
-      if (!shouldRespond) {
+      if (options.bypassReplyGate) {
         logger.info(
-          { ...messageMeta, reason: 'reply_gate', model: REPLY_GATE_MODEL },
-          'loop.skipped',
+          { ...messageMeta, reason: 'explicit_command' },
+          'loop.reply_gate_bypassed',
         )
-        return
+      } else {
+        const shouldRespond = await shouldEngageWithMessage({
+          message,
+          textContent,
+          hasMedia,
+          memoryBlock,
+          botInfo,
+        })
+        if (!shouldRespond) {
+          logger.info(
+            { ...messageMeta, reason: 'reply_gate', model: REPLY_GATE_MODEL },
+            'loop.skipped',
+          )
+          return
+        }
       }
 
       void api
@@ -701,131 +740,135 @@ export async function runAgenticLoop(
           )
         : []
 
-      const allMediaBuffers = [
-        ...(mediaBuffers ?? []),
-        ...historyMediaAttachments.map((e) => e.media),
-      ]
+      const historyMediaBuffers = historyMediaAttachments.map(
+        ({ media, message: sourceMessage }) => ({
+          ...media,
+          label: getHistoryMediaPrompt(sourceMessage),
+        }),
+      )
+      const allMediaBuffers = [...(mediaBuffers ?? []), ...historyMediaBuffers]
+      await withToolMediaBuffers(allMediaBuffers, async () => {
+        const contextBlock = buildContextBlock(
+          message,
+          textContent,
+          hasMedia,
+          allMediaBuffers,
+          {
+            recentHistory,
+          },
+        )
+        const systemInstruction = buildSystemInstruction(
+          contextBlock,
+          memoryBlock,
+        )
+        const tools = buildNativeTools(agentTools)
+        const toolByName = new Map<string, AgentTool>(
+          agentTools
+            .filter(
+              (t) => t.exposeToModel !== false && t.declaration.name != null,
+            )
+            .map((t) => [t.declaration.name ?? '', t]),
+        )
+        logger.info(
+          {
+            chatId,
+            model: CHAT_MODEL_LABEL,
+            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+            exposedTools: Object.keys(tools),
+            hiddenTools: agentTools
+              .filter((tool) => tool.exposeToModel === false)
+              .map((tool) => tool.declaration.name),
+          },
+          'loop.tools_ready',
+        )
 
-      const contextBlock = buildContextBlock(
-        message,
-        textContent,
-        hasMedia,
-        allMediaBuffers,
-        {
-          recentHistory,
-        },
-      )
-      const systemInstruction = buildSystemInstruction(
-        contextBlock,
-        memoryBlock,
-      )
-      const tools = buildNativeTools(agentTools)
-      const toolByName = new Map<string, AgentTool>(
-        agentTools
-          .filter(
-            (t) => t.exposeToModel !== false && t.declaration.name != null,
-          )
-          .map((t) => [t.declaration.name ?? '', t]),
-      )
-      logger.info(
-        {
+        const input = buildInitialInput(
+          message,
+          textContent,
+          mediaBuffers,
+          historyMediaAttachments,
+        )
+
+        const { finalText, toolResults } = await runToolLoop(
+          input,
+          systemInstruction,
+          tools,
+          toolByName,
           chatId,
-          model: CHAT_MODEL,
-          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
-          exposedTools: tools.flatMap(
-            (tool) =>
-              tool.functionDeclarations?.map((fn) => fn.name ?? 'function') ??
-              Object.keys(tool),
-          ),
-          hiddenTools: agentTools
-            .filter((tool) => tool.exposeToModel === false)
-            .map((tool) => tool.declaration.name),
-        },
-        'loop.tools_ready',
-      )
+        )
 
-      const input = buildInitialInput(
-        message,
-        textContent,
-        mediaBuffers,
-        historyMediaAttachments,
-      )
+        // Collect any responses produced by tools (media, text drafts, etc.)
+        const { textDrafts, mediaResponses } = splitResponses(
+          getCollectedResponses(),
+        )
+        const responsesToSend: AgentResponse[] = [...mediaResponses]
 
-      const { finalText, toolResults } = await runToolLoop(
-        input,
-        systemInstruction,
-        tools,
-        toolByName,
-        chatId,
-      )
+        const allTextParts: string[] = [...textDrafts]
+        if (finalText.trim()) {
+          allTextParts.push(cleanModelMessage(finalText))
+        } else if (allTextParts.length === 0 && mediaResponses.length === 0) {
+          const fallbackText = extractFallbackTextFromToolResults(toolResults)
+          if (fallbackText) {
+            allTextParts.push(fallbackText)
+            logger.warn(
+              {
+                ...messageMeta,
+                model: CHAT_MODEL_LABEL,
+                toolResultCount: toolResults.length,
+              },
+              'loop.tool_result_fallback_text',
+            )
+          }
+        }
 
-      // Collect any responses produced by tools (media, text drafts, etc.)
-      const { textDrafts, mediaResponses } = splitResponses(
-        getCollectedResponses(),
-      )
-      const responsesToSend: AgentResponse[] = [...mediaResponses]
+        const combinedText = allTextParts.join('\n\n').trim()
+        if (combinedText)
+          responsesToSend.push({ type: 'text', text: combinedText })
 
-      const allTextParts: string[] = [...textDrafts]
-      if (finalText.trim()) {
-        allTextParts.push(cleanGeminiMessage(finalText))
-      } else {
-        const fallback = extractFallbackTextFromToolResults(toolResults)
-        if (fallback) {
-          allTextParts.push(cleanGeminiMessage(fallback))
+        if (responsesToSend.length === 0) {
+          responsesToSend.push({
+            type: 'text',
+            text: 'Не смог собрать ответ по этому запросу. Попробуй переформулировать.',
+          })
           logger.warn(
-            { chatId, model: CHAT_MODEL },
-            'loop.fallback_from_tool_result',
+            {
+              ...messageMeta,
+              model: CHAT_MODEL_LABEL,
+              durationMs: Date.now() - startedAt,
+            },
+            'loop.no_response_fallback_text',
           )
         }
-      }
 
-      const combinedText = allTextParts.join('\n\n').trim()
-      if (combinedText)
-        responsesToSend.push({ type: 'text', text: combinedText })
-
-      if (responsesToSend.length === 0) {
-        responsesToSend.push({
-          type: 'text',
-          text: 'Не смог собрать ответ по этому запросу. Попробуй переформулировать.',
+        const deliveryStart = Date.now()
+        await sendResponses({
+          responses: responsesToSend,
+          chatId,
+          replyToMessageId: message.message_id,
+          api,
         })
-        logger.warn(
+
+        logger.info(
           {
             ...messageMeta,
-            model: CHAT_MODEL,
+            model: CHAT_MODEL_LABEL,
+            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
             durationMs: Date.now() - startedAt,
+            deliveryDurationMs: Date.now() - deliveryStart,
+            responseCount: responsesToSend.length,
+            inputMediaCount: allMediaBuffers.length,
+            outputMediaCount: mediaResponses.length,
+            hasFinalText: Boolean(combinedText),
           },
-          'loop.no_response_fallback_text',
+          'loop.done',
         )
-      }
-
-      const deliveryStart = Date.now()
-      await sendResponses({
-        responses: responsesToSend,
-        chatId,
-        replyToMessageId: message.message_id,
-        api,
       })
-
-      logger.info(
-        {
-          ...messageMeta,
-          model: CHAT_MODEL,
-          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
-          durationMs: Date.now() - startedAt,
-          deliveryDurationMs: Date.now() - deliveryStart,
-          responseCount: responsesToSend.length,
-          inputMediaCount: allMediaBuffers.length,
-          outputMediaCount: mediaResponses.length,
-          hasFinalText: Boolean(combinedText),
-        },
-        'loop.done',
-      )
     })
   } catch (error) {
     logger.error(
       {
         ...messageMeta,
-        model: CHAT_MODEL,
+        model: CHAT_MODEL_LABEL,
         reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
         durationMs: Date.now() - startedAt,
         error: extractErrorInfo(error),

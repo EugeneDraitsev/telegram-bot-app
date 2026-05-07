@@ -2,6 +2,7 @@
   "name": "@tg-bot/sharp-statictics",
   "version": "0.1.0",
   "dependencies": {
+    "@tg-bot/common": "workspace:*",
     "polished": "^4.3.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

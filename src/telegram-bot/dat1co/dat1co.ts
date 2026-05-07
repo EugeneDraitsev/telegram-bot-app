@@ -1,10 +1,10 @@
 import {
-  cleanGeminiMessage,
+  cleanModelMessage,
   DEFAULT_ERROR_MESSAGE,
-  geminiSystemInstructions,
   getHistory,
   isAiEnabledChat,
   logger,
+  multimodalSystemInstructions,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
 } from '@tg-bot/common'
@@ -62,7 +62,7 @@ export async function generateGemmaCompletion(
       }),
       {
         role: 'system',
-        content: geminiSystemInstructions,
+        content: multimodalSystemInstructions,
       },
     ]
 
@@ -123,7 +123,7 @@ export async function generateGemmaCompletion(
       data.content ||
       JSON.stringify(data)
 
-    return cleanGeminiMessage(responseText)
+    return cleanModelMessage(responseText)
   } catch (e) {
     logger.error({ error: e }, 'Error generating gemma completion with dat1co')
     return DEFAULT_ERROR_MESSAGE

@@ -1,7 +1,7 @@
 import type { Message } from 'telegram-typings'
 
 import {
-  cleanGeminiMessage,
+  cleanModelMessage,
   type ExtendedMessage,
   type MediaBuffer,
 } from '@tg-bot/common'
@@ -97,7 +97,7 @@ export function splitResponses(responses: AgentResponse[]) {
 
   for (const response of responses) {
     if (response.type === 'text') {
-      textDrafts.push(cleanGeminiMessage(response.text))
+      textDrafts.push(cleanModelMessage(response.text))
       continue
     }
     mediaResponses.push(response)

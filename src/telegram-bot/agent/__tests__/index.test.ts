@@ -45,4 +45,33 @@ describe('handleMessageWithAgent', () => {
 
     expect(isResolved).toBe(true)
   })
+
+  test('strips command text and bypasses reply gate for explicit command invokes', async () => {
+    const invokeSpy = jest
+      .spyOn(common, 'invokeAgentLambda')
+      .mockResolvedValue(
+        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+      )
+
+    const message = {
+      message_id: 10,
+      chat: { id: 123 },
+      text: '/q explain this',
+    } as Message
+
+    await handleMessageWithAgent(message, {
+      bypassReplyGate: true,
+      stripCommand: true,
+    })
+
+    expect(invokeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bypassReplyGate: true,
+        message: expect.objectContaining({
+          message_id: 10,
+          text: 'explain this',
+        }),
+      }),
+    )
+  })
 })

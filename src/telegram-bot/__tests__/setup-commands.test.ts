@@ -1,5 +1,6 @@
 import type { Bot, Context, NextFunction } from 'grammy/web'
 
+import * as common from '@tg-bot/common'
 import { setupAllCommands } from '../setup-commands'
 
 const setupAgenticConfigMock = jest.fn((..._args: unknown[]) => undefined)
@@ -56,7 +57,7 @@ jest.mock('../google', () => ({
   __esModule: true,
   default: (bot: unknown, ...args: unknown[]) =>
     setupGoogleCommandsMock(bot, ...args),
-  GEMINI_FLASH_LITE_MODEL: 'gemini-3.1-flash-lite-preview',
+  GEMINI_FLASH_LITE_MODEL: 'gemini-3.1-flash-lite',
   GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -106,6 +107,7 @@ function createBotStub() {
 
 describe('setupAllCommands', () => {
   beforeEach(() => {
+    jest.restoreAllMocks()
     setupAgenticConfigMock.mockClear()
     setupCurrencyCommandsMock.mockClear()
     setupDat1coCommandsMock.mockClear()
@@ -121,6 +123,11 @@ describe('setupAllCommands', () => {
   })
 
   test('registers photo middleware and always calls next when photo command is handled', async () => {
+    const invokeSpy = jest
+      .spyOn(common, 'invokeAgentLambda')
+      .mockResolvedValue(
+        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+      )
     const { bot, getHandler } = createBotStub()
 
     const commandRegistry = setupAllCommands(bot, true)
@@ -129,17 +136,20 @@ describe('setupAllCommands', () => {
     expect(photoHandler).toBeDefined()
     expect(commandRegistry).toBeInstanceOf(Set)
 
-    const ctx = { message: { caption: '/q test' } } as unknown as Context
+    const ctx = {
+      message: { chat: { id: 123 }, caption: '/q test' },
+    } as unknown as Context
     const next = jest.fn().mockResolvedValue(undefined)
 
     await photoHandler?.(ctx, next as NextFunction)
 
-    expect(setupMultimodalGeminiCommandsMock).toHaveBeenCalledWith(
-      ctx,
-      true,
-      'gemini-3.1-flash-lite-preview',
-      '/q',
+    expect(invokeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bypassReplyGate: true,
+        message: expect.objectContaining({ caption: 'test' }),
+      }),
     )
+    expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupMultimodalOpenAiCommandsMock).not.toHaveBeenCalled()
     expect(next).toHaveBeenCalledTimes(1)
   })

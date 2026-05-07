@@ -8,7 +8,7 @@ import type { Message } from 'telegram-typings'
 
 import { logger } from '../logger'
 import { saveMessage } from '../upstash'
-import { cleanGeminiMessage, isAiEnabledChat } from './ai.utils'
+import { cleanModelMessage, isAiEnabledChat } from './ai.utils'
 
 /**
  * Wrapper that sets `duplex: 'half'` whenever a request has a body
@@ -93,10 +93,10 @@ export async function saveBotReplyToHistory(messageLike: unknown) {
   }
 
   if (typeof message.text === 'string') {
-    message.text = cleanGeminiMessage(message.text)
+    message.text = cleanModelMessage(message.text)
   }
   if (typeof message.caption === 'string') {
-    message.caption = cleanGeminiMessage(message.caption)
+    message.caption = cleanModelMessage(message.caption)
   }
 
   await saveMessage(message, chatId).catch((error) =>
