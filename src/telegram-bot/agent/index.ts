@@ -44,7 +44,9 @@ export async function handleMessageWithAgent(
     return
   }
 
-  const agentMessage = options.stripCommand ? stripCommandText(message) : message
+  const agentMessage = options.stripCommand
+    ? stripCommandText(message)
+    : message
 
   // Invoke agent worker Lambda async and return immediately.
   // Worker handles chat-enabled checks and quick filtering.
