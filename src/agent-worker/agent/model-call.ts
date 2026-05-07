@@ -4,12 +4,18 @@ import {
   type AiModelConfig,
   formatAiModelConfig,
   getAiSdkLanguageModel,
+  getAiSdkProviderOptions,
   logger,
   type MetricStatus,
   recordMetric,
 } from '@tg-bot/common'
 import { MAX_RETRIES, RETRY_BASE_DELAY_MS } from './config'
-import { CHAT_MODEL_CONFIG, CHAT_MODEL_TIMEOUT_MS } from './models'
+import {
+  CHAT_FALLBACK_MODEL_CONFIG,
+  CHAT_FALLBACK_REASONING_EFFORT,
+  CHAT_MODEL_CONFIG,
+  CHAT_MODEL_TIMEOUT_MS,
+} from './models'
 import { withTimeout } from './utils'
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
@@ -57,6 +63,32 @@ export function isRetryableModelError(error: unknown): boolean {
 
 function getModelErrorStatus(error: unknown): MetricStatus {
   return error instanceof ModelCallTimeoutError ? 'timeout' : 'error'
+}
+
+function isSameModelConfig(a: AiModelConfig, b: AiModelConfig): boolean {
+  return a.provider === b.provider && a.model === b.model
+}
+
+function shouldUseFallback(modelConfig: AiModelConfig): boolean {
+  return (
+    modelConfig.provider === 'google' &&
+    isSameModelConfig(modelConfig, CHAT_MODEL_CONFIG) &&
+    !isSameModelConfig(modelConfig, CHAT_FALLBACK_MODEL_CONFIG)
+  )
+}
+
+function getFallbackParams<TOOLS extends ToolSet>(
+  params: GenerateTextOptions<TOOLS>,
+  chatId: number,
+): GenerateTextOptions<TOOLS> {
+  return {
+    ...params,
+    providerOptions: getAiSdkProviderOptions(CHAT_FALLBACK_MODEL_CONFIG, {
+      reasoningEffort: CHAT_FALLBACK_REASONING_EFFORT,
+      chatId,
+      store: false,
+    }),
+  }
 }
 
 async function generateSingleModelWithRetry<TOOLS extends ToolSet>(
@@ -132,14 +164,20 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
     'model.call_start',
   )
 
-  const track = (status: MetricStatus = 'success') => {
+  const track = (
+    attemptStartedAt: number,
+    attemptModel: string,
+    status: MetricStatus = 'success',
+    fallbackFrom?: string,
+  ) => {
     void recordMetric({
       type: 'model_call',
       source: 'agentic',
       name: metricName,
-      model,
+      model: attemptModel,
+      fallbackFrom,
       chatId,
-      durationMs: Date.now() - startedAt,
+      durationMs: Date.now() - attemptStartedAt,
       success: status === 'success',
       status,
       timestamp: Date.now(),
@@ -153,10 +191,55 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
       chatId,
       timeoutMs,
     )
-    track()
+    track(startedAt, model)
     return response
-  } catch (error) {
-    track(getModelErrorStatus(error))
-    throw error
+  } catch (primaryError) {
+    track(startedAt, model, getModelErrorStatus(primaryError))
+
+    if (!shouldUseFallback(modelConfig)) {
+      throw primaryError
+    }
+
+    const fallbackStartedAt = Date.now()
+    const fallbackModel = formatAiModelConfig(CHAT_FALLBACK_MODEL_CONFIG)
+    logger.warn(
+      {
+        chatId,
+        name: metricName,
+        model: fallbackModel,
+        fallbackFrom: model,
+        error: primaryError,
+      },
+      'model.fallback_invoked',
+    )
+    logger.info(
+      {
+        chatId,
+        name: metricName,
+        model: fallbackModel,
+        timeoutMs,
+        fallbackFrom: model,
+      },
+      'model.call_start',
+    )
+
+    try {
+      const response = await generateSingleModelWithRetry(
+        CHAT_FALLBACK_MODEL_CONFIG,
+        getFallbackParams(params, chatId),
+        chatId,
+        timeoutMs,
+      )
+      track(fallbackStartedAt, fallbackModel, 'success', model)
+      return response
+    } catch (fallbackError) {
+      track(
+        fallbackStartedAt,
+        fallbackModel,
+        getModelErrorStatus(fallbackError),
+        model,
+      )
+      throw fallbackError
+    }
   }
 }

@@ -15,17 +15,46 @@ jest.mock('@tg-bot/common', () => ({
     `${config.provider}/${config.model}`,
   getAiSdkLanguageModel: (config: { provider: string; model: string }) =>
     `${config.provider}/${config.model}`,
+  getAiSdkProviderOptions: (
+    config: { provider: string; model: string },
+    options: {
+      reasoningEffort?: string
+      chatId?: string | number
+      store?: boolean
+      serviceTier?: string
+    },
+  ) => {
+    if (config.provider === 'google') {
+      return {
+        google: options.serviceTier ? { serviceTier: options.serviceTier } : {},
+      }
+    }
+
+    return {
+      openai: {
+        reasoningEffort: options.reasoningEffort,
+        safetyIdentifier:
+          options.chatId === undefined ? undefined : String(options.chatId),
+        store: options.store,
+      },
+    }
+  },
   logger: mockLogger,
   recordMetric: mockRecordMetric,
 }))
 
 jest.mock('../config', () => ({
-  MAX_RETRIES: 2,
+  MAX_RETRIES: 1,
   RETRY_BASE_DELAY_MS: 0,
 }))
 
 jest.mock('../models', () => ({
-  CHAT_MODEL_CONFIG: { provider: 'openai', model: 'gpt-5.4-nano' },
+  CHAT_FALLBACK_MODEL_CONFIG: { provider: 'openai', model: 'gpt-5.4-nano' },
+  CHAT_FALLBACK_REASONING_EFFORT: 'medium',
+  CHAT_MODEL_CONFIG: {
+    provider: 'google',
+    model: 'gemini-3.1-flash-lite-preview',
+  },
   CHAT_MODEL_TIMEOUT_MS: 45_000,
 }))
 
@@ -47,14 +76,16 @@ describe('model-call', () => {
 
     mockGenerateText
       .mockRejectedValueOnce(overloadedError)
-      .mockRejectedValueOnce(overloadedError)
       .mockResolvedValueOnce(response)
 
     await expect(
-      generateModelWithRetry({ prompt: 'hello' }, 1305082, 'routing'),
+      generateModelWithRetry({ prompt: 'hello' }, 1305082, 'routing', {
+        provider: 'openai',
+        model: 'gpt-5.4-nano',
+      }),
     ).resolves.toEqual(response)
 
-    expect(mockGenerateText).toHaveBeenCalledTimes(3)
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'openai/gpt-5.4-nano',
@@ -70,6 +101,82 @@ describe('model-call', () => {
         model: 'openai/gpt-5.4-nano',
         success: true,
         status: 'success',
+      }),
+    )
+  })
+
+  test('falls back from Gemini chat model to gpt-5.4-nano medium reasoning', async () => {
+    const overloadedError = Object.assign(new Error('model overloaded'), {
+      status: 503,
+    })
+    const fallbackThrottle = Object.assign(new Error('fallback busy'), {
+      status: 429,
+    })
+    const response = { text: 'ok from fallback', output: [] }
+
+    mockGenerateText
+      .mockRejectedValueOnce(overloadedError)
+      .mockRejectedValueOnce(overloadedError)
+      .mockRejectedValueOnce(fallbackThrottle)
+      .mockResolvedValueOnce(response)
+
+    await expect(
+      generateModelWithRetry(
+        {
+          prompt: 'hello',
+          providerOptions: { google: { serviceTier: 'priority' } },
+        },
+        1305082,
+        'routing',
+      ),
+    ).resolves.toEqual(response)
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(4)
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        model: 'google/gemini-3.1-flash-lite-preview',
+        providerOptions: { google: { serviceTier: 'priority' } },
+      }),
+    )
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        model: 'google/gemini-3.1-flash-lite-preview',
+      }),
+    )
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        model: 'openai/gpt-5.4-nano',
+        providerOptions: {
+          openai: {
+            reasoningEffort: 'medium',
+            safetyIdentifier: '1305082',
+            store: false,
+          },
+        },
+      }),
+    )
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        model: 'openai/gpt-5.4-nano',
+      }),
+    )
+    expect(mockRecordMetric).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'routing',
+        model: 'google/gemini-3.1-flash-lite-preview',
+        success: false,
+      }),
+    )
+    expect(mockRecordMetric).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'routing',
+        model: 'openai/gpt-5.4-nano',
+        fallbackFrom: 'google/gemini-3.1-flash-lite-preview',
+        success: true,
       }),
     )
   })

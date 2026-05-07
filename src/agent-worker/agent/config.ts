@@ -26,7 +26,7 @@ export const CONTENT_TOOLS = new Set([
 ])
 
 // Model retry
-export const MAX_RETRIES = 2
+export const MAX_RETRIES = 1
 export const RETRY_BASE_DELAY_MS = 1_000
 
 // Reply gate

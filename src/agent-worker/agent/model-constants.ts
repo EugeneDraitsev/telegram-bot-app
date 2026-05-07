@@ -1,10 +1,16 @@
 import {
+  type AiModelConfig,
   DEFAULT_FAST_TEXT_MODEL,
   DEFAULT_HELPER_TEXT_MODEL,
   DEFAULT_WEB_SEARCH_MODEL,
   formatAiModelConfig,
   getAiModelConfig,
 } from '@tg-bot/common'
+
+const DEFAULT_AGENT_CHAT_FALLBACK_MODEL: AiModelConfig = {
+  provider: 'openai',
+  model: 'gpt-5.4-nano',
+}
 
 export const FAST_TEXT_MODEL_CONFIG = getAiModelConfig(
   'FAST_TEXT_MODEL',
@@ -13,6 +19,10 @@ export const FAST_TEXT_MODEL_CONFIG = getAiModelConfig(
 export const CHAT_MODEL_CONFIG = getAiModelConfig(
   'AGENT_CHAT_MODEL',
   FAST_TEXT_MODEL_CONFIG,
+)
+export const CHAT_FALLBACK_MODEL_CONFIG = getAiModelConfig(
+  'AGENT_CHAT_FALLBACK_MODEL',
+  DEFAULT_AGENT_CHAT_FALLBACK_MODEL,
 )
 export const REPLY_GATE_MODEL_CONFIG = getAiModelConfig(
   'REPLY_GATE_MODEL',
@@ -36,6 +46,10 @@ export const FAST_TEXT_MODEL = formatAiModelConfig(FAST_TEXT_MODEL_CONFIG)
 export const CHAT_MODEL = CHAT_MODEL_CONFIG.model
 export const CHAT_MODEL_LABEL = formatAiModelConfig(CHAT_MODEL_CONFIG)
 export const CHAT_MODEL_REASONING_EFFORT = 'none'
+export const CHAT_FALLBACK_MODEL = formatAiModelConfig(
+  CHAT_FALLBACK_MODEL_CONFIG,
+)
+export const CHAT_FALLBACK_REASONING_EFFORT = 'medium'
 export const REPLY_GATE_MODEL = formatAiModelConfig(REPLY_GATE_MODEL_CONFIG)
 export const REPLY_GATE_FALLBACK_MODEL = formatAiModelConfig(
   REPLY_GATE_FALLBACK_MODEL_CONFIG,
