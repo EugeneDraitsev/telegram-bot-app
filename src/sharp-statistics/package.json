@@ -4,8 +4,8 @@
   "dependencies": {
     "@tg-bot/common": "workspace:*",
     "polished": "^4.3.1",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "styled-components": "^6.4.1"
   },
   "devDependencies": {
