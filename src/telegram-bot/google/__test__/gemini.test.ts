@@ -99,7 +99,7 @@ describe('gemini AI access control', () => {
       const result = await generateMultimodalCompletion({
         prompt: 'test prompt',
         message,
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.1-flash-lite',
         googleTools: mockGoogleTools as never,
         createTextCompletion: mockTextCompletion,
       })
@@ -162,7 +162,7 @@ describe('gemini AI access control', () => {
         prompt: 'test prompt',
         message,
         imagesData: [Buffer.from('current-image')],
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.1-flash-lite',
         googleTools: mockGoogleTools as never,
         createTextCompletion: mockTextCompletion,
         api,
@@ -262,7 +262,7 @@ describe('gemini AI access control', () => {
             fileUniqueId: 'reply-photo',
           },
         ],
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.1-flash-lite',
         googleTools: mockGoogleTools as never,
         createTextCompletion: mockTextCompletion,
         api: { getFile: jest.fn() },

@@ -28,7 +28,7 @@ const GEMINI_FAILURE_MESSAGES = new Set([
 ])
 
 export const GEMMA_MODEL = 'gemma-4-31b-it'
-export const GEMINI_FLASH_LITE_MODEL = 'gemini-3.1-flash-lite-preview'
+export const GEMINI_FLASH_LITE_MODEL = 'gemini-3.1-flash-lite'
 
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,

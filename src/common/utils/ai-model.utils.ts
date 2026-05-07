@@ -15,7 +15,7 @@ export interface AiModelConfig {
 
 export const DEFAULT_FAST_TEXT_MODEL: AiModelConfig = {
   provider: 'google',
-  model: 'gemini-3.1-flash-lite-preview',
+  model: 'gemini-3.1-flash-lite',
 }
 
 export const DEFAULT_HELPER_TEXT_MODEL: AiModelConfig = {

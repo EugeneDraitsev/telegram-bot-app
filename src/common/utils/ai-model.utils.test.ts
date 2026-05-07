@@ -15,12 +15,12 @@ describe('ai-model.utils', () => {
 
     expect(
       parseAiModelConfig(
-        'google/gemini-3.1-flash-lite-preview',
+        'google/gemini-3.1-flash-lite',
         DEFAULT_FAST_TEXT_MODEL,
       ),
     ).toEqual({
       provider: 'google',
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
     })
   })
 
@@ -31,19 +31,19 @@ describe('ai-model.utils', () => {
     })
 
     expect(
-      parseAiModelConfig('gemini-3.1-flash-lite-preview', {
+      parseAiModelConfig('gemini-3.1-flash-lite', {
         provider: 'openai',
         model: 'fallback',
       }),
     ).toEqual({
       provider: 'google',
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
     })
   })
 
   test('formats provider-neutral model labels', () => {
     expect(formatAiModelConfig(DEFAULT_FAST_TEXT_MODEL)).toBe(
-      'google/gemini-3.1-flash-lite-preview',
+      'google/gemini-3.1-flash-lite',
     )
   })
 })

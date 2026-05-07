@@ -10,7 +10,7 @@
   "dependencies": {
     "@tg-bot/common": "workspace:*",
     "@upstash/redis": "^1.38.0",
-    "ai": "^6.0.174",
+    "ai": "^6.0.175",
     "grammy": "^1.42.0",
     "zod": "^4.4.3"
   },

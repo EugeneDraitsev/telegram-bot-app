@@ -53,7 +53,7 @@ jest.mock('../models', () => ({
   CHAT_FALLBACK_REASONING_EFFORT: 'medium',
   CHAT_MODEL_CONFIG: {
     provider: 'google',
-    model: 'gemini-3.1-flash-lite-preview',
+    model: 'gemini-3.1-flash-lite',
   },
   CHAT_MODEL_TIMEOUT_MS: 45_000,
 }))
@@ -135,14 +135,14 @@ describe('model-call', () => {
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        model: 'google/gemini-3.1-flash-lite-preview',
+        model: 'google/gemini-3.1-flash-lite',
         providerOptions: { google: { serviceTier: 'priority' } },
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        model: 'google/gemini-3.1-flash-lite-preview',
+        model: 'google/gemini-3.1-flash-lite',
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
@@ -167,7 +167,7 @@ describe('model-call', () => {
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'google/gemini-3.1-flash-lite-preview',
+        model: 'google/gemini-3.1-flash-lite',
         success: false,
       }),
     )
@@ -175,7 +175,7 @@ describe('model-call', () => {
       expect.objectContaining({
         name: 'routing',
         model: 'openai/gpt-5.4-nano',
-        fallbackFrom: 'google/gemini-3.1-flash-lite-preview',
+        fallbackFrom: 'google/gemini-3.1-flash-lite',
         success: true,
       }),
     )
