@@ -1,8 +1,8 @@
 import type { Context } from 'grammy/web'
 
 import { OPENAI_GPT_IMAGE_MODEL } from '@tg-bot/common'
+import { handleAgenticCommand } from './agent'
 import {
-  GEMINI_FLASH_LITE_MODEL,
   GEMMA_MODEL,
   setupImageGenerationGeminiCommands,
   setupMultimodalGeminiCommands,
@@ -33,13 +33,7 @@ const photoRoutes: PhotoRoute[] = [
   },
   {
     prefix: '/q',
-    handler: (ctx, deferred) =>
-      setupMultimodalGeminiCommands(
-        ctx,
-        deferred,
-        GEMINI_FLASH_LITE_MODEL,
-        '/q',
-      ),
+    handler: (ctx) => handleAgenticCommand(ctx),
   },
   {
     prefix: '/e',

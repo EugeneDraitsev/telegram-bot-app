@@ -1,5 +1,6 @@
 import type { Context } from 'grammy/web'
 
+import * as common from '@tg-bot/common'
 import { handlePhotoMessage } from '../photo-router'
 
 const setupMultimodalGeminiCommandsMock = jest.fn((..._args: unknown[]) =>
@@ -16,7 +17,6 @@ const setupMultimodalOpenAiCommandsMock = jest.fn((..._args: unknown[]) =>
 )
 
 jest.mock('../google', () => ({
-  GEMINI_FLASH_LITE_MODEL: 'gemini-3.1-flash-lite-preview',
   GEMMA_MODEL: 'gemma-4-31b-it',
   setupMultimodalGeminiCommands: (...args: unknown[]) =>
     setupMultimodalGeminiCommandsMock(...args),
@@ -34,7 +34,8 @@ jest.mock('../open-ai', () => ({
 }))
 
 describe('handlePhotoMessage', () => {
-  beforeEach(() => {
+  afterEach(() => {
+    jest.restoreAllMocks()
     setupMultimodalGeminiCommandsMock.mockClear()
     setupImageGenerationGeminiCommandsMock.mockClear()
     setupImageGenerationOpenAiCommandsMock.mockClear()
@@ -80,20 +81,31 @@ describe('handlePhotoMessage', () => {
     expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
   })
 
-  test('routes /q photo captions to Gemini flash-lite handler', async () => {
+  test('routes /q photo captions to agentic command handler', async () => {
+    const invokeSpy = jest
+      .spyOn(common, 'invokeAgentLambda')
+      .mockResolvedValue(
+        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+      )
     const ctx = {
-      message: { caption: '/q what tree is this' },
+      message: {
+        chat: { id: 123 },
+        caption: '/q what tree is this',
+      },
     } as unknown as Context
 
     const handled = await handlePhotoMessage(ctx, true)
 
     expect(handled).toBe(true)
-    expect(setupMultimodalGeminiCommandsMock).toHaveBeenCalledWith(
-      ctx,
-      true,
-      'gemini-3.1-flash-lite-preview',
-      '/q',
+    expect(invokeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bypassReplyGate: true,
+        message: expect.objectContaining({
+          caption: 'what tree is this',
+        }),
+      }),
     )
+    expect(setupMultimodalGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationGeminiCommandsMock).not.toHaveBeenCalled()
     expect(setupImageGenerationOpenAiCommandsMock).not.toHaveBeenCalled()
     expect(setupMultimodalOpenAiCommandsMock).not.toHaveBeenCalled()

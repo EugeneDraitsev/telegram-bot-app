@@ -14,6 +14,7 @@ import {
   startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
+import { handleAgenticCommand } from '../agent'
 import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
@@ -195,14 +196,7 @@ const setupGoogleCommands = (
     setupMultimodalGeminiCommands(ctx, deferredCommands, GEMMA_MODEL, '/gemma'),
   )
 
-  bot.command(['q', 'qq'], (ctx) =>
-    setupMultimodalGeminiCommands(
-      ctx,
-      deferredCommands,
-      GEMINI_FLASH_LITE_MODEL,
-      '/q',
-    ),
-  )
+  bot.command(['q', 'qq'], (ctx) => handleAgenticCommand(ctx))
 
   bot.command('ge', (ctx) =>
     setupImageGenerationGeminiCommands(ctx, deferredCommands),

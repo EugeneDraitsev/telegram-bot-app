@@ -587,6 +587,7 @@ export async function runAgenticLoop(
   api: TelegramApi,
   mediaBuffers?: MediaBuffer[],
   botInfo?: BotIdentity,
+  options: { bypassReplyGate?: boolean } = {},
 ): Promise<void> {
   const startedAt = Date.now()
   const chatId = message.chat?.id
@@ -659,19 +660,26 @@ export async function runAgenticLoop(
       ])
       const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
 
-      const shouldRespond = await shouldEngageWithMessage({
-        message,
-        textContent,
-        hasMedia,
-        memoryBlock,
-        botInfo,
-      })
-      if (!shouldRespond) {
+      if (options.bypassReplyGate) {
         logger.info(
-          { ...messageMeta, reason: 'reply_gate', model: REPLY_GATE_MODEL },
-          'loop.skipped',
+          { ...messageMeta, reason: 'explicit_command' },
+          'loop.reply_gate_bypassed',
         )
-        return
+      } else {
+        const shouldRespond = await shouldEngageWithMessage({
+          message,
+          textContent,
+          hasMedia,
+          memoryBlock,
+          botInfo,
+        })
+        if (!shouldRespond) {
+          logger.info(
+            { ...messageMeta, reason: 'reply_gate', model: REPLY_GATE_MODEL },
+            'loop.skipped',
+          )
+          return
+        }
       }
 
       void api
