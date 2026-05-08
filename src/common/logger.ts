@@ -20,12 +20,87 @@ const isPrettyEnabled =
   process.env.LOG_PRETTY === 'true' ||
   isLocalPrettyLog
 
+const MAX_LOG_STRING_LENGTH = 1_000
+const MAX_LOG_ARRAY_ITEMS = 20
+const MAX_LOG_OBJECT_DEPTH = 4
+const REDACTED_ERROR_KEYS = new Set([
+  'body',
+  'contents',
+  'inlineData',
+  'requestBody',
+  'requestBodyValues',
+  'requestHeaders',
+])
+
+function truncateString(value: string) {
+  if (value.length <= MAX_LOG_STRING_LENGTH) {
+    return value
+  }
+
+  return `${value.slice(0, MAX_LOG_STRING_LENGTH)}... [truncated ${value.length - MAX_LOG_STRING_LENGTH} chars]`
+}
+
+function sanitizeLogValue(
+  value: unknown,
+  depth = 0,
+  key?: string,
+  seen = new WeakSet<object>(),
+): unknown {
+  if (key && REDACTED_ERROR_KEYS.has(key)) {
+    return '[redacted]'
+  }
+
+  if (typeof value === 'string') {
+    return truncateString(value)
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value
+  }
+
+  if (seen.has(value)) {
+    return '[circular]'
+  }
+
+  if (depth >= MAX_LOG_OBJECT_DEPTH) {
+    return '[truncated]'
+  }
+
+  seen.add(value)
+
+  if (Array.isArray(value)) {
+    const items = value
+      .slice(0, MAX_LOG_ARRAY_ITEMS)
+      .map((item) => sanitizeLogValue(item, depth + 1, undefined, seen))
+
+    if (value.length > MAX_LOG_ARRAY_ITEMS) {
+      items.push(`[truncated ${value.length - MAX_LOG_ARRAY_ITEMS} items]`)
+    }
+
+    return items
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([entryKey, entryValue]) => [
+      entryKey,
+      sanitizeLogValue(entryValue, depth + 1, entryKey, seen),
+    ]),
+  )
+}
+
+export function serializeErrorForLog(error: unknown) {
+  const serialized =
+    error instanceof Error ? pino.stdSerializers.err(error) : error
+
+  return sanitizeLogValue(serialized)
+}
+
 const loggerOptions = {
   level: process.env.AGENT_WORKER_LOG_LEVEL ?? process.env.LOG_LEVEL ?? 'info',
   base: null,
   serializers: {
-    err: pino.stdSerializers.err,
-    error: pino.stdSerializers.err,
+    err: serializeErrorForLog,
+    error: serializeErrorForLog,
   },
 }
 
