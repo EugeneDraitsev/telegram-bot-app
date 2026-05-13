@@ -35,18 +35,6 @@
     "serverless-offline": "^14.6.0",
     "typescript": "^6.0.3"
   },
-  "resolutions": {
-    "@aws-sdk/client-lambda": "^3.1020.0",
-    "@aws-sdk/xml-builder": "^3.972.16",
-    "whatwg-url": "^15.1.0",
-    "@smithy/types": "^4.3.1",
-    "effect": "^3.21.0",
-    "undici": "^6.24.0",
-    "picomatch": "^4.0.4",
-    "fast-xml-parser": "^5.5.9",
-    "minimatch": "^3.1.4",
-    "brace-expansion": "^1.1.13"
-  },
   "workspaces": [
     "src/*"
   ]
