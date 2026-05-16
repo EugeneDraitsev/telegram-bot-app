@@ -64,7 +64,7 @@ export const dynamoScan = async <T = Record<string, unknown>>(
   options: DynamoScanOptions = {},
 ): Promise<T[]> => {
   const results: T[] = []
-  const params = { ...inputParams }
+  let exclusiveStartKey = inputParams.ExclusiveStartKey
   let pages = 0
 
   while (true) {
@@ -72,7 +72,12 @@ export const dynamoScan = async <T = Record<string, unknown>>(
       return results
     }
 
-    const scanResults = await docClient.send(new ScanCommand(params))
+    const scanResults = await docClient.send(
+      new ScanCommand({
+        ...inputParams,
+        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+      }),
+    )
     pages += 1
 
     const items = (scanResults.Items as T[]) || []
@@ -91,6 +96,6 @@ export const dynamoScan = async <T = Record<string, unknown>>(
       return results
     }
 
-    params.ExclusiveStartKey = scanResults.LastEvaluatedKey
+    exclusiveStartKey = scanResults.LastEvaluatedKey
   }
 }

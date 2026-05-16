@@ -11,7 +11,7 @@ const loadHandlers = async () => {
     connectionsChatIdIndexName
   process.env.WEBSOCKET_BROADCAST_ENDPOINT = 'example.execute-api.test/prod'
 
-  return import('../index.js')
+  return require('..') as typeof import('../index.js')
 }
 
 const createStatsEvent = (body: unknown) =>
@@ -138,5 +138,21 @@ describe('websocket handlers', () => {
           '{"connectionId":"connection-1"}',
       ),
     ).toBe(true)
+  })
+
+  test('stats rejects zero chat ids before reading or sending stats', async () => {
+    const { stats } = await loadHandlers()
+    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+    const apiSendSpy = jest.spyOn(
+      ApiGatewayManagementApiClient.prototype,
+      'send',
+    )
+
+    const response = await stats(createStatsEvent({ chatId: '0' }))
+
+    expect(response.statusCode).toBe(400)
+    expect(JSON.parse(response.body)).toEqual({ message: 'invalid chat id' })
+    expect(dynamoSendSpy).not.toHaveBeenCalled()
+    expect(apiSendSpy).not.toHaveBeenCalled()
   })
 })

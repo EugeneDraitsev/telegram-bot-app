@@ -20,7 +20,6 @@ const invokeStatsBroadcast = async (chatId: string) => {
   return invokeLambda({
     name: functionName,
     payload: { chatId },
-    customEndpoint: true,
     async: true,
   })
 }

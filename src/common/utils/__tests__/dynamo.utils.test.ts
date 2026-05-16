@@ -75,6 +75,35 @@ describe('dynamo utils', () => {
     ])
   })
 
+  test('dynamoScan should honor the caller start key without mutating input params', async () => {
+    const params = {
+      TableName: 'table',
+      ExclusiveStartKey: { id: 'start' },
+    }
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [{ id: 1 }],
+          LastEvaluatedKey: { id: 1 },
+        }),
+      )
+      .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 2 }] }))
+
+    expect(await dynamoScan(params)).toEqual([{ id: 1 }, { id: 2 }])
+    expect(
+      (sendSpy.mock.calls[0][0].input as { ExclusiveStartKey?: unknown })
+        .ExclusiveStartKey,
+    ).toEqual({
+      id: 'start',
+    })
+    expect(
+      (sendSpy.mock.calls[1][0].input as { ExclusiveStartKey?: unknown })
+        .ExclusiveStartKey,
+    ).toEqual({ id: 1 })
+    expect(params.ExclusiveStartKey).toEqual({ id: 'start' })
+  })
+
   test('dynamoScan should stop at maxPages', async () => {
     const sendSpy = jest
       .spyOn(DynamoDBDocumentClient.prototype, 'send')

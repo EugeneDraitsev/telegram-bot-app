@@ -36,9 +36,9 @@ const badRequest = (message: string): APIGatewayProxyResult => ({
 const getExpiresAt = () => Math.floor(Date.now() / 1000) + connectionTtlSeconds
 
 const normalizeChatId = (chatId: string | number) => {
-  const numericChatId = Number(chatId)
+  const chatIdText = String(chatId).trim()
 
-  return Number.isFinite(numericChatId) ? String(numericChatId) : undefined
+  return /^-?[1-9]\d*$/.test(chatIdText) ? chatIdText : undefined
 }
 
 const getClient = (endpoint: string) => {
