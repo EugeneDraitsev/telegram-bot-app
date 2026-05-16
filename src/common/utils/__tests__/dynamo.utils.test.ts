@@ -127,7 +127,7 @@ describe('dynamo utils', () => {
   })
 
   test('dynamoScan should stop at maxItems', async () => {
-    jest
+    const sendSpy = jest
       .spyOn(DynamoDBDocumentClient.prototype, 'send')
       .mockImplementationOnce(() =>
         Promise.resolve({
@@ -139,5 +139,30 @@ describe('dynamo utils', () => {
     expect(await dynamoScan({ TableName: 'table' }, { maxItems: 1 })).toEqual([
       { id: 1 },
     ])
+    expect((sendSpy.mock.calls[0][0].input as { Limit?: unknown }).Limit).toBe(
+      1,
+    )
+  })
+
+  test('dynamoScan should cap page limit to remaining maxItems', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [{ id: 1 }, { id: 2 }],
+          LastEvaluatedKey: { id: 2 },
+        }),
+      )
+      .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 3 }] }))
+
+    expect(
+      await dynamoScan({ TableName: 'table', Limit: 2 }, { maxItems: 3 }),
+    ).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
+    expect((sendSpy.mock.calls[0][0].input as { Limit?: unknown }).Limit).toBe(
+      2,
+    )
+    expect((sendSpy.mock.calls[1][0].input as { Limit?: unknown }).Limit).toBe(
+      1,
+    )
   })
 })

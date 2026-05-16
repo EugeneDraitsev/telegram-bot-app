@@ -72,9 +72,23 @@ export const dynamoScan = async <T = Record<string, unknown>>(
       return results
     }
 
+    if (options.maxItems !== undefined && results.length >= options.maxItems) {
+      return results
+    }
+
+    const remainingCount =
+      options.maxItems === undefined
+        ? undefined
+        : options.maxItems - results.length
+    const limit =
+      remainingCount === undefined
+        ? inputParams.Limit
+        : Math.min(inputParams.Limit ?? remainingCount, remainingCount)
+
     const scanResults = await docClient.send(
       new ScanCommand({
         ...inputParams,
+        ...(limit !== undefined ? { Limit: limit } : {}),
         ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
       }),
     )
@@ -87,10 +101,6 @@ export const dynamoScan = async <T = Record<string, unknown>>(
         : items.slice(0, Math.max(options.maxItems - results.length, 0))
 
     results.push(...remainingItems)
-
-    if (options.maxItems !== undefined && results.length >= options.maxItems) {
-      return results
-    }
 
     if (typeof scanResults.LastEvaluatedKey === 'undefined') {
       return results

@@ -9,6 +9,10 @@ export type Connection = {
   ttl?: number
 }
 
+export type ConnectionIndexRecord = Pick<Connection, 'connectionId'> & {
+  chatId: string
+}
+
 export type StatsPayload = {
   usersData: Array<User & { messages: number }>
   historicalData: UserStat[]

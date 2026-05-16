@@ -17,7 +17,7 @@ import {
   getStoredChatUsers,
   logger,
 } from '@tg-bot/common'
-import type { Connection, StatsPayload } from './types'
+import type { Connection, ConnectionIndexRecord, StatsPayload } from './types'
 
 const connectionsTableName = getRequiredEnv('WEBSOCKET_CONNECTIONS_TABLE_NAME')
 const connectionsChatIdIndexName = getRequiredEnv(
@@ -119,7 +119,7 @@ const getConnections = (chatId: string) =>
     IndexName: connectionsChatIdIndexName,
     KeyConditionExpression: 'chatId = :chatId',
     ExpressionAttributeValues: { ':chatId': chatId },
-  }).then((result) => (result.Items ?? []) as Connection[])
+  }).then((result) => (result.Items ?? []) as ConnectionIndexRecord[])
 
 const subscribeConnectionToChat = (connectionId: string, chatId: string) =>
   dynamoUpdateItem({
