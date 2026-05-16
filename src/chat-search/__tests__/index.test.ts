@@ -41,6 +41,7 @@ describe('chat search', () => {
             { chatInfo: { id: 1, type: 'supergroup', title: 'Best Group' } },
             { chatInfo: { id: 2, type: 'private', first_name: 'Best' } },
             { chatInfo: { id: 3, type: 'group', username: 'another_group' } },
+            { chatInfo: { id: 4, title: 'Best Missing Type' } },
           ],
         }),
       )

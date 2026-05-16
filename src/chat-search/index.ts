@@ -73,7 +73,9 @@ const getSearchText = ({ chatInfo }: ChatStatisticsRecord) =>
 const isSearchableChat = (
   chat: ChatStatisticsRecord,
 ): chat is SearchableChatStatisticsRecord =>
-  typeof chat.chatInfo?.id === 'number' && chat.chatInfo.type !== 'private'
+  typeof chat.chatInfo?.id === 'number' &&
+  chat.chatInfo.type !== undefined &&
+  chat.chatInfo.type !== 'private'
 
 const getChats = () =>
   dynamoScan<ChatStatisticsRecord>(

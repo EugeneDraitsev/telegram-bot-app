@@ -28,7 +28,7 @@ const connectionsTableName = getRequiredEnv('WEBSOCKET_CONNECTIONS_TABLE_NAME')
 const connectionsChatIdIndexName = getRequiredEnv(
   'WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME',
 )
-const connectionTtlSeconds = 60 * 60 * 24
+const connectionTtlSeconds = 60 * 60 * 3
 const clients = new Map<string, ApiGatewayManagementApiClient>()
 
 const ok = (): APIGatewayProxyResult => ({ statusCode: 200, body: '' })
@@ -267,10 +267,10 @@ export const broadcastStats = async ({
     return
   }
 
-  let stats: StatsPayload
+  let statsPayload: StatsPayload
 
   try {
-    stats = await getStatsPayload(normalizedChatId)
+    statsPayload = await getStatsPayload(normalizedChatId)
   } catch (error) {
     logger.error(
       { chatId: normalizedChatId, err: error },
@@ -281,7 +281,11 @@ export const broadcastStats = async ({
 
   const results = await Promise.allSettled(
     connections.map((connection) =>
-      sendStatsToConnection(connection.connectionId, broadcastEndpoint, stats),
+      sendStatsToConnection(
+        connection.connectionId,
+        broadcastEndpoint,
+        statsPayload,
+      ),
     ),
   )
   const failedDeliveries = results.filter(

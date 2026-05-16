@@ -4,7 +4,7 @@ import type { APIGatewayProxyWebsocketEventV2 } from 'aws-lambda'
 
 const connectionsTableName = 'websocket-connections'
 const connectionsChatIdIndexName = 'websocket-connections-chat-id'
-const originalEnv = process.env
+const originalEnv = { ...process.env }
 
 beforeAll(() => {
   process.env.WEBSOCKET_CONNECTIONS_TABLE_NAME = connectionsTableName
