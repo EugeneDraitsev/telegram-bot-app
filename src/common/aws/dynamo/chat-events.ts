@@ -2,20 +2,23 @@ import type { User } from 'telegram-typings'
 
 import { logger } from '../../logger'
 import type { ChatEvent } from '../../types'
-import { dynamoPutItem, dynamoQuery, invokeLambda, random } from '../../utils'
-
-const getRequiredEnv = (name: string) => {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set`)
-  }
-
-  return value
-}
+import {
+  dynamoPutItem,
+  dynamoQuery,
+  getOptionalEnv,
+  invokeLambda,
+  random,
+} from '../../utils'
 
 const invokeStatsBroadcast = async (chatId: string) => {
+  const functionName = getOptionalEnv('WEBSOCKET_BROADCAST_FUNCTION_NAME')
+  if (!functionName) {
+    logger.warn({ chatId }, 'websocket broadcast function is not configured')
+    return
+  }
+
   return invokeLambda({
-    name: getRequiredEnv('WEBSOCKET_BROADCAST_FUNCTION_NAME'),
+    name: functionName,
     payload: { chatId },
     customEndpoint: true,
     async: true,
@@ -43,9 +46,9 @@ export const saveEvent = async (
     }
 
     await dynamoPutItem(params)
-    void invokeStatsBroadcast(String(chat_id)).catch((error) =>
+    await invokeStatsBroadcast(String(chat_id)).catch((error) =>
       logger.error(
-        { chatId: String(chat_id), error },
+        { chatId: String(chat_id), err: error },
         'broadcast invoke error',
       ),
     )

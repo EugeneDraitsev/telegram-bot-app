@@ -19,6 +19,11 @@ import type {
   UpdateCommandOutput,
 } from '@aws-sdk/lib-dynamodb'
 
+interface DynamoScanOptions {
+  maxItems?: number
+  maxPages?: number
+}
+
 const client = new DynamoDBClient({ region: process.env.region })
 const docClient = DynamoDBDocumentClient.from(client, {
   marshallOptions: {
@@ -56,13 +61,31 @@ export const dynamoUpdateItem = (
 
 export const dynamoScan = async <T = Record<string, unknown>>(
   inputParams: ScanCommandInput,
+  options: DynamoScanOptions = {},
 ): Promise<T[]> => {
   const results: T[] = []
   const params = { ...inputParams }
+  let pages = 0
 
   while (true) {
+    if (options.maxPages !== undefined && pages >= options.maxPages) {
+      return results
+    }
+
     const scanResults = await docClient.send(new ScanCommand(params))
-    results.push(...((scanResults.Items as T[]) || []))
+    pages += 1
+
+    const items = (scanResults.Items as T[]) || []
+    const remainingItems =
+      options.maxItems === undefined
+        ? items
+        : items.slice(0, Math.max(options.maxItems - results.length, 0))
+
+    results.push(...remainingItems)
+
+    if (options.maxItems !== undefined && results.length >= options.maxItems) {
+      return results
+    }
 
     if (typeof scanResults.LastEvaluatedKey === 'undefined') {
       return results

@@ -74,4 +74,41 @@ describe('dynamo utils', () => {
       { id: 2 },
     ])
   })
+
+  test('dynamoScan should stop at maxPages', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [{ id: 1 }],
+          LastEvaluatedKey: { id: 1 },
+        }),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [{ id: 2 }],
+          LastEvaluatedKey: { id: 2 },
+        }),
+      )
+
+    expect(await dynamoScan({ TableName: 'table' }, { maxPages: 1 })).toEqual([
+      { id: 1 },
+    ])
+    expect(sendSpy).toHaveBeenCalledTimes(1)
+  })
+
+  test('dynamoScan should stop at maxItems', async () => {
+    jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [{ id: 1 }, { id: 2 }],
+          LastEvaluatedKey: { id: 2 },
+        }),
+      )
+
+    expect(await dynamoScan({ TableName: 'table' }, { maxItems: 1 })).toEqual([
+      { id: 1 },
+    ])
+  })
 })

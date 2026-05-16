@@ -44,7 +44,7 @@ flowchart LR
   bot --> stats
   bot -. "async" .-> reply
   bot -. "agent event" .-> agent
-  bot -. "saveEvent broadcast" .-> broadcast
+  bot -. "saveEvent async invoke" .-> broadcast
 
   reply --> tg
   agent --> tg
@@ -90,7 +90,8 @@ webhook lambda.
 
 `src/websockets` owns only the WebSocket runtime for the stats UI: connection
 tracking, initial `stats` responses and live broadcast fanout when new chat
-events are written.
+events are written. `saveEvent` lives in `src/common`; any lambda that writes a
+chat event through it can trigger the broadcast lambda.
 
 `src/chat-search` owns the REST `/search` endpoint used by
 `telegram-bot-ui` to discover chats. It reads `chat-statistics`; it is separate

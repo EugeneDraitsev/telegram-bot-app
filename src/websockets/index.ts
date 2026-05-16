@@ -13,25 +13,16 @@ import {
   dynamoQuery,
   dynamoUpdateItem,
   get24hChatStats,
+  getRequiredEnv,
   getStoredChatUsers,
   logger,
 } from '@tg-bot/common'
-
-const getRequiredEnv = (name: string) => {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set`)
-  }
-
-  return value
-}
 
 const connectionsTableName = getRequiredEnv('WEBSOCKET_CONNECTIONS_TABLE_NAME')
 const connectionsChatIdIndexName = getRequiredEnv(
   'WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME',
 )
-const connectionTtlSeconds = 60 * 60 * 24 * 7
-let clientEndpoint = ''
+const connectionTtlSeconds = 60 * 60 * 24
 let client: ApiGatewayManagementApiClient | undefined
 
 type Connection = {
@@ -42,7 +33,7 @@ type Connection = {
 }
 
 type BroadcastEvent = {
-  chatId?: string
+  chatId: string
 }
 
 const ok = (): APIGatewayProxyResult => ({ statusCode: 200, body: '' })
@@ -61,13 +52,11 @@ const normalizeChatId = (chatId: string | number) => {
 }
 
 const getClient = (endpoint: string) => {
-  const endpointUrl = `https://${endpoint}`
-  if (client && clientEndpoint === endpointUrl) {
-    return client
+  if (!client) {
+    client = new ApiGatewayManagementApiClient({
+      endpoint: `https://${endpoint}`,
+    })
   }
-
-  clientEndpoint = endpointUrl
-  client = new ApiGatewayManagementApiClient({ endpoint: endpointUrl })
 
   return client
 }
@@ -92,6 +81,12 @@ const isGoneConnectionError = (error: unknown) => {
     awsError.name === 'GoneException' ||
     awsError.$metadata?.httpStatusCode === 410
   )
+}
+
+const isConditionalCheckFailedError = (error: unknown) => {
+  const awsError = error as { name?: string }
+
+  return awsError.name === 'ConditionalCheckFailedException'
 }
 
 const sendEvent = async (
@@ -139,6 +134,7 @@ const subscribeConnectionToChat = (connectionId: string, chatId: string) =>
     TableName: connectionsTableName,
     Key: { connectionId },
     UpdateExpression: 'SET chatId = :chatId, #ttl = :ttl',
+    ConditionExpression: 'attribute_exists(connectionId)',
     ExpressionAttributeNames: { '#ttl': 'ttl' },
     ExpressionAttributeValues: {
       ':chatId': chatId,
@@ -205,12 +201,24 @@ export const stats = async (
     return badRequest('invalid chat id')
   }
 
-  const subscription = subscribeConnectionToChat(connectionId, normalizedChatId)
+  try {
+    await subscribeConnectionToChat(connectionId, normalizedChatId)
+  } catch (error) {
+    if (isConditionalCheckFailedError(error)) {
+      logger.warn(
+        { connectionId, chatId: normalizedChatId },
+        'websocket.stats.missing_connection',
+      )
+      return ok()
+    }
+
+    throw error
+  }
+
   const [usersData, historicalData] = await Promise.all([
     get24hChatStats(normalizedChatId),
     getStoredChatUsers(normalizedChatId),
   ])
-  await subscription
 
   await sendStatsToConnection(connectionId, `${domainName}/${stage}`, {
     usersData,
@@ -222,8 +230,7 @@ export const stats = async (
 
 export const broadcastStats = async (event: BroadcastEvent): Promise<void> => {
   const broadcastEndpoint = getRequiredEnv('WEBSOCKET_BROADCAST_ENDPOINT')
-  const chatId = event.chatId
-  const normalizedChatId = chatId ? normalizeChatId(chatId) : undefined
+  const normalizedChatId = normalizeChatId(event.chatId)
 
   if (!normalizedChatId) {
     return
@@ -234,10 +241,23 @@ export const broadcastStats = async (event: BroadcastEvent): Promise<void> => {
     return
   }
 
-  const [usersData, historicalData] = await Promise.all([
-    get24hChatStats(normalizedChatId).catch(() => []),
-    getStoredChatUsers(normalizedChatId).catch(() => []),
-  ])
+  let usersData: Awaited<ReturnType<typeof get24hChatStats>>
+  let historicalData: Awaited<ReturnType<typeof getStoredChatUsers>>
+
+  try {
+    const statsData = await Promise.all([
+      get24hChatStats(normalizedChatId),
+      getStoredChatUsers(normalizedChatId),
+    ])
+    usersData = statsData[0]
+    historicalData = statsData[1]
+  } catch (error) {
+    logger.error(
+      { chatId: normalizedChatId, err: error },
+      'websocket.broadcast.stats_fetch_failed',
+    )
+    return
+  }
 
   const results = await Promise.allSettled(
     connections.map((connection) =>

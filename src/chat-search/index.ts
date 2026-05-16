@@ -1,33 +1,23 @@
 import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
+import type { Chat } from 'telegram-typings'
 
 import { dynamoScan, logger } from '@tg-bot/common'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Credentials': 'true',
-  'Access-Control-Allow-Headers': 'X-Requested-With',
-}
+const chatSearchAllowedOrigin =
+  process.env.CHAT_SEARCH_ALLOWED_ORIGIN || 'https://telegram-bot-ui.vercel.app'
+const searchScanPageLimit = 100
+const searchScanMaxPages = 10
+const searchScanMaxItems = searchScanPageLimit * searchScanMaxPages
 
-type ChatInfo = {
-  id?: number
-  title?: string
-  username?: string
-  first_name?: string
-  last_name?: string
+const corsHeaders = {
+  'Access-Control-Allow-Origin': chatSearchAllowedOrigin,
+  'Access-Control-Allow-Headers': 'X-Requested-With',
+  'Access-Control-Allow-Methods': 'GET,OPTIONS',
 }
 
 type ChatStatisticsRecord = {
-  chatName?: string
-  chatInfo?: ChatInfo
+  chatInfo?: Chat
 }
-
-const chatCacheTtlMs = 2 * 60 * 1000
-let chatCache:
-  | {
-      expiresAt: number
-      chats: ChatStatisticsRecord[]
-    }
-  | undefined
 
 const badRequest = (message: string): APIGatewayProxyResult => ({
   statusCode: 400,
@@ -35,9 +25,8 @@ const badRequest = (message: string): APIGatewayProxyResult => ({
   body: JSON.stringify({ message }),
 })
 
-const getSearchText = ({ chatInfo, chatName }: ChatStatisticsRecord) =>
+const getSearchText = ({ chatInfo }: ChatStatisticsRecord) =>
   [
-    chatName,
     chatInfo?.title,
     chatInfo?.username,
     chatInfo?.first_name,
@@ -49,25 +38,18 @@ const getSearchText = ({ chatInfo, chatName }: ChatStatisticsRecord) =>
 
 const isSearchableChat = (
   chat: ChatStatisticsRecord,
-): chat is ChatStatisticsRecord & { chatInfo: ChatInfo & { id: number } } =>
-  typeof chat.chatInfo?.id === 'number'
+): chat is ChatStatisticsRecord & { chatInfo: Chat & { id: number } } =>
+  typeof chat.chatInfo?.id === 'number' && chat.chatInfo.type !== 'private'
 
-const getCachedChats = async () => {
-  const now = Date.now()
-  if (chatCache && chatCache.expiresAt > now) {
-    return chatCache.chats
-  }
-
-  const chats = await dynamoScan<ChatStatisticsRecord>({
-    TableName: 'chat-statistics',
-  })
-  chatCache = {
-    chats,
-    expiresAt: now + chatCacheTtlMs,
-  }
-
-  return chats
-}
+const getChats = () =>
+  dynamoScan<ChatStatisticsRecord>(
+    {
+      TableName: 'chat-statistics',
+      ProjectionExpression: 'chatInfo',
+      Limit: searchScanPageLimit,
+    },
+    { maxItems: searchScanMaxItems, maxPages: searchScanMaxPages },
+  )
 
 export const getChatByName: APIGatewayProxyHandler = async (event) => {
   try {
@@ -78,7 +60,7 @@ export const getChatByName: APIGatewayProxyHandler = async (event) => {
       return badRequest('you should specify chat name')
     }
 
-    const chats = await getCachedChats()
+    const chats = await getChats()
     const matchedChats = chats
       .filter(isSearchableChat)
       .filter((chat) => getSearchText(chat).includes(normalizedName))
@@ -90,7 +72,7 @@ export const getChatByName: APIGatewayProxyHandler = async (event) => {
       body: JSON.stringify(matchedChats),
     }
   } catch (error) {
-    logger.error({ error }, 'chat_search.failed')
-    return { statusCode: 502, headers: corsHeaders, body: '' }
+    logger.error({ err: error }, 'chat_search.failed')
+    return { statusCode: 500, headers: corsHeaders, body: '' }
   }
 }

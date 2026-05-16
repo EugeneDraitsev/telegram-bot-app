@@ -1,5 +1,7 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
+import { getRequiredEnv } from './env.utils'
+
 interface InvokeLambdaOptions {
   name: string
   // biome-ignore lint: we can pass any payload here
@@ -40,7 +42,7 @@ const stripLargeFields = (payload: Record<string, any>) => {
 
 // biome-ignore lint: we can pass any payload here
 export const invokeReplyLambda = (payload: Record<string, any>) => {
-  const replyWorkerFunctionName = process.env.REPLY_WORKER_FUNCTION_NAME || ''
+  const replyWorkerFunctionName = getRequiredEnv('REPLY_WORKER_FUNCTION_NAME')
   return invokeLambda({
     name: replyWorkerFunctionName,
     payload: stripLargeFields(payload),
@@ -51,10 +53,7 @@ export const invokeReplyLambda = (payload: Record<string, any>) => {
 
 // biome-ignore lint: we can pass any payload here
 export const invokeAgentLambda = (payload: Record<string, any>) => {
-  const agentWorkerFunctionName = process.env.AGENT_WORKER_FUNCTION_NAME || ''
-  if (!agentWorkerFunctionName) {
-    throw new Error('AGENT_WORKER_FUNCTION_NAME is not set')
-  }
+  const agentWorkerFunctionName = getRequiredEnv('AGENT_WORKER_FUNCTION_NAME')
   return invokeLambda({
     name: agentWorkerFunctionName,
     payload: stripLargeFields(payload),
