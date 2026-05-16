@@ -27,6 +27,10 @@ provider:
     DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
     TAVILY_API_KEY: ${env:TAVILY_API_KEY}
     GIPHY_API_KEY: ${env:GIPHY_API_KEY}
+    FRONTEND_BASE_URL: ${self:custom.frontendBaseUrl}
+    CHAT_SEARCH_ALLOWED_ORIGINS: ${env:CHAT_SEARCH_ALLOWED_ORIGINS, self:custom.chatSearchAllowedOrigins}
+    WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
+    WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME: ${self:custom.websocketConnectionsChatIdIndexName}
   iam:
     role:
       statements: ${file(roleStatements.yml)}
@@ -38,6 +42,8 @@ functions:
     environment:
       REPLY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-reply-worker
       AGENT_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-agent-worker
+      WEBSOCKET_BROADCAST_FUNCTION_NAME:
+        Ref: WebsocketDashbroadcastDashstatsLambdaFunction
     events:
       - http:
           path: /
@@ -82,6 +88,51 @@ functions:
           path: /statistics/{chatId}
           method: get
 
+  websocket-connect:
+    handler: src/websockets/index.connect
+    events:
+      - websocket:
+          route: $connect
+
+  websocket-disconnect:
+    handler: src/websockets/index.disconnect
+    events:
+      - websocket:
+          route: $disconnect
+
+  websocket-stats:
+    handler: src/websockets/index.stats
+    events:
+      - websocket:
+          route: stats
+
+  websocket-broadcast-stats:
+    handler: src/websockets/index.broadcastStats
+    role:
+      Fn::GetAtt:
+        - WebsocketBroadcastStatsRole
+        - Arn
+    environment:
+      WEBSOCKET_BROADCAST_ENDPOINT:
+        Fn::Join:
+          - ''
+          - - Ref: WebsocketsApi
+            - .execute-api.
+            - Ref: AWS::Region
+            - .
+            - Ref: AWS::URLSuffix
+            - /${sls:stage}
+
+  chat-search:
+    handler: src/chat-search/index.getChatByName
+    events:
+      - http:
+          path: /search
+          method: get
+      - http:
+          path: /search
+          method: options
+
 plugins:
   - serverless-offline
   - serverless-esbuild
@@ -97,6 +148,10 @@ custom:
     local: nodejs24.x
   esbuildTargetByStage:
     local: node24
+  websocketConnectionsTableName: ${self:service}-${sls:stage}-websocket-connections
+  websocketConnectionsChatIdIndexName: ${self:service}-${sls:stage}-websocket-connections-chat-id
+  frontendBaseUrl: ${env:FRONTEND_BASE_URL, 'https://telegram-bot-ui.vercel.app'}
+  chatSearchAllowedOrigins: ${self:custom.frontendBaseUrl},http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
   serverless-offline:
     httpPort: 4000
     useChildProcesses: true
@@ -111,6 +166,7 @@ custom:
     external:
       - sharp
     exclude:
+      - "@aws-sdk/client-apigatewaymanagementapi"
       - "@aws-sdk/client-dynamodb"
       - "@aws-sdk/client-lambda"
       - "@aws-sdk/client-s3"

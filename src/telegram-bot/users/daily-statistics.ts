@@ -1,6 +1,5 @@
-import { invokeLambda, safeJSONParse } from '@tg-bot/common'
+import { FRONTEND_BASE_URL, invokeLambda, safeJSONParse } from '@tg-bot/common'
 
-const FRONTEND_BASE_URL = 'https://telegram-bot-ui.vercel.app'
 const SHARP_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-statistics`
 
 export const getDailyStatistics = async (

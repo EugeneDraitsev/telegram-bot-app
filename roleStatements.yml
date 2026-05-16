@@ -3,10 +3,10 @@
     - lambda:InvokeFunction
     - lambda:InvokeAsync
   Resource:
-    - arn:aws:lambda:*:*:telegram-websockets-prod-broadcastStats
     - arn:aws:lambda:*:*:telegram-*-sharp-statistics
     - arn:aws:lambda:*:*:telegram-*-reply-worker
     - arn:aws:lambda:*:*:telegram-*-agent-worker
+    - arn:aws:lambda:*:*:telegram-*-websocket-broadcast-stats
 - Effect: Allow
   Action:
     - dynamodb:Query
@@ -18,3 +18,5 @@
   Resource:
     - arn:aws:dynamodb:*:*:table/chat-statistics
     - arn:aws:dynamodb:*:*:table/chat-events
+    - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
+    - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}/index/${self:custom.websocketConnectionsChatIdIndexName}

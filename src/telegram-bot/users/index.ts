@@ -2,6 +2,7 @@ import { InputFile } from 'grammy/web'
 import type { Bot } from 'grammy/web'
 
 import {
+  FRONTEND_BASE_URL,
   getChatName,
   getCommandData,
   getFormattedChatStatistics,
@@ -127,7 +128,7 @@ const setupUsersCommands = (bot: Bot) => {
     }
 
     return ctx.reply(
-      `${chatName} chat statistics: https://telegram-bot-ui.vercel.app/chat/${chatId}`,
+      `${chatName} chat statistics: ${FRONTEND_BASE_URL}/chat/${chatId}`,
       {
         reply_parameters: { message_id: replyId },
         parse_mode: 'HTML',
