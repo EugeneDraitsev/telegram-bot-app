@@ -1,15 +1,17 @@
 import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
-import type { Chat } from 'telegram-typings'
 
-import { dynamoScan, getOptionalEnv, logger } from '@tg-bot/common'
+import {
+  CHAT_SEARCH_DEFAULT_ALLOWED_ORIGINS,
+  dynamoScan,
+  FRONTEND_BASE_URL,
+  getOptionalEnv,
+  logger,
+} from '@tg-bot/common'
+import type {
+  ChatStatisticsRecord,
+  SearchableChatStatisticsRecord,
+} from './types'
 
-const defaultAllowedOrigins = [
-  'https://telegram-bot-ui.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:5173',
-]
 const searchScanPageLimit = 100
 const searchScanMaxPages = 10
 
@@ -17,7 +19,7 @@ const allowedOrigins = new Set(
   (
     getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGINS') ??
     getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGIN') ??
-    defaultAllowedOrigins.join(',')
+    CHAT_SEARCH_DEFAULT_ALLOWED_ORIGINS.join(',')
   )
     .split(',')
     .map((origin) => origin.trim())
@@ -26,13 +28,9 @@ const allowedOrigins = new Set(
 
 const getCorsHeaders = (origin?: string) => ({
   'Access-Control-Allow-Origin':
-    origin && allowedOrigins.has(origin) ? origin : defaultAllowedOrigins[0],
+    origin && allowedOrigins.has(origin) ? origin : FRONTEND_BASE_URL,
   Vary: 'Origin',
 })
-
-type ChatStatisticsRecord = {
-  chatInfo?: Chat
-}
 
 const getRequestOrigin = (event: Parameters<APIGatewayProxyHandler>[0]) =>
   event.headers.origin ?? event.headers.Origin
@@ -59,7 +57,7 @@ const getSearchText = ({ chatInfo }: ChatStatisticsRecord) =>
 
 const isSearchableChat = (
   chat: ChatStatisticsRecord,
-): chat is ChatStatisticsRecord & { chatInfo: Chat & { id: number } } =>
+): chat is SearchableChatStatisticsRecord =>
   typeof chat.chatInfo?.id === 'number' && chat.chatInfo.type !== 'private'
 
 const getChats = () =>

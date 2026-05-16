@@ -1,6 +1,7 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
+import { FRONTEND_BASE_URL } from '@tg-bot/common'
 import { getChatByName } from '..'
 
 const getChatByNameWithEvent = getChatByName as unknown as (
@@ -78,7 +79,7 @@ describe('chat search', () => {
     expect(response.statusCode).toBe(200)
     expect(response.headers).toHaveProperty(
       'Access-Control-Allow-Origin',
-      'https://telegram-bot-ui.vercel.app',
+      FRONTEND_BASE_URL,
     )
   })
 })

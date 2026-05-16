@@ -6,7 +6,6 @@ import type {
   APIGatewayProxyResult,
   APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda'
-import type { User } from 'telegram-typings'
 
 import {
   dynamoDeleteItem,
@@ -17,8 +16,8 @@ import {
   getRequiredEnv,
   getStoredChatUsers,
   logger,
-  type UserStat,
 } from '@tg-bot/common'
+import type { Connection, StatsPayload } from './types'
 
 const connectionsTableName = getRequiredEnv('WEBSOCKET_CONNECTIONS_TABLE_NAME')
 const connectionsChatIdIndexName = getRequiredEnv(
@@ -26,18 +25,6 @@ const connectionsChatIdIndexName = getRequiredEnv(
 )
 const connectionTtlSeconds = 60 * 60 * 24
 const clients = new Map<string, ApiGatewayManagementApiClient>()
-
-type Connection = {
-  connectionId: string
-  date: number
-  chatId?: string
-  ttl?: number
-}
-
-type StatsPayload = {
-  usersData: Array<User & { messages: number }>
-  historicalData: UserStat[]
-}
 
 const ok = (): APIGatewayProxyResult => ({ statusCode: 200, body: '' })
 
