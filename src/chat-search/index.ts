@@ -14,22 +14,38 @@ import type {
 
 const searchScanPageLimit = 100
 const searchScanMaxPages = 10
+const corsAllowedMethods = 'GET,OPTIONS'
+const corsAllowedHeaders = [
+  'Content-Type',
+  'X-Requested-With',
+  'X-Amz-Date',
+  'Authorization',
+  'X-Api-Key',
+  'X-Amz-Security-Token',
+  'X-Amz-User-Agent',
+].join(',')
 
-const allowedOrigins = new Set(
-  (
-    getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGINS') ??
-    getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGIN') ??
-    CHAT_SEARCH_DEFAULT_ALLOWED_ORIGINS.join(',')
-  )
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+const configuredAllowedOrigins = (
+  getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGINS') ??
+  getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGIN') ??
+  CHAT_SEARCH_DEFAULT_ALLOWED_ORIGINS.join(',')
 )
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+const allowedOrigins = new Set(configuredAllowedOrigins)
+const fallbackAllowedOrigin = configuredAllowedOrigins[0] ?? FRONTEND_BASE_URL
 
 const getCorsHeaders = (origin?: string) => ({
   'Access-Control-Allow-Origin':
-    origin && allowedOrigins.has(origin) ? origin : FRONTEND_BASE_URL,
+    origin && allowedOrigins.has(origin) ? origin : fallbackAllowedOrigin,
   Vary: 'Origin',
+})
+
+const getPreflightHeaders = (origin?: string) => ({
+  ...getCorsHeaders(origin),
+  'Access-Control-Allow-Methods': corsAllowedMethods,
+  'Access-Control-Allow-Headers': corsAllowedHeaders,
 })
 
 const getRequestOrigin = (event: Parameters<APIGatewayProxyHandler>[0]) =>
@@ -74,6 +90,14 @@ export const getChatByName: APIGatewayProxyHandler = async (event) => {
   const origin = getRequestOrigin(event)
 
   try {
+    if (event.httpMethod === 'OPTIONS') {
+      return {
+        statusCode: 204,
+        headers: getPreflightHeaders(origin),
+        body: '',
+      }
+    }
+
     const name = event.queryStringParameters?.name
     const normalizedName = name?.trim().toLowerCase()
 

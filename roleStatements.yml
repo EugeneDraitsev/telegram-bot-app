@@ -9,11 +9,6 @@
     - arn:aws:lambda:*:*:telegram-*-websocket-broadcast-stats
 - Effect: Allow
   Action:
-    - execute-api:ManageConnections
-  Resource:
-    - arn:aws:execute-api:${self:provider.region}:*:*/${sls:stage}/POST/@connections/*
-- Effect: Allow
-  Action:
     - dynamodb:Query
     - dynamodb:Scan
     - dynamodb:GetItem

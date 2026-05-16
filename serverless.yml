@@ -31,7 +31,6 @@ provider:
     CHAT_SEARCH_ALLOWED_ORIGINS: ${env:CHAT_SEARCH_ALLOWED_ORIGINS, self:custom.chatSearchAllowedOrigins}
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
     WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME: ${self:custom.websocketConnectionsChatIdIndexName}
-    WEBSOCKET_BROADCAST_FUNCTION_NAME: ${self:service}-${sls:stage}-websocket-broadcast-stats
   iam:
     role:
       statements: ${file(roleStatements.yml)}
@@ -43,6 +42,8 @@ functions:
     environment:
       REPLY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-reply-worker
       AGENT_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-agent-worker
+      WEBSOCKET_BROADCAST_FUNCTION_NAME:
+        Ref: WebsocketDashbroadcastDashstatsLambdaFunction
     events:
       - http:
           path: /
@@ -107,6 +108,10 @@ functions:
 
   websocket-broadcast-stats:
     handler: src/websockets/index.broadcastStats
+    role:
+      Fn::GetAtt:
+        - WebsocketBroadcastStatsRole
+        - Arn
     environment:
       WEBSOCKET_BROADCAST_ENDPOINT:
         Fn::Join:
@@ -124,16 +129,9 @@ functions:
       - http:
           path: /search
           method: get
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Requested-With
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-              - X-Amz-User-Agent
+      - http:
+          path: /search
+          method: options
 
 plugins:
   - serverless-offline

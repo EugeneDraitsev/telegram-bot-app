@@ -8,8 +8,9 @@ const getChatByNameWithEvent = getChatByName as unknown as (
   event: APIGatewayProxyEvent,
 ) => Promise<APIGatewayProxyResult>
 
-const createEvent = (name?: string, origin?: string) =>
+const createEvent = (name?: string, origin?: string, httpMethod = 'GET') =>
   ({
+    httpMethod,
     headers: origin ? { origin } : {},
     queryStringParameters: name === undefined ? null : { name },
   }) as APIGatewayProxyEvent
@@ -69,7 +70,7 @@ describe('chat search', () => {
     expect(response.headers).toHaveProperty('Vary', 'Origin')
   })
 
-  test('falls back to production origin for disallowed request origins', async () => {
+  test('falls back to the first allowed origin for disallowed request origins', async () => {
     jest
       .spyOn(DynamoDBDocumentClient.prototype, 'send')
       .mockImplementation(() => Promise.resolve({ Items: [] }))
@@ -80,6 +81,25 @@ describe('chat search', () => {
     expect(response.headers).toHaveProperty(
       'Access-Control-Allow-Origin',
       FRONTEND_BASE_URL,
+    )
+  })
+
+  test('handles CORS preflight in the lambda', async () => {
+    const sendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+
+    const response = await getChatByNameWithEvent(
+      createEvent(undefined, 'http://localhost:3000', 'OPTIONS'),
+    )
+
+    expect(response.statusCode).toBe(204)
+    expect(sendSpy).not.toHaveBeenCalled()
+    expect(response.headers).toHaveProperty(
+      'Access-Control-Allow-Origin',
+      'http://localhost:3000',
+    )
+    expect(response.headers).toHaveProperty(
+      'Access-Control-Allow-Methods',
+      'GET,OPTIONS',
     )
   })
 })

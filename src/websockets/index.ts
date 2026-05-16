@@ -63,7 +63,7 @@ const parseStatsBody = (body: string | null | undefined) => {
   }
 }
 
-const isGoneConnectionError = (error: unknown) => {
+const isStaleConnectionError = (error: unknown) => {
   const awsError = error as {
     name?: string
     $metadata?: {
@@ -73,6 +73,7 @@ const isGoneConnectionError = (error: unknown) => {
 
   return (
     awsError.name === 'GoneException' ||
+    awsError.name === 'ForbiddenException' ||
     awsError.$metadata?.httpStatusCode === 410
   )
 }
@@ -134,6 +135,15 @@ const subscribeConnectionToChat = (connectionId: string, chatId: string) =>
     },
   })
 
+const getStatsPayload = async (chatId: string): Promise<StatsPayload> => {
+  const [usersData, historicalData] = await Promise.all([
+    get24hChatStats(chatId),
+    getStoredChatUsers(chatId),
+  ])
+
+  return { usersData, historicalData }
+}
+
 const sendStatsToConnection = async (
   connectionId: string,
   endpoint: string,
@@ -142,7 +152,7 @@ const sendStatsToConnection = async (
   try {
     await sendEvent(connectionId, endpoint, data)
   } catch (error) {
-    if (isGoneConnectionError(error)) {
+    if (isStaleConnectionError(error)) {
       await removeConnection(connectionId)
       return
     }
@@ -201,21 +211,16 @@ export const stats = async (
         { connectionId, chatId: normalizedChatId },
         'websocket.stats.missing_connection',
       )
-      return ok()
+    } else {
+      throw error
     }
-
-    throw error
   }
 
-  const [usersData, historicalData] = await Promise.all([
-    get24hChatStats(normalizedChatId),
-    getStoredChatUsers(normalizedChatId),
-  ])
-
-  await sendStatsToConnection(connectionId, `${domainName}/${stage}`, {
-    usersData,
-    historicalData,
-  })
+  await sendStatsToConnection(
+    connectionId,
+    `${domainName}/${stage}`,
+    await getStatsPayload(normalizedChatId),
+  )
 
   return ok()
 }
@@ -240,11 +245,7 @@ export const broadcastStats = async ({
   let stats: StatsPayload
 
   try {
-    const [usersData, historicalData] = await Promise.all([
-      get24hChatStats(normalizedChatId),
-      getStoredChatUsers(normalizedChatId),
-    ])
-    stats = { usersData, historicalData }
+    stats = await getStatsPayload(normalizedChatId)
   } catch (error) {
     logger.error(
       { chatId: normalizedChatId, err: error },
