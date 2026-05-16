@@ -1,6 +1,7 @@
 export const getOptionalEnv = (name: string): string | undefined => {
   const value = process.env[name]?.trim()
 
+  // Treat blank or whitespace-only env values as unset.
   return value || undefined
 }
 

@@ -61,9 +61,13 @@ const getClient = (endpoint: string) => {
 
 const parseStatsBody = (body: string | null | undefined) => {
   try {
-    return JSON.parse(body || '{}') as { chatId?: unknown }
+    const parsed = JSON.parse(body || '{}') as unknown
+
+    return parsed && typeof parsed === 'object'
+      ? (parsed as { chatId?: unknown })
+      : {}
   } catch {
-    return {}
+    return undefined
   }
 }
 
@@ -197,6 +201,10 @@ export const stats = async (
   }
 
   const statsBody = parseStatsBody(event.body)
+  if (!statsBody) {
+    return badRequest('invalid json')
+  }
+
   if (!Object.hasOwn(statsBody, 'chatId')) {
     return badRequest('missing chat id')
   }

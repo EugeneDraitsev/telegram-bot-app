@@ -206,4 +206,20 @@ describe('websocket handlers', () => {
     expect(dynamoSendSpy).not.toHaveBeenCalled()
     expect(apiSendSpy).not.toHaveBeenCalled()
   })
+
+  test('stats rejects malformed json before reading or sending stats', async () => {
+    const { stats } = await loadHandlers()
+    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+    const apiSendSpy = jest.spyOn(
+      ApiGatewayManagementApiClient.prototype,
+      'send',
+    )
+
+    const response = await stats({ ...createStatsEvent({}), body: '{' })
+
+    expect(response.statusCode).toBe(400)
+    expect(JSON.parse(response.body)).toEqual({ message: 'invalid json' })
+    expect(dynamoSendSpy).not.toHaveBeenCalled()
+    expect(apiSendSpy).not.toHaveBeenCalled()
+  })
 })
