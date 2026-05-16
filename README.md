@@ -40,8 +40,8 @@ flowchart LR
   wss["fa:fa-plug WebSocket API"]:::gateway
 
   tg <--> req <--> msg <--> bot
-  bot --> events
-  bot --> stats
+  bot -->|"common saveEvent"| events
+  bot -->|"common statistics helpers"| stats
   bot -. "async" .-> reply
   bot -. "agent event" .-> agent
   bot -. "async Lambda Invoke (Event)" .-> broadcast

@@ -2,6 +2,8 @@ import { ApiGatewayManagementApiClient } from '@aws-sdk/client-apigatewaymanagem
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyWebsocketEventV2 } from 'aws-lambda'
 
+import { logger } from '@tg-bot/common'
+
 const connectionsTableName = 'websocket-connections'
 const connectionsChatIdIndexName = 'websocket-connections-chat-id'
 const originalEnv = { ...process.env }
@@ -195,6 +197,20 @@ describe('websocket handlers', () => {
     ).toBe(false)
   })
 
+  test('broadcast logs and skips invalid chat ids before reading connections', async () => {
+    const { broadcastStats } = await loadHandlers()
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {})
+    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+
+    await broadcastStats({ chatId: '0' })
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      { chatId: '0' },
+      'websocket.broadcast.invalid_chat_id',
+    )
+    expect(dynamoSendSpy).not.toHaveBeenCalled()
+  })
+
   test.each([
     { chatId: '0' },
     { chatId: 0 },
@@ -227,6 +243,39 @@ describe('websocket handlers', () => {
     expect(response.statusCode).toBe(400)
     expect(JSON.parse(response.body)).toEqual({ message: 'missing chat id' })
     expect(dynamoSendSpy).not.toHaveBeenCalled()
+    expect(apiSendSpy).not.toHaveBeenCalled()
+  })
+
+  test('stats keeps subscription when initial snapshot fetch fails', async () => {
+    const { stats } = await loadHandlers()
+    const dynamoSendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation((command) => {
+        const input = command.input as Record<string, unknown>
+
+        if (input.TableName === connectionsTableName) {
+          return Promise.resolve({})
+        }
+
+        if (input.TableName === 'chat-events') {
+          return Promise.reject(new Error('chat events unavailable'))
+        }
+
+        if (input.TableName === 'chat-statistics') {
+          return Promise.resolve({ Items: [] })
+        }
+
+        return Promise.reject(new Error(`unexpected table ${input.TableName}`))
+      })
+    const apiSendSpy = jest.spyOn(
+      ApiGatewayManagementApiClient.prototype,
+      'send',
+    )
+
+    const response = await stats(createStatsEvent({ chatId: '123' }))
+
+    expect(response.statusCode).toBe(200)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(3)
     expect(apiSendSpy).not.toHaveBeenCalled()
   })
 

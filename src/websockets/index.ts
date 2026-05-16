@@ -241,10 +241,22 @@ export const stats = async (
     }
   }
 
+  let statsPayload: StatsPayload
+
+  try {
+    statsPayload = await getStatsPayload(normalizedChatId)
+  } catch (error) {
+    logger.error(
+      { chatId: normalizedChatId, err: error },
+      'websocket.stats.stats_fetch_failed',
+    )
+    return ok()
+  }
+
   await sendStatsToConnection(
     connectionId,
     `${domainName}/${stage}`,
-    await getStatsPayload(normalizedChatId),
+    statsPayload,
   )
 
   return ok()
@@ -259,6 +271,7 @@ export const broadcastStats = async ({
   const normalizedChatId = normalizeChatId(chatId)
 
   if (!normalizedChatId) {
+    logger.warn({ chatId }, 'websocket.broadcast.invalid_chat_id')
     return
   }
 
