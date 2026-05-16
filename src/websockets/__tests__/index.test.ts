@@ -86,7 +86,7 @@ describe('websocket handlers', () => {
     })
   })
 
-  test('broadcast removes stale connections rejected by API Gateway', async () => {
+  test('broadcast removes gone connections rejected by API Gateway', async () => {
     const { broadcastStats } = await loadHandlers()
     const dynamoSendSpy = jest
       .spyOn(DynamoDBDocumentClient.prototype, 'send')
@@ -123,8 +123,8 @@ describe('websocket handlers', () => {
       .mockImplementation(
         () =>
           Promise.reject(
-            Object.assign(new Error('forbidden'), {
-              name: 'ForbiddenException',
+            Object.assign(new Error('gone'), {
+              name: 'GoneException',
             }),
           ) as never,
       )
@@ -138,6 +138,54 @@ describe('websocket handlers', () => {
           '{"connectionId":"connection-1"}',
       ),
     ).toBe(true)
+  })
+
+  test('broadcast does not remove connections on forbidden API errors', async () => {
+    const { broadcastStats } = await loadHandlers()
+    const dynamoSendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation((command) => {
+        const input = command.input as Record<string, unknown>
+
+        if (input.IndexName === connectionsChatIdIndexName) {
+          return Promise.resolve({
+            Items: [{ connectionId: 'connection-1', chatId: '123' }],
+          })
+        }
+
+        if (input.TableName === 'chat-events') {
+          return Promise.resolve({ Items: [] })
+        }
+
+        if (input.TableName === 'chat-statistics') {
+          return Promise.resolve({
+            Items: [{ chatId: '123', users: [] }],
+          })
+        }
+
+        return Promise.reject(new Error(`unexpected input ${input.TableName}`))
+      })
+    jest
+      .spyOn(ApiGatewayManagementApiClient.prototype, 'send')
+      .mockImplementation(
+        () =>
+          Promise.reject(
+            Object.assign(new Error('forbidden'), {
+              name: 'ForbiddenException',
+            }),
+          ) as never,
+      )
+
+    await broadcastStats({ chatId: '123' })
+
+    expect(
+      dynamoSendSpy.mock.calls.some(
+        ([command]) =>
+          (command.input as { TableName?: unknown }).TableName ===
+            connectionsTableName &&
+          Boolean((command.input as { Key?: unknown }).Key),
+      ),
+    ).toBe(false)
   })
 
   test('stats rejects zero chat ids before reading or sending stats', async () => {

@@ -5,24 +5,17 @@ import type { ChatEvent } from '../../types'
 import {
   dynamoPutItem,
   dynamoQuery,
-  getOptionalEnv,
+  getRequiredEnv,
   invokeLambda,
   random,
 } from '../../utils'
 
-const invokeStatsBroadcast = async (chatId: string) => {
-  const functionName = getOptionalEnv('WEBSOCKET_BROADCAST_FUNCTION_NAME')
-  if (!functionName) {
-    logger.warn({ chatId }, 'websocket broadcast function is not configured')
-    return
-  }
-
-  return invokeLambda({
-    name: functionName,
+const invokeStatsBroadcast = (chatId: string) =>
+  invokeLambda({
+    name: getRequiredEnv('WEBSOCKET_BROADCAST_FUNCTION_NAME'),
     payload: { chatId },
     async: true,
   })
-}
 
 export const saveEvent = async (
   userInfo?: User,
@@ -44,13 +37,15 @@ export const saveEvent = async (
       Item: event,
     }
 
-    await dynamoPutItem(params)
-    await invokeStatsBroadcast(String(chat_id)).catch((error) =>
-      logger.error(
-        { chatId: String(chat_id), err: error },
-        'broadcast invoke error',
+    await Promise.all([
+      dynamoPutItem(params),
+      invokeStatsBroadcast(String(chat_id)).catch((error) =>
+        logger.error(
+          { chatId: String(chat_id), err: error },
+          'broadcast invoke error',
+        ),
       ),
-    )
+    ])
   }
 }
 

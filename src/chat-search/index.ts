@@ -27,7 +27,6 @@ const corsAllowedHeaders = [
 
 const configuredAllowedOrigins = (
   getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGINS') ??
-  getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGIN') ??
   CHAT_SEARCH_DEFAULT_ALLOWED_ORIGINS.join(',')
 )
   .split(',')

@@ -17,7 +17,7 @@ Resources:
             - AttributeName: chatId
               KeyType: HASH
           Projection:
-            ProjectionType: ALL
+            ProjectionType: KEYS_ONLY
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
         AttributeName: ttl

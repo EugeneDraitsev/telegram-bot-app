@@ -73,7 +73,6 @@ const isStaleConnectionError = (error: unknown) => {
 
   return (
     awsError.name === 'GoneException' ||
-    awsError.name === 'ForbiddenException' ||
     awsError.$metadata?.httpStatusCode === 410
   )
 }
