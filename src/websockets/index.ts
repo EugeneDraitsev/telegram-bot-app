@@ -6,6 +6,7 @@ import type {
   APIGatewayProxyResult,
   APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda'
+import type { User } from 'telegram-typings'
 
 import {
   dynamoDeleteItem,
@@ -16,6 +17,7 @@ import {
   getRequiredEnv,
   getStoredChatUsers,
   logger,
+  type UserStat,
 } from '@tg-bot/common'
 
 const connectionsTableName = getRequiredEnv('WEBSOCKET_CONNECTIONS_TABLE_NAME')
@@ -23,17 +25,18 @@ const connectionsChatIdIndexName = getRequiredEnv(
   'WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME',
 )
 const connectionTtlSeconds = 60 * 60 * 24
-let client: ApiGatewayManagementApiClient | undefined
+const clients = new Map<string, ApiGatewayManagementApiClient>()
 
 type Connection = {
   connectionId: string
-  date?: number
+  date: number
   chatId?: string
   ttl?: number
 }
 
-type BroadcastEvent = {
-  chatId: string
+type StatsPayload = {
+  usersData: Array<User & { messages: number }>
+  historicalData: UserStat[]
 }
 
 const ok = (): APIGatewayProxyResult => ({ statusCode: 200, body: '' })
@@ -52,11 +55,15 @@ const normalizeChatId = (chatId: string | number) => {
 }
 
 const getClient = (endpoint: string) => {
-  if (!client) {
-    client = new ApiGatewayManagementApiClient({
-      endpoint: `https://${endpoint}`,
-    })
+  const endpointUrl = `https://${endpoint}`
+  const cachedClient = clients.get(endpointUrl)
+
+  if (cachedClient) {
+    return cachedClient
   }
+
+  const client = new ApiGatewayManagementApiClient({ endpoint: endpointUrl })
+  clients.set(endpointUrl, client)
 
   return client
 }
@@ -92,15 +99,14 @@ const isConditionalCheckFailedError = (error: unknown) => {
 const sendEvent = async (
   connectionId: string,
   endpoint: string,
-  data?: unknown,
+  data: StatsPayload,
 ) => {
   const client = getClient(endpoint)
-  const payload = typeof data === 'string' ? data : JSON.stringify(data ?? '')
 
   return client.send(
     new PostToConnectionCommand({
       ConnectionId: connectionId,
-      Data: payload,
+      Data: JSON.stringify(data),
     }),
   )
 }
@@ -110,7 +116,6 @@ const saveConnection = (connection: Connection) =>
     TableName: connectionsTableName,
     Item: {
       ...connection,
-      date: connection.date ?? Date.now(),
       ttl: getExpiresAt(),
     },
   })
@@ -145,7 +150,7 @@ const subscribeConnectionToChat = (connectionId: string, chatId: string) =>
 const sendStatsToConnection = async (
   connectionId: string,
   endpoint: string,
-  data: unknown,
+  data: StatsPayload,
 ) => {
   try {
     await sendEvent(connectionId, endpoint, data)
@@ -228,9 +233,13 @@ export const stats = async (
   return ok()
 }
 
-export const broadcastStats = async (event: BroadcastEvent): Promise<void> => {
+export const broadcastStats = async ({
+  chatId,
+}: {
+  chatId: string
+}): Promise<void> => {
   const broadcastEndpoint = getRequiredEnv('WEBSOCKET_BROADCAST_ENDPOINT')
-  const normalizedChatId = normalizeChatId(event.chatId)
+  const normalizedChatId = normalizeChatId(chatId)
 
   if (!normalizedChatId) {
     return
@@ -241,16 +250,14 @@ export const broadcastStats = async (event: BroadcastEvent): Promise<void> => {
     return
   }
 
-  let usersData: Awaited<ReturnType<typeof get24hChatStats>>
-  let historicalData: Awaited<ReturnType<typeof getStoredChatUsers>>
+  let stats: StatsPayload
 
   try {
-    const statsData = await Promise.all([
+    const [usersData, historicalData] = await Promise.all([
       get24hChatStats(normalizedChatId),
       getStoredChatUsers(normalizedChatId),
     ])
-    usersData = statsData[0]
-    historicalData = statsData[1]
+    stats = { usersData, historicalData }
   } catch (error) {
     logger.error(
       { chatId: normalizedChatId, err: error },
@@ -261,10 +268,7 @@ export const broadcastStats = async (event: BroadcastEvent): Promise<void> => {
 
   const results = await Promise.allSettled(
     connections.map((connection) =>
-      sendStatsToConnection(connection.connectionId, broadcastEndpoint, {
-        usersData,
-        historicalData,
-      }),
+      sendStatsToConnection(connection.connectionId, broadcastEndpoint, stats),
     ),
   )
   const failedDeliveries = results.filter(

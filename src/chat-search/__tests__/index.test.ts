@@ -57,6 +57,7 @@ describe('chat search', () => {
         Limit: 100,
       }),
     )
+    expect(sendSpy.mock.calls[0][0].input).not.toHaveProperty('MaxItems')
     expect(response.headers).not.toHaveProperty(
       'Access-Control-Allow-Credentials',
     )

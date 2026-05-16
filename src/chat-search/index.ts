@@ -1,7 +1,7 @@
 import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
 import type { Chat } from 'telegram-typings'
 
-import { dynamoScan, logger } from '@tg-bot/common'
+import { dynamoScan, getOptionalEnv, logger } from '@tg-bot/common'
 
 const defaultAllowedOrigins = [
   'https://telegram-bot-ui.vercel.app',
@@ -12,12 +12,11 @@ const defaultAllowedOrigins = [
 ]
 const searchScanPageLimit = 100
 const searchScanMaxPages = 10
-const searchScanMaxItems = searchScanPageLimit * searchScanMaxPages
 
 const allowedOrigins = new Set(
   (
-    process.env.CHAT_SEARCH_ALLOWED_ORIGINS ||
-    process.env.CHAT_SEARCH_ALLOWED_ORIGIN ||
+    getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGINS') ??
+    getOptionalEnv('CHAT_SEARCH_ALLOWED_ORIGIN') ??
     defaultAllowedOrigins.join(',')
   )
     .split(',')
@@ -28,8 +27,6 @@ const allowedOrigins = new Set(
 const getCorsHeaders = (origin?: string) => ({
   'Access-Control-Allow-Origin':
     origin && allowedOrigins.has(origin) ? origin : defaultAllowedOrigins[0],
-  'Access-Control-Allow-Headers': 'X-Requested-With',
-  'Access-Control-Allow-Methods': 'GET,OPTIONS',
   Vary: 'Origin',
 })
 
@@ -72,7 +69,7 @@ const getChats = () =>
       ProjectionExpression: 'chatInfo',
       Limit: searchScanPageLimit,
     },
-    { maxItems: searchScanMaxItems, maxPages: searchScanMaxPages },
+    { maxPages: searchScanMaxPages },
   )
 
 export const getChatByName: APIGatewayProxyHandler = async (event) => {
