@@ -7,13 +7,14 @@ const getChatByNameWithEvent = getChatByName as unknown as (
   event: APIGatewayProxyEvent,
 ) => Promise<APIGatewayProxyResult>
 
-const createEvent = (name?: string) =>
+const createEvent = (name?: string, origin?: string) =>
   ({
+    headers: origin ? { origin } : {},
     queryStringParameters: name === undefined ? null : { name },
   }) as APIGatewayProxyEvent
 
-const callHandler = async (name?: string) =>
-  getChatByNameWithEvent(createEvent(name))
+const callHandler = async (name?: string, origin?: string) =>
+  getChatByNameWithEvent(createEvent(name, origin))
 
 describe('chat search', () => {
   afterEach(() => {
@@ -42,7 +43,7 @@ describe('chat search', () => {
         }),
       )
 
-    const response = await callHandler('best')
+    const response = await callHandler('best', 'http://localhost:5173')
 
     expect(response.statusCode).toBe(200)
     expect(JSON.parse(response.body)).toEqual([
@@ -58,6 +59,25 @@ describe('chat search', () => {
     )
     expect(response.headers).not.toHaveProperty(
       'Access-Control-Allow-Credentials',
+    )
+    expect(response.headers).toHaveProperty(
+      'Access-Control-Allow-Origin',
+      'http://localhost:5173',
+    )
+    expect(response.headers).toHaveProperty('Vary', 'Origin')
+  })
+
+  test('falls back to production origin for disallowed request origins', async () => {
+    jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => Promise.resolve({ Items: [] }))
+
+    const response = await callHandler('best', 'https://example.com')
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers).toHaveProperty(
+      'Access-Control-Allow-Origin',
+      'https://telegram-bot-ui.vercel.app',
     )
   })
 })

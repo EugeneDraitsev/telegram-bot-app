@@ -27,7 +27,7 @@ provider:
     DAT1CO_API_KEY: ${env:DAT1CO_API_KEY}
     TAVILY_API_KEY: ${env:TAVILY_API_KEY}
     GIPHY_API_KEY: ${env:GIPHY_API_KEY}
-    CHAT_SEARCH_ALLOWED_ORIGIN: ${env:CHAT_SEARCH_ALLOWED_ORIGIN, 'https://telegram-bot-ui.vercel.app'}
+    CHAT_SEARCH_ALLOWED_ORIGINS: ${env:CHAT_SEARCH_ALLOWED_ORIGINS, self:custom.chatSearchAllowedOrigins}
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
     WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME: ${self:custom.websocketConnectionsChatIdIndexName}
     WEBSOCKET_BROADCAST_FUNCTION_NAME: ${self:service}-${sls:stage}-websocket-broadcast-stats
@@ -124,7 +124,7 @@ functions:
           path: /search
           method: get
           cors:
-            origin: ${env:CHAT_SEARCH_ALLOWED_ORIGIN, 'https://telegram-bot-ui.vercel.app'}
+            origin: '*'
             headers:
               - Content-Type
               - X-Requested-With
@@ -151,6 +151,7 @@ custom:
     local: node24
   websocketConnectionsTableName: ${self:service}-${sls:stage}-websocket-connections
   websocketConnectionsChatIdIndexName: ${self:service}-${sls:stage}-websocket-connections-chat-id
+  chatSearchAllowedOrigins: https://telegram-bot-ui.vercel.app,http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
   serverless-offline:
     httpPort: 4000
     useChildProcesses: true
