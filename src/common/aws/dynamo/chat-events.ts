@@ -5,17 +5,27 @@ import type { ChatEvent } from '../../types'
 import {
   dynamoPutItem,
   dynamoQuery,
-  getRequiredEnv,
+  getOptionalEnv,
   invokeLambda,
   random,
 } from '../../utils'
 
-const invokeStatsBroadcast = (chatId: string) =>
-  invokeLambda({
-    name: getRequiredEnv('WEBSOCKET_BROADCAST_FUNCTION_NAME'),
+const invokeStatsBroadcast = (chatId: string) => {
+  const broadcastFunctionName = getOptionalEnv(
+    'WEBSOCKET_BROADCAST_FUNCTION_NAME',
+  )
+
+  if (!broadcastFunctionName) {
+    logger.warn({ chatId }, 'broadcast function is not configured')
+    return Promise.resolve()
+  }
+
+  return invokeLambda({
+    name: broadcastFunctionName,
     payload: { chatId },
     async: true,
   })
+}
 
 export const saveEvent = async (
   userInfo?: User,

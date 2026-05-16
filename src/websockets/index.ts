@@ -35,7 +35,11 @@ const badRequest = (message: string): APIGatewayProxyResult => ({
 
 const getExpiresAt = () => Math.floor(Date.now() / 1000) + connectionTtlSeconds
 
-const normalizeChatId = (chatId: string | number) => {
+const normalizeChatId = (chatId: unknown) => {
+  if (typeof chatId !== 'string' && typeof chatId !== 'number') {
+    return undefined
+  }
+
   const chatIdText = String(chatId).trim()
 
   return /^-?[1-9]\d*$/.test(chatIdText) ? chatIdText : undefined
@@ -57,7 +61,7 @@ const getClient = (endpoint: string) => {
 
 const parseStatsBody = (body: string | null | undefined) => {
   try {
-    return JSON.parse(body || '{}') as { chatId?: string | number }
+    return JSON.parse(body || '{}') as { chatId?: unknown }
   } catch {
     return {}
   }
@@ -192,12 +196,12 @@ export const stats = async (
     return badRequest('missing websocket request context')
   }
 
-  const { chatId } = parseStatsBody(event.body)
-  if (!chatId) {
+  const statsBody = parseStatsBody(event.body)
+  if (!Object.hasOwn(statsBody, 'chatId')) {
     return badRequest('missing chat id')
   }
 
-  const normalizedChatId = normalizeChatId(chatId)
+  const normalizedChatId = normalizeChatId(statsBody.chatId)
   if (!normalizedChatId) {
     return badRequest('invalid chat id')
   }

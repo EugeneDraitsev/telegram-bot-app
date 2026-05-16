@@ -188,7 +188,10 @@ describe('websocket handlers', () => {
     ).toBe(false)
   })
 
-  test('stats rejects zero chat ids before reading or sending stats', async () => {
+  test.each([
+    { chatId: '0' },
+    { chatId: 0 },
+  ])('stats rejects zero chat ids before reading or sending stats', async (body) => {
     const { stats } = await loadHandlers()
     const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
     const apiSendSpy = jest.spyOn(
@@ -196,7 +199,7 @@ describe('websocket handlers', () => {
       'send',
     )
 
-    const response = await stats(createStatsEvent({ chatId: '0' }))
+    const response = await stats(createStatsEvent(body))
 
     expect(response.statusCode).toBe(400)
     expect(JSON.parse(response.body)).toEqual({ message: 'invalid chat id' })
