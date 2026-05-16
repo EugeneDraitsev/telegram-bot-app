@@ -63,9 +63,9 @@ const parseStatsBody = (body: string | null | undefined) => {
   try {
     const parsed = JSON.parse(body || '{}') as unknown
 
-    return parsed && typeof parsed === 'object'
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? (parsed as { chatId?: unknown })
-      : {}
+      : null
   } catch {
     return undefined
   }
@@ -201,8 +201,12 @@ export const stats = async (
   }
 
   const statsBody = parseStatsBody(event.body)
-  if (!statsBody) {
+  if (statsBody === undefined) {
     return badRequest('invalid json')
+  }
+
+  if (statsBody === null) {
+    return badRequest('invalid stats body')
   }
 
   if (!Object.hasOwn(statsBody, 'chatId')) {

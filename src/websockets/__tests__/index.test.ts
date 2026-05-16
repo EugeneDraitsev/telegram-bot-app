@@ -222,4 +222,27 @@ describe('websocket handlers', () => {
     expect(dynamoSendSpy).not.toHaveBeenCalled()
     expect(apiSendSpy).not.toHaveBeenCalled()
   })
+
+  test.each([
+    'null',
+    'true',
+    '123',
+    '[]',
+  ])('stats rejects non-object json bodies before reading or sending stats', async (body) => {
+    const { stats } = await loadHandlers()
+    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+    const apiSendSpy = jest.spyOn(
+      ApiGatewayManagementApiClient.prototype,
+      'send',
+    )
+
+    const response = await stats({ ...createStatsEvent({}), body })
+
+    expect(response.statusCode).toBe(400)
+    expect(JSON.parse(response.body)).toEqual({
+      message: 'invalid stats body',
+    })
+    expect(dynamoSendSpy).not.toHaveBeenCalled()
+    expect(apiSendSpy).not.toHaveBeenCalled()
+  })
 })

@@ -48,7 +48,7 @@ const getPreflightHeaders = (origin?: string) => ({
 })
 
 const getRequestOrigin = (event: Parameters<APIGatewayProxyHandler>[0]) =>
-  event.headers.origin ?? event.headers.Origin
+  event.headers?.origin ?? event.headers?.Origin
 
 const badRequest = (
   message: string,

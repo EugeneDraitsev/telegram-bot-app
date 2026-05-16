@@ -101,4 +101,21 @@ describe('chat search', () => {
       'GET,OPTIONS',
     )
   })
+
+  test('handles null headers without throwing', async () => {
+    jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => Promise.resolve({ Items: [] }))
+
+    const response = await getChatByNameWithEvent({
+      ...createEvent('best'),
+      headers: null as never,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers).toHaveProperty(
+      'Access-Control-Allow-Origin',
+      FRONTEND_BASE_URL,
+    )
+  })
 })
