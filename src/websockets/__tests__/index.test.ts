@@ -4,13 +4,20 @@ import type { APIGatewayProxyWebsocketEventV2 } from 'aws-lambda'
 
 const connectionsTableName = 'websocket-connections'
 const connectionsChatIdIndexName = 'websocket-connections-chat-id'
+const originalEnv = process.env
 
-const loadHandlers = async () => {
+beforeAll(() => {
   process.env.WEBSOCKET_CONNECTIONS_TABLE_NAME = connectionsTableName
   process.env.WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME =
     connectionsChatIdIndexName
   process.env.WEBSOCKET_BROADCAST_ENDPOINT = 'example.execute-api.test/prod'
+})
 
+afterAll(() => {
+  process.env = originalEnv
+})
+
+const loadHandlers = async () => {
   return require('..') as typeof import('../index.js')
 }
 
@@ -203,6 +210,22 @@ describe('websocket handlers', () => {
 
     expect(response.statusCode).toBe(400)
     expect(JSON.parse(response.body)).toEqual({ message: 'invalid chat id' })
+    expect(dynamoSendSpy).not.toHaveBeenCalled()
+    expect(apiSendSpy).not.toHaveBeenCalled()
+  })
+
+  test('stats treats null chat id as missing before reading or sending stats', async () => {
+    const { stats } = await loadHandlers()
+    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+    const apiSendSpy = jest.spyOn(
+      ApiGatewayManagementApiClient.prototype,
+      'send',
+    )
+
+    const response = await stats(createStatsEvent({ chatId: null }))
+
+    expect(response.statusCode).toBe(400)
+    expect(JSON.parse(response.body)).toEqual({ message: 'missing chat id' })
     expect(dynamoSendSpy).not.toHaveBeenCalled()
     expect(apiSendSpy).not.toHaveBeenCalled()
   })

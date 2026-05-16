@@ -19,6 +19,11 @@ import {
 } from '@tg-bot/common'
 import type { Connection, ConnectionIndexRecord, StatsPayload } from './types'
 
+type StatsBodyParseResult =
+  | { kind: 'ok'; value: { chatId?: unknown } }
+  | { kind: 'invalid_json' }
+  | { kind: 'invalid_body' }
+
 const connectionsTableName = getRequiredEnv('WEBSOCKET_CONNECTIONS_TABLE_NAME')
 const connectionsChatIdIndexName = getRequiredEnv(
   'WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME',
@@ -59,15 +64,19 @@ const getClient = (endpoint: string) => {
   return client
 }
 
-const parseStatsBody = (body: string | null | undefined) => {
+const parseStatsBody = (
+  body: string | null | undefined,
+): StatsBodyParseResult => {
   try {
     const parsed = JSON.parse(body || '{}') as unknown
 
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as { chatId?: unknown })
-      : null
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { kind: 'invalid_body' }
+    }
+
+    return { kind: 'ok', value: parsed as { chatId?: unknown } }
   } catch {
-    return undefined
+    return { kind: 'invalid_json' }
   }
 }
 
@@ -200,20 +209,21 @@ export const stats = async (
     return badRequest('missing websocket request context')
   }
 
-  const statsBody = parseStatsBody(event.body)
-  if (statsBody === undefined) {
+  const statsBodyResult = parseStatsBody(event.body)
+  if (statsBodyResult.kind === 'invalid_json') {
     return badRequest('invalid json')
   }
 
-  if (statsBody === null) {
+  if (statsBodyResult.kind === 'invalid_body') {
     return badRequest('invalid stats body')
   }
 
-  if (!Object.hasOwn(statsBody, 'chatId')) {
+  const { chatId } = statsBodyResult.value
+  if (chatId === undefined || chatId === null) {
     return badRequest('missing chat id')
   }
 
-  const normalizedChatId = normalizeChatId(statsBody.chatId)
+  const normalizedChatId = normalizeChatId(chatId)
   if (!normalizedChatId) {
     return badRequest('invalid chat id')
   }

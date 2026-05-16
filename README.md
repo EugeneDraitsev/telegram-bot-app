@@ -44,7 +44,7 @@ flowchart LR
   bot --> stats
   bot -. "async" .-> reply
   bot -. "agent event" .-> agent
-  bot -. "saveEvent async invoke" .-> broadcast
+  bot -. "async Lambda Invoke (Event)" .-> broadcast
 
   reply --> tg
   agent --> tg
