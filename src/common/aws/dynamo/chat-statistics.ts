@@ -2,10 +2,17 @@ import type { Chat, User } from 'telegram-typings'
 
 import { logger } from '../../logger'
 import type { UserStat } from '../../types'
-import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
+import {
+  dedent,
+  dynamoPutItem,
+  dynamoQuery,
+  getChatName,
+  getUserName,
+} from '../../utils'
 
 interface ChatStat {
   chatId: string
+  chatName?: string
   chatInfo?: Chat
   users: UserStat[]
 }
@@ -29,6 +36,8 @@ const toChatStat = (value: unknown): ChatStat | undefined => {
 
   return {
     chatId: chatStat.chatId,
+    chatName:
+      typeof chatStat.chatName === 'string' ? chatStat.chatName : undefined,
     chatInfo: chatStat.chatInfo,
     users: Array.isArray(chatStat.users)
       ? chatStat.users.filter(isUserStat)
@@ -146,9 +155,10 @@ export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
   if (userInfo && chat_id) {
     const chatStatistics = await getChatStatistic(chat_id)
     const statistics = chatStatistics
-      ? { ...chatStatistics, chatInfo: chat }
+      ? { ...chatStatistics, chatInfo: chat, chatName: getChatName(chat) }
       : {
           chatId: String(chat_id),
+          chatName: getChatName(chat),
           users: [] as UserStat[],
           chatInfo: chat,
         }

@@ -1,0 +1,9 @@
+{
+  "name": "@tg-bot/chat-search",
+  "version": "1.0.0",
+  "license": "MIT",
+  "sideEffects": false,
+  "dependencies": {
+    "@tg-bot/common": "workspace:*"
+  }
+}

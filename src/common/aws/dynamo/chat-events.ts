@@ -1,10 +1,26 @@
 import type { User } from 'telegram-typings'
 
+import { logger } from '../../logger'
 import type { ChatEvent } from '../../types'
 import { dynamoPutItem, dynamoQuery, invokeLambda, random } from '../../utils'
 
-const BROADCAST_ENDPOINT =
-  '97cq41uoj7.execute-api.eu-central-1.amazonaws.com/prod'
+const getRequiredEnv = (name: string) => {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`${name} is not set`)
+  }
+
+  return value
+}
+
+const invokeStatsBroadcast = async (chatId: string) => {
+  return invokeLambda({
+    name: getRequiredEnv('WEBSOCKET_BROADCAST_FUNCTION_NAME'),
+    payload: { chatId },
+    customEndpoint: true,
+    async: true,
+  })
+}
 
 export const saveEvent = async (
   userInfo?: User,
@@ -26,21 +42,13 @@ export const saveEvent = async (
       Item: event,
     }
 
-    const broadcastLambdaPayload = {
-      queryStringParameters: {
-        chatId: String(chat_id),
-        endpoint: BROADCAST_ENDPOINT,
-      },
-    }
-
-    const stage = process.env.IS_OFFLINE === 'true' ? 'prod' : process.env.stage
-    await Promise.all([
-      dynamoPutItem(params),
-      invokeLambda({
-        name: `telegram-websockets-${stage}-broadcastStats`,
-        payload: broadcastLambdaPayload,
-      }),
-    ])
+    await dynamoPutItem(params)
+    void invokeStatsBroadcast(String(chat_id)).catch((error) =>
+      logger.error(
+        { chatId: String(chat_id), error },
+        'broadcast invoke error',
+      ),
+    )
   }
 }
 

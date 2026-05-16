@@ -1,4 +1,28 @@
 Resources:
+  ChatWebsocketConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.websocketConnectionsTableName}
+      AttributeDefinitions:
+        - AttributeName: connectionId
+          AttributeType: S
+        - AttributeName: chatId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ${self:custom.websocketConnectionsChatIdIndexName}
+          KeySchema:
+            - AttributeName: chatId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
   ChatStatisticsTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -27,24 +51,29 @@ Resources:
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
-  DynamoDBIamPolicy:
-    Type: AWS::IAM::Policy
-    DependsOn:
-      - ChatStatisticsTable
-      - ChatEventsTable
-    Properties:
-      PolicyName: lambda-dynamodb
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - dynamodb:GetItem
-              - dynamodb:PutItem
-              - dynamodb:UpdateItem
-              - dynamodb:DeleteItem
-            Resource:
-              - arn:aws:dynamodb:*:*:table/chat-statistics
-              - arn:aws:dynamodb:*:*:table/chat-events
-      Roles:
-        - Ref: IamRoleLambdaExecution
+Outputs:
+  WebSocketUrl:
+    Description: WebSocket API URL for telegram-bot-ui CONFIG.wss
+    Value:
+      Fn::Join:
+        - ''
+        - - wss://
+          - Ref: WebsocketsApi
+          - .execute-api.
+          - Ref: AWS::Region
+          - .
+          - Ref: AWS::URLSuffix
+          - /${sls:stage}
+
+  SearchApiUrl:
+    Description: REST API base URL for telegram-bot-ui CONFIG.rest
+    Value:
+      Fn::Join:
+        - ''
+        - - https://
+          - Ref: ApiGatewayRestApi
+          - .execute-api.
+          - Ref: AWS::Region
+          - .
+          - Ref: AWS::URLSuffix
+          - /${sls:stage}
