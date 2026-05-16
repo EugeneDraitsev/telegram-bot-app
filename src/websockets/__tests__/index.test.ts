@@ -33,9 +33,37 @@ const createStatsEvent = (body: unknown) =>
     },
   }) as APIGatewayProxyWebsocketEventV2
 
+const createConnectEvent = () =>
+  ({
+    requestContext: {
+      connectionId: 'connection-1',
+    },
+  }) as APIGatewayProxyWebsocketEventV2
+
 describe('websocket handlers', () => {
   afterEach(() => {
     jest.restoreAllMocks()
+  })
+
+  test('connect updates connection metadata without clearing chat subscription fields', async () => {
+    const { connect } = await loadHandlers()
+    const dynamoSendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => Promise.resolve({}))
+
+    const response = await connect(createConnectEvent())
+
+    expect(response.statusCode).toBe(200)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(1)
+    expect(dynamoSendSpy.mock.calls[0][0].input).toEqual(
+      expect.objectContaining({
+        TableName: connectionsTableName,
+        Key: { connectionId: 'connection-1' },
+        UpdateExpression: 'SET #date = :date, #ttl = :ttl',
+        ExpressionAttributeNames: { '#date': 'date', '#ttl': 'ttl' },
+      }),
+    )
+    expect(dynamoSendSpy.mock.calls[0][0].input).not.toHaveProperty('Item')
   })
 
   test('stats still sends a snapshot when subscription write finds no connection row', async () => {

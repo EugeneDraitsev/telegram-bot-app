@@ -9,7 +9,6 @@ import type {
 
 import {
   dynamoDeleteItem,
-  dynamoPutItem,
   dynamoQuery,
   dynamoUpdateItem,
   get24hChatStats,
@@ -80,7 +79,7 @@ const parseStatsBody = (
   }
 }
 
-const isStaleConnectionError = (error: unknown) => {
+const isGoneConnectionError = (error: unknown) => {
   const awsError = error as {
     name?: string
     $metadata?: {
@@ -115,12 +114,17 @@ const sendEvent = async (
   )
 }
 
-const saveConnection = (connection: Connection) =>
-  dynamoPutItem({
+const saveConnection = (
+  connection: Pick<Connection, 'connectionId' | 'date'>,
+) =>
+  dynamoUpdateItem({
     TableName: connectionsTableName,
-    Item: {
-      ...connection,
-      ttl: getExpiresAt(),
+    Key: { connectionId: connection.connectionId },
+    UpdateExpression: 'SET #date = :date, #ttl = :ttl',
+    ExpressionAttributeNames: { '#date': 'date', '#ttl': 'ttl' },
+    ExpressionAttributeValues: {
+      ':date': connection.date,
+      ':ttl': getExpiresAt(),
     },
   })
 
@@ -168,7 +172,7 @@ const sendStatsToConnection = async (
   try {
     await sendEvent(connectionId, endpoint, data)
   } catch (error) {
-    if (isStaleConnectionError(error)) {
+    if (isGoneConnectionError(error)) {
       await removeConnection(connectionId)
       return
     }
