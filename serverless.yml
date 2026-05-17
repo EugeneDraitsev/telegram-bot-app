@@ -165,6 +165,12 @@ custom:
       js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
     external:
       - sharp
+    packagePath: ./src/sharp-statistics/package.json
+    installExtraArgs:
+      - --os=linux
+      - --cpu=arm64
+      - --libc=glibc
+      - --include=optional
     exclude:
       - "@aws-sdk/client-apigatewaymanagementapi"
       - "@aws-sdk/client-dynamodb"
@@ -173,6 +179,7 @@ custom:
       - "@aws-sdk/lib-dynamodb"
     packagerOptions:
       scripts:
-        - npm install --force --os=linux --cpu=arm64 -include=optional sharp
+        - >-
+          node -e "const fs=require('fs'),path=require('path');const dir='node_modules/@img';for (const name of fs.existsSync(dir)?fs.readdirSync(dir):[]) if (name.startsWith('sharp-') && !['sharp-linux-arm64','sharp-libvips-linux-arm64'].includes(name)) fs.rmSync(path.join(dir,name),{recursive:true,force:true})"
 
 resources: ${file(resources.yml)}

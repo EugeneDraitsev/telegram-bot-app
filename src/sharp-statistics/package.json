@@ -6,6 +6,7 @@
     "polished": "^4.3.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "sharp": "^0.34.5",
     "styled-components": "^6.4.1"
   },
   "devDependencies": {
@@ -17,8 +18,5 @@
     "@img/sharp-libvips-linuxmusl-arm64": "^1.2.4",
     "@img/sharp-linux-arm64": "^0.34.5",
     "@img/sharp-linuxmusl-arm64": "^0.34.5"
-  },
-  "peerDependencies": {
-    "sharp": "^0.34.5"
   }
 }
