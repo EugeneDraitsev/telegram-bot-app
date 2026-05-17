@@ -74,12 +74,6 @@
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
       },
-      "optionalDependencies": {
-        "@img/sharp-libvips-linux-arm64": "^1.2.4",
-        "@img/sharp-libvips-linuxmusl-arm64": "^1.2.4",
-        "@img/sharp-linux-arm64": "^0.34.5",
-        "@img/sharp-linuxmusl-arm64": "^0.34.5",
-      },
     },
     "src/telegram-bot": {
       "name": "@tg-bot/chat-bot",

@@ -80,6 +80,8 @@ functions:
     package:
       patterns:
         - fonts/**
+    layers:
+      - Ref: SharpStatisticsLambdaLayer
     environment:
       FONTCONFIG_PATH: "./fonts"
     memorySize: 1536
@@ -140,6 +142,14 @@ plugins:
 package:
   individually: true
 
+layers:
+  sharpStatistics:
+    path: .layers/sharp
+    compatibleRuntimes:
+      - ${self:provider.runtime}
+    compatibleArchitectures:
+      - arm64
+
 build:
   esbuild: false
 
@@ -163,23 +173,12 @@ custom:
     outputFileExtension: .mjs
     banner:
       js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
-    external:
-      - sharp
-    packagePath: ./src/sharp-statistics/package.json
-    installExtraArgs:
-      - --os=linux
-      - --cpu=arm64
-      - --libc=glibc
-      - --include=optional
     exclude:
+      - sharp
       - "@aws-sdk/client-apigatewaymanagementapi"
       - "@aws-sdk/client-dynamodb"
       - "@aws-sdk/client-lambda"
       - "@aws-sdk/client-s3"
       - "@aws-sdk/lib-dynamodb"
-    packagerOptions:
-      scripts:
-        - >-
-          node -e "const fs=require('fs'),path=require('path');const dir='node_modules/@img';for (const name of fs.existsSync(dir)?fs.readdirSync(dir):[]) if (name.startsWith('sharp-') && !['sharp-linux-arm64','sharp-libvips-linux-arm64'].includes(name)) fs.rmSync(path.join(dir,name),{recursive:true,force:true})"
 
 resources: ${file(resources.yml)}

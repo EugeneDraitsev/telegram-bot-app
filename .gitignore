@@ -25,6 +25,7 @@ node_modules
 
 *.iml
 .serverless
+.layers
 .webpack
 yarn-error.log
 coverage
