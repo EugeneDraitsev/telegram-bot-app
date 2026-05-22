@@ -4,7 +4,7 @@
   "license": "MIT",
   "sideEffects": false,
   "dependencies": {
-    "@aws-sdk/client-apigatewaymanagementapi": "^3.1046.0",
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.1052.0",
     "@tg-bot/common": "workspace:*"
   }
 }
