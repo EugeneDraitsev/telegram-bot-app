@@ -55,14 +55,13 @@ describe('getChatMemory', () => {
 })
 
 describe('setChatMemory', () => {
-  test('should save content with correct TTL', async () => {
+  test('should save content without TTL', async () => {
     mockSet.mockResolvedValue('OK')
     const result = await setChatMemory(456, '# Memory\n- important fact')
     expect(result).toBe(true)
     expect(mockSet).toHaveBeenCalledWith(
       'memory:chat:456',
       '# Memory\n- important fact',
-      { ex: MEMORY_TTL_SECONDS },
     )
   })
 
@@ -81,9 +80,7 @@ describe('setChatMemory', () => {
   test('should trim whitespace before saving', async () => {
     mockSet.mockResolvedValue('OK')
     await setChatMemory(456, '  hello  ')
-    expect(mockSet).toHaveBeenCalledWith('memory:chat:456', 'hello', {
-      ex: MEMORY_TTL_SECONDS,
-    })
+    expect(mockSet).toHaveBeenCalledWith('memory:chat:456', 'hello')
   })
 
   test('should return false on redis error', async () => {

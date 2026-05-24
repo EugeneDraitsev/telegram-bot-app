@@ -3,7 +3,6 @@ import { getRedisClient } from './client'
 
 const DYNAMIC_TOOLS_PREFIX = 'agent-dynamic-tools'
 const DYNAMIC_TOOLS_GLOBAL_SCOPE = 'global'
-const DYNAMIC_TOOLS_TTL_SECONDS = 60 * 60 * 24 * 30
 
 type DynamicToolsScope = string | number | undefined
 
@@ -105,9 +104,7 @@ export async function saveDynamicToolsRaw(
   }
 
   try {
-    await redis.set(getDynamicToolsKey(chatId), JSON.stringify(tools), {
-      ex: DYNAMIC_TOOLS_TTL_SECONDS,
-    })
+    await redis.set(getDynamicToolsKey(chatId), JSON.stringify(tools))
     return true
   } catch (error) {
     logger.error({ error }, 'Error saving dynamic tools')

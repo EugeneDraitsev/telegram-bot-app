@@ -7,7 +7,8 @@
  * - **global** (`memory:global`) — cross-chat knowledge: facts, policies,
  *   self-improvement notes, etc.
  *
- * Both values are plain markdown strings. TTL is 90 days (refreshed on every write).
+ * Values are plain markdown strings. Chat-scoped memory is stored permanently;
+ * global memory has a 90-day TTL refreshed on every write.
  */
 
 import { logger } from '../logger'
@@ -54,9 +55,7 @@ export async function setChatMemory(
   if (!redis) return false
 
   try {
-    await redis.set(chatMemoryKey(chatId), trimmed, {
-      ex: MEMORY_TTL_SECONDS,
-    })
+    await redis.set(chatMemoryKey(chatId), trimmed)
     return true
   } catch (error) {
     logger.error({ error }, 'Error saving chat memory')
