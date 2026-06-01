@@ -20,13 +20,13 @@
     "prepare:sharp-layer": "node tools/prepare-sharp-layer.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
+    "@biomejs/biome": "^2.4.16",
     "@types/aws-lambda": "^8.10.161",
     "@types/jest": "^30.0.0",
     "esbuild": "0.28.0",
-    "serverless": "^4.36.1",
+    "serverless": "^4.37.0",
     "serverless-esbuild": "^1.57.2",
-    "serverless-offline": "^14.6.0",
+    "serverless-offline": "^14.7.1",
     "typescript": "^6.0.3"
   },
   "workspaces": [

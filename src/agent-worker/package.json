@@ -7,7 +7,7 @@
     "@giphy/js-fetch-api": "^5.8.0",
     "@tg-bot/common": "workspace:*",
     "@upstash/redis": "^1.38.0",
-    "ai": "^6.0.190",
+    "ai": "^6.0.193",
     "grammy": "^1.43.0",
     "zod": "^4.4.3"
   },
