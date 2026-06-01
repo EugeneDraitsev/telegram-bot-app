@@ -31,5 +31,8 @@
   },
   "workspaces": [
     "src/*"
-  ]
+  ],
+  "overrides": {
+    "@smithy/types": "^4.14.3"
+  }
 }
