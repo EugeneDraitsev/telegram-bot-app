@@ -32,7 +32,7 @@ export const invokeLambda = ({
   )
 }
 
-// Remove imagesData from payload to avoid exceeding Lambda's 6MB payload limit.
+// Remove inline image buffers from async invokes; Lambda Event payloads are capped at 256 KB.
 // The worker lambda will re-fetch images from Telegram API when processing.
 // biome-ignore lint: we can pass any payload here
 const stripLargeFields = (payload: Record<string, any>) => {
@@ -40,11 +40,13 @@ const stripLargeFields = (payload: Record<string, any>) => {
   return rest
 }
 
-// biome-ignore lint: we can pass any payload here
-export const invokeReplyLambda = (payload: Record<string, any>) => {
-  const replyWorkerFunctionName = getRequiredEnv('REPLY_WORKER_FUNCTION_NAME')
+const invokeWorkerLambda = (
+  envKey: string,
+  // biome-ignore lint: we can pass any payload here
+  payload: Record<string, any>,
+) => {
   return invokeLambda({
-    name: replyWorkerFunctionName,
+    name: getRequiredEnv(envKey),
     payload: stripLargeFields(payload),
     customEndpoint: true,
     async: true,
@@ -52,12 +54,13 @@ export const invokeReplyLambda = (payload: Record<string, any>) => {
 }
 
 // biome-ignore lint: we can pass any payload here
-export const invokeAgentLambda = (payload: Record<string, any>) => {
-  const agentWorkerFunctionName = getRequiredEnv('AGENT_WORKER_FUNCTION_NAME')
-  return invokeLambda({
-    name: agentWorkerFunctionName,
-    payload: stripLargeFields(payload),
-    customEndpoint: true,
-    async: true,
-  })
-}
+export const invokeReplyLambda = (payload: Record<string, any>) =>
+  invokeWorkerLambda('REPLY_WORKER_FUNCTION_NAME', payload)
+
+// biome-ignore lint: we can pass any payload here
+export const invokeAgentLambda = (payload: Record<string, any>) =>
+  invokeWorkerLambda('AGENT_WORKER_FUNCTION_NAME', payload)
+
+// biome-ignore lint: we can pass any payload here
+export const invokeActivityLambda = (payload: Record<string, any>) =>
+  invokeWorkerLambda('ACTIVITY_WORKER_FUNCTION_NAME', payload)

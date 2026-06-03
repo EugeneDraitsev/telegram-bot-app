@@ -16,9 +16,12 @@ export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
   entities.some((entity) => entity.type === 'bot_command')
 
 export const getParsedText = (text = '') => {
-  if (text.startsWith('/')) {
-    return text.split(' ').slice(1).join(' ')
+  const trimmedText = text.trimStart()
+
+  if (/^\/[A-Za-z0-9_]+(?:@\w+)?(?:\s|$)/.test(trimmedText)) {
+    return trimmedText.replace(/^\/[A-Za-z0-9_]+(?:@\w+)?(?:\s+|$)/, '')
   }
+
   return text
 }
 

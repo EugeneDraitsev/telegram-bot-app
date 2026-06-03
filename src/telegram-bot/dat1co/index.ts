@@ -5,31 +5,14 @@ import {
   formatTelegramMarkdownV2,
   getMediaGroupMessages,
   getMultimodalCommandData,
-  invokeReplyLambda,
   logger,
   startCommandReaction,
 } from '@tg-bot/common'
 import { generateGemmaCompletion, generateImageDat1co } from './dat1co'
 
-export const setupGemmaDat1coCommands = async (
-  ctx: Context,
-  deferredCommands = false,
-) => {
+export const setupGemmaDat1coCommands = async (ctx: Context) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
-
-  if (deferredCommands) {
-    const stopReaction = startCommandReaction(ctx)
-    try {
-      // Wait only for Lambda async invoke ACK, not for worker execution.
-      await invokeReplyLambda(commandData).catch((error) =>
-        logger.error({ err: error }, 'Failed to invoke reply worker'),
-      )
-    } finally {
-      stopReaction()
-    }
-    return
-  }
 
   const stopReaction = startCommandReaction(ctx)
   try {
@@ -59,24 +42,8 @@ export const setupGemmaDat1coCommands = async (
   }
 }
 
-export const setupImageGenerationDat1coCommands = async (
-  ctx: Context,
-  deferredCommands = false,
-) => {
+export const setupImageGenerationDat1coCommands = async (ctx: Context) => {
   const commandData = await getMultimodalCommandData(ctx)
-
-  if (deferredCommands) {
-    const stopReaction = startCommandReaction(ctx)
-    try {
-      // Wait only for Lambda async invoke ACK, not for worker execution.
-      await invokeReplyLambda(commandData).catch((error) =>
-        logger.error({ err: error }, 'Failed to invoke reply worker'),
-      )
-    } finally {
-      stopReaction()
-    }
-    return
-  }
 
   const stopReaction = startCommandReaction(ctx)
   try {
@@ -102,13 +69,8 @@ export const setupImageGenerationDat1coCommands = async (
   }
 }
 
-const setupDat1coCommands = (
-  bot: Bot,
-  { deferredCommands } = { deferredCommands: false },
-) => {
-  bot.command('de', (ctx) =>
-    setupImageGenerationDat1coCommands(ctx, deferredCommands),
-  )
+const setupDat1coCommands = (bot: Bot) => {
+  bot.command('de', (ctx) => setupImageGenerationDat1coCommands(ctx))
 }
 
 export default setupDat1coCommands

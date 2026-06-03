@@ -1,6 +1,11 @@
 import { type InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
-import { invokeAgentLambda, invokeLambda, invokeReplyLambda } from '..'
+import {
+  invokeActivityLambda,
+  invokeAgentLambda,
+  invokeLambda,
+  invokeReplyLambda,
+} from '..'
 
 type LambdaSend = LambdaClient['send']
 
@@ -104,7 +109,7 @@ describe('invokeReplyLambda', () => {
     jest.restoreAllMocks()
   })
 
-  test('should remove inline image buffers from payload to avoid exceeding 6MB limit', async () => {
+  test('should remove inline image buffers from async worker payload', async () => {
     let capturedPayload: Buffer | undefined
 
     mockLambdaSend((command) => {
@@ -208,5 +213,46 @@ describe('invokeAgentLambda', () => {
     expect(parsed).not.toHaveProperty('imagesData')
     expect(parsed).not.toHaveProperty('imageInputs')
     expect(parsed).toHaveProperty('message')
+  })
+})
+
+describe('invokeActivityLambda', () => {
+  const originalEnv = process.env
+
+  afterEach(() => {
+    process.env = originalEnv
+    jest.restoreAllMocks()
+  })
+
+  test('should invoke activity worker with async mode', async () => {
+    process.env = {
+      ...originalEnv,
+      ACTIVITY_WORKER_FUNCTION_NAME: 'activity-worker',
+    }
+
+    let capturedCommand: InvokeCommand | undefined
+
+    mockLambdaSend((command) => {
+      capturedCommand = command
+      return Promise.resolve('ok')
+    })
+
+    await invokeActivityLambda({
+      message: { text: 'hello', chat: { id: 123 } },
+      command: '',
+    })
+
+    expect(capturedCommand?.input.InvocationType).toBe('Event')
+    expect(capturedCommand?.input.FunctionName).toBe('activity-worker')
+  })
+
+  test('should throw clear error when activity worker function name is missing', () => {
+    process.env = { ...originalEnv, ACTIVITY_WORKER_FUNCTION_NAME: '' }
+
+    expect(() =>
+      invokeActivityLambda({
+        message: { text: 'hello', chat: { id: 123 } },
+      }),
+    ).toThrow('ACTIVITY_WORKER_FUNCTION_NAME is not set')
   })
 })

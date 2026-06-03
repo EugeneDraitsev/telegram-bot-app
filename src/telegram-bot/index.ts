@@ -1,80 +1,71 @@
 import { webhookCallback } from 'grammy/web'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
-import type { Chat, Message } from 'telegram-typings'
+import type { Message } from 'telegram-typings'
 
 import {
   createBot,
-  findCommand,
-  isAiEnabledChat,
+  invokeActivityLambda,
   logger,
   saveBotMessageMiddleware,
-  saveEvent,
-  saveMessage,
-  updateStatistics,
 } from '@tg-bot/common'
-import { isRegisteredCommandMessage } from './command-registry'
+import {
+  type CommandRegistry,
+  getRegisteredCommandName,
+} from './command-registry'
 import { setupAllCommands } from './setup-commands'
 
 const bot = createBot()
 
 bot.use(saveBotMessageMiddleware)
 
-let commandRegistry = new Set<string>()
+let commandRegistry: CommandRegistry = new Set<string>()
 
-async function trackActivity(message: Message, chat: Chat) {
-  const command = isRegisteredCommandMessage(message, commandRegistry)
-    ? findCommand(message.text || message.caption)
-    : ''
-
-  const tasks = [
-    updateStatistics(message.from, chat),
-    saveEvent(message.from, chat?.id, command, message.date),
-  ]
-
-  if (isAiEnabledChat(chat.id)) {
-    tasks.push(
-      saveMessage(message, chat.id).catch((error) =>
-        logger.error({ err: error }, 'saveHistory error'),
-      ),
-    )
-  }
-
-  await Promise.allSettled(tasks).catch((error) =>
-    logger.error({ err: error }, 'Tracking error'),
+async function forwardActivity(message: Message, botUsername?: string) {
+  const commandName = getRegisteredCommandName(
+    message,
+    commandRegistry,
+    botUsername,
   )
+  const command = commandName ? `/${commandName}` : ''
+
+  await invokeActivityLambda({ message, command })
 }
 
 bot.use(async (ctx, next) => {
   const { chat } = ctx
-  const message = ctx.message as Message
-  if (chat && message) {
-    const resolvedChat =
-      (await ctx.getChat().catch((error) => {
-        logger.error({ err: error }, 'getChat error')
-        return undefined
-      })) ?? chat
+  const message = ctx.message as Message | undefined
+  if (!chat || !message) {
+    await next()
+    return
+  }
 
-    if (!resolvedChat?.id) {
-      logger.warn(
-        { chatId: chat.id },
-        'Skipping activity tracking: missing chat id',
-      )
-      await next()
-      return
-    }
+  if (!chat.id) {
+    logger.warn(
+      { chatId: chat.id },
+      'Skipping activity tracking: missing chat id',
+    )
+    await next()
+    return
+  }
 
-    try {
-      await Promise.all([trackActivity(message, resolvedChat), next?.()])
-    } catch (error) {
-      logger.error({ error }, 'Root error')
-    }
+  try {
+    await Promise.all([
+      forwardActivity(message, ctx.me?.username).catch((error) =>
+        logger.error({ error }, 'Failed to invoke activity worker'),
+      ),
+      next(),
+    ])
+  } catch (error) {
+    logger.error({ error }, 'Root error')
   }
 })
 
 // Setup all commands with deferred mode (async via Lambda)
 commandRegistry = setupAllCommands(bot, true)
 
-const handleUpdate = webhookCallback(bot, 'aws-lambda-async')
+const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
+  timeoutMilliseconds: 9_000,
+})
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   try {

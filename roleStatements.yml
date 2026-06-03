@@ -6,6 +6,7 @@
     - arn:aws:lambda:*:*:telegram-*-sharp-statistics
     - arn:aws:lambda:*:*:telegram-*-reply-worker
     - arn:aws:lambda:*:*:telegram-*-agent-worker
+    - arn:aws:lambda:*:*:telegram-*-activity-worker
     - arn:aws:lambda:*:*:telegram-*-websocket-broadcast-stats
 - Effect: Allow
   Action:

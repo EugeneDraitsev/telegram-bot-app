@@ -138,11 +138,15 @@ describe('getParsedText', () => {
   test('should properly parse different types of commands', () => {
     expect(getParsedText('/hello world')).toEqual('world')
     expect(getParsedText('/g cats')).toEqual('cats')
+    expect(getParsedText('/q\ncats')).toEqual('cats')
+    expect(getParsedText('  /q\ncats')).toEqual('cats')
     expect(getParsedText('/g@draiBot cats')).toEqual('cats')
     expect(getParsedText('/g@draiBot testing is cool')).toEqual(
       'testing is cool',
     )
     expect(getParsedText('/p multi / slashes /')).toEqual('multi / slashes /')
+    expect(getParsedText('/path/to/file')).toEqual('/path/to/file')
+    expect(getParsedText('  /path/to/file')).toEqual('  /path/to/file')
     expect(getParsedText(undefined)).toEqual('')
   })
 })

@@ -1,21 +1,76 @@
 import type { Bot } from 'grammy/web'
-import type { Message } from 'telegram-typings'
+import type { Message, MessageEntity } from 'telegram-typings'
 
-export type CommandRegistry = Set<string>
+export type CommandRegistry = {
+  has(command: string): boolean
+}
 
-const LEADING_COMMAND_REGEX = /^\/([A-Za-z0-9_]+)(?:@\w+)?(?:\s|$)/
+const BOT_COMMAND_REGEX = /^\/([A-Za-z0-9_]+)(?:@([A-Za-z0-9_]+))?$/
+
+type ParsedCommand = {
+  command: string
+  targetBot?: string
+}
 
 function normalizeCommand(command: string): string {
   return command.trim().replace(/^\/+/, '').replace(/@.*/, '').toLowerCase()
 }
 
-function extractLeadingCommand(text?: string): string | null {
-  if (!text) {
+function normalizeBotUsername(username?: string): string | undefined {
+  return username?.trim().replace(/^@/, '').toLowerCase() || undefined
+}
+
+function parseEntityCommand(
+  text: string | undefined,
+  entities: MessageEntity[] | undefined,
+): ParsedCommand | null {
+  const entity = entities?.find(
+    (item) => item.type === 'bot_command' && item.offset === 0,
+  )
+  if (!text || !entity) {
     return null
   }
 
-  const match = text.trimStart().match(LEADING_COMMAND_REGEX)
-  return match?.[1] ? normalizeCommand(match[1]) : null
+  const rawCommand = text.slice(entity.offset, entity.offset + entity.length)
+  const match = rawCommand.match(BOT_COMMAND_REGEX)
+  if (!match?.[1]) {
+    return null
+  }
+
+  return {
+    command: normalizeCommand(match[1]),
+    targetBot: normalizeBotUsername(match[2]),
+  }
+}
+
+function extractEntityCommand(
+  text: string | undefined,
+  entities: MessageEntity[] | undefined,
+  botUsername?: string,
+): string | null {
+  const parsed = parseEntityCommand(text, entities)
+  const ownBot = normalizeBotUsername(botUsername)
+  if (parsed?.targetBot && ownBot && parsed.targetBot !== ownBot) {
+    return null
+  }
+
+  return parsed?.command ?? null
+}
+
+export function isCommandAddressedToAnotherBot(
+  message: Message | undefined,
+  botUsername?: string,
+): boolean {
+  const ownBot = normalizeBotUsername(botUsername)
+  if (!message || !ownBot) {
+    return false
+  }
+
+  const targetBot =
+    parseEntityCommand(message.text, message.entities)?.targetBot ??
+    parseEntityCommand(message.caption, message.caption_entities)?.targetBot
+
+  return Boolean(targetBot && targetBot !== ownBot)
 }
 
 export function installCommandRegistry(bot: Bot): CommandRegistry {
@@ -40,16 +95,18 @@ export function installCommandRegistry(bot: Bot): CommandRegistry {
   return commands
 }
 
-export function isRegisteredCommandMessage(
+export function getRegisteredCommandName(
   message: Message | undefined,
   registry: CommandRegistry,
-): boolean {
+  botUsername?: string,
+): string | null {
   if (!message) {
-    return false
+    return null
   }
 
   const command =
-    extractLeadingCommand(message.text) ??
-    extractLeadingCommand(message.caption)
-  return Boolean(command && registry.has(normalizeCommand(command)))
+    extractEntityCommand(message.text, message.entities, botUsername) ??
+    extractEntityCommand(message.caption, message.caption_entities, botUsername)
+
+  return command && registry.has(command) ? command : null
 }

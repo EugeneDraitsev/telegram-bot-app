@@ -14,6 +14,8 @@ export interface AgentPayload {
   bypassReplyGate?: boolean
 }
 
+export const DIRECT_AGENT_COMMANDS = ['q', 'qq']
+
 interface AgentInvokeOptions {
   bypassReplyGate?: boolean
   stripCommand?: boolean

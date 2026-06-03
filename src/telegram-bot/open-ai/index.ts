@@ -5,7 +5,6 @@ import {
   formatTelegramMarkdownV2,
   getMediaGroupMessages,
   getMultimodalCommandData,
-  invokeReplyLambda,
   logger,
   NOT_ALLOWED_ERROR,
   OPENAI_GPT_IMAGE_MODEL,
@@ -36,25 +35,11 @@ export const OPENAI_O_REASONING_EFFORT = 'medium' as const
 export const setupMultimodalOpenAiCommands = async (
   ctx: Context,
   model: SupportedTextModel = OPENAI_O_MODEL,
-  deferredCommands = false,
   commandName = '/o',
   reasoningEffort: OpenAiReasoningEffort = OPENAI_O_REASONING_EFFORT,
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
-
-  if (deferredCommands) {
-    const stopReaction = startCommandReaction(ctx)
-    try {
-      // Wait only for Lambda async invoke ACK, not for worker execution.
-      await invokeReplyLambda(commandData).catch((error) =>
-        logger.error({ err: error }, 'Failed to invoke reply worker'),
-      )
-    } finally {
-      stopReaction()
-    }
-    return
-  }
 
   const stopReaction = startCommandReaction(ctx)
   try {
@@ -121,24 +106,10 @@ export const setupMultimodalOpenAiCommands = async (
 export const setupImageGenerationOpenAiCommands = async (
   ctx: Context,
   model: SupportedImageModel = OPENAI_GPT_IMAGE_MODEL,
-  deferredCommands = false,
   commandName = '/e',
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
-
-  if (deferredCommands) {
-    const stopReaction = startCommandReaction(ctx)
-    try {
-      // Wait only for Lambda async invoke ACK, not for worker execution.
-      await invokeReplyLambda(commandData).catch((error) =>
-        logger.error({ err: error }, 'Failed to invoke reply worker'),
-      )
-    } finally {
-      stopReaction()
-    }
-    return
-  }
 
   const stopReaction = startCommandReaction(ctx)
   try {
@@ -186,31 +157,21 @@ export const setupImageGenerationOpenAiCommands = async (
   }
 }
 
-const setupOpenAiCommands = (
-  bot: Bot,
-  { deferredCommands } = { deferredCommands: false },
-) => {
-  bot.command('e', (ctx) =>
-    setupImageGenerationOpenAiCommands(
-      ctx,
-      OPENAI_GPT_IMAGE_MODEL,
-      deferredCommands,
-      '/e',
-    ),
-  )
-  bot.command('ee', (ctx) =>
-    setupImageGenerationOpenAiCommands(
-      ctx,
-      OPENAI_GPT_IMAGE_MODEL,
-      deferredCommands,
-      '/ee',
-    ),
-  )
+const setupOpenAiCommands = (bot: Bot) => {
+  for (const command of ['e', 'ee']) {
+    bot.command(command, (ctx) =>
+      setupImageGenerationOpenAiCommands(
+        ctx,
+        OPENAI_GPT_IMAGE_MODEL,
+        `/${command}`,
+      ),
+    )
+  }
+
   bot.command('o', (ctx) =>
     setupMultimodalOpenAiCommands(
       ctx,
       OPENAI_O_MODEL,
-      deferredCommands,
       '/o',
       OPENAI_O_REASONING_EFFORT,
     ),

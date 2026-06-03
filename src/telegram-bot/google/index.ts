@@ -7,14 +7,13 @@ import {
   getCommandData,
   getMediaGroupMessages,
   getMultimodalCommandData,
-  invokeReplyLambda,
   logger,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
   startCommandReaction,
   timedCall,
 } from '@tg-bot/common'
-import { handleAgenticCommand } from '../agent'
+import { DIRECT_AGENT_COMMANDS, handleAgenticCommand } from '../agent'
 import { generateImage, generateMultimodalCompletion } from './gemini'
 import { searchImage } from './image-search'
 import { translate } from './translate'
@@ -32,25 +31,11 @@ export const GEMINI_FLASH_LITE_MODEL = 'gemini-3.1-flash-lite'
 
 export const setupMultimodalGeminiCommands = async (
   ctx: Context,
-  deferredCommands = false,
   model: string = GEMMA_MODEL,
   commandName = '/gemma',
 ) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
-
-  if (deferredCommands) {
-    const stopReaction = startCommandReaction(ctx)
-    try {
-      // Wait only for Lambda async invoke ACK, not for worker execution.
-      await invokeReplyLambda(commandData).catch((error) =>
-        logger.error({ err: error }, 'Failed to invoke reply worker'),
-      )
-    } finally {
-      stopReaction()
-    }
-    return
-  }
 
   const stopReaction = startCommandReaction(ctx)
   try {
@@ -95,25 +80,9 @@ export const setupMultimodalGeminiCommands = async (
   }
 }
 
-export const setupImageGenerationGeminiCommands = async (
-  ctx: Context,
-  deferredCommands = false,
-) => {
+export const setupImageGenerationGeminiCommands = async (ctx: Context) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
-
-  if (deferredCommands) {
-    const stopReaction = startCommandReaction(ctx)
-    try {
-      // Wait only for Lambda async invoke ACK, not for worker execution.
-      await invokeReplyLambda(commandData).catch((error) =>
-        logger.error({ err: error }, 'Failed to invoke reply worker'),
-      )
-    } finally {
-      stopReaction()
-    }
-    return
-  }
 
   const stopReaction = startCommandReaction(ctx)
   try {
@@ -156,10 +125,7 @@ export const setupImageGenerationGeminiCommands = async (
   }
 }
 
-const setupGoogleCommands = (
-  bot: Bot,
-  { deferredCommands } = { deferredCommands: false },
-) => {
+const setupGoogleCommands = (bot: Bot) => {
   bot.command('g', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     try {
@@ -193,14 +159,12 @@ const setupGoogleCommands = (
   })
 
   bot.command('gemma', (ctx) =>
-    setupMultimodalGeminiCommands(ctx, deferredCommands, GEMMA_MODEL, '/gemma'),
+    setupMultimodalGeminiCommands(ctx, GEMMA_MODEL, '/gemma'),
   )
 
-  bot.command(['q', 'qq'], (ctx) => handleAgenticCommand(ctx))
+  bot.command(DIRECT_AGENT_COMMANDS, (ctx) => handleAgenticCommand(ctx))
 
-  bot.command('ge', (ctx) =>
-    setupImageGenerationGeminiCommands(ctx, deferredCommands),
-  )
+  bot.command('ge', (ctx) => setupImageGenerationGeminiCommands(ctx))
 
   /*
    Translate commands

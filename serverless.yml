@@ -37,13 +37,12 @@ provider:
 
 functions:
   telegram-bot:
-    timeout: 300
+    timeout: 10
     handler: src/telegram-bot/index.default
     environment:
       REPLY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-reply-worker
       AGENT_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-agent-worker
-      WEBSOCKET_BROADCAST_FUNCTION_NAME:
-        Ref: WebsocketDashbroadcastDashstatsLambdaFunction
+      ACTIVITY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-activity-worker
     events:
       - http:
           path: /
@@ -58,6 +57,12 @@ functions:
     handler: src/agent-worker/index.default
     timeout: 300
     memorySize: 1536
+
+  telegram-activity-worker:
+    handler: src/telegram-bot/activity-worker.default
+    environment:
+      WEBSOCKET_BROADCAST_FUNCTION_NAME:
+        Ref: WebsocketDashbroadcastDashstatsLambdaFunction
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default

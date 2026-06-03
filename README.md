@@ -19,9 +19,10 @@ flowchart LR
   msg["Messages<br/>/ Commands"]:::gateway
 
   subgraph app["telegram-bot-app"]
-    bot["fa:fa-bolt telegram-bot"]:::lambda
-    reply["fa:fa-bolt reply-worker"]:::lambda
-    agent["fa:fa-brain agent-worker"]:::lambda
+    bot["fa:fa-bolt telegram-bot<br/>ingress"]:::lambda
+    activity["fa:fa-bolt activity-worker"]:::lambda
+    reply["fa:fa-bolt reply-worker<br/>registered commands"]:::lambda
+    agent["fa:fa-brain agent-worker<br/>AI decisions"]:::lambda
     search["fa:fa-search chat-search"]:::lambda
     image["fa:fa-image sharp-statistics"]:::lambda
     broadcast["fa:fa-bolt broadcast-stats"]:::lambda
@@ -40,17 +41,19 @@ flowchart LR
   wss["fa:fa-plug WebSocket API"]:::gateway
 
   tg <--> req <--> msg <--> bot
-  bot -->|"common saveEvent"| events
-  bot -->|"common statistics helpers"| stats
-  bot -. "async" .-> reply
-  bot -. "agent event" .-> agent
-  bot -. "async Lambda Invoke (Event)" .-> broadcast
+  bot -. "async activity event" .-> activity
+  bot -. "registered command" .-> reply
+  bot -. "/q /qq or agent fallback" .-> agent
 
+  activity -->|"updateStatistics"| stats
+  activity -->|"saveEvent"| events
+  activity -->|"AI chat history"| redis
+  activity -. "stats broadcast" .-> broadcast
   reply --> tg
+  reply <--> apis
   agent --> tg
   agent <--> redis
   agent <--> apis
-  bot <--> apis
 
   ui --> http
   http --> search --> stats
@@ -81,12 +84,35 @@ flowchart LR
 ## How It Works
 
 `src/telegram-bot` is the Telegram ingress layer. It handles the webhook,
-updates chat statistics, stores message events and returns quickly. Long-running
-work is invoked asynchronously so the webhook is not blocked by LLM calls.
+records no statistics directly and returns quickly. It only dispatches async
+Lambda `Event` invokes:
+
+- every message payload goes to `telegram-activity-worker` for statistics,
+  chat events, live stats broadcast and AI chat history persistence;
+- `/q` and `/qq` go directly to `telegram-agent-worker` with the reply gate
+  bypassed;
+- other registered commands go to `telegram-reply-worker`;
+- non-command messages fall through to `telegram-agent-worker`;
+- unregistered slash commands are allowed to reach the agent flow for dynamic
+  commands;
+- commands addressed to another bot are ignored.
+
+Registered commands are detected from Telegram `bot_command` entities at offset
+0. Command names are normalized before worker dispatch so uppercase commands
+and caption commands still match the same worker-side grammY handlers.
+
+`src/telegram-bot/telegram-reply-worker` owns registered non-agent commands:
+text helpers, search/translate/weather/currency/user/stat commands, and direct
+image or multimodal commands.
 
 `src/agent-worker` owns the agentic flow: chat-enabled checks, reply gating,
 main response generation and tool execution. This keeps AI decisions out of the
 webhook lambda.
+
+`src/telegram-bot/activity-worker` owns the non-reply side effects that used to
+run in ingress: statistics updates, chat event writes, AI chat history writes
+and WebSocket stats broadcast fanout. The webhook waits only for the async invoke
+ACK, not for these tasks to complete.
 
 `src/websockets` owns only the WebSocket runtime for the stats UI: connection
 tracking, initial `stats` responses and live broadcast fanout when new chat

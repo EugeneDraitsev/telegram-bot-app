@@ -90,12 +90,8 @@ export const setUserOptOut = async (
     return 'already_set'
   }
 
-  // NOTE: This is a read-modify-write. The root middleware runs updateStatistics
-  // (also a read-modify-write) concurrently with the command handler via Promise.all.
-  // If updateStatistics reads the old snapshot and its PutItem lands after this one,
-  // it will silently overwrite the optedOut flag. A proper fix requires changing
-  // updateStatistics to use DynamoDB UpdateItem (atomic attribute-level updates)
-  // instead of PutItem so the two writes target disjoint attributes.
+  // Legacy users[] storage intentionally stays read-modify-write in this PR.
+  // Moving it to atomic map updates needs a separate data-shape change.
   user.optedOut = optedOut
   await dynamoPutItem({ TableName: 'chat-statistics', Item: chatStatistics })
   return 'updated'
