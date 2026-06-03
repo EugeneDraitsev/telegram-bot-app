@@ -11,6 +11,7 @@ const loggerWarnMock = jest.fn()
 jest.mock('@tg-bot/common', () => ({
   isAiEnabledChat: (chatId: number | string | undefined) => chatId === 123,
   logger: {
+    info: jest.fn(),
     error: (...args: unknown[]) => loggerErrorMock(...args),
     warn: (...args: unknown[]) => loggerWarnMock(...args),
   },
