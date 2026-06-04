@@ -9,7 +9,9 @@ import {
 
 type LambdaSend = LambdaClient['send']
 
-const mockLambdaSend = (implementation: (command: InvokeCommand) => unknown) =>
+const mockLambdaSend = (
+  implementation: (this: LambdaClient, command: InvokeCommand) => unknown,
+) =>
   jest
     .spyOn(LambdaClient.prototype, 'send')
     .mockImplementation(implementation as unknown as LambdaSend)
@@ -95,6 +97,20 @@ describe('invokeLambda', () => {
     )
     expect(decoded).toEqual(payload)
   })
+
+  test('should reuse lambda client for the same region and endpoint', async () => {
+    const clients = new Set<LambdaClient>()
+
+    mockLambdaSend(function (this: LambdaClient) {
+      clients.add(this)
+      return Promise.resolve('ok')
+    })
+
+    await invokeLambda({ name: 'fn-one', payload: {} })
+    await invokeLambda({ name: 'fn-two', payload: {} })
+
+    expect(clients.size).toBe(1)
+  })
 })
 
 describe('invokeReplyLambda', () => {
@@ -106,6 +122,7 @@ describe('invokeReplyLambda', () => {
 
   afterEach(() => {
     process.env = originalEnv
+    jest.useRealTimers()
     jest.restoreAllMocks()
   })
 
@@ -160,6 +177,18 @@ describe('invokeReplyLambda', () => {
 
     expect(capturedCommand?.input.InvocationType).toBe('Event')
     expect(capturedCommand?.input.FunctionName).toBe('test-worker')
+  })
+
+  test('should time out when async worker invoke ACK hangs', async () => {
+    jest.useFakeTimers()
+    mockLambdaSend(() => new Promise(() => undefined))
+
+    const result = invokeReplyLambda({ text: 'test' })
+
+    jest.advanceTimersByTime(3_000)
+    await expect(result).rejects.toThrow(
+      'Timed out invoking test-worker after 3000ms',
+    )
   })
 })
 
