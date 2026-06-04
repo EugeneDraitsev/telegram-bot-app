@@ -14,5 +14,5 @@ jobs:
 
       - run: bun install
       - run: bun biome
-      - run: bun tsc
+      - run: bun run tsc
       - run: bun test
