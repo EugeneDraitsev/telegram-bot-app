@@ -43,7 +43,7 @@ describe('ai-model.utils', () => {
 
   test('formats provider-neutral model labels', () => {
     expect(formatAiModelConfig(DEFAULT_FAST_TEXT_MODEL)).toBe(
-      'google/gemini-3.1-flash-lite',
+      'google/gemini-3.5-flash',
     )
   })
 })
