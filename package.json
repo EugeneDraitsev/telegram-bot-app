@@ -22,13 +22,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
-    "@types/aws-lambda": "^8.10.161",
+    "@types/aws-lambda": "^8.10.162",
     "@types/jest": "^30.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260421.2",
+    "@typescript/native-preview": "7.0.0-dev.20260608.1",
     "esbuild": "0.28.0",
     "serverless": "^4.37.0",
     "serverless-esbuild": "^1.57.2",
-    "serverless-offline": "^14.7.1",
+    "serverless-offline": "^14.7.2",
     "typescript": "^6.0.3"
   },
   "workspaces": [
