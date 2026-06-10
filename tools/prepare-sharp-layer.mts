@@ -10,6 +10,10 @@ import {
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+type PackageJson = {
+  dependencies?: Record<string, string | undefined>
+}
+
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const statisticsPackagePath = path.join(
   rootDir,
@@ -23,7 +27,7 @@ const layerPackagePath = path.join(layerNodeRoot, 'package.json')
 
 const statisticsPackage = JSON.parse(
   readFileSync(statisticsPackagePath, 'utf8'),
-)
+) as PackageJson
 const sharpVersion = statisticsPackage.dependencies?.sharp
 
 if (!sharpVersion) {
