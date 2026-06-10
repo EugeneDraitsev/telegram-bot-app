@@ -12,6 +12,11 @@ const DEFAULT_AGENT_CHAT_FALLBACK_MODEL: AiModelConfig = {
   model: 'gpt-5.4-nano',
 }
 
+const DEFAULT_REPLY_GATE_MODEL: AiModelConfig = {
+  provider: 'google',
+  model: 'gemini-3.1-flash-lite',
+}
+
 export const FAST_TEXT_MODEL_CONFIG = getAiModelConfig(
   'FAST_TEXT_MODEL',
   DEFAULT_FAST_TEXT_MODEL,
@@ -26,7 +31,7 @@ export const CHAT_FALLBACK_MODEL_CONFIG = getAiModelConfig(
 )
 export const REPLY_GATE_MODEL_CONFIG = getAiModelConfig(
   'REPLY_GATE_MODEL',
-  FAST_TEXT_MODEL_CONFIG,
+  DEFAULT_REPLY_GATE_MODEL,
 )
 export const REPLY_GATE_FALLBACK_MODEL_CONFIG = getAiModelConfig(
   'REPLY_GATE_FALLBACK_MODEL',
