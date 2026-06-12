@@ -11,68 +11,16 @@ and [Serverless Framework](https://github.com/serverless/serverless).
 
 ## Architecture
 
-```mermaid
-%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 38, "rankSpacing": 54}} }%%
-flowchart LR
-  tg["fa:fa-paper-plane Telegram"]:::telegram
-  req["fa:fa-code Telegram Request"]:::gateway
-  msg["Messages<br/>/ Commands"]:::gateway
+<a href=".github/architecture-light.svg">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-dark.svg">
+    <img alt="Architecture diagram" src=".github/architecture-light.svg">
+  </picture>
+</a>
 
-  subgraph app["telegram-bot-app"]
-    bot["fa:fa-bolt telegram-bot<br/>ingress"]:::lambda
-    activity["fa:fa-bolt activity-worker"]:::lambda
-    reply["fa:fa-bolt reply-worker<br/>registered commands"]:::lambda
-    agent["fa:fa-brain agent-worker<br/>AI decisions"]:::lambda
-    search["fa:fa-search chat-search"]:::lambda
-    image["fa:fa-image sharp-statistics"]:::lambda
-    broadcast["fa:fa-bolt broadcast-stats"]:::lambda
-    ws["fa:fa-plug websockets"]:::lambda
-  end
-
-  apis["fa:fa-cloud Google / YouTube<br/>Weather / Tavily<br/>Gemini / OpenAI"]:::external
-
-  events[("fa:fa-database chat-events")]:::data
-  stats[("fa:fa-database chat-statistics")]:::data
-  conns[("fa:fa-database websocket-connections")]:::data
-  redis[("fa:fa-database Upstash Redis")]:::data
-
-  ui["fa:fa-desktop telegram-bot-ui"]:::ui
-  http["fa:fa-code REST API<br/>/search /statistics"]:::gateway
-  wss["fa:fa-plug WebSocket API"]:::gateway
-
-  tg <--> req <--> msg <--> bot
-  bot -. "async activity event" .-> activity
-  bot -. "registered command" .-> reply
-  bot -. "/q /qq or agent fallback" .-> agent
-
-  activity -->|"updateStatistics"| stats
-  activity -->|"saveEvent"| events
-  activity -->|"AI chat history"| redis
-  activity -. "stats broadcast" .-> broadcast
-  reply --> tg
-  reply <--> apis
-  agent --> tg
-  agent <--> redis
-  agent <--> apis
-
-  ui --> http
-  http --> search --> stats
-  http --> image --> events
-
-  ui <--> wss <--> ws
-  ws --> conns
-  ws --> events
-  ws --> stats
-  broadcast --> conns
-  broadcast -. "push" .-> wss
-
-  classDef telegram fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
-  classDef gateway fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
-  classDef lambda fill:#fff7ed,stroke:#f97316,color:#7c2d12
-  classDef data fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
-  classDef ui fill:#f8fafc,stroke:#111827,color:#111827
-  classDef external fill:#f0fdf4,stroke:#16a34a,color:#14532d
-```
+The diagram source lives in
+[`.github/diagram/architecture.mmd`](.github/diagram/architecture.mmd);
+re-render both themes with `bun run diagram` after changing it.
 
 <details>
 <summary>Legacy architecture</summary>
@@ -124,6 +72,11 @@ chat event through it can trigger the broadcast lambda.
 from WebSockets because it is ordinary request/response HTTP.
 
 `src/sharp-statistics` renders the PNG statistics image from stored chat events.
+
+`src/telegram-bot/currency-scheduler` and `src/telegram-bot/redis-scheduler`
+are cron lambdas: the first posts a currency digest to selected chats on
+weekday mornings and evenings, the second hourly clears old AI chat history
+in Redis.
 
 `src/common` contains shared runtime code: Telegram helpers, DynamoDB access,
 Lambda invocation, S3 helpers, Upstash Redis access, logging, formatting and
