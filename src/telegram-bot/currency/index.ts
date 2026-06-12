@@ -73,7 +73,34 @@ export const getCurrencyMessages = async (): Promise<CurrencyMessages> => {
   return buildCurrencyMessages(await Promise.all(promises))
 }
 
-export const getCurrencyMessage = async () => (await getCurrencyMessages()).text
+type SendRichMessageParams = Parameters<typeof sendRichMessageWithFallback>[0]
+
+export function sendCurrencyMessages({
+  api,
+  chatId,
+  messages,
+  options,
+}: {
+  api: SendRichMessageParams['api']
+  chatId: number | string
+  messages: CurrencyMessages
+  options?: SendRichMessageParams['richOptions']
+}) {
+  return sendRichMessageWithFallback({
+    api,
+    chatId,
+    richMessage: {
+      markdown: messages.richMarkdown,
+      skip_entity_detection: true,
+    },
+    fallbackText: messages.text,
+    richOptions: options,
+    fallbackOptions: {
+      ...options,
+      parse_mode: 'HTML',
+    },
+  })
+}
 
 const setupCurrencyCommands = (bot: Bot) => {
   bot.command('c', async (ctx) => {
@@ -87,19 +114,11 @@ const setupCurrencyCommands = (bot: Bot) => {
         : undefined
     const messages = await getCurrencyMessages()
 
-    return sendRichMessageWithFallback({
+    return sendCurrencyMessages({
       api: ctx.api,
       chatId,
-      richMessage: {
-        markdown: messages.richMarkdown,
-        skip_entity_detection: true,
-      },
-      fallbackText: messages.text,
-      richOptions: options,
-      fallbackOptions: {
-        ...options,
-        parse_mode: 'HTML',
-      },
+      messages,
+      options,
     })
   })
 }

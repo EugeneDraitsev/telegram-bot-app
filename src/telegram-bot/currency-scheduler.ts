@@ -1,19 +1,38 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
 import { createBot, logger } from '@tg-bot/common'
-import { getCurrencyMessage } from './currency'
+import { getCurrencyMessages, sendCurrencyMessages } from './currency'
 
 const bot = createBot()
+const CHAT_IDS = ['-1001306676509.0']
+
+type SendCurrencyMessagesParams = Parameters<typeof sendCurrencyMessages>[0]
+
+export async function sendScheduledCurrencyMessages({
+  api,
+  chatIds = CHAT_IDS,
+  getMessages = getCurrencyMessages,
+  sendMessages = sendCurrencyMessages,
+}: {
+  api: SendCurrencyMessagesParams['api']
+  chatIds?: Array<number | string>
+  getMessages?: typeof getCurrencyMessages
+  sendMessages?: typeof sendCurrencyMessages
+}) {
+  const messages = await getMessages()
+
+  for (const chatId of chatIds) {
+    await sendMessages({
+      api,
+      chatId,
+      messages,
+    })
+  }
+}
 
 const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
   try {
-    const CHAT_IDS = ['-1001306676509.0']
-
-    const message = await getCurrencyMessage()
-
-    for (const chatId of CHAT_IDS) {
-      await bot.api.sendMessage(chatId, message, { parse_mode: 'HTML' })
-    }
+    await sendScheduledCurrencyMessages({ api: bot.api })
 
     return { body: '', statusCode: 200 }
   } catch (e) {
