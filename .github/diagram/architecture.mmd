@@ -47,9 +47,10 @@ flowchart TB
 
   GHAPP ~~~ BOT
   CRON1 ~~~ CRON2
-  TG ~~~ GHUI
+  TG ~~~ GEM
+  GEM ~~~ APIS
+  APIS ~~~ GHUI
   GHUI ~~~ NEXT
-  GEM ~~~ CONNS
 
   CRON1 -->|"currency digest"| TG
   CRON2 -->|"cleanup"| REDIS
