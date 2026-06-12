@@ -1,19 +1,25 @@
 import type { Bot } from 'grammy/web'
 
-import { logger } from '@tg-bot/common'
-import { getCryptoCurrency } from './crypto-currency'
-import { getMainCurrencies } from './main-currency'
-import { getRussianCurrency } from './russian-currency'
+import { logger, sendRichMessageWithFallback } from '@tg-bot/common'
+import { getCryptoCurrencySection } from './crypto-currency'
+import { buildCurrencyMessages } from './format'
+import { getMainCurrencySection } from './main-currency'
+import { getRussianCurrencySection } from './russian-currency'
+import type {
+  CurrenciesResponse,
+  CurrencyMessages,
+  CurrencyRateSection,
+} from './types'
 
-const getError = (err: Error, from: string): string => {
+export type { CurrenciesResponse, CurrencyMessages, CurrencyRateSection }
+
+const getError = (err: Error, from: string): CurrencyRateSection => {
   logger.error({ error: err }, `Can't fetch currency from ${from}`)
-  return `Can't fetch currency from ${from}\n`
-}
-
-export interface CurrenciesResponse {
-  readonly provider: string
-  readonly rates: {
-    readonly [currency: string]: number
+  return {
+    title: from,
+    provider: from,
+    rows: [],
+    error: `Can't fetch currency from ${from}`,
   }
 }
 
@@ -52,29 +58,49 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
   }
 }
 
-export const getCurrencyMessage = async () => {
+export const getCurrencyMessages = async (): Promise<CurrencyMessages> => {
   const currenciesRatesPromise = getCurrenciesRates()
   const promises = [
-    getMainCurrencies(currenciesRatesPromise).catch((err) =>
+    getMainCurrencySection(currenciesRatesPromise).catch((err) =>
       getError(err, 'ExchangeRate and Fixer'),
     ),
-    getRussianCurrency(currenciesRatesPromise).catch((err) =>
+    getRussianCurrencySection(currenciesRatesPromise).catch((err) =>
       getError(err, 'ExchangeRate and Fixer'),
     ),
-    getCryptoCurrency().catch((err) => getError(err, 'poloniex')),
+    getCryptoCurrencySection().catch((err) => getError(err, 'crypto')),
   ]
 
-  const result = await Promise.all(promises).then(
-    (result) => `${result.join('\n')}`,
-  )
-
-  return result
+  return buildCurrencyMessages(await Promise.all(promises))
 }
+
+export const getCurrencyMessage = async () => (await getCurrencyMessages()).text
 
 const setupCurrencyCommands = (bot: Bot) => {
   bot.command('c', async (ctx) => {
-    const message = await getCurrencyMessage()
-    return ctx.reply(message, { parse_mode: 'HTML' })
+    const chatId = ctx.chat?.id
+    if (!chatId) return
+
+    const messageThreadId = ctx.message?.message_thread_id
+    const options =
+      typeof messageThreadId === 'number'
+        ? { message_thread_id: messageThreadId }
+        : undefined
+    const messages = await getCurrencyMessages()
+
+    return sendRichMessageWithFallback({
+      api: ctx.api,
+      chatId,
+      richMessage: {
+        markdown: messages.richMarkdown,
+        skip_entity_detection: true,
+      },
+      fallbackText: messages.text,
+      richOptions: options,
+      fallbackOptions: {
+        ...options,
+        parse_mode: 'HTML',
+      },
+    })
   })
 }
 

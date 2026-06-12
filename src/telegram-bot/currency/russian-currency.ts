@@ -1,13 +1,18 @@
 import { fetchBrentPrice } from './brent'
-import type { CurrenciesResponse } from './index'
+import { buildCurrencyFallbackText } from './format'
+import type { CurrenciesResponse, CurrencyRateSection } from './types'
 
-const formatRow = (key: string, value: string, length = 10) => {
-  return `${key.toUpperCase()}: ${value.padStart(length - key.length, ' ')}`
-}
+const formatRate = (value: number) =>
+  Number.isFinite(value) ? value.toFixed(2) : 'n/a'
 
-export const getRussianCurrency = async (
+const formatBrent = (value: number | undefined) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? `$${value.toFixed(2)}`
+    : 'n/a'
+
+export const getRussianCurrencySection = async (
   currenciesRatesPromise: Promise<CurrenciesResponse>,
-) => {
+): Promise<CurrencyRateSection> => {
   const brentPromise = fetchBrentPrice()
 
   const [{ rates, provider }, brentPrice] = await Promise.all([
@@ -15,21 +20,21 @@ export const getRussianCurrency = async (
     brentPromise,
   ])
 
-  const currency: Record<string, string> = {
-    USD: Number(rates.RUB / rates.USD).toFixed(2),
-    EUR: Number(rates.RUB).toFixed(2),
-    brent: Number(brentPrice).toFixed(2),
+  return {
+    title: 'Рубль и нефть',
+    provider,
+    columns: ['Актив', 'Значение'],
+    rows: [
+      { label: 'USD/RUB', value: formatRate(rates.RUB / rates.USD) },
+      { label: 'EUR/RUB', value: formatRate(rates.RUB) },
+      { label: '🛢Brent', value: formatBrent(brentPrice) },
+    ],
   }
-
-  const maxLength = Math.max(
-    ...Object.entries(currency).map(
-      ([key, value]) => value.length + key.length,
-    ),
-  )
-
-  const currencyString = Object.keys(currency)
-    .map((key) => formatRow(key, currency[key], maxLength))
-    .join('\n')
-
-  return `Курсы эльвиры (${provider}):\n<pre>${currencyString}</pre>\n`
 }
+
+export const getRussianCurrency = async (
+  currenciesRatesPromise: Promise<CurrenciesResponse>,
+) =>
+  buildCurrencyFallbackText([
+    await getRussianCurrencySection(currenciesRatesPromise),
+  ])

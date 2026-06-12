@@ -1,4 +1,6 @@
 import { logger, round } from '@tg-bot/common'
+import { buildCurrencyFallbackText } from './format'
+import type { CurrencyRateRow, CurrencyRateSection } from './types'
 
 export interface OkxResponse {
   code: string
@@ -46,56 +48,44 @@ const formatCurrency = (value: string | number, fractionDigits = 2) =>
     })
     .replaceAll(',', ' ')
 
-const formatRow = (key: string, value: string, length = 10) => {
-  return `${key}: ${value.padStart(length - key.length, ' ')}`
-}
+const formatPercent = (value: number) =>
+  `${value >= 0 ? '+' : ''}${round(value, 2)}%`
 
 /* Main Functions */
 
-const getPoloniexData = async (): Promise<string> => {
+const getPoloniexData = async (): Promise<CurrencyRateSection> => {
   const url = 'https://api.poloniex.com/markets/price'
   const currencyRates: PoloniexCurrency[] = await fetch(url, {
     signal: globalThis.AbortSignal.timeout(timeout),
   }).then((res) => res.json())
 
-  const filteredCurrency = Object.keys(symbols).reduce(
-    (acc, key) => {
-      const currencyData = currencyRates?.find(
-        (x) => x.symbol === `${key}_USDT`,
+  const rows = Object.keys(symbols).reduce((acc, key) => {
+    const currencyData = currencyRates?.find((x) => x.symbol === `${key}_USDT`)
+
+    if (currencyData) {
+      const formattedPrice = formatCurrency(
+        currencyData.price,
+        symbols[key as Symbol],
       )
+      const priceChange = Number.parseFloat(currencyData.dailyChange) * 100
+      acc.push({
+        label: key,
+        value: `$${formattedPrice} (${formatPercent(priceChange)})`,
+      })
+    }
 
-      if (currencyData) {
-        const formattedPrice = formatCurrency(
-          currencyData.price,
-          symbols[key as Symbol],
-        )
-        const priceChange = round(
-          Number.parseFloat(currencyData.dailyChange) * 100,
-          2,
-        )
-        const isUp = Number.parseFloat(currencyData.dailyChange) >= 0
-        acc[key] = `${formattedPrice} (${isUp ? '+' : ''}${priceChange}%)`
-      }
+    return acc
+  }, [] as CurrencyRateRow[])
 
-      return acc
-    },
-    {} as Record<string, string>,
-  )
-
-  const maxLength = Math.max(
-    ...Object.entries(filteredCurrency).map(
-      ([key, value]) => key.length + value.length,
-    ),
-  )
-
-  const resultString = Object.entries(filteredCurrency)
-    .map(([key, value]) => formatRow(key, value, maxLength))
-    .join('\n')
-
-  return `Курсы криптовалют (poloniex):\n<pre>${resultString}</pre>`
+  return {
+    title: 'Крипта',
+    provider: 'Poloniex',
+    columns: ['Монета', 'Цена / 24ч'],
+    rows,
+  }
 }
 
-const getOkxData = async () => {
+const getOkxData = async (): Promise<CurrencyRateSection> => {
   const url = new URL('https://www.okx.com/api/v5/market/tickers')
   url.searchParams.append('instType', 'SPOT')
 
@@ -109,51 +99,46 @@ const getOkxData = async () => {
 
   const { data }: OkxResponse = await response.json()
 
-  const filteredCurrency = Object.keys(symbols).reduce(
-    (acc, key) => {
-      const currencyData = data?.find((x) => x.instId === `${key}-USDT`)
+  const rows = Object.keys(symbols).reduce((acc, key) => {
+    const currencyData = data?.find((x) => x.instId === `${key}-USDT`)
 
-      if (currencyData) {
-        const formattedPrice = formatCurrency(
-          currencyData.last,
-          symbols[key as Symbol],
-        )
+    if (currencyData) {
+      const formattedPrice = formatCurrency(
+        currencyData.last,
+        symbols[key as Symbol],
+      )
 
-        const priceChangePercent = round(
-          (Number.parseFloat(currencyData.last) /
-            Number.parseFloat(currencyData.open24h) -
-            1) *
-            100,
-          2,
-        )
-        const isUp = priceChangePercent >= 0
-        acc[key] =
-          `${formattedPrice} (${isUp ? '+' : ''}${priceChangePercent}%)`
-      }
+      const priceChangePercent =
+        (Number.parseFloat(currencyData.last) /
+          Number.parseFloat(currencyData.open24h) -
+          1) *
+        100
+      acc.push({
+        label: key,
+        value: `$${formattedPrice} (${formatPercent(priceChangePercent)})`,
+      })
+    }
 
-      return acc
-    },
-    {} as Record<string, string>,
-  )
+    return acc
+  }, [] as CurrencyRateRow[])
 
-  const maxLength = Math.max(
-    ...Object.entries(filteredCurrency).map(
-      ([key, value]) => key.length + value.length,
-    ),
-  )
-
-  const resultString = Object.entries(filteredCurrency)
-    .map(([key, value]) => formatRow(key, value, maxLength))
-    .join('\n')
-
-  return `Курсы криптовалют (okx):\n<pre>${resultString}</pre>`
-}
-
-export const getCryptoCurrency = async (): Promise<string> => {
-  try {
-    return await getOkxData()
-  } catch (e) {
-    logger.error({ error: e }, 'OKX error')
-    return getPoloniexData()
+  return {
+    title: 'Крипта',
+    provider: 'OKX',
+    columns: ['Монета', 'Цена / 24ч'],
+    rows,
   }
 }
+
+export const getCryptoCurrencySection =
+  async (): Promise<CurrencyRateSection> => {
+    try {
+      return await getOkxData()
+    } catch (e) {
+      logger.error({ error: e }, 'OKX error')
+      return getPoloniexData()
+    }
+  }
+
+export const getCryptoCurrency = async (): Promise<string> =>
+  buildCurrencyFallbackText([await getCryptoCurrencySection()])

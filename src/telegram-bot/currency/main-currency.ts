@@ -1,5 +1,6 @@
 import { logger } from '@tg-bot/common'
-import type { CurrenciesResponse } from './index'
+import { buildCurrencyFallbackText } from './format'
+import type { CurrenciesResponse, CurrencyRateSection } from './types'
 
 const timeout = 10_000
 
@@ -13,8 +14,7 @@ type Data = {
   rates: Array<Rate>
 }
 
-const formatRow = (value: number, length = 10) =>
-  value.toFixed(2).padStart(length, ' ')
+const formatRate = (value: number) => value.toFixed(2)
 
 // More precise BYN rates
 const getBynRates = async () => {
@@ -52,30 +52,35 @@ const getBynRates = async () => {
   }
 }
 
-export const getMainCurrencies = async (
+export const getMainCurrencySection = async (
   ratesPromise: Promise<CurrenciesResponse>,
-) => {
+): Promise<CurrencyRateSection> => {
   const [bynRates, { rates, provider }] = await Promise.all([
     getBynRates(),
     ratesPromise,
   ])
 
-  const ratesToDisplay = {
-    '🇧🇾USD/BYN': Number(bynRates?.USD) || rates.BYN / rates.USD,
-    '🇧🇾EUR/BYN': Number(bynRates?.EUR) || rates.BYN,
-    '🇸🇪USD/SEK': rates.SEK / rates.USD,
-    '🇸🇪EUR/SEK': rates.SEK,
-    '🇵🇱USD/PLN': rates.PLN / rates.USD,
-    '🇵🇱EUR/PLN': rates.PLN,
+  return {
+    title: 'Основные пары',
+    provider,
+    columns: ['Пара', 'Курс'],
+    rows: [
+      {
+        label: '🇧🇾USD/BYN',
+        value: formatRate(Number(bynRates.USD) || rates.BYN / rates.USD),
+      },
+      {
+        label: '🇧🇾EUR/BYN',
+        value: formatRate(Number(bynRates.EUR) || rates.BYN),
+      },
+      { label: '🇸🇪USD/SEK', value: formatRate(rates.SEK / rates.USD) },
+      { label: '🇸🇪EUR/SEK', value: formatRate(rates.SEK) },
+      { label: '🇵🇱USD/PLN', value: formatRate(rates.PLN / rates.USD) },
+      { label: '🇵🇱EUR/PLN', value: formatRate(rates.PLN) },
+    ],
   }
-
-  const maxLength = Math.max(
-    ...Object.values(ratesToDisplay).map((x) => x.toFixed(2).length),
-  )
-
-  const ratesString = Object.entries(ratesToDisplay)
-    .map(([key, value]) => `${key}: ${formatRow(value, maxLength)}`)
-    .join('\n')
-
-  return `Курсы ${provider}:\n<pre>${ratesString}</pre>\n`
 }
+
+export const getMainCurrencies = async (
+  ratesPromise: Promise<CurrenciesResponse>,
+) => buildCurrencyFallbackText([await getMainCurrencySection(ratesPromise)])
