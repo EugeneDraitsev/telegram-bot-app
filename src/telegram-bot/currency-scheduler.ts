@@ -3,7 +3,6 @@ import type { APIGatewayProxyHandler } from 'aws-lambda'
 import { createBot, logger } from '@tg-bot/common'
 import { getCurrencyMessages, sendCurrencyMessages } from './currency'
 
-const bot = createBot()
 const CHAT_IDS = ['-1001306676509.0']
 
 type SendCurrencyMessagesParams = Parameters<typeof sendCurrencyMessages>[0]
@@ -32,6 +31,8 @@ export async function sendScheduledCurrencyMessages({
 
 const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
   try {
+    const bot = createBot()
+
     await sendScheduledCurrencyMessages({ api: bot.api })
 
     return { body: '', statusCode: 200 }
