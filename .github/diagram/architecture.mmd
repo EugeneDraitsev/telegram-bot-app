@@ -1,0 +1,92 @@
+flowchart TB
+  subgraph APP[" "]
+    GHAPP@{ icon: "mdi:github", label: "telegram-bot-app", h: 36 }
+
+    subgraph SCHED["schedulers"]
+      CRON1@{ icon: "logos:aws-eventbridge", label: "currency-scheduler<br/>Mon–Fri 9:00 / 17:00", h: 38 }
+      CRON2@{ icon: "logos:aws-eventbridge", label: "redis-scheduler<br/>hourly cleanup", h: 38 }
+    end
+
+    BOT@{ icon: "logos:aws-lambda", label: "telegram-bot<br/>webhook ingress", h: 42 }
+
+    subgraph WORKERS["async workers"]
+      direction LR
+      ACT@{ icon: "logos:aws-lambda", label: "activity-worker<br/>stats · events · history", h: 42 }
+      REPLY@{ icon: "logos:aws-lambda", label: "reply-worker<br/>commands", h: 42 }
+      AGENT@{ icon: "logos:aws-lambda", label: "agent-worker<br/>reply gate + loop", h: 42 }
+    end
+
+    BCAST@{ icon: "logos:aws-lambda", label: "broadcast-stats", h: 42 }
+    WSL@{ icon: "logos:aws-lambda", label: "websockets", h: 42 }
+    SEARCH@{ icon: "logos:aws-lambda", label: "chat-search", h: 42 }
+    IMG@{ icon: "logos:aws-lambda", label: "sharp-statistics<br/>PNG charts", h: 42 }
+
+    WSS@{ icon: "logos:aws-api-gateway", label: "WebSocket API", h: 40 }
+    HTTP@{ icon: "logos:aws-api-gateway", label: "REST API<br/>/search · /statistics", h: 40 }
+  end
+
+  TG@{ icon: "logos:telegram", label: "Telegram", h: 46 }
+
+  subgraph UIBOX[" "]
+    GHUI@{ icon: "mdi:github", label: "telegram-bot-ui", h: 36 }
+    NEXT@{ icon: "simple-icons:nextdotjs", label: "Next.js · Vercel", h: 40 }
+  end
+
+  subgraph THIRD["3rd party services"]
+    GEM@{ icon: "logos:google-gemini", label: "gemini-3.5-flash", h: 38 }
+    APIS["Google · YouTube · Weather<br/>Tavily · OpenAI · Giphy"]:::ext
+  end
+
+  subgraph DATA["data stores"]
+    direction LR
+    REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>AI history", h: 40 }
+    STATS@{ icon: "logos:aws-dynamodb", label: "chat-statistics", h: 40 }
+    EVENTS@{ icon: "logos:aws-dynamodb", label: "chat-events", h: 40 }
+    CONNS@{ icon: "logos:aws-dynamodb", label: "websocket-connections", h: 40 }
+  end
+
+  GHAPP ~~~ BOT
+  CRON1 ~~~ CRON2
+  TG ~~~ GHUI
+  GHUI ~~~ NEXT
+  GEM ~~~ CONNS
+
+  CRON1 -->|"currency digest"| TG
+  CRON2 -->|"cleanup"| REDIS
+  TG <==>|"webhook"| BOT
+
+  BOT -.->|"every message"| ACT
+  BOT -.->|"registered cmds"| REPLY
+  BOT -.->|"/q · /qq · fallback"| AGENT
+
+  REPLY -->|"reply"| TG
+  AGENT -->|"reply"| TG
+  REPLY <--> APIS
+  AGENT <--> APIS
+  AGENT <-->|"gate + loop"| GEM
+  AGENT <-->|"chat history"| REDIS
+
+  ACT --> STATS & EVENTS
+  ACT -->|"AI history"| REDIS
+  ACT -.->|"stats fanout"| BCAST
+
+  BCAST --> STATS & EVENTS & CONNS
+  WSL --> STATS & EVENTS & CONNS
+  SEARCH --> STATS
+  IMG --> EVENTS
+
+  BCAST -.->|"push live stats"| WSS
+  WSS <--> WSL
+  HTTP <--> SEARCH
+  HTTP <--> IMG
+
+  NEXT <-->|"live stats"| WSS
+  NEXT <-->|"search · charts"| HTTP
+
+  classDef ext fill:#059669,stroke:#064e3b,color:#ffffff,font-weight:bold
+  style SCHED fill:transparent,stroke-dasharray:6 6
+  style WORKERS fill:transparent,stroke-dasharray:6 6
+  style THIRD fill:transparent,stroke-dasharray:6 6
+  style DATA fill:transparent,stroke-dasharray:6 6
+  style APP fill:transparent
+  style UIBOX fill:transparent

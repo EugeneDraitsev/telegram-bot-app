@@ -11,94 +11,16 @@ and [Serverless Framework](https://github.com/serverless/serverless).
 
 ## Architecture
 
-```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": {
-    "fontFamily": "Segoe UI, Helvetica, Arial, sans-serif",
-    "fontSize": "16px",
-    "lineColor": "#7d8ba1",
-    "textColor": "#e8edf5",
-    "nodeTextColor": "#e8edf5",
-    "primaryTextColor": "#e8edf5",
-    "titleColor": "#7d8ba1",
-    "edgeLabelBackground": "#2f3a4d",
-    "clusterBkg": "transparent",
-    "clusterBorder": "#7d8ba1"
-  },
-  "flowchart": { "curve": "basis", "nodeSpacing": 35, "rankSpacing": 60 }
-} }%%
-flowchart TB
-  CRON1["⏰ currency-scheduler<br/>Mon–Fri 9:00 / 17:00"]:::cron
-  CRON2["⏰ redis-scheduler<br/>hourly cleanup"]:::cron
-  TG(["✈️ Telegram"]):::tg
-  BOT["🤖 telegram-bot<br/>webhook ingress"]:::ingress
+<a href=".github/architecture-light.svg">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-dark.svg">
+    <img alt="Architecture diagram" src=".github/architecture-light.svg">
+  </picture>
+</a>
 
-  subgraph WORKERS["async workers"]
-    direction LR
-    ACT["📊 activity-worker<br/>stats · events · AI history"]:::worker
-    REPLY["💬 reply-worker<br/>registered commands"]:::worker
-    AGENT["🧠 agent-worker<br/>reply gate · agentic loop"]:::ai
-  end
-
-  EVENTS[("🗄️ chat-events")]:::db
-  STATS[("🗄️ chat-statistics")]:::db
-  REDIS[("⚡ Upstash Redis<br/>AI chat history")]:::redis
-  APIS["☁️ Google · YouTube · Weather<br/>Tavily · Gemini · OpenAI"]:::ext
-
-  BCAST["📡 broadcast-stats"]:::worker
-  WSL["🔌 websockets<br/>connect · stats · disconnect"]:::worker
-  SEARCH["🔍 chat-search"]:::worker
-  IMG["🖼️ sharp-statistics<br/>PNG charts"]:::worker
-
-  CONNS[("🗄️ websocket-connections")]:::db
-  WSS{{"🔌 WebSocket API"}}:::gw
-  HTTP{{"🌐 REST API<br/>/search · /statistics"}}:::gw
-
-  UI(["🖥️ telegram-bot-ui"]):::ui
-
-  CRON1 -->|"currency digest"| TG
-  TG <==>|"webhook"| BOT
-  BOT -.->|"every message"| ACT
-  BOT -.->|"registered cmds"| REPLY
-  BOT -.->|"/q · /qq · fallback"| AGENT
-
-  REPLY -->|"reply"| TG
-  AGENT -->|"reply"| TG
-  REPLY <--> APIS
-  AGENT <--> APIS
-  AGENT <-->|"chat history"| REDIS
-  CRON2 -->|"cleanup"| REDIS
-
-  ACT --> STATS & EVENTS
-  ACT -->|"AI history"| REDIS
-  ACT -.->|"stats fanout"| BCAST
-
-  STATS --> BCAST & WSL & SEARCH
-  EVENTS --> BCAST & WSL & IMG
-
-  BCAST -->|"connections"| CONNS
-  WSL --> CONNS
-  BCAST -.->|"push live stats"| WSS
-  WSL <--> WSS
-  SEARCH --> HTTP
-  IMG --> HTTP
-
-  WSS <-->|"live stats"| UI
-  HTTP <-->|"search · charts"| UI
-
-  classDef tg fill:#229ED9,stroke:#16648c,color:#ffffff,font-weight:bold
-  classDef ingress fill:#f59e0b,stroke:#92400e,color:#451a03,font-weight:bold
-  classDef worker fill:#ea580c,stroke:#7c2d12,color:#ffffff,font-weight:bold
-  classDef ai fill:#7c3aed,stroke:#4c1d95,color:#ffffff,font-weight:bold
-  classDef ext fill:#059669,stroke:#064e3b,color:#ffffff,font-weight:bold
-  classDef db fill:#4f46e5,stroke:#312e81,color:#ffffff,font-weight:bold
-  classDef redis fill:#dc2626,stroke:#7f1d1d,color:#ffffff,font-weight:bold
-  classDef cron fill:#64748b,stroke:#334155,color:#ffffff,font-weight:bold
-  classDef gw fill:#db2777,stroke:#831843,color:#ffffff,font-weight:bold
-  classDef ui fill:#0f172a,stroke:#38bdf8,color:#7dd3fc,font-weight:bold
-  style WORKERS fill:transparent,stroke:#7d8ba1,stroke-width:1px,stroke-dasharray:6 6
-```
+The diagram source lives in
+[`.github/diagram/architecture.mmd`](.github/diagram/architecture.mmd);
+re-render both themes with `bun run diagram` after changing it.
 
 <details>
 <summary>Legacy architecture</summary>
