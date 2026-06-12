@@ -49,7 +49,10 @@ jest.mock('../config', () => ({
 }))
 
 jest.mock('../models', () => ({
-  CHAT_FALLBACK_MODEL_CONFIG: { provider: 'openai', model: 'gpt-5.4-nano' },
+  CHAT_FALLBACK_MODEL_CONFIG: {
+    provider: 'openai',
+    model: 'gpt-5.4-nano',
+  },
   CHAT_FALLBACK_REASONING_EFFORT: 'medium',
   CHAT_MODEL_CONFIG: {
     provider: 'google',
@@ -105,7 +108,7 @@ describe('model-call', () => {
     )
   })
 
-  test('falls back from Gemini chat model to gpt-5.4-nano medium reasoning', async () => {
+  test('falls back from Gemini lite chat model to gpt-5.4-nano medium reasoning', async () => {
     const overloadedError = Object.assign(new Error('model overloaded'), {
       status: 503,
     })

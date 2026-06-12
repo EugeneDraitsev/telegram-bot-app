@@ -7,7 +7,11 @@ import {
 } from 'ai'
 import type { Message } from 'telegram-typings'
 
-import type { HistoryMediaAttachment, MediaBuffer } from '@tg-bot/common'
+import type {
+  AiModelConfig,
+  HistoryMediaAttachment,
+  MediaBuffer,
+} from '@tg-bot/common'
 import {
   AGENT_REACTION,
   type BotIdentity,
@@ -26,7 +30,7 @@ import {
   type MetricStatus,
   recordMetric,
   resolveHistoryMediaAttachments,
-  sendThinkingRichDraft,
+  startThinkingRichDraftIndicator,
   startTypingIndicator,
 } from '@tg-bot/common'
 import { IMAGE_MODEL } from '../services/openai-image'
@@ -35,6 +39,7 @@ import { WEB_SEARCH_MODEL } from '../services/openai-web-search'
 import {
   executeDynamicCommandFromMessage,
   getAgentTools,
+  getBaseAgentTools,
   getCollectedResponses,
   runWithToolContext,
   withToolMediaBuffers,
@@ -49,11 +54,12 @@ import {
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import {
-  generateModelWithRetry,
+  generateModelWithRetryWithInfo,
   isRetryableModelError,
   ModelCallTimeoutError,
 } from './model-call'
 import {
+  CHAT_FALLBACK_REASONING_EFFORT,
   CHAT_MODEL_CONFIG,
   CHAT_MODEL_LABEL,
   CHAT_MODEL_REASONING_EFFORT,
@@ -119,6 +125,8 @@ const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
 const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
+const AGENT_PRELOAD_TIMEOUT_MS = 3_000
+const AGENT_ROUTING_MODEL_TIMEOUT_MS = 20_000
 
 type ExecutableFunctionCall = {
   toolCallId: string
@@ -344,6 +352,35 @@ function extractErrorInfo(error: unknown): unknown {
   }
 }
 
+async function preloadWithFallback<T>(params: {
+  chatId: number
+  name: string
+  load: () => Promise<T>
+  fallback: T
+}): Promise<T> {
+  const startedAt = Date.now()
+  try {
+    return await withTimeout(
+      params.load(),
+      AGENT_PRELOAD_TIMEOUT_MS,
+      new Error(
+        `${params.name} preload timed out after ${AGENT_PRELOAD_TIMEOUT_MS}ms`,
+      ),
+    )
+  } catch (error) {
+    logger.warn(
+      {
+        chatId: params.chatId,
+        name: params.name,
+        durationMs: Date.now() - startedAt,
+        error: extractErrorInfo(error),
+      },
+      'loop.preload_failed',
+    )
+    return params.fallback
+  }
+}
+
 function getLoopFailureReply(error: unknown): string {
   if (error instanceof ModelCallTimeoutError || isRetryableModelError(error)) {
     return 'Сервис ответа сейчас перегружен. Попробуй ещё раз чуть позже.'
@@ -423,6 +460,21 @@ function buildFunctionResponsePart(
   }
 }
 
+function getChatProviderOptions(modelConfig: AiModelConfig, chatId: number) {
+  const isPrimaryChatModel =
+    modelConfig.provider === CHAT_MODEL_CONFIG.provider &&
+    modelConfig.model === CHAT_MODEL_CONFIG.model
+
+  return getAiSdkProviderOptions(modelConfig, {
+    reasoningEffort: isPrimaryChatModel
+      ? CHAT_MODEL_REASONING_EFFORT
+      : CHAT_FALLBACK_REASONING_EFFORT,
+    chatId,
+    store: false,
+    serviceTier: modelConfig.provider === 'google' ? 'priority' : undefined,
+  })
+}
+
 async function runToolLoop(
   input: ModelMessage[],
   systemInstruction: string,
@@ -432,33 +484,36 @@ async function runToolLoop(
 ): Promise<{ finalText: string; toolResults: string[] }> {
   let finalText = ''
   const toolResults: string[] = []
+  let activeModelConfig = CHAT_MODEL_CONFIG
+  let activeModel = CHAT_MODEL_LABEL
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-    const response = await generateModelWithRetry(
+    const modelResult = await generateModelWithRetryWithInfo(
       {
         messages: input,
         system: systemInstruction,
         tools: Object.keys(tools).length ? tools : undefined,
         toolChoice: 'auto',
-        providerOptions: getAiSdkProviderOptions(CHAT_MODEL_CONFIG, {
-          reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
-          chatId,
-          store: false,
-          serviceTier:
-            CHAT_MODEL_CONFIG.provider === 'google' ? 'priority' : undefined,
-        }),
+        providerOptions: getChatProviderOptions(activeModelConfig, chatId),
       },
       chatId,
       iteration === 0 ? 'routing' : `iteration_${iteration}`,
-      CHAT_MODEL_CONFIG,
+      activeModelConfig,
+      AGENT_ROUTING_MODEL_TIMEOUT_MS,
     )
+    activeModelConfig = modelResult.modelConfig
+    activeModel = modelResult.model
+    const { response } = modelResult
 
     const responseMessages = response.response.messages as ModelMessage[]
     const functionCalls = getExecutableFunctionCalls(response.toolCalls)
     logger.info(
       {
         chatId,
-        model: CHAT_MODEL_LABEL,
+        model: activeModel,
+        ...(modelResult.fallbackFrom
+          ? { fallbackFrom: modelResult.fallbackFrom }
+          : {}),
         iteration,
         outputTypes: response.content.map((part) => part.type),
         functionCalls: functionCalls.map((call) => call.name),
@@ -484,7 +539,7 @@ async function runToolLoop(
       logger.info(
         {
           chatId,
-          model: CHAT_MODEL_LABEL,
+          model: activeModel,
           iteration,
           deferred: contentCalls.map((fc) => fc.name),
         },
@@ -522,7 +577,7 @@ async function runToolLoop(
       logger.info(
         {
           chatId,
-          model: CHAT_MODEL_LABEL,
+          model: activeModel,
           tools: callsToExecute.map((fc) => fc.name),
         },
         'loop.terminal_tools_skip',
@@ -536,7 +591,7 @@ async function runToolLoop(
   // If no text came out of the loop, force a final synthesis pass without tools.
   if (!finalText.trim()) {
     try {
-      const finalizeResponse = await generateModelWithRetry(
+      const finalizeResult = await generateModelWithRetryWithInfo(
         {
           messages: [
             ...input,
@@ -552,27 +607,24 @@ async function runToolLoop(
           ],
           system: systemInstruction,
           toolChoice: 'none',
-          providerOptions: getAiSdkProviderOptions(CHAT_MODEL_CONFIG, {
-            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
-            chatId,
-            store: false,
-            serviceTier:
-              CHAT_MODEL_CONFIG.provider === 'google' ? 'priority' : undefined,
-          }),
+          providerOptions: getChatProviderOptions(activeModelConfig, chatId),
         },
         chatId,
         'finalize',
-        CHAT_MODEL_CONFIG,
+        activeModelConfig,
       )
+      activeModelConfig = finalizeResult.modelConfig
+      activeModel = finalizeResult.model
+      const finalizeResponse = finalizeResult.response
       const finalizeText = finalizeResponse.text.trim()
       if (finalizeText) {
         finalText = finalizeText
       } else {
-        logger.warn({ chatId, model: CHAT_MODEL_LABEL }, 'loop.finalize_empty')
+        logger.warn({ chatId, model: activeModel }, 'loop.finalize_empty')
       }
     } catch (error) {
       logger.warn(
-        { chatId, model: CHAT_MODEL_LABEL, error: extractErrorInfo(error) },
+        { chatId, model: activeModel, error: extractErrorInfo(error) },
         'loop.finalize_failed',
       )
     }
@@ -609,6 +661,7 @@ export async function runAgenticLoop(
   )
 
   let stopTyping: (() => void) | undefined
+  let stopThinkingDraft: (() => void) | undefined
 
   try {
     await runWithToolContext(message, mediaBuffers, async () => {
@@ -656,8 +709,18 @@ export async function runAgenticLoop(
 
       // Load memory first — needed by the reply gate
       const [chatMemory, globalMemory] = await Promise.all([
-        getChatMemory(chatId).catch(() => ''),
-        getGlobalMemory().catch(() => ''),
+        preloadWithFallback({
+          chatId,
+          name: 'chat_memory',
+          load: () => getChatMemory(chatId),
+          fallback: '',
+        }),
+        preloadWithFallback({
+          chatId,
+          name: 'global_memory',
+          load: getGlobalMemory,
+          fallback: '',
+        }),
       ])
       const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
 
@@ -689,7 +752,7 @@ export async function runAgenticLoop(
         ])
         .catch(() => undefined)
 
-      void sendThinkingRichDraft({
+      stopThinkingDraft = startThinkingRichDraftIndicator({
         api,
         message,
         onError: (error) =>
@@ -703,18 +766,32 @@ export async function runAgenticLoop(
       })
 
       // Load tools + history in parallel (only after gate confirms we'll respond)
+      const preloadStartedAt = Date.now()
+      logger.info({ ...messageMeta }, 'loop.preload_start')
       const [agentTools, rawHistory] = await Promise.all([
-        getAgentTools(chatId).catch((error) => {
-          logger.error({ chatId, error }, 'tools.load_failed')
-          return [] as AgentTool[]
+        preloadWithFallback({
+          chatId,
+          name: 'agent_tools',
+          load: () => getAgentTools(chatId),
+          fallback: getBaseAgentTools(),
         }),
-        getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1).catch(
-          (error) => {
-            logger.warn({ chatId, error }, 'history.preload_failed')
-            return [] as Message[]
-          },
-        ),
+        preloadWithFallback({
+          chatId,
+          name: 'recent_history',
+          load: () =>
+            getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1),
+          fallback: [] as Message[],
+        }),
       ])
+      logger.info(
+        {
+          ...messageMeta,
+          durationMs: Date.now() - preloadStartedAt,
+          toolCount: agentTools.length,
+          historyCount: rawHistory.length,
+        },
+        'loop.preload_done',
+      )
 
       const recentHistory = getRecentHistoryContext(
         rawHistory,
@@ -898,6 +975,7 @@ export async function runAgenticLoop(
       logger.error({ chatId, sendError }, 'loop.error_reply_failed')
     }
   } finally {
+    stopThinkingDraft?.()
     stopTyping?.()
   }
 }

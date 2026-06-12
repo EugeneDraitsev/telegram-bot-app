@@ -31,6 +31,13 @@ type GenerateTextResult<TOOLS extends ToolSet> = Awaited<
   ReturnType<typeof generateText<TOOLS>>
 >
 
+export interface GenerateModelWithRetryResult<TOOLS extends ToolSet> {
+  response: GenerateTextResult<TOOLS>
+  modelConfig: AiModelConfig
+  model: string
+  fallbackFrom?: string
+}
+
 export class ModelCallTimeoutError extends Error {
   constructor(
     readonly model: string,
@@ -87,6 +94,10 @@ function getFallbackParams<TOOLS extends ToolSet>(
       reasoningEffort: CHAT_FALLBACK_REASONING_EFFORT,
       chatId,
       store: false,
+      serviceTier:
+        CHAT_FALLBACK_MODEL_CONFIG.provider === 'google'
+          ? 'priority'
+          : undefined,
     }),
   }
 }
@@ -144,13 +155,15 @@ async function generateSingleModelWithRetry<TOOLS extends ToolSet>(
   throw lastError
 }
 
-export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
+export async function generateModelWithRetryWithInfo<
+  TOOLS extends ToolSet = ToolSet,
+>(
   params: GenerateTextOptions<TOOLS>,
   chatId: number,
   metricName: string,
   modelConfig: AiModelConfig = CHAT_MODEL_CONFIG,
   timeoutMs: number = CHAT_MODEL_TIMEOUT_MS,
-): Promise<GenerateTextResult<TOOLS>> {
+): Promise<GenerateModelWithRetryResult<TOOLS>> {
   const model = formatAiModelConfig(modelConfig)
   const startedAt = Date.now()
 
@@ -192,7 +205,7 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
       timeoutMs,
     )
     track(startedAt, model)
-    return response
+    return { response, modelConfig, model }
   } catch (primaryError) {
     track(startedAt, model, getModelErrorStatus(primaryError))
 
@@ -231,7 +244,12 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
         timeoutMs,
       )
       track(fallbackStartedAt, fallbackModel, 'success', model)
-      return response
+      return {
+        response,
+        modelConfig: CHAT_FALLBACK_MODEL_CONFIG,
+        model: fallbackModel,
+        fallbackFrom: model,
+      }
     } catch (fallbackError) {
       track(
         fallbackStartedAt,
@@ -242,4 +260,21 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
       throw fallbackError
     }
   }
+}
+
+export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
+  params: GenerateTextOptions<TOOLS>,
+  chatId: number,
+  metricName: string,
+  modelConfig: AiModelConfig = CHAT_MODEL_CONFIG,
+  timeoutMs: number = CHAT_MODEL_TIMEOUT_MS,
+): Promise<GenerateTextResult<TOOLS>> {
+  const result = await generateModelWithRetryWithInfo(
+    params,
+    chatId,
+    metricName,
+    modelConfig,
+    timeoutMs,
+  )
+  return result.response
 }

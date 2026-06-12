@@ -12,6 +12,11 @@ const DEFAULT_AGENT_CHAT_FALLBACK_MODEL: AiModelConfig = {
   model: 'gpt-5.4-nano',
 }
 
+const DEFAULT_AGENT_CHAT_MODEL: AiModelConfig = {
+  provider: 'google',
+  model: 'gemini-3.1-flash-lite',
+}
+
 const DEFAULT_REPLY_GATE_MODEL: AiModelConfig = {
   provider: 'google',
   model: 'gemini-3.1-flash-lite',
@@ -23,7 +28,7 @@ export const FAST_TEXT_MODEL_CONFIG = getAiModelConfig(
 )
 export const CHAT_MODEL_CONFIG = getAiModelConfig(
   'AGENT_CHAT_MODEL',
-  FAST_TEXT_MODEL_CONFIG,
+  DEFAULT_AGENT_CHAT_MODEL,
 )
 export const CHAT_FALLBACK_MODEL_CONFIG = getAiModelConfig(
   'AGENT_CHAT_FALLBACK_MODEL',
@@ -47,7 +52,7 @@ export const WEB_SEARCH_MODEL_CONFIG = getAiModelConfig(
 )
 export const FAST_TEXT_MODEL = formatAiModelConfig(FAST_TEXT_MODEL_CONFIG)
 
-/** Main agent model - current manual tool loop still requires a Google model id. */
+/** Main agent model used for routing/tool loop and final synthesis. */
 export const CHAT_MODEL = CHAT_MODEL_CONFIG.model
 export const CHAT_MODEL_LABEL = formatAiModelConfig(CHAT_MODEL_CONFIG)
 export const CHAT_MODEL_REASONING_EFFORT = 'none'

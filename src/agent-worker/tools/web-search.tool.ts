@@ -1,4 +1,5 @@
 import { getErrorMessage } from '@tg-bot/common'
+import { OPENAI_WEB_SEARCH_TIMEOUT_MS } from '../agent/models'
 import {
   searchWebOpenAi,
   type WebSearchResponseFormat,
@@ -40,6 +41,7 @@ export const webSearchTool: AgentTool = {
       required: ['query'],
     },
   },
+  timeoutMs: OPENAI_WEB_SEARCH_TIMEOUT_MS + 5_000,
   execute: async (args) => {
     const { message } = requireToolContext()
     const query = typeof args.query === 'string' ? args.query.trim() : ''

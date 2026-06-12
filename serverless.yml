@@ -61,8 +61,7 @@ functions:
   telegram-activity-worker:
     handler: src/telegram-bot/activity-worker.default
     environment:
-      WEBSOCKET_BROADCAST_FUNCTION_NAME:
-        Ref: WebsocketDashbroadcastDashstatsLambdaFunction
+      WEBSOCKET_BROADCAST_FUNCTION_NAME: ${self:service}-${sls:stage}-websocket-broadcast-stats
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default

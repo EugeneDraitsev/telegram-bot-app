@@ -10,7 +10,18 @@ import {
   random,
 } from '../../utils'
 
+export function shouldSkipStatsBroadcast(): boolean {
+  return (
+    process.env.IS_OFFLINE === 'true' &&
+    process.env.ENABLE_LOCAL_WEBSOCKET_BROADCAST !== 'true'
+  )
+}
+
 const invokeStatsBroadcast = (chatId: string) => {
+  if (shouldSkipStatsBroadcast()) {
+    return Promise.resolve()
+  }
+
   const broadcastFunctionName = getOptionalEnv(
     'WEBSOCKET_BROADCAST_FUNCTION_NAME',
   )
@@ -23,6 +34,7 @@ const invokeStatsBroadcast = (chatId: string) => {
   return invokeLambda({
     name: broadcastFunctionName,
     payload: { chatId },
+    customEndpoint: true,
     async: true,
   })
 }

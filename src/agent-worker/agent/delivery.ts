@@ -5,6 +5,7 @@ import {
   formatTelegramMarkdownV2,
   logger,
   saveBotReplyToHistory,
+  sendRichMessageWithFallback,
 } from '@tg-bot/common'
 import type {
   AgentResponse,
@@ -51,6 +52,15 @@ function formatCaption(text?: string): string | undefined {
     return undefined
   }
   return formatTelegramMarkdownV2(normalized.slice(0, MAX_CAPTION_LENGTH))
+}
+
+function getSentMessageId(messageLike: unknown): number | undefined {
+  if (!messageLike || typeof messageLike !== 'object') {
+    return undefined
+  }
+
+  const { message_id } = messageLike as { message_id?: unknown }
+  return typeof message_id === 'number' ? message_id : undefined
 }
 
 function splitMentionBatches(text: string): string[] {
@@ -105,17 +115,22 @@ async function sendText(params: DeliveryParams & { text: string }) {
 
   let replyToMessageId = params.replyToMessageId
   for (const chunk of splitMentionBatches(text)) {
+    const fallbackOptions = {
+      parse_mode: 'MarkdownV2' as const,
+      ...getReplyOptions(replyToMessageId),
+    }
+
     try {
-      const sentMessage = await params.api.sendMessage(
-        params.chatId,
-        formatText(chunk),
-        {
-          parse_mode: 'MarkdownV2',
-          ...getReplyOptions(replyToMessageId),
-        },
-      )
+      const sentMessage = await sendRichMessageWithFallback({
+        api: params.api,
+        chatId: params.chatId,
+        richMessage: { markdown: chunk.slice(0, MAX_TEXT_LENGTH) },
+        fallbackText: formatText(chunk),
+        richOptions: getReplyOptions(replyToMessageId),
+        fallbackOptions,
+      })
       await saveBotReplyToHistory(sentMessage)
-      replyToMessageId = sentMessage.message_id
+      replyToMessageId = getSentMessageId(sentMessage) ?? replyToMessageId
     } catch (err) {
       logger.warn(
         { chatId: params.chatId, error: (err as Error).message },

@@ -2,6 +2,8 @@ import type { Message } from 'telegram-typings'
 
 import { logger } from '../logger'
 
+export const THINKING_DRAFT_REFRESH_INTERVAL_MS = 25_000
+
 export interface InputRichMessage {
   html?: string
   markdown?: string
@@ -155,4 +157,66 @@ export async function sendThinkingRichDraft(params: {
     onError?.(error)
     return false
   }
+}
+
+export function startThinkingRichDraftIndicator(params: {
+  api: RichCapableApi
+  message: Message
+  text?: string
+  intervalMs?: number
+  onError?: (error: unknown) => void
+}) {
+  const {
+    api,
+    message,
+    text,
+    intervalMs = THINKING_DRAFT_REFRESH_INTERVAL_MS,
+    onError,
+  } = params
+  const chatId = message.chat?.id
+
+  if (message.chat?.type !== 'private' || typeof chatId !== 'number') {
+    return () => {}
+  }
+
+  let stopped = false
+  let interval: ReturnType<typeof setInterval> | undefined
+  let inFlight = false
+
+  const stop = () => {
+    if (stopped) {
+      return
+    }
+
+    stopped = true
+    if (interval) {
+      clearInterval(interval)
+    }
+  }
+
+  const refresh = async () => {
+    if (stopped || inFlight) {
+      return true
+    }
+
+    inFlight = true
+    try {
+      const ok = await sendThinkingRichDraft({ api, message, text, onError })
+      if (!ok) {
+        stop()
+      }
+      return ok
+    } finally {
+      inFlight = false
+    }
+  }
+
+  interval = setInterval(() => {
+    void refresh()
+  }, intervalMs)
+  interval.unref?.()
+
+  void refresh()
+
+  return stop
 }

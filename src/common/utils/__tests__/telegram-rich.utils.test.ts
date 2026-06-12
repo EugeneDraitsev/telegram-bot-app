@@ -3,9 +3,14 @@ import type { Message } from 'telegram-typings'
 import {
   sendRichMessageWithFallback,
   sendThinkingRichDraft,
+  startThinkingRichDraftIndicator,
 } from '../telegram-rich.utils'
 
 describe('telegram rich utils', () => {
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   test('sends rich messages through raw grammy API', async () => {
     const sendRichMessage = jest.fn().mockResolvedValue({ message_id: 10 })
     const sendMessage = jest.fn()
@@ -92,5 +97,29 @@ describe('telegram rich utils', () => {
     ).resolves.toBe(false)
 
     expect(sendRichMessageDraft).toHaveBeenCalledTimes(1)
+  })
+
+  test('refreshes thinking draft until stopped', async () => {
+    const sendRichMessageDraft = jest.fn().mockResolvedValue(true)
+    const message = {
+      message_id: 77,
+      chat: { id: 123, type: 'private' },
+    } as Message
+
+    const stop = startThinkingRichDraftIndicator({
+      api: { raw: { sendRichMessageDraft } },
+      message,
+      intervalMs: 5,
+    })
+
+    expect(sendRichMessageDraft).toHaveBeenCalledTimes(1)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(sendRichMessageDraft.mock.calls.length).toBeGreaterThanOrEqual(2)
+
+    stop()
+    const callCountAfterStop = sendRichMessageDraft.mock.calls.length
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(sendRichMessageDraft).toHaveBeenCalledTimes(callCountAfterStop)
   })
 })
