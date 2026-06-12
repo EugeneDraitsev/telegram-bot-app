@@ -5,11 +5,13 @@ import {
   FRONTEND_BASE_URL,
   getChatName,
   getCommandData,
-  getFormattedChatStatistics,
+  getFormattedChatStatisticsMessages,
   getFormattedMetrics,
   getStoredChatUsers,
   isAiEnabledChat,
   logger,
+  saveBotReplyToHistory,
+  sendRichMessageWithFallback,
   setUserOptOut,
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
@@ -109,9 +111,31 @@ export function buildBatchSendOptions(
 }
 
 const setupUsersCommands = (bot: Bot) => {
-  bot.command('z', async (ctx) =>
-    ctx.reply(await getFormattedChatStatistics(ctx?.chat?.id ?? '')),
-  )
+  bot.command('z', async (ctx) => {
+    const chatId = ctx.chat?.id
+    if (!chatId) return
+
+    const messageThreadId = ctx.message?.message_thread_id
+    const statistics = await getFormattedChatStatisticsMessages(chatId)
+    const options =
+      typeof messageThreadId === 'number'
+        ? { message_thread_id: messageThreadId }
+        : undefined
+
+    const sentMessage = await sendRichMessageWithFallback({
+      api: ctx.api,
+      chatId,
+      richMessage: {
+        markdown: statistics.richMarkdown,
+        skip_entity_detection: true,
+      },
+      fallbackText: statistics.text,
+      richOptions: options,
+      fallbackOptions: options,
+    })
+    await saveBotReplyToHistory(sentMessage)
+    return sentMessage
+  })
 
   bot.command('s', async (ctx) => {
     const { replyId } = getCommandData(ctx.message)

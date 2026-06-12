@@ -10,6 +10,13 @@ interface ChatStat {
   users: UserStat[]
 }
 
+export interface FormattedChatStatistics {
+  text: string
+  richMarkdown: string
+}
+
+const RICH_STATISTICS_ROW_LIMIT = 100
+
 const isUserStat = (value: unknown): value is UserStat =>
   typeof value === 'object' &&
   value !== null &&
@@ -112,29 +119,90 @@ export const getUsersList = async (
   }
 }
 
-export const getFormattedChatStatistics = async (
-  chat_id: number | string,
-): Promise<string> => {
-  try {
-    const result = await getChatStatistic(chat_id)
-    const stats = result?.users?.sort((a, b) => b.msgCount - a.msgCount) || []
-    const allMessagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
+function getMessagePercentage(messageCount: number, allMessagesCount: number) {
+  return allMessagesCount > 0 ? (messageCount / allMessagesCount) * 100 : 0
+}
 
-    const formattedUsers = stats.map((user) => {
-      const messagesCount = user.msgCount.toLocaleString()
-      const messagePercentage = (user.msgCount / allMessagesCount) * 100
+function escapeRichMarkdownTableCell(value: string) {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ')
+    .trim()
+}
 
-      return `${messagesCount} (${messagePercentage.toFixed(2)}%) - ${user.username}`
-    })
+export function buildFormattedChatStatisticsMessages(
+  users: UserStat[],
+): FormattedChatStatistics {
+  const stats = [...users].sort((a, b) => b.msgCount - a.msgCount)
+  const allMessagesCount = stats.reduce((a, b) => a + b.msgCount, 0)
 
-    return dedent`Users Statistic:
+  const formattedUsers = stats.map((user) => {
+    const messagesCount = user.msgCount.toLocaleString()
+    const messagePercentage = getMessagePercentage(
+      user.msgCount,
+      allMessagesCount,
+    )
+
+    return `${messagesCount} (${messagePercentage.toFixed(2)}%) - ${user.username}`
+  })
+
+  const visibleRichStats = stats.slice(0, RICH_STATISTICS_ROW_LIMIT)
+  const richRows = visibleRichStats.map((user) => {
+    const messagePercentage = getMessagePercentage(
+      user.msgCount,
+      allMessagesCount,
+    )
+
+    return [
+      escapeRichMarkdownTableCell(user.username),
+      user.msgCount.toLocaleString(),
+      `${messagePercentage.toFixed(2)}%`,
+    ].join(' | ')
+  })
+  const richLines = [
+    '# Users Statistic',
+    '',
+    `**All messages:** ${allMessagesCount.toLocaleString()}`,
+    '',
+    '| User | Messages | Share |',
+    '|:-----|---------:|------:|',
+    ...richRows.map((row) => `| ${row} |`),
+  ]
+
+  if (stats.length > visibleRichStats.length) {
+    richLines.push(
+      '',
+      `Showing top ${visibleRichStats.length} of ${stats.length} users.`,
+    )
+  }
+
+  return {
+    text: dedent`Users Statistic:
             All messages: ${allMessagesCount.toLocaleString()}
-            ${formattedUsers.join('\n')}`
-  } catch (e) {
-    logger.error({ error: e }, 'Error while fetching statistic')
-    return 'Error while fetching statistic'
+            ${formattedUsers.join('\n')}`,
+    richMarkdown: richLines.join('\n'),
   }
 }
+
+export const getFormattedChatStatisticsMessages = async (
+  chat_id: number | string,
+): Promise<FormattedChatStatistics> => {
+  try {
+    const result = await getChatStatistic(chat_id)
+    return buildFormattedChatStatisticsMessages(result?.users ?? [])
+  } catch (e) {
+    logger.error({ error: e }, 'Error while fetching statistic')
+    return {
+      text: 'Error while fetching statistic',
+      richMarkdown: 'Error while fetching statistic',
+    }
+  }
+}
+
+export const getFormattedChatStatistics = async (
+  chat_id: number | string,
+): Promise<string> => (await getFormattedChatStatisticsMessages(chat_id)).text
 
 export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
   const chat_id = chat?.id

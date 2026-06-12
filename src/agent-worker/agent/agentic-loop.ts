@@ -26,6 +26,7 @@ import {
   type MetricStatus,
   recordMetric,
   resolveHistoryMediaAttachments,
+  sendThinkingRichDraft,
   startTypingIndicator,
 } from '@tg-bot/common'
 import { IMAGE_MODEL } from '../services/openai-image'
@@ -687,6 +688,13 @@ export async function runAgenticLoop(
           { type: 'emoji', emoji: AGENT_REACTION },
         ])
         .catch(() => undefined)
+
+      void sendThinkingRichDraft({
+        api,
+        message,
+        onError: (error) =>
+          logger.warn({ chatId, error }, 'rich_thinking.failed'),
+      })
 
       stopTyping = startTypingIndicator({
         chatId,
