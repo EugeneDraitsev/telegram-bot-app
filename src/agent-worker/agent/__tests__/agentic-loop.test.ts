@@ -6,6 +6,7 @@ import type { AgentTool, TelegramApi } from '../../types'
 import {
   buildNativeTools,
   extractFallbackTextFromToolResults,
+  getAgentDeliveryReplyMessageId,
 } from '../agentic-loop'
 
 describe('buildNativeTools', () => {
@@ -57,6 +58,53 @@ describe('extractFallbackTextFromToolResults', () => {
         'Code execution failed: no output',
       ]),
     ).toBe('')
+  })
+})
+
+describe('getAgentDeliveryReplyMessageId', () => {
+  test('uses reply target when stripped command has no own text', () => {
+    expect(
+      getAgentDeliveryReplyMessageId(
+        {
+          message_id: 10,
+          text: '',
+          reply_to_message: { message_id: 9 },
+        } as Message,
+        true,
+      ),
+    ).toBe(9)
+  })
+
+  test('keeps current message for non-command empty replies', () => {
+    expect(
+      getAgentDeliveryReplyMessageId({
+        message_id: 10,
+        text: '',
+        reply_to_message: { message_id: 9 },
+      } as Message),
+    ).toBe(10)
+  })
+
+  test('keeps current message when command text remains after stripping', () => {
+    expect(
+      getAgentDeliveryReplyMessageId(
+        {
+          message_id: 10,
+          text: 'explain this',
+          reply_to_message: { message_id: 9 },
+        } as Message,
+        true,
+      ),
+    ).toBe(10)
+  })
+
+  test('uses current message when there is no reply target', () => {
+    expect(
+      getAgentDeliveryReplyMessageId({
+        message_id: 10,
+        text: '',
+      } as Message),
+    ).toBe(10)
   })
 })
 

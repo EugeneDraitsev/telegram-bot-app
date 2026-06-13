@@ -390,6 +390,28 @@ function getLoopFailureReply(error: unknown): string {
 
 // ── Content building ─────────────────────────────────────────
 
+function hasOwnTextContent(message: Message): boolean {
+  return Boolean((message.text || message.caption || '').trim())
+}
+
+export function getAgentDeliveryReplyMessageId(
+  message: Message,
+  preferReplyTargetForEmptyText = false,
+): number | undefined {
+  const messageId = message.message_id
+  const replyMessageId = message.reply_to_message?.message_id
+
+  if (
+    preferReplyTargetForEmptyText &&
+    typeof replyMessageId === 'number' &&
+    !hasOwnTextContent(message)
+  ) {
+    return replyMessageId
+  }
+
+  return typeof messageId === 'number' ? messageId : replyMessageId
+}
+
 type UserContentPart =
   | { type: 'text'; text: string }
   | { type: 'image'; image: Buffer; mediaType: string }
@@ -650,6 +672,10 @@ export async function runAgenticLoop(
   }
 
   const messageMeta = getMessageLogMeta(message)
+  const deliveryReplyMessageId = getAgentDeliveryReplyMessageId(
+    message,
+    Boolean(options.bypassReplyGate),
+  )
   logger.info(
     {
       ...messageMeta,
@@ -689,7 +715,7 @@ export async function runAgenticLoop(
         await sendResponses({
           responses: responsesToSend,
           chatId,
-          replyToMessageId: message.message_id,
+          replyToMessageId: deliveryReplyMessageId,
           api,
         })
 
@@ -936,7 +962,7 @@ export async function runAgenticLoop(
         await sendResponses({
           responses: responsesToSend,
           chatId,
-          replyToMessageId: message.message_id,
+          replyToMessageId: deliveryReplyMessageId,
           api,
         })
 
@@ -968,9 +994,11 @@ export async function runAgenticLoop(
       'loop.failed',
     )
     try {
-      await api.sendMessage(chatId, getLoopFailureReply(error), {
-        reply_parameters: { message_id: message.message_id },
-      })
+      const replyOptions =
+        typeof deliveryReplyMessageId === 'number'
+          ? { reply_parameters: { message_id: deliveryReplyMessageId } }
+          : undefined
+      await api.sendMessage(chatId, getLoopFailureReply(error), replyOptions)
     } catch (sendError) {
       logger.error({ chatId, sendError }, 'loop.error_reply_failed')
     }
