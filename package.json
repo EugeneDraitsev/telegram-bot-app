@@ -22,11 +22,11 @@
     "prepare:sharp-layer": "bun tools/prepare-sharp-layer.mts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "^2.5.0",
     "@types/aws-lambda": "^8.10.162",
     "@types/jest": "^30.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260610.1",
-    "esbuild": "0.28.0",
+    "@typescript/native-preview": "7.0.0-dev.20260614.1",
+    "esbuild": "0.28.1",
     "serverless": "^4.37.0",
     "serverless-esbuild": "^1.57.2",
     "serverless-offline": "^14.7.2",

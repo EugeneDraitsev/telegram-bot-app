@@ -56,7 +56,7 @@ jest.mock('../models', () => ({
   CHAT_FALLBACK_REASONING_EFFORT: 'medium',
   CHAT_MODEL_CONFIG: {
     provider: 'google',
-    model: 'gemini-3.1-flash-lite',
+    model: 'gemini-3.5-flash',
   },
   CHAT_MODEL_TIMEOUT_MS: 45_000,
 }))
@@ -108,7 +108,7 @@ describe('model-call', () => {
     )
   })
 
-  test('falls back from Gemini lite chat model to gpt-5.4-nano medium reasoning', async () => {
+  test('falls back from default Gemini chat model to gpt-5.4-nano medium reasoning', async () => {
     const overloadedError = Object.assign(new Error('model overloaded'), {
       status: 503,
     })
@@ -138,14 +138,14 @@ describe('model-call', () => {
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        model: 'google/gemini-3.1-flash-lite',
+        model: 'google/gemini-3.5-flash',
         providerOptions: { google: { serviceTier: 'priority' } },
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        model: 'google/gemini-3.1-flash-lite',
+        model: 'google/gemini-3.5-flash',
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
@@ -170,7 +170,7 @@ describe('model-call', () => {
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'google/gemini-3.1-flash-lite',
+        model: 'google/gemini-3.5-flash',
         success: false,
       }),
     )
@@ -178,7 +178,7 @@ describe('model-call', () => {
       expect.objectContaining({
         name: 'routing',
         model: 'openai/gpt-5.4-nano',
-        fallbackFrom: 'google/gemini-3.1-flash-lite',
+        fallbackFrom: 'google/gemini-3.5-flash',
         success: true,
       }),
     )

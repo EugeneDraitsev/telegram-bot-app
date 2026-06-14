@@ -14,7 +14,7 @@ const DEFAULT_AGENT_CHAT_FALLBACK_MODEL: AiModelConfig = {
 
 const DEFAULT_AGENT_CHAT_MODEL: AiModelConfig = {
   provider: 'google',
-  model: 'gemini-3.1-flash-lite',
+  model: 'gemini-3.5-flash',
 }
 
 const DEFAULT_REPLY_GATE_MODEL: AiModelConfig = {
