@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 type PackageJson = {
   dependencies?: Record<string, string | undefined>
+  main?: string
 }
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -73,6 +74,18 @@ if (install.status !== 0) {
 }
 
 const imgModulesPath = path.join(layerNodeRoot, 'node_modules', '@img')
+const sharpPackageRoot = path.join(layerNodeRoot, 'node_modules', 'sharp')
+const sharpLinuxArm64PackageRoot = path.join(
+  layerNodeRoot,
+  'node_modules',
+  '@img',
+  'sharp-linux-arm64',
+)
+const sharpLinuxArm64LibPath = path.join(sharpLinuxArm64PackageRoot, 'lib')
+const installedSharpPackage = JSON.parse(
+  readFileSync(path.join(sharpPackageRoot, 'package.json'), 'utf8'),
+) as PackageJson
+const sharpEntryPath = installedSharpPackage.main ?? 'lib/index.js'
 const keepSharpPackages = new Set([
   'sharp-linux-arm64',
   'sharp-libvips-linux-arm64',
@@ -88,15 +101,8 @@ for (const name of imgModuleNames) {
 }
 
 const requiredFiles = [
-  path.join(layerNodeRoot, 'node_modules', 'sharp', 'lib', 'index.js'),
-  path.join(
-    layerNodeRoot,
-    'node_modules',
-    '@img',
-    'sharp-linux-arm64',
-    'lib',
-    'sharp-linux-arm64.node',
-  ),
+  path.join(sharpPackageRoot, sharpEntryPath),
+  path.join(sharpLinuxArm64PackageRoot, 'index.cjs'),
   path.join(
     layerNodeRoot,
     'node_modules',
@@ -110,4 +116,17 @@ for (const requiredFile of requiredFiles) {
   if (!existsSync(requiredFile)) {
     throw new Error(`Missing sharp layer file: ${requiredFile}`)
   }
+}
+
+const hasSharpLinuxArm64Binding =
+  existsSync(sharpLinuxArm64LibPath) &&
+  readdirSync(sharpLinuxArm64LibPath).some(
+    (fileName) =>
+      fileName.startsWith('sharp-linux-arm64') && fileName.endsWith('.node'),
+  )
+
+if (!hasSharpLinuxArm64Binding) {
+  throw new Error(
+    `Missing sharp linux arm64 native binding in: ${sharpLinuxArm64LibPath}`,
+  )
 }
