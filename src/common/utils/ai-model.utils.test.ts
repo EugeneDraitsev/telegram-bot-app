@@ -1,6 +1,8 @@
 import {
   DEFAULT_FAST_TEXT_MODEL,
   formatAiModelConfig,
+  GEMINI_FLASH_IMAGE_MODEL,
+  GEMINI_PRO_IMAGE_MODEL,
   parseAiModelConfig,
 } from './ai-model.utils'
 
@@ -45,5 +47,16 @@ describe('ai-model.utils', () => {
     expect(formatAiModelConfig(DEFAULT_FAST_TEXT_MODEL)).toBe(
       'google/gemini-3.5-flash',
     )
+  })
+
+  test('exports flash and pro Gemini image generation models', () => {
+    expect(GEMINI_FLASH_IMAGE_MODEL).toEqual({
+      provider: 'google',
+      model: 'gemini-3.1-flash-image',
+    })
+    expect(GEMINI_PRO_IMAGE_MODEL).toEqual({
+      provider: 'google',
+      model: 'gemini-3-pro-image',
+    })
   })
 })

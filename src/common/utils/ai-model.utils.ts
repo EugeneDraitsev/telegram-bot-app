@@ -33,9 +33,14 @@ export const DEFAULT_WEB_SEARCH_MODEL: AiModelConfig = {
   model: 'gpt-5.4-nano',
 }
 
-export const DEFAULT_IMAGE_GENERATION_MODEL: AiModelConfig = {
+export const GEMINI_FLASH_IMAGE_MODEL: AiModelConfig = {
   provider: 'google',
-  model: 'gemini-3.1-flash-image-preview',
+  model: 'gemini-3.1-flash-image',
+}
+
+export const GEMINI_PRO_IMAGE_MODEL: AiModelConfig = {
+  provider: 'google',
+  model: 'gemini-3-pro-image',
 }
 
 export const DEFAULT_EDITABLE_IMAGE_MODEL: AiModelConfig = {

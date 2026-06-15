@@ -1,16 +1,14 @@
 import {
   type AssistantModelMessage,
-  type GeneratedFile,
   generateText,
-  type JSONValue,
   type LanguageModel,
   type ModelMessage,
-  type ToolSet,
   type UserModelMessage,
 } from 'ai'
 import type { Message } from 'telegram-typings'
 
 import {
+  type AiModelConfig,
   buildImageEditTargetPrompt,
   type CommandImageInput,
   cleanModelMessage,
@@ -18,6 +16,7 @@ import {
   DEFAULT_ERROR_MESSAGE,
   DEFAULT_FAST_TEXT_MODEL,
   EMPTY_RESPONSE_ERROR,
+  GEMINI_FLASH_IMAGE_MODEL,
   getAiSdkGoogleTools,
   getAiSdkLanguageModel,
   getHistory,
@@ -39,7 +38,7 @@ import {
 const imageGenerationSystemInstruction = `
   ${systemInstructions}
 
-  For /ge image generation command:
+  For Gemini image generation commands:
   - Always return at least one generated image in the response.
   - Never return a text-only response.
   - If prompt is unclear, choose the best interpretation and still generate an image.
@@ -54,33 +53,13 @@ type InteractionInput = {
   >
 }
 
-type TextCompletionRequest = {
-  model: LanguageModel
-  messages: ModelMessage[]
-  system: string
-  tools?: ToolSet
-  temperature?: number
-  maxRetries?: number
-  timeout?: number
-  providerOptions?: Record<string, Record<string, JSONValue>>
+type CreateTextCompletion = typeof generateText
+type CreateImageCompletion = typeof generateText
+
+type GenerateImageOptions = {
+  createImageCompletion?: CreateImageCompletion
+  modelConfig?: AiModelConfig
 }
-
-type CreateTextCompletion = (
-  request: TextCompletionRequest,
-) => Promise<{ text?: string }>
-
-type ImageCompletionRequest = {
-  model: LanguageModel
-  messages: ModelMessage[]
-  system: string
-  maxRetries?: number
-  timeout?: number
-  providerOptions?: Record<string, Record<string, JSONValue>>
-}
-
-type CreateImageCompletion = (
-  request: ImageCompletionRequest,
-) => Promise<{ text?: string; files?: GeneratedFile[] }>
 
 type GoogleToolFactories = Pick<
   ReturnType<typeof getAiSdkGoogleTools>,
@@ -364,8 +343,13 @@ export async function generateImage(
   chatId: string | number,
   imagesData?: Buffer[],
   imageInputs?: CommandImageInput[],
-  createImageCompletion: CreateImageCompletion = createAiSdkImageCompletion,
+  options: GenerateImageOptions = {},
 ) {
+  const {
+    createImageCompletion = createAiSdkImageCompletion,
+    modelConfig = GEMINI_FLASH_IMAGE_MODEL,
+  } = options
+
   try {
     if (!isAiEnabledChat(chatId)) {
       return { text: NOT_ALLOWED_ERROR }
@@ -425,15 +409,11 @@ export async function generateImage(
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       const response = await createImageCompletion({
-        model: getAiSdkLanguageModel({
-          provider: 'google',
-          model: 'gemini-3.1-flash-image-preview',
-        }),
+        model: getAiSdkLanguageModel(modelConfig),
         messages: toModelMessages(history),
         system: imageGenerationSystemInstruction,
         maxRetries: 0,
         timeout: MULTIMODAL_TIMEOUT_MS,
-        providerOptions: { google: { serviceTier: 'priority' } },
       })
 
       const imageFile = response.files?.find((file) =>

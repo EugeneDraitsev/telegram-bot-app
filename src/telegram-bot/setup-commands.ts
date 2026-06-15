@@ -149,7 +149,8 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /t <text> - translate detected language to russian / english
   // /tb, /tr, /tp, /ts, /td, /te - translate to specific languages
   // /v <text> - search random video in YouTube
-  // /ge <text, image> - generate image with Gemini
+  // /ge <text, image> - generate image with Gemini Flash
+  // /gp <text, image> - generate image with Gemini Pro
   setupGoogleCommands(bot)
 
   // /c - get currency rates

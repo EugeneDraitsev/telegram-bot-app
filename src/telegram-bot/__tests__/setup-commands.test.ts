@@ -18,6 +18,7 @@ const setupGoogleCommandsMock = jest.fn((bot: unknown, ..._args: unknown[]) => {
     .command(['q', 'qq'], jest.fn())
     .command('g', jest.fn())
     .command('ge', jest.fn())
+    .command('gp', jest.fn())
 })
 const setupOpenAiCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupTextCommandsMock = jest.fn((..._args: unknown[]) => undefined)
@@ -210,6 +211,7 @@ describe('setupAllCommands', () => {
     const messageHandler = getHandler('message')
     expect(messageHandler).toBeDefined()
     expect(commandRegistry.has('ge')).toBe(true)
+    expect(commandRegistry.has('gp')).toBe(true)
 
     const message = {
       text: '/ge draw',

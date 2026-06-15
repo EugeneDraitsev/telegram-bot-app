@@ -5,7 +5,7 @@
 import { generateText, type ModelMessage } from 'ai'
 
 import {
-  DEFAULT_IMAGE_GENERATION_MODEL,
+  GEMINI_FLASH_IMAGE_MODEL,
   getAiSdkLanguageModel,
   logger,
 } from '@tg-bot/common'
@@ -14,7 +14,7 @@ const IMAGE_GENERATION_TIMEOUT_MS = 120_000
 
 /**
  * Generate image with optional text response.
- * Uses the Interactions API with gemini-3.1-flash-image-preview.
+ * Uses the Interactions API with Gemini 3.1 Flash Image.
  */
 export async function generateImage(
   prompt: string,
@@ -47,11 +47,10 @@ export async function generateImage(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const response = await generateText({
-      model: getAiSdkLanguageModel(DEFAULT_IMAGE_GENERATION_MODEL),
+      model: getAiSdkLanguageModel(GEMINI_FLASH_IMAGE_MODEL),
       messages,
       maxRetries: 0,
       timeout: IMAGE_GENERATION_TIMEOUT_MS,
-      providerOptions: { google: { serviceTier: 'priority' } },
     })
 
     const imageFile = response.files.find((file) =>

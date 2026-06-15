@@ -2,7 +2,7 @@ import type { Message, MessageEntity } from 'telegram-typings'
 
 import { getRegisteredCommandName } from '../command-registry'
 
-const registry = new Set(['q', 'qq', 'ge', 'e'])
+const registry = new Set(['q', 'qq', 'ge', 'gp', 'e'])
 
 describe('getRegisteredCommandName', () => {
   test('returns false for plain bot mention text', () => {
@@ -85,6 +85,17 @@ describe('getRegisteredCommandName', () => {
     } as Message
 
     expect(getRegisteredCommandName(message, registry)).toEqual('ge')
+  })
+
+  test('returns true for leading registered pro image command in caption', () => {
+    const message = {
+      caption: '/gp make it cinematic',
+      caption_entities: [
+        { type: 'bot_command', offset: 0, length: 3 } as MessageEntity,
+      ],
+    } as Message
+
+    expect(getRegisteredCommandName(message, registry)).toEqual('gp')
   })
 
   test('returns false for unknown command', () => {

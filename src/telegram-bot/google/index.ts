@@ -4,6 +4,8 @@ import {
   DEFAULT_ERROR_MESSAGE,
   EMPTY_RESPONSE_ERROR,
   formatTelegramMarkdownV2,
+  GEMINI_FLASH_IMAGE_MODEL,
+  GEMINI_PRO_IMAGE_MODEL,
   getCommandData,
   getMediaGroupMessages,
   getMultimodalCommandData,
@@ -80,7 +82,11 @@ export const setupMultimodalGeminiCommands = async (
   }
 }
 
-export const setupImageGenerationGeminiCommands = async (ctx: Context) => {
+export const setupImageGenerationGeminiCommands = async (
+  ctx: Context,
+  modelConfig = GEMINI_FLASH_IMAGE_MODEL,
+  commandName = '/ge',
+) => {
   const extraMessages = await getMediaGroupMessages(ctx)
   const commandData = await getMultimodalCommandData(ctx, extraMessages)
 
@@ -90,8 +96,8 @@ export const setupImageGenerationGeminiCommands = async (ctx: Context) => {
       {
         type: 'model_call',
         source: 'command',
-        name: '/ge',
-        model: 'gemini-3.1-flash-image-preview',
+        name: commandName,
+        model: modelConfig.model,
         chatId: Number(commandData.chatId),
         classifyResult: (result) => (result.image ? 'success' : 'error'),
       },
@@ -101,6 +107,7 @@ export const setupImageGenerationGeminiCommands = async (ctx: Context) => {
           commandData.chatId,
           commandData.imagesData,
           commandData.imageInputs,
+          { modelConfig },
         ),
     )
 
@@ -165,6 +172,9 @@ const setupGoogleCommands = (bot: Bot) => {
   bot.command(DIRECT_AGENT_COMMANDS, (ctx) => handleAgenticCommand(ctx))
 
   bot.command('ge', (ctx) => setupImageGenerationGeminiCommands(ctx))
+  bot.command('gp', (ctx) =>
+    setupImageGenerationGeminiCommands(ctx, GEMINI_PRO_IMAGE_MODEL, '/gp'),
+  )
 
   /*
    Translate commands

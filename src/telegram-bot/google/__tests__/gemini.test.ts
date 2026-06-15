@@ -350,7 +350,7 @@ describe('gemini AI access control', () => {
         123,
         undefined,
         undefined,
-        mockInteractionsCreate,
+        { createImageCompletion: mockInteractionsCreate },
       )
 
       expect(mockIsAiEnabledChat).toHaveBeenCalledWith(123)
@@ -381,7 +381,7 @@ describe('gemini AI access control', () => {
         123,
         undefined,
         undefined,
-        mockInteractionsCreate,
+        { createImageCompletion: mockInteractionsCreate },
       )
 
       expect(mockInteractionsCreate).toHaveBeenCalledTimes(3)
@@ -416,7 +416,7 @@ describe('gemini AI access control', () => {
             fileId: 'reply_photo',
           },
         ],
-        mockInteractionsCreate,
+        { createImageCompletion: mockInteractionsCreate },
       )
 
       const request = mockInteractionsCreate.mock.calls[0]?.[0] as {
@@ -465,7 +465,7 @@ describe('gemini AI access control', () => {
         123,
         undefined,
         undefined,
-        mockInteractionsCreate,
+        { createImageCompletion: mockInteractionsCreate },
       )
 
       expect(mockInteractionsCreate).toHaveBeenCalledTimes(3)
@@ -489,7 +489,7 @@ describe('gemini AI access control', () => {
         123,
         undefined,
         undefined,
-        mockInteractionsCreate,
+        { createImageCompletion: mockInteractionsCreate },
       )
 
       expect(mockInteractionsCreate).toHaveBeenCalledTimes(3)
