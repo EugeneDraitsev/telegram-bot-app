@@ -168,8 +168,8 @@ custom:
   chatSearchAllowedOrigins: ${self:custom.frontendBaseUrl},http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
   serverless-offline:
     httpPort: 4000
-    useChildProcesses: true
-    reloadHandler: true
+    reloadHandler: false
+    terminateIdleLambdaTime: 10
   esbuild:
     target: ${self:custom.esbuildTargetByStage.${sls:stage}, 'node24'}
     platform: node

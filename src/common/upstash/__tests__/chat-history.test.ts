@@ -129,12 +129,8 @@ describe('formatHistoryForDisplay', () => {
 })
 
 describe('getRecentRawHistory', () => {
-  test('reads recent history through the same raw-history path and slices locally', async () => {
-    mockZrange.mockResolvedValue([
-      createMessage(1),
-      createMessage(2),
-      createMessage(3),
-    ])
+  test('limits recent history in Redis and returns chronological messages', async () => {
+    mockZrange.mockResolvedValue([createMessage(3), createMessage(2)])
 
     const history = await getRecentRawHistory(777, 2)
 
@@ -144,6 +140,9 @@ describe('getRecentRawHistory', () => {
       expect.any(Number),
       {
         byScore: true,
+        rev: true,
+        offset: 0,
+        count: 2,
       },
     )
     expect(history.map((message) => message.message_id)).toEqual([2, 3])
