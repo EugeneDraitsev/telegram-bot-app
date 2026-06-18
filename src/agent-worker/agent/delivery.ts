@@ -63,9 +63,17 @@ function getSentMessageId(messageLike: unknown): number | undefined {
   return typeof message_id === 'number' ? message_id : undefined
 }
 
+function getTelegramMentions(text: string): string[] {
+  return text.match(/@[A-Za-z0-9_]{5,32}\b/g) ?? []
+}
+
+function hasTelegramMention(text: string): boolean {
+  return getTelegramMentions(text).length > 0
+}
+
 function splitMentionBatches(text: string): string[] {
   const normalized = text.trim()
-  const mentions = normalized.match(/@[A-Za-z0-9_]{5,32}\b/g) ?? []
+  const mentions = getTelegramMentions(normalized)
   if (mentions.length <= 5) {
     return [normalized]
   }
@@ -82,6 +90,16 @@ function splitMentionBatches(text: string): string[] {
   }
 
   return batches
+}
+
+async function sendPlainText(params: DeliveryParams & { text: string }) {
+  const sentMessage = await params.api.sendMessage(
+    params.chatId,
+    params.text.slice(0, MAX_TEXT_LENGTH),
+    getReplyOptions(params.replyToMessageId),
+  )
+  await saveBotReplyToHistory(sentMessage)
+  return sentMessage
 }
 
 function collectBundle(responses: AgentResponse[]): DeliveryBundle {
@@ -115,6 +133,16 @@ async function sendText(params: DeliveryParams & { text: string }) {
 
   let replyToMessageId = params.replyToMessageId
   for (const chunk of splitMentionBatches(text)) {
+    if (hasTelegramMention(chunk)) {
+      const sentMessage = await sendPlainText({
+        ...params,
+        text: chunk,
+        replyToMessageId,
+      })
+      replyToMessageId = sentMessage.message_id
+      continue
+    }
+
     const fallbackOptions = {
       parse_mode: 'MarkdownV2' as const,
       ...getReplyOptions(replyToMessageId),
@@ -136,12 +164,11 @@ async function sendText(params: DeliveryParams & { text: string }) {
         { chatId: params.chatId, error: (err as Error).message },
         'delivery.markdown_fallback',
       )
-      const sentMessage = await params.api.sendMessage(
-        params.chatId,
-        chunk.slice(0, MAX_TEXT_LENGTH),
-        getReplyOptions(replyToMessageId),
-      )
-      await saveBotReplyToHistory(sentMessage)
+      const sentMessage = await sendPlainText({
+        ...params,
+        text: chunk,
+        replyToMessageId,
+      })
       replyToMessageId = sentMessage.message_id
     }
   }

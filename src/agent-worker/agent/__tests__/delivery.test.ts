@@ -208,9 +208,9 @@ describe('sendResponses', () => {
     expect(api.sendMessage).not.toHaveBeenCalled()
   })
 
-  test('splits texts with more than five mentions into follow-up messages', async () => {
+  test('sends mention batches through plain messages', async () => {
     const api = createApi()
-    api.raw.sendRichMessage
+    api.sendMessage
       .mockResolvedValueOnce({ message_id: 1 })
       .mockResolvedValueOnce({ message_id: 2 })
 
@@ -226,28 +226,17 @@ describe('sendResponses', () => {
       ],
     })
 
-    expect(api.raw.sendRichMessage).toHaveBeenCalledTimes(2)
-    expect(api.raw.sendRichMessage).toHaveBeenNthCalledWith(
+    expect(api.sendMessage).toHaveBeenCalledTimes(2)
+    expect(api.sendMessage).toHaveBeenNthCalledWith(
       1,
-      {
-        chat_id: 123,
-        rich_message: {
-          markdown: 'Team call\n@user01 @user02 @user03 @user04 @user05',
-        },
-        reply_parameters: { message_id: 456 },
-      },
-      undefined,
+      123,
+      'Team call\n@user01 @user02 @user03 @user04 @user05',
+      { reply_parameters: { message_id: 456 } },
     )
-    expect(api.raw.sendRichMessage).toHaveBeenNthCalledWith(
-      2,
-      {
-        chat_id: 123,
-        rich_message: { markdown: '@user06 @user07' },
-        reply_parameters: { message_id: 1 },
-      },
-      undefined,
-    )
-    expect(api.sendMessage).not.toHaveBeenCalled()
+    expect(api.sendMessage).toHaveBeenNthCalledWith(2, 123, '@user06 @user07', {
+      reply_parameters: { message_id: 1 },
+    })
+    expect(api.raw.sendRichMessage).not.toHaveBeenCalled()
   })
 
   test('falls back to plain text when rich and MarkdownV2 delivery fail', async () => {
