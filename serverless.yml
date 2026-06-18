@@ -169,6 +169,7 @@ custom:
   serverless-offline:
     httpPort: 4000
     reloadHandler: false
+    useInProcess: true
     terminateIdleLambdaTime: 10
   esbuild:
     target: ${self:custom.esbuildTargetByStage.${sls:stage}, 'node24'}
