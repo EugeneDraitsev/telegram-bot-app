@@ -23,9 +23,9 @@ describe('currency rich formatting', () => {
 
     expect(messages.richMarkdown).toContain('**💱 Курсы**')
     expect(messages.richMarkdown).toContain('**Основные пары (ExchangeRate)**')
-    expect(messages.richMarkdown).toContain('| Пара | Курс |')
+    expect(messages.richMarkdown).not.toContain('| Пара | Курс |')
     expect(messages.richMarkdown).toContain('| 🇸🇪EUR\\|SEK | 11.42 |')
-    expect(messages.richMarkdown).toContain('| Монета | Цена / 24ч |')
+    expect(messages.richMarkdown).not.toContain('| Монета | Цена / 24ч |')
     expect(messages.richMarkdown).toContain('| ADA | $0.17 (+2.1%) |')
     expect(messages.richMarkdown).not.toContain('| Монета | Цена | 24ч |')
     expect(messages.richMarkdown).not.toContain(

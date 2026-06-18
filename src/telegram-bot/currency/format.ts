@@ -55,7 +55,7 @@ function buildRichTable(section: CurrencyRateSection): string[] {
   }
 
   const columns = getSectionColumns(section)
-  const header = `| ${columns.map(escapeRichMarkdownTableCell).join(' | ')} |`
+  const header = `| ${columns.map(() => '').join(' | ')} |`
   const separator = `| ${columns
     .map((_, index) => (index === 0 ? ':---' : '---:'))
     .join(' | ')} |`
