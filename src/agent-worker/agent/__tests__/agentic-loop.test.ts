@@ -1,5 +1,5 @@
 import { asSchema } from 'ai'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import { resolveHistoryMediaAttachments } from '@tg-bot/common'
 import type { AgentTool, TelegramApi } from '../../types'

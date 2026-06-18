@@ -4,7 +4,7 @@ describe('currency scheduler', () => {
   test('sends scheduled currency updates through rich currency delivery', async () => {
     const api = { sendMessage: jest.fn() }
     const messages = {
-      richMarkdown: '**Rates**\n\n| Pair | Rate |',
+      richMessage: { html: '<b>Rates</b>' },
       text: '<b>Rates:</b>',
     }
     const getMessages = jest.fn().mockResolvedValue(messages)

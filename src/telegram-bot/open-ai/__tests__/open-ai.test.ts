@@ -1,4 +1,4 @@
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 const mockGenerateAiImage = jest.fn()
 const mockGenerateText = jest.fn()

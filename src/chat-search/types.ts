@@ -1,4 +1,4 @@
-import type { Chat } from 'telegram-typings'
+import type { Chat } from 'grammy/types'
 
 type PublicChat = Chat & {
   id: number

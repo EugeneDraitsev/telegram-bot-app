@@ -1,4 +1,4 @@
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
 import {

@@ -1,5 +1,5 @@
+import type { Message, MessageEntity } from 'grammy/types'
 import type { Bot } from 'grammy/web'
-import type { Message, MessageEntity } from 'telegram-typings'
 
 export type CommandRegistry = {
   has(command: string): boolean

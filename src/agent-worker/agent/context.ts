@@ -1,10 +1,6 @@
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
-import {
-  cleanModelMessage,
-  type ExtendedMessage,
-  type MediaBuffer,
-} from '@tg-bot/common'
+import { cleanModelMessage, type MediaBuffer } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 interface BuildContextOptions {
@@ -57,7 +53,7 @@ export function buildContextBlock(
       typeof replyTarget.message_id === 'number'
         ? `message_id=${replyTarget.message_id}`
         : 'message_id=unknown'
-    const quoteText = (message as ExtendedMessage).quote?.text
+    const quoteText = message.quote?.text
     if (quoteText) {
       lines.push(
         `- Telegram reply target (${replyLabel}): "${replyText}"`,

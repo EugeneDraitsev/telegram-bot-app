@@ -1,3 +1,4 @@
+import type { JSONSchema7 } from 'ai'
 import type { Api } from 'grammy'
 
 /**
@@ -18,6 +19,8 @@ type TelegramApiMethods = Pick<
   | 'sendSticker'
   | 'sendDice'
   | 'sendChatAction'
+  | 'sendRichMessage'
+  | 'sendRichMessageDraft'
   | 'setMessageReaction'
 >
 
@@ -76,19 +79,7 @@ export interface InteractionFunctionTool {
   type: 'function'
   name: string
   description: string
-  parameters?: {
-    type: 'object'
-    properties: Record<
-      string,
-      {
-        type: 'string' | 'number' | 'boolean' | 'integer' | 'array'
-        description?: string
-        enum?: string[]
-        items?: { type: string }
-      }
-    >
-    required?: string[]
-  }
+  parameters?: JSONSchema7
 }
 
 export interface AgentTool {

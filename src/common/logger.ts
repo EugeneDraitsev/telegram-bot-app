@@ -1,7 +1,7 @@
 import { Writable } from 'node:stream'
 import { inspect } from 'node:util'
 import pino from 'pino'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 type LogRecord = Record<string, unknown> & {
   time?: number

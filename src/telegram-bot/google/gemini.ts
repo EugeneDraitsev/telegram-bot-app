@@ -5,7 +5,7 @@ import {
   type ModelMessage,
   type UserModelMessage,
 } from 'ai'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import {
   type AiModelConfig,
@@ -25,6 +25,7 @@ import {
   logger,
   MAX_HISTORY_IMAGE_ATTACHMENTS,
   MAX_HISTORY_IMAGE_INLINE_BYTES,
+  type MediaResolverApi,
   MULTIMODAL_TIMEOUT_MS,
   multimodalSystemInstructions,
   NOT_ALLOWED_ERROR,
@@ -66,10 +67,6 @@ type GoogleToolFactories = Pick<
   'googleSearch' | 'urlContext'
 >
 
-type HistoryMediaApi = {
-  getFile: (fileId: string) => Promise<{ file_path?: string }>
-}
-
 interface GenerateMultimodalCompletionOptions {
   prompt: string
   message?: Message
@@ -79,7 +76,7 @@ interface GenerateMultimodalCompletionOptions {
   languageModel?: LanguageModel
   googleTools?: GoogleToolFactories
   createTextCompletion?: CreateTextCompletion
-  api?: HistoryMediaApi
+  api?: MediaResolverApi
 }
 type UserContentPart = Exclude<UserModelMessage['content'], string>[number]
 type AssistantContentPart = Exclude<
@@ -102,7 +99,7 @@ function getHistoryImagePrompt(message: Message): string {
 
 async function getHistoryImageInputs(
   message: Message | undefined,
-  api: HistoryMediaApi | undefined,
+  api: MediaResolverApi | undefined,
   excludedImages: CommandImageInput[] = [],
 ): Promise<InteractionInput[]> {
   const chatId = message?.chat?.id

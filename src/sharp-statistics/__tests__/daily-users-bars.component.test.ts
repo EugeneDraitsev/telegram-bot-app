@@ -1,5 +1,5 @@
 import sharp from 'sharp'
-import type { User } from 'telegram-typings'
+import type { User } from 'grammy/types'
 
 import { getDailyUsersBarsSvg } from '../daily-users-bars.component'
 

@@ -3,8 +3,9 @@ import {
   generateText,
   type ModelMessage,
   type ToolSet,
+  type UserModelMessage,
 } from 'ai'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import {
   type AiReasoningEffort,
@@ -26,6 +27,7 @@ import {
   logger,
   MAX_HISTORY_IMAGE_ATTACHMENTS,
   MAX_HISTORY_IMAGE_INLINE_BYTES,
+  type MediaResolverApi,
   MULTIMODAL_TIMEOUT_MS,
   NOT_ALLOWED_ERROR,
   PROMPT_MISSING_ERROR,
@@ -39,14 +41,10 @@ export type SupportedImageModel = string
 export type SupportedTextModel = string
 export type OpenAiReasoningEffort = AiReasoningEffort
 
-type HistoryMediaApi = {
-  getFile: (fileId: string) => Promise<{ file_path?: string }>
-}
-
 type GenerateMultimodalCompletionContext = {
   message?: Message
   imageInputs?: CommandImageInput[]
-  api?: HistoryMediaApi
+  api?: MediaResolverApi
 }
 
 const OPENAI_HISTORY_LIMIT = 40
@@ -55,10 +53,7 @@ const openAiMultimodalInstructions = `${systemInstructions}
   - IMPORTANT: If the user includes or asks about a URL, use web search/open-page behavior to inspect the referenced page before answering. Treat retrieved page/search evidence as stronger than memory.
 `
 
-type AiSdkContent = Array<
-  | { type: 'text'; text: string }
-  | { type: 'image'; image: Buffer; mediaType: string }
->
+type AiSdkContent = Exclude<UserModelMessage['content'], string>
 
 function getMessageText(message: Message | undefined): string {
   return (message?.caption || message?.text || '').trim()
@@ -104,7 +99,7 @@ function getFallbackImageInputs(
 
 async function getHistoryContextContent(
   message: Message | undefined,
-  api: HistoryMediaApi | undefined,
+  api: MediaResolverApi | undefined,
   excludedImages: CommandImageInput[] = [],
 ): Promise<AiSdkContent> {
   const chatId = message?.chat?.id

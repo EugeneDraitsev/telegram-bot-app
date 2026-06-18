@@ -1,4 +1,4 @@
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import {
   sendRichMessageWithFallback,
@@ -11,13 +11,13 @@ describe('telegram rich utils', () => {
     jest.useRealTimers()
   })
 
-  test('sends rich messages through raw grammy API', async () => {
+  test('sends rich messages through native grammy API', async () => {
     const sendRichMessage = jest.fn().mockResolvedValue({ message_id: 10 })
     const sendMessage = jest.fn()
 
     const result = await sendRichMessageWithFallback({
       api: {
-        raw: { sendRichMessage },
+        sendRichMessage,
         sendMessage,
       },
       chatId: 123,
@@ -28,11 +28,9 @@ describe('telegram rich utils', () => {
 
     expect(result).toEqual({ message_id: 10 })
     expect(sendRichMessage).toHaveBeenCalledWith(
-      {
-        chat_id: 123,
-        rich_message: { markdown: '# Stats' },
-        message_thread_id: 456,
-      },
+      123,
+      { markdown: '# Stats' },
+      { message_thread_id: 456 },
       undefined,
     )
     expect(sendMessage).not.toHaveBeenCalled()
@@ -44,7 +42,7 @@ describe('telegram rich utils', () => {
 
     const result = await sendRichMessageWithFallback({
       api: {
-        raw: { sendRichMessage },
+        sendRichMessage,
         sendMessage,
       },
       chatId: 123,
@@ -68,27 +66,26 @@ describe('telegram rich utils', () => {
 
     await expect(
       sendThinkingRichDraft({
-        api: { raw: { sendRichMessageDraft } },
+        api: { sendRichMessageDraft },
         message: privateMessage,
         text: 'Thinking <now>',
       }),
     ).resolves.toBe(true)
 
     expect(sendRichMessageDraft).toHaveBeenCalledWith(
+      123,
+      77,
       {
-        chat_id: 123,
-        draft_id: 77,
-        rich_message: {
-          html: '<tg-thinking>Thinking &lt;now&gt;</tg-thinking>',
-          skip_entity_detection: true,
-        },
+        html: '<tg-thinking>Thinking &lt;now&gt;</tg-thinking>',
+        skip_entity_detection: true,
       },
+      undefined,
       undefined,
     )
 
     await expect(
       sendThinkingRichDraft({
-        api: { raw: { sendRichMessageDraft } },
+        api: { sendRichMessageDraft },
         message: {
           message_id: 78,
           chat: { id: -100, type: 'supergroup' },
@@ -107,7 +104,7 @@ describe('telegram rich utils', () => {
     } as Message
 
     const stop = startThinkingRichDraftIndicator({
-      api: { raw: { sendRichMessageDraft } },
+      api: { sendRichMessageDraft },
       message,
       intervalMs: 5,
     })

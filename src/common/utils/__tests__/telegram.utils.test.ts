@@ -1,4 +1,4 @@
-import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
+import type { Chat, Message, MessageEntity, User } from 'grammy/types'
 
 import {
   findCommand,

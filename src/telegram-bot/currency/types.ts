@@ -1,3 +1,5 @@
+import type { InputRichMessage } from 'grammy/types'
+
 export interface CurrenciesResponse {
   readonly provider: string
   readonly rates: {
@@ -24,5 +26,5 @@ export interface CurrencyRateSection {
 
 export interface CurrencyMessages {
   readonly text: string
-  readonly richMarkdown: string
+  readonly richMessage: InputRichMessage
 }

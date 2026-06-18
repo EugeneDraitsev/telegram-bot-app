@@ -1,4 +1,4 @@
-import type { Chat, Message, User } from 'telegram-typings'
+import type { Chat, Message, User } from 'grammy/types'
 
 import activityWorker from '../activity-worker'
 

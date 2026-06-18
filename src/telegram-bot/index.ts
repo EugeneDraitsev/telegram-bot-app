@@ -1,6 +1,6 @@
 import { webhookCallback } from 'grammy/web'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import {
   createBot,

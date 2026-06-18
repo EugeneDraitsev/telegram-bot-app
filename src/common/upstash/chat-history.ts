@@ -3,7 +3,7 @@
  * Shared between telegram-bot and agent-worker
  */
 
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import { logger } from '../logger'
 import { isAiEnabledChat } from '../utils'

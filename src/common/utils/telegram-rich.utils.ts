@@ -1,63 +1,33 @@
-import type { Message } from 'telegram-typings'
+import type { Api } from 'grammy'
+import type { Message } from 'grammy/types'
 
 import { logger } from '../logger'
 
 export const THINKING_DRAFT_REFRESH_INTERVAL_MS = 25_000
 
-export interface InputRichMessage {
-  html?: string
-  markdown?: string
-  is_rtl?: boolean
-  skip_entity_detection?: boolean
-}
+type RichCapableApi = Partial<
+  Pick<Api, 'sendRichMessage' | 'sendRichMessageDraft' | 'sendMessage'>
+>
+type SendRichMessageOptions = Parameters<Api['sendRichMessage']>[2]
+type SendMessageOptions = Parameters<Api['sendMessage']>[2]
+type SendRichMessageDraftOptions = Parameters<Api['sendRichMessageDraft']>[3]
+type SendRichMessageSignal = Parameters<Api['sendRichMessage']>[3]
+type SendRichMessageDraftSignal = Parameters<Api['sendRichMessageDraft']>[4]
 
-type TelegramRawMethod = (
-  payload: Record<string, unknown>,
-  signal?: AbortSignal,
-) => Promise<unknown>
-
-type RichCapableApi = {
-  raw?: Record<string, unknown>
-  sendMessage?: unknown
-}
-
-interface SendRichMessagePayload {
-  chat_id: number | string
-  rich_message: InputRichMessage
-  business_connection_id?: string
-  message_thread_id?: number
-  direct_messages_topic_id?: number
-  disable_notification?: boolean
-  protect_content?: boolean
-  allow_paid_broadcast?: boolean
-  message_effect_id?: string
-  suggested_post_parameters?: unknown
-  reply_parameters?: unknown
-  reply_markup?: unknown
-}
-
-interface SendRichMessageDraftPayload {
-  chat_id: number
-  draft_id: number
-  rich_message: InputRichMessage
-  message_thread_id?: number
-}
-
-type SendMessageMethod = (
-  chatId: number | string,
-  text: string,
-  options?: Record<string, unknown>,
-) => Promise<unknown>
-
-function getRawMethod(api: RichCapableApi, methodName: string) {
-  const raw = api.raw
-  const method = raw?.[methodName]
-
-  if (typeof method !== 'function') {
-    throw new Error(`Telegram raw API method ${methodName} is not available`)
+function getSendRichMessageMethod(api: RichCapableApi) {
+  if (typeof api.sendRichMessage !== 'function') {
+    throw new Error('Telegram API sendRichMessage method is not available')
   }
 
-  return method.bind(raw) as TelegramRawMethod
+  return api.sendRichMessage.bind(api) as Api['sendRichMessage']
+}
+
+function getSendRichMessageDraftMethod(api: RichCapableApi) {
+  if (typeof api.sendRichMessageDraft !== 'function') {
+    throw new Error('Telegram API sendRichMessageDraft method is not available')
+  }
+
+  return api.sendRichMessageDraft.bind(api) as Api['sendRichMessageDraft']
 }
 
 function getSendMessageMethod(api: RichCapableApi) {
@@ -65,7 +35,7 @@ function getSendMessageMethod(api: RichCapableApi) {
     throw new Error('Telegram API sendMessage method is not available')
   }
 
-  return api.sendMessage.bind(api) as SendMessageMethod
+  return api.sendMessage.bind(api) as Api['sendMessage']
 }
 
 function escapeHtml(text: string): string {
@@ -79,22 +49,27 @@ function escapeHtml(text: string): string {
 
 export async function sendRichMessage(
   api: RichCapableApi,
-  payload: SendRichMessagePayload,
-  signal?: AbortSignal,
+  chatId: number | string,
+  richMessage: Parameters<Api['sendRichMessage']>[1],
+  options?: SendRichMessageOptions,
+  signal?: SendRichMessageSignal,
 ) {
-  return getRawMethod(api, 'sendRichMessage')(
-    payload as unknown as Record<string, unknown>,
-    signal,
-  )
+  return getSendRichMessageMethod(api)(chatId, richMessage, options, signal)
 }
 
 export async function sendRichMessageDraft(
   api: RichCapableApi,
-  payload: SendRichMessageDraftPayload,
-  signal?: AbortSignal,
+  chatId: number,
+  draftId: number,
+  richMessage: Parameters<Api['sendRichMessageDraft']>[2],
+  options?: SendRichMessageDraftOptions,
+  signal?: SendRichMessageDraftSignal,
 ) {
-  return getRawMethod(api, 'sendRichMessageDraft')(
-    payload as unknown as Record<string, unknown>,
+  return getSendRichMessageDraftMethod(api)(
+    chatId,
+    draftId,
+    richMessage,
+    options,
     signal,
   )
 }
@@ -102,10 +77,10 @@ export async function sendRichMessageDraft(
 export async function sendRichMessageWithFallback(params: {
   api: RichCapableApi
   chatId: number | string
-  richMessage: InputRichMessage
+  richMessage: Parameters<Api['sendRichMessage']>[1]
   fallbackText: string
-  richOptions?: Omit<SendRichMessagePayload, 'chat_id' | 'rich_message'>
-  fallbackOptions?: Record<string, unknown>
+  richOptions?: SendRichMessageOptions
+  fallbackOptions?: SendMessageOptions
 }) {
   const {
     api,
@@ -116,15 +91,18 @@ export async function sendRichMessageWithFallback(params: {
     fallbackOptions = richOptions,
   } = params
 
+  const effectiveFallbackOptions =
+    fallbackOptions ?? (richOptions as SendMessageOptions | undefined)
+
   try {
-    return await sendRichMessage(api, {
-      chat_id: chatId,
-      rich_message: richMessage,
-      ...richOptions,
-    })
+    return await sendRichMessage(api, chatId, richMessage, richOptions)
   } catch (error) {
     logger.warn({ chatId, error }, 'telegram.rich_message_failed')
-    return getSendMessageMethod(api)(chatId, fallbackText, fallbackOptions)
+    return getSendMessageMethod(api)(
+      chatId,
+      fallbackText,
+      effectiveFallbackOptions,
+    )
   }
 }
 
@@ -144,13 +122,9 @@ export async function sendThinkingRichDraft(params: {
   const draftId = message.message_id || 1
 
   try {
-    await sendRichMessageDraft(api, {
-      chat_id: chatId,
-      draft_id: draftId,
-      rich_message: {
-        html: `<tg-thinking>${escapeHtml(text)}</tg-thinking>`,
-        skip_entity_detection: true,
-      },
+    await sendRichMessageDraft(api, chatId, draftId, {
+      html: `<tg-thinking>${escapeHtml(text)}</tg-thinking>`,
+      skip_entity_detection: true,
     })
     return true
   } catch (error) {

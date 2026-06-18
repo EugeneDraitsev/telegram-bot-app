@@ -1,4 +1,4 @@
-import type { Chat, User } from 'telegram-typings'
+import type { Chat, User } from 'grammy/types'
 
 import { logger } from '../../logger'
 import type { UserStat } from '../../types'

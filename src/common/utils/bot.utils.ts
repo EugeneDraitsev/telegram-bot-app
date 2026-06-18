@@ -4,7 +4,7 @@
  */
 
 import { Bot, type Context, type NextFunction } from 'grammy/web'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import { logger } from '../logger'
 import { saveMessage } from '../upstash'

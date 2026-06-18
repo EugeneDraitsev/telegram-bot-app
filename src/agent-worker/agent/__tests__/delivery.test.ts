@@ -9,7 +9,8 @@ type TestTelegramApi = TelegramApi & {
   sendSticker: jest.Mock
   sendDice: jest.Mock
   sendChatAction: jest.Mock
-  raw: { sendRichMessage: jest.Mock }
+  sendRichMessage: jest.Mock
+  sendRichMessageDraft: jest.Mock
 }
 
 const mockSaveBotReplyToHistory = jest.fn()
@@ -23,12 +24,10 @@ const mockSendRichMessageWithFallback = jest.fn(
     fallbackOptions?: Record<string, unknown>
   }) => {
     try {
-      return await params.api.raw.sendRichMessage(
-        {
-          chat_id: params.chatId,
-          rich_message: params.richMessage,
-          ...params.richOptions,
-        },
+      return await params.api.sendRichMessage(
+        params.chatId,
+        params.richMessage,
+        params.richOptions,
         undefined,
       )
     } catch {
@@ -58,11 +57,10 @@ import { sendResponses } from '../delivery'
 
 function createApi(): TestTelegramApi {
   return {
-    raw: {
-      sendRichMessage: jest.fn().mockResolvedValue({ message_id: 8 }),
-    },
     getFile: jest.fn(),
     sendMessage: jest.fn().mockResolvedValue({ message_id: 1 }),
+    sendRichMessage: jest.fn().mockResolvedValue({ message_id: 8 }),
+    sendRichMessageDraft: jest.fn().mockResolvedValue(true),
     sendPhoto: jest.fn().mockResolvedValue({ message_id: 2 }),
     sendVoice: jest.fn().mockResolvedValue({ message_id: 3 }),
     sendVideo: jest.fn().mockResolvedValue({ message_id: 4 }),
@@ -84,7 +82,7 @@ describe('sendResponses', () => {
 
   test('uses rich delivery for text-only responses', async () => {
     const api = createApi()
-    api.raw.sendRichMessage.mockResolvedValueOnce({ message_id: 9 })
+    api.sendRichMessage.mockResolvedValueOnce({ message_id: 9 })
 
     await sendResponses({
       api,
@@ -93,13 +91,11 @@ describe('sendResponses', () => {
       responses: [{ type: 'text', text: '# hello\n\n| A | B |' }],
     })
 
-    expect(api.raw.sendRichMessage).toHaveBeenCalledTimes(1)
-    expect(api.raw.sendRichMessage).toHaveBeenCalledWith(
-      {
-        chat_id: 123,
-        rich_message: { markdown: '# hello\n\n| A | B |' },
-        reply_parameters: { message_id: 456 },
-      },
+    expect(api.sendRichMessage).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: '# hello\n\n| A | B |' },
+      { reply_parameters: { message_id: 456 } },
       undefined,
     )
     expect(api.sendMessage).not.toHaveBeenCalled()
@@ -129,7 +125,7 @@ describe('sendResponses', () => {
         reply_parameters: { message_id: 456 },
       }),
     )
-    expect(api.raw.sendRichMessage).not.toHaveBeenCalled()
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
     expect(api.sendMessage).not.toHaveBeenCalled()
     expect(api.sendPhoto).not.toHaveBeenCalled()
   })
@@ -196,13 +192,11 @@ describe('sendResponses', () => {
     })
 
     expect(api.sendSticker).toHaveBeenCalledTimes(1)
-    expect(api.raw.sendRichMessage).toHaveBeenCalledTimes(1)
-    expect(api.raw.sendRichMessage).toHaveBeenCalledWith(
-      {
-        chat_id: 123,
-        rich_message: { markdown: 'hello there' },
-        reply_parameters: { message_id: 456 },
-      },
+    expect(api.sendRichMessage).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: 'hello there' },
+      { reply_parameters: { message_id: 456 } },
       undefined,
     )
     expect(api.sendMessage).not.toHaveBeenCalled()
@@ -236,12 +230,12 @@ describe('sendResponses', () => {
     expect(api.sendMessage).toHaveBeenNthCalledWith(2, 123, '@user06 @user07', {
       reply_parameters: { message_id: 1 },
     })
-    expect(api.raw.sendRichMessage).not.toHaveBeenCalled()
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
   })
 
   test('falls back to plain text when rich and MarkdownV2 delivery fail', async () => {
     const api = createApi()
-    api.raw.sendRichMessage.mockRejectedValue(new Error('rich unavailable'))
+    api.sendRichMessage.mockRejectedValue(new Error('rich unavailable'))
     api.sendMessage
       .mockRejectedValueOnce(new Error('markdown unavailable'))
       .mockResolvedValueOnce({ message_id: 12 })
@@ -265,7 +259,7 @@ describe('sendResponses', () => {
 
   test('does not swallow text delivery failure', async () => {
     const api = createApi()
-    api.raw.sendRichMessage.mockRejectedValue(new Error('rich unavailable'))
+    api.sendRichMessage.mockRejectedValue(new Error('rich unavailable'))
     api.sendMessage.mockRejectedValue(new Error('telegram unavailable'))
 
     await expect(

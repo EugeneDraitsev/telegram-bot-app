@@ -1,7 +1,3 @@
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
-export interface ExtendedMessage extends Message {
-  quote?: {
-    text: string
-  }
-}
+export type ExtendedMessage = Message

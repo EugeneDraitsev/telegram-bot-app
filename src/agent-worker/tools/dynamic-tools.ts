@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import {
   findCommand,

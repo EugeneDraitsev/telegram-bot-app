@@ -1,7 +1,7 @@
 import { buildCurrencyMessages } from '../format'
 
 describe('currency rich formatting', () => {
-  test('builds a rich table board and compact HTML fallback', () => {
+  test('builds headerless rich tables and compact HTML fallback', () => {
     const messages = buildCurrencyMessages([
       {
         title: 'Основные пары',
@@ -21,14 +21,24 @@ describe('currency rich formatting', () => {
       },
     ])
 
-    expect(messages.richMarkdown).toContain('**💱 Курсы**')
-    expect(messages.richMarkdown).toContain('**Основные пары (ExchangeRate)**')
-    expect(messages.richMarkdown).not.toContain('| Пара | Курс |')
-    expect(messages.richMarkdown).toContain('| 🇸🇪EUR\\|SEK | 11.42 |')
-    expect(messages.richMarkdown).not.toContain('| Монета | Цена / 24ч |')
-    expect(messages.richMarkdown).toContain('| ADA | $0.17 (+2.1%) |')
-    expect(messages.richMarkdown).not.toContain('| Монета | Цена | 24ч |')
-    expect(messages.richMarkdown).not.toContain(
+    expect(messages.richMessage).toEqual(
+      expect.objectContaining({ skip_entity_detection: true }),
+    )
+    expect(messages.richMessage.html).toContain('<b>💱 Курсы</b>')
+    expect(messages.richMessage.html).toContain(
+      '<b>Основные пары (ExchangeRate)</b>',
+    )
+    expect(messages.richMessage.html).toContain('<table bordered striped>')
+    expect(messages.richMessage.html).toContain(
+      '<td align="left">🇸🇪 EUR|SEK</td><td align="right">11.42</td>',
+    )
+    expect(messages.richMessage.html).toContain(
+      '<td align="left">ADA</td><td align="right">$0.17 (+2.1%)</td>',
+    )
+    expect(messages.richMessage.html).not.toContain('<th>')
+    expect(messages.richMessage.html).not.toContain('Пара')
+    expect(messages.richMessage.html).not.toContain('Монета')
+    expect(messages.richMessage.html).not.toContain(
       'BYN uses BSB cash sell rates when available.',
     )
     expect(messages.text).toContain('<b>Основные пары (ExchangeRate):</b>')
@@ -48,8 +58,8 @@ describe('currency rich formatting', () => {
       },
     ])
 
-    expect(messages.richMarkdown).toContain(
-      "_Can't fetch currency from crypto_",
+    expect(messages.richMessage.html).toContain(
+      '<i>Can&apos;t fetch currency from crypto</i>',
     )
     expect(messages.text).toContain('Can&apos;t fetch currency from crypto')
   })

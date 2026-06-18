@@ -1,4 +1,4 @@
-import type { Message, MessageEntity } from 'telegram-typings'
+import type { Message, MessageEntity } from 'grammy/types'
 
 import { getRegisteredCommandName } from '../command-registry'
 

@@ -1,4 +1,4 @@
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import { isReplyToAnotherBot, isReplyToOurBot } from '../engagement.utils'
 

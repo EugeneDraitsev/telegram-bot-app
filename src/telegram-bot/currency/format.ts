@@ -15,28 +15,22 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&apos;')
 }
 
-function escapeRichMarkdownTableCell(value: string) {
-  return value
-    .replace(/\\/g, '\\\\')
-    .replace(/\|/g, '\\|')
-    .replace(/\r?\n/g, ' ')
-    .trim()
+function normalizeRichHtmlLine(value: string) {
+  return value.replace(/\r?\n/g, ' ').trim()
 }
 
-function getSectionColumns(section: CurrencyRateSection): readonly string[] {
-  if (section.columns) {
-    return section.columns
-  }
+function formatRichLabel(label: string) {
+  const flagLabel = label.replace(/^([\u{1F1E6}-\u{1F1FF}]{2})(?=\S)/u, '$1 ')
 
-  return section.rows.some((row) => row.change)
-    ? ['Актив', 'Цена / 24ч']
-    : ['Актив', 'Значение']
+  return flagLabel === label
+    ? label.replace(/^(\p{Emoji_Presentation})(?=\S)/u, '$1 ')
+    : flagLabel
 }
 
 function getRowCells(row: CurrencyRateRow, columnCount: number): string[] {
   const value =
     columnCount > 2 && row.change ? `${row.value} (${row.change})` : row.value
-  const cells = [row.label, value]
+  const cells = [formatRichLabel(row.label), value]
 
   if (columnCount > 2) {
     cells.push(row.change ?? '')
@@ -45,26 +39,27 @@ function getRowCells(row: CurrencyRateRow, columnCount: number): string[] {
   return cells
 }
 
-function buildRichTable(section: CurrencyRateSection): string[] {
+function buildRichTable(section: CurrencyRateSection): string {
   if (section.error) {
-    return [`_${section.error}_`]
+    return `<i>${escapeHtml(section.error)}</i>`
   }
 
   if (section.rows.length === 0) {
-    return ['_No data_']
+    return '<i>No data</i>'
   }
 
-  const columns = getSectionColumns(section)
-  const header = `| ${columns.map(() => '').join(' | ')} |`
-  const separator = `| ${columns
-    .map((_, index) => (index === 0 ? ':---' : '---:'))
-    .join(' | ')} |`
+  const columnCount = section.columns?.length ?? 2
   const rows = section.rows.map((row) => {
-    const cells = getRowCells(row, columns.length)
-    return `| ${cells.map(escapeRichMarkdownTableCell).join(' | ')} |`
+    const cells = getRowCells(row, columnCount)
+    return `<tr>${cells
+      .map((cell, index) => {
+        const align = index === 0 ? 'left' : 'right'
+        return `<td align="${align}">${escapeHtml(normalizeRichHtmlLine(cell))}</td>`
+      })
+      .join('')}</tr>`
   })
 
-  return [header, separator, ...rows]
+  return `<table bordered striped>${rows.join('')}</table>`
 }
 
 function buildFallbackLines(section: CurrencyRateSection): string[] {
@@ -87,18 +82,24 @@ function buildSectionTitle(section: CurrencyRateSection): string {
   return `${section.title}${provider}`
 }
 
-export function buildCurrencyRichMarkdown(
+export function buildCurrencyRichMessage(
   sections: CurrencyRateSection[],
   title = DEFAULT_TITLE,
-): string {
-  const lines = [`**${title}**`]
+): CurrencyMessages['richMessage'] {
+  const lines = [`<b>${escapeHtml(title)}</b>`]
 
   for (const section of sections) {
-    lines.push('', `**${buildSectionTitle(section)}**`, '')
-    lines.push(...buildRichTable(section))
+    lines.push(
+      '',
+      `<b>${escapeHtml(buildSectionTitle(section))}</b>`,
+      buildRichTable(section),
+    )
   }
 
-  return lines.join('\n')
+  return {
+    html: lines.join('\n'),
+    skip_entity_detection: true,
+  }
 }
 
 export function buildCurrencyFallbackText(
@@ -122,6 +123,6 @@ export function buildCurrencyMessages(
 ): CurrencyMessages {
   return {
     text: buildCurrencyFallbackText(sections),
-    richMarkdown: buildCurrencyRichMarkdown(sections),
+    richMessage: buildCurrencyRichMessage(sections),
   }
 }

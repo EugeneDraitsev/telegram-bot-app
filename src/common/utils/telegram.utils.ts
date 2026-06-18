@@ -1,8 +1,14 @@
+import type { Api } from 'grammy'
+import type {
+  Chat,
+  Message,
+  MessageEntity,
+  PhotoSize,
+  User,
+} from 'grammy/types'
 import type { Context } from 'grammy/web'
-import type { Chat, Message, MessageEntity, User } from 'telegram-typings'
 
 import { logger } from '../logger'
-import type { ExtendedMessage } from '../types'
 
 export const isLink = (text = '') => text.includes('https://')
 
@@ -40,7 +46,7 @@ export const getCommandData = (
   const replyId = parsedText
     ? message_id || 0
     : (reply_to_message?.message_id ?? message_id ?? 0)
-  const quoteText = (message as ExtendedMessage)?.quote?.text
+  const quoteText = message?.quote?.text
   const text =
     parsedText ||
     quoteText ||
@@ -82,13 +88,8 @@ export const getCommandData = (
 export const getLargestPhoto = (m?: Message) =>
   (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
 
-type TelegramImageFile = {
-  file_id: string
-  file_unique_id?: string
-}
-
 type CommandImageRef = {
-  image: TelegramImageFile
+  image: Pick<PhotoSize, 'file_id'> & Partial<Pick<PhotoSize, 'file_unique_id'>>
   label: string
   mimeType: string
 }
@@ -614,9 +615,7 @@ export async function getMultimodalMediaData(
   return { combinedText, mediaBuffers, replyId, chatId, message: ctx.message }
 }
 
-type MediaResolverApi = {
-  getFile: (fileId: string) => Promise<{ file_path?: string }>
-}
+export type MediaResolverApi = Pick<Api, 'getFile'>
 
 export async function resolveMediaBuffers(
   refs: MediaFileRef[],

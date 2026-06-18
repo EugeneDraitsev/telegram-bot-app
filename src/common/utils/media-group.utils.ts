@@ -1,5 +1,5 @@
+import type { Message } from 'grammy/types'
 import type { Context } from 'grammy/web'
-import type { Message } from 'telegram-typings'
 
 import { getRawHistory } from '../upstash'
 import { isAiEnabledChat } from './ai.utils'

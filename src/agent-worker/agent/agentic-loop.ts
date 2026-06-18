@@ -4,8 +4,9 @@ import {
   jsonSchema,
   type ModelMessage,
   type ToolSet,
+  type UserModelMessage,
 } from 'ai'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import type {
   AiModelConfig,
@@ -412,9 +413,7 @@ export function getAgentDeliveryReplyMessageId(
   return typeof messageId === 'number' ? messageId : replyMessageId
 }
 
-type UserContentPart =
-  | { type: 'text'; text: string }
-  | { type: 'image'; image: Buffer; mediaType: string }
+type UserContentPart = Exclude<UserModelMessage['content'], string>[number]
 
 function pushImageContent(
   parts: UserContentPart[],

@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { Message } from 'telegram-typings'
+import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
 import type { AgentResponse } from '../types'

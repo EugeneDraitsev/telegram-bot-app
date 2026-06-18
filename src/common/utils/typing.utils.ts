@@ -1,6 +1,8 @@
+import type { Api } from 'grammy'
+
 export const TYPING_PING_INTERVAL_MS = 4000
 
-type SendTypingAction = (chatId: number, action: 'typing') => Promise<unknown>
+type SendTypingAction = Pick<Api, 'sendChatAction'>['sendChatAction']
 
 export function startTypingIndicator(params: {
   chatId: number

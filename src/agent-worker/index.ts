@@ -1,6 +1,6 @@
 import type { Handler } from 'aws-lambda'
+import type { Message } from 'grammy/types'
 import type { Context } from 'grammy/web'
-import type { Message } from 'telegram-typings'
 
 import {
   type BotIdentity,

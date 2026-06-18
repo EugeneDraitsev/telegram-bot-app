@@ -1,5 +1,5 @@
+import type { Message } from 'grammy/types'
 import type { Bot, Context } from 'grammy/web'
-import type { Message } from 'telegram-typings'
 
 import { invokeReplyLambda, logger } from '@tg-bot/common'
 import { DIRECT_AGENT_COMMANDS, handleMessageWithAgent } from './agent'

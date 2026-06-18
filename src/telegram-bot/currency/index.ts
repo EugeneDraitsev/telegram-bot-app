@@ -89,10 +89,7 @@ export function sendCurrencyMessages({
   return sendRichMessageWithFallback({
     api,
     chatId,
-    richMessage: {
-      markdown: messages.richMarkdown,
-      skip_entity_detection: true,
-    },
+    richMessage: messages.richMessage,
     fallbackText: messages.text,
     richOptions: options,
     fallbackOptions: {

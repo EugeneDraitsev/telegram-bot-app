@@ -1,4 +1,4 @@
-import type { User } from 'telegram-typings'
+import type { User } from 'grammy/types'
 
 import type { UserStat } from '@tg-bot/common'
 

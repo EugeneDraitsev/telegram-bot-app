@@ -1,6 +1,6 @@
 import { tint } from 'polished'
 import ReactDOMServer from 'react-dom/server'
-import type { User } from 'telegram-typings'
+import type { User } from 'grammy/types'
 
 import { getUserName } from '@tg-bot/common/utils'
 
