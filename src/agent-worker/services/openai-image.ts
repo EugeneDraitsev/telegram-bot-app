@@ -46,7 +46,7 @@ export async function generateImageOpenAi(
         maxRetries: 0,
         providerOptions: {
           openai: {
-            quality: isGptImageModel ? 'high' : 'standard',
+            quality: isGptImageModel ? 'medium' : 'standard',
           },
         },
       })
