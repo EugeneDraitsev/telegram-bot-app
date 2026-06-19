@@ -1,6 +1,6 @@
 import { FRONTEND_BASE_URL, invokeLambda, safeJSONParse } from '@tg-bot/common'
 
-const SHARP_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-statistics`
+const SHARP_RENDERER_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-renderer`
 
 export const getDailyStatistics = async (
   chatId: string | number,
@@ -10,7 +10,7 @@ export const getDailyStatistics = async (
 
   try {
     const sharpResponse = await invokeLambda({
-      name: SHARP_LAMBDA_NAME,
+      name: SHARP_RENDERER_LAMBDA_NAME,
       payload: { queryStringParameters: { chatId } },
     })
 

@@ -79,13 +79,13 @@ functions:
           enabled: ${env:ENABLE_SCHEDULING, true}
           rate: rate(1 hour)
 
-  sharp-statistics:
-    handler: src/sharp-statistics/index.default
+  sharp-renderer:
+    handler: src/sharp-renderer/index.default
     package:
       patterns:
         - fonts/**
     layers:
-      - Ref: SharpStatisticsLambdaLayer
+      - Ref: SharpRendererLambdaLayer
     environment:
       FONTCONFIG_PATH: "./fonts"
     memorySize: 1536
@@ -147,7 +147,7 @@ package:
   individually: true
 
 layers:
-  sharpStatistics:
+  sharpRenderer:
     path: .layers/sharp
     compatibleRuntimes:
       - ${self:provider.runtime}

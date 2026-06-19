@@ -54,8 +54,8 @@
         "grammy": "^1.44.0",
       },
     },
-    "src/sharp-statistics": {
-      "name": "@tg-bot/sharp-statictics",
+    "src/sharp-renderer": {
+      "name": "@tg-bot/sharp-renderer",
       "version": "0.1.0",
       "dependencies": {
         "@tg-bot/common": "workspace:*",
@@ -476,7 +476,7 @@
 
     "@tg-bot/common": ["@tg-bot/common@workspace:src/common"],
 
-    "@tg-bot/sharp-statictics": ["@tg-bot/sharp-statictics@workspace:src/sharp-statistics"],
+    "@tg-bot/sharp-renderer": ["@tg-bot/sharp-renderer@workspace:src/sharp-renderer"],
 
     "@tg-bot/websockets": ["@tg-bot/websockets@workspace:src/websockets"],
 

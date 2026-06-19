@@ -1,5 +1,5 @@
 {
-  "name": "@tg-bot/sharp-statictics",
+  "name": "@tg-bot/sharp-renderer",
   "version": "0.1.0",
   "dependencies": {
     "@tg-bot/common": "workspace:*",

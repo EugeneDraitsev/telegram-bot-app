@@ -4,11 +4,11 @@ import path from 'node:path'
 import { invokeLambda, logger, safeJSONParse } from '@tg-bot/common'
 import type { CurrencyRateSection } from './types'
 
-const SHARP_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-statistics`
-const SHARP_STATISTICS_PACKAGE_PATH = path.join(
+const SHARP_RENDERER_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-renderer`
+const SHARP_RENDERER_PACKAGE_PATH = path.join(
   process.cwd(),
   'src',
-  'sharp-statistics',
+  'sharp-renderer',
   'package.json',
 )
 
@@ -27,12 +27,12 @@ function shouldRenderLocally() {
 }
 
 async function renderCurrencyImageLocally(sections: CurrencyRateSection[]) {
-  const requireFromSharpStatistics = createNodeRequire(
-    SHARP_STATISTICS_PACKAGE_PATH,
+  const requireFromSharpRenderer = createNodeRequire(
+    SHARP_RENDERER_PACKAGE_PATH,
   )
-  const sharp = requireFromSharpStatistics('sharp') as SharpFactory
+  const sharp = requireFromSharpRenderer('sharp') as SharpFactory
   const { getCurrencyRatesSvg } = (await import(
-    '../../sharp-statistics/currency-rates.component.js'
+    '../../sharp-renderer/currency-rates.component.js'
   )) as CurrencyRatesComponent
 
   return sharp(Buffer.from(getCurrencyRatesSvg(sections)))
@@ -49,7 +49,7 @@ export async function getCurrencyImage(
     }
 
     const sharpResponse = await invokeLambda({
-      name: SHARP_LAMBDA_NAME,
+      name: SHARP_RENDERER_LAMBDA_NAME,
       payload: { currencySections: sections },
     })
 

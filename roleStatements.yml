@@ -3,7 +3,7 @@
     - lambda:InvokeFunction
     - lambda:InvokeAsync
   Resource:
-    - arn:aws:lambda:*:*:telegram-*-sharp-statistics
+    - arn:aws:lambda:*:*:telegram-*-sharp-renderer
     - arn:aws:lambda:*:*:telegram-*-reply-worker
     - arn:aws:lambda:*:*:telegram-*-agent-worker
     - arn:aws:lambda:*:*:telegram-*-activity-worker

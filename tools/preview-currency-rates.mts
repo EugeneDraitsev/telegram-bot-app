@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { CurrencyRateSection } from '../src/common/types/currency.js'
-import { getCurrencyRatesSvg } from '../src/sharp-statistics/currency-rates.component.js'
+import { getCurrencyRatesSvg } from '../src/sharp-renderer/currency-rates.component.js'
 
 type SharpFactory = (input: Buffer) => {
   png: () => {
@@ -14,10 +14,10 @@ type SharpFactory = (input: Buffer) => {
 }
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const requireFromSharpStatistics = createRequire(
-  path.join(rootDir, 'src', 'sharp-statistics', 'package.json'),
+const requireFromSharpRenderer = createRequire(
+  path.join(rootDir, 'src', 'sharp-renderer', 'package.json'),
 )
-const sharp = requireFromSharpStatistics('sharp') as SharpFactory
+const sharp = requireFromSharpRenderer('sharp') as SharpFactory
 
 const byn = '\u{1F1E7}\u{1F1FE}BYN'
 const sek = '\u{1F1F8}\u{1F1EA}SEK'

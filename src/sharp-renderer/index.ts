@@ -30,7 +30,7 @@ function pngResponse(image: Buffer) {
   }
 }
 
-const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
+const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
   const currencySections = (event as CurrencyRatesEvent).currencySections
 
   if (Array.isArray(currencySections)) {
@@ -50,4 +50,4 @@ const sharpStatisticsHandler: APIGatewayProxyHandler = async (event) => {
   return pngResponse(image)
 }
 
-export default sharpStatisticsHandler
+export default sharpRendererHandler

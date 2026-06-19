@@ -71,7 +71,8 @@ chat event through it can trigger the broadcast lambda.
 `telegram-bot-ui` to discover chats. It reads `chat-statistics`; it is separate
 from WebSockets because it is ordinary request/response HTTP.
 
-`src/sharp-statistics` renders the PNG statistics image from stored chat events.
+`src/sharp-renderer` renders PNG images for Telegram messages, including
+chat activity charts and currency rate cards.
 
 `src/telegram-bot/currency-scheduler` and `src/telegram-bot/redis-scheduler`
 are cron lambdas: the first posts a currency digest to selected chats on

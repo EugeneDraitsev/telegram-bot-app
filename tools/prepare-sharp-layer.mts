@@ -16,23 +16,23 @@ type PackageJson = {
 }
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const statisticsPackagePath = path.join(
+const painterPackagePath = path.join(
   rootDir,
   'src',
-  'sharp-statistics',
+  'sharp-renderer',
   'package.json',
 )
 const layerRoot = path.join(rootDir, '.layers', 'sharp')
 const layerNodeRoot = path.join(layerRoot, 'nodejs')
 const layerPackagePath = path.join(layerNodeRoot, 'package.json')
 
-const statisticsPackage = JSON.parse(
-  readFileSync(statisticsPackagePath, 'utf8'),
+const painterPackage = JSON.parse(
+  readFileSync(painterPackagePath, 'utf8'),
 ) as PackageJson
-const sharpVersion = statisticsPackage.dependencies?.sharp
+const sharpVersion = painterPackage.dependencies?.sharp
 
 if (!sharpVersion) {
-  throw new Error('src/sharp-statistics/package.json must declare sharp')
+  throw new Error('src/sharp-renderer/package.json must declare sharp')
 }
 
 rmSync(layerRoot, { recursive: true, force: true })

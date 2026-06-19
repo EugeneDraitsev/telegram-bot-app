@@ -42,4 +42,29 @@ describe('getCurrencyRatesSvg', () => {
 
     expect(image.length).toBeGreaterThan(0)
   })
+
+  test('does not render vertical table separators', () => {
+    const svg = getCurrencyRatesSvg([
+      {
+        title: 'Main pairs',
+        provider: 'ExchangeRate',
+        columns: ['', 'USD', 'EUR'],
+        rows: [
+          { label: 'BYN', values: ['2.85', '3.31'] },
+          { label: 'UAH', values: ['44.96', '51.48'] },
+        ],
+      },
+    ])
+    const lines = Array.from(svg.matchAll(/<line\b[^>]*>/g), ([line]) => line)
+    const verticalLines = lines.filter((line) => {
+      const x1 = line.match(/\sx1="([^"]+)"/)?.[1]
+      const x2 = line.match(/\sx2="([^"]+)"/)?.[1]
+      const y1 = line.match(/\sy1="([^"]+)"/)?.[1]
+      const y2 = line.match(/\sy2="([^"]+)"/)?.[1]
+
+      return x1 === x2 && y1 !== y2
+    })
+
+    expect(verticalLines).toEqual([])
+  })
 })

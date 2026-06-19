@@ -295,8 +295,6 @@ function Section({ layout }: { readonly layout: SectionLayout }) {
   const tableX = PADDING
   const tableWidth = WIDTH - PADDING * 2
   const headerHeight = showHeader ? HEADER_HEIGHT : 0
-  const valueColumnStart =
-    tableX + tableWidth - columns.length * VALUE_COLUMN_WIDTH
   const valueX = (index: number) =>
     VALUE_RIGHT - (columns.length - 1 - index) * VALUE_COLUMN_WIDTH
 
@@ -352,23 +350,6 @@ function Section({ layout }: { readonly layout: SectionLayout }) {
               {column}
             </text>
           ))}
-        </g>
-      ) : null}
-      {columns.length > 1 || showHeader ? (
-        <g>
-          {Array.from({ length: columns.length }).map((_, index) => {
-            const x = valueColumnStart + index * VALUE_COLUMN_WIDTH
-            return (
-              <line
-                key={x}
-                x1={x}
-                y1={tableY}
-                x2={x}
-                y2={tableY + tableHeight}
-                stroke="#40516a"
-              />
-            )
-          })}
         </g>
       ) : null}
       {rows.map((row, rowIndex) => {
