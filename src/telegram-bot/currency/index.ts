@@ -1,8 +1,10 @@
-import type { Bot } from 'grammy/web'
+import { type Bot, type Context, InputFile } from 'grammy/web'
+import type { Api } from 'grammy'
 
 import { logger, sendRichMessageWithFallback } from '@tg-bot/common'
 import { getCryptoCurrencySection } from './crypto-currency'
 import { buildCurrencyMessages } from './format'
+import { getCurrencyImage } from './image'
 import { getMainCurrencySection } from './main-currency'
 import { getRussianCurrencySection } from './russian-currency'
 import type {
@@ -74,18 +76,37 @@ export const getCurrencyMessages = async (): Promise<CurrencyMessages> => {
 }
 
 type SendRichMessageParams = Parameters<typeof sendRichMessageWithFallback>[0]
+type SendPhotoOptions = Parameters<Api['sendPhoto']>[2]
+type CurrencyApi = SendRichMessageParams['api'] &
+  Partial<Pick<Api, 'sendPhoto'>>
 
-export function sendCurrencyMessages({
+export async function sendCurrencyMessages({
   api,
   chatId,
   messages,
   options,
+  forceFallback = false,
 }: {
-  api: SendRichMessageParams['api']
+  api: CurrencyApi
   chatId: number | string
   messages: CurrencyMessages
   options?: SendRichMessageParams['richOptions']
+  forceFallback?: boolean
 }) {
+  if (!forceFallback && typeof api.sendPhoto === 'function') {
+    const image = await getCurrencyImage(messages.sections)
+
+    if (image) {
+      try {
+        return await api.sendPhoto(chatId, new InputFile(image, 'rates.png'), {
+          ...(options as SendPhotoOptions | undefined),
+        })
+      } catch (error) {
+        logger.warn({ chatId, error }, 'currency.image_send_failed')
+      }
+    }
+  }
+
   return sendRichMessageWithFallback({
     api,
     chatId,
@@ -99,25 +120,29 @@ export function sendCurrencyMessages({
   })
 }
 
-const setupCurrencyCommands = (bot: Bot) => {
-  bot.command('c', async (ctx) => {
-    const chatId = ctx.chat?.id
-    if (!chatId) return
+async function sendCurrencyCommand(ctx: Context, forceFallback = false) {
+  const chatId = ctx.chat?.id
+  if (!chatId) return
 
-    const messageThreadId = ctx.message?.message_thread_id
-    const options =
-      typeof messageThreadId === 'number'
-        ? { message_thread_id: messageThreadId }
-        : undefined
-    const messages = await getCurrencyMessages()
+  const messageThreadId = ctx.message?.message_thread_id
+  const options =
+    typeof messageThreadId === 'number'
+      ? { message_thread_id: messageThreadId }
+      : undefined
+  const messages = await getCurrencyMessages()
 
-    return sendCurrencyMessages({
-      api: ctx.api,
-      chatId,
-      messages,
-      options,
-    })
+  return sendCurrencyMessages({
+    api: ctx.api,
+    chatId,
+    messages,
+    options,
+    forceFallback,
   })
+}
+
+const setupCurrencyCommands = (bot: Bot) => {
+  bot.command('c', (ctx) => sendCurrencyCommand(ctx))
+  bot.command('cf', (ctx) => sendCurrencyCommand(ctx, true))
 }
 
 export default setupCurrencyCommands

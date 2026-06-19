@@ -63,20 +63,27 @@ export const getMainCurrencySection = async (
   return {
     title: 'Основные пары',
     provider,
-    columns: ['Пара', 'Курс'],
+    columns: ['', 'USD', 'EUR'],
     rows: [
       {
-        label: '🇧🇾USD/BYN',
-        value: formatRate(Number(bynRates.USD) || rates.BYN / rates.USD),
+        label: '🇧🇾BYN',
+        values: [
+          formatRate(Number(bynRates.USD) || rates.BYN / rates.USD),
+          formatRate(Number(bynRates.EUR) || rates.BYN),
+        ],
       },
       {
-        label: '🇧🇾EUR/BYN',
-        value: formatRate(Number(bynRates.EUR) || rates.BYN),
+        label: '🇸🇪SEK',
+        values: [formatRate(rates.SEK / rates.USD), formatRate(rates.SEK)],
       },
-      { label: '🇸🇪USD/SEK', value: formatRate(rates.SEK / rates.USD) },
-      { label: '🇸🇪EUR/SEK', value: formatRate(rates.SEK) },
-      { label: '🇵🇱USD/PLN', value: formatRate(rates.PLN / rates.USD) },
-      { label: '🇵🇱EUR/PLN', value: formatRate(rates.PLN) },
+      {
+        label: '🇵🇱PLN',
+        values: [formatRate(rates.PLN / rates.USD), formatRate(rates.PLN)],
+      },
+      {
+        label: '🇺🇦UAH',
+        values: [formatRate(rates.UAH / rates.USD), formatRate(rates.UAH)],
+      },
     ],
   }
 }

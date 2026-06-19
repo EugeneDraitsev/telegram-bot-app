@@ -5,6 +5,11 @@ import type { CurrenciesResponse, CurrencyRateSection } from './types'
 const formatRate = (value: number) =>
   Number.isFinite(value) ? value.toFixed(2) : 'n/a'
 
+const formatDollarRate = (value: number) => {
+  const rate = formatRate(value)
+  return rate === 'n/a' ? rate : `$${rate}`
+}
+
 const formatBrent = (value: number | undefined) =>
   typeof value === 'number' && Number.isFinite(value)
     ? `$${value.toFixed(2)}`
@@ -25,8 +30,8 @@ export const getRussianCurrencySection = async (
     provider,
     columns: ['Актив', 'Значение'],
     rows: [
-      { label: 'USD/RUB', value: formatRate(rates.RUB / rates.USD) },
-      { label: 'EUR/RUB', value: formatRate(rates.RUB) },
+      { label: 'USD/RUB', value: formatDollarRate(rates.RUB / rates.USD) },
+      { label: 'EUR/RUB', value: formatDollarRate(rates.RUB) },
       { label: '🛢Brent', value: formatBrent(brentPrice) },
     ],
   }

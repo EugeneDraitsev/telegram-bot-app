@@ -4,6 +4,7 @@ describe('currency scheduler', () => {
   test('sends scheduled currency updates through rich currency delivery', async () => {
     const api = { sendMessage: jest.fn() }
     const messages = {
+      sections: [],
       richMessage: { html: '<b>Rates</b>' },
       text: '<b>Rates:</b>',
     }

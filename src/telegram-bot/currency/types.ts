@@ -1,5 +1,10 @@
 import type { InputRichMessage } from 'grammy/types'
 
+import type {
+  CurrencyRateRow as SharedCurrencyRateRow,
+  CurrencyRateSection as SharedCurrencyRateSection,
+} from '@tg-bot/common'
+
 export interface CurrenciesResponse {
   readonly provider: string
   readonly rates: {
@@ -7,24 +12,12 @@ export interface CurrenciesResponse {
   }
 }
 
-export interface CurrencyRateRow {
-  readonly label: string
-  readonly value: string
-  readonly change?: string
-}
+export type CurrencyRateRow = SharedCurrencyRateRow
 
-export interface CurrencyRateSection {
-  readonly title: string
-  readonly provider?: string
-  readonly columns?:
-    | readonly [string, string]
-    | readonly [string, string, string]
-  readonly rows: CurrencyRateRow[]
-  readonly note?: string
-  readonly error?: string
-}
+export type CurrencyRateSection = SharedCurrencyRateSection
 
 export interface CurrencyMessages {
+  readonly sections: CurrencyRateSection[]
   readonly text: string
   readonly richMessage: InputRichMessage
 }

@@ -140,8 +140,8 @@ functions:
           method: options
 
 plugins:
-  - serverless-offline
   - serverless-esbuild
+  - serverless-offline
 
 package:
   individually: true
@@ -168,8 +168,8 @@ custom:
   chatSearchAllowedOrigins: ${self:custom.frontendBaseUrl},http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
   serverless-offline:
     httpPort: 4000
-    reloadHandler: false
-    useInProcess: true
+    reloadHandler: true
+    useInProcess: false
     terminateIdleLambdaTime: 10
   esbuild:
     target: ${self:custom.esbuildTargetByStage.${sls:stage}, 'node24'}

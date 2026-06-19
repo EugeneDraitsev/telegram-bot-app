@@ -19,7 +19,8 @@
     "logs": "sls logs -f telegram-bot -t",
     "diagram": "bunx @mermaid-js/mermaid-cli@11 -i .github/diagram/architecture.mmd -o .github/architecture-light.svg -c .github/diagram/light.json -b transparent --iconPacks @iconify-json/logos @iconify-json/mdi @iconify-json/simple-icons && bunx @mermaid-js/mermaid-cli@11 -i .github/diagram/architecture.mmd -o .github/architecture-dark.svg -c .github/diagram/dark.json -b transparent --iconPacks @iconify-json/logos @iconify-json/mdi @iconify-json/simple-icons",
     "deploy": "bun run prepare:sharp-layer && sls deploy",
-    "prepare:sharp-layer": "bun tools/prepare-sharp-layer.mts"
+    "prepare:sharp-layer": "bun tools/prepare-sharp-layer.mts",
+    "preview:currency": "bun tools/preview-currency-rates.mts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
