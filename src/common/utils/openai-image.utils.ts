@@ -6,10 +6,6 @@ export function isOpenAiGptImageModel(model: string): boolean {
   return model === OPENAI_GPT_IMAGE_MODEL || model.startsWith('gpt-image-')
 }
 
-export function usesOpenAiMediumImageQuality(model: string): boolean {
-  return model === OPENAI_GPT_IMAGE_MODEL || model === 'gpt-image-2'
-}
-
 export function getAiSdkOpenAiImageSize(
   size: OpenAiImageSize = OPENAI_GPT_IMAGE_SIZE,
 ): `${number}x${number}` | undefined {

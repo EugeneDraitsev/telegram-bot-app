@@ -4,7 +4,6 @@ import {
   isOpenAiGptImageModel,
   OPENAI_GPT_IMAGE_MODEL,
   OPENAI_GPT_IMAGE_SIZE,
-  usesOpenAiMediumImageQuality,
 } from './openai-image.utils'
 
 describe('openai-image.utils', () => {
@@ -22,12 +21,6 @@ describe('openai-image.utils', () => {
     expect(isOpenAiGptImageModel(OPENAI_GPT_IMAGE_MODEL)).toBe(true)
     expect(isOpenAiGptImageModel('gpt-image-2')).toBe(true)
     expect(isOpenAiGptImageModel('dall-e-3')).toBe(false)
-  })
-
-  test('uses medium quality for the supported GPT image defaults', () => {
-    expect(usesOpenAiMediumImageQuality(OPENAI_GPT_IMAGE_MODEL)).toBe(true)
-    expect(usesOpenAiMediumImageQuality('gpt-image-2')).toBe(true)
-    expect(usesOpenAiMediumImageQuality('dall-e-3')).toBe(false)
   })
 
   test('adds anti-crop composition guidance to prompt', () => {

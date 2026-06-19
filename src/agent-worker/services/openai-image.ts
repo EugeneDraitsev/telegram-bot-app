@@ -13,7 +13,6 @@ import {
   isOpenAiGptImageModel,
   logger,
   OPENAI_GPT_IMAGE_MODEL,
-  usesOpenAiMediumImageQuality,
 } from '@tg-bot/common'
 
 type SupportedImageModel = string
@@ -28,9 +27,8 @@ export async function generateImageOpenAi(
   inputImages?: Buffer[],
 ): Promise<{ image?: Buffer; text?: string }> {
   const requestPrompt = buildOpenAiImagePrompt(prompt)
-  const canEdit = Boolean(
-    inputImages?.length && isOpenAiGptImageModel(IMAGE_MODEL),
-  )
+  const isGptImageModel = isOpenAiGptImageModel(IMAGE_MODEL)
+  const canEdit = Boolean(inputImages?.length && isGptImageModel)
   const imagePrompt = canEdit
     ? { text: requestPrompt, images: inputImages ?? [] }
     : requestPrompt
@@ -48,9 +46,7 @@ export async function generateImageOpenAi(
         maxRetries: 0,
         providerOptions: {
           openai: {
-            quality: usesOpenAiMediumImageQuality(IMAGE_MODEL)
-              ? 'medium'
-              : 'standard',
+            quality: isGptImageModel ? 'high' : 'standard',
           },
         },
       })

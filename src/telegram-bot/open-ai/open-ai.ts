@@ -34,7 +34,6 @@ import {
   parseAiModelConfig,
   resolveHistoryMediaAttachments,
   systemInstructions,
-  usesOpenAiMediumImageQuality,
 } from '@tg-bot/common'
 
 export type SupportedImageModel = string
@@ -271,9 +270,7 @@ export const generateImage = async (
         maxRetries: 0,
         providerOptions: {
           openai: {
-            quality: usesOpenAiMediumImageQuality(model)
-              ? 'medium'
-              : 'standard',
+            quality: isGptImageModel ? 'medium' : 'standard',
           },
         },
       })
