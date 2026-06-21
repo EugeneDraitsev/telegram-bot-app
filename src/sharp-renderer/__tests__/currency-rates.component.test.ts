@@ -67,4 +67,36 @@ describe('getCurrencyRatesSvg', () => {
 
     expect(verticalLines).toEqual([])
   })
+
+  test('renders a generated background image data uri', async () => {
+    const backgroundImage = (
+      await sharp({
+        create: {
+          width: 2,
+          height: 2,
+          channels: 4,
+          background: '#123456',
+        },
+      })
+        .png()
+        .toBuffer()
+    ).toString('base64')
+    const svg = getCurrencyRatesSvg(
+      [
+        {
+          title: 'Main pairs',
+          provider: 'ExchangeRate',
+          rows: [{ label: 'BYN', value: '3.31' }],
+        },
+      ],
+      backgroundImage,
+    )
+
+    expect(svg).toContain('data:image/png;base64')
+    expect(svg).toContain('background-overlay')
+
+    const image = await sharp(Buffer.from(svg)).png().toBuffer()
+
+    expect(image.length).toBeGreaterThan(0)
+  })
 })

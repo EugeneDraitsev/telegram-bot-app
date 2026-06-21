@@ -2,6 +2,10 @@ import { type Bot, type Context, InputFile } from 'grammy/web'
 import type { Api } from 'grammy'
 
 import { logger, sendRichMessageWithFallback } from '@tg-bot/common'
+import {
+  buildCurrencyBackgroundDebugCaption,
+  getCurrencyBackgroundImage,
+} from './background-image'
 import { getCryptoCurrencySection } from './crypto-currency'
 import { buildCurrencyMessages } from './format'
 import { getCurrencyImage } from './image'
@@ -14,6 +18,10 @@ import type {
 } from './types'
 
 export type { CurrenciesResponse, CurrencyMessages, CurrencyRateSection }
+
+export type GetCurrencyMessagesOptions = {
+  readonly includeBackgroundImage?: boolean
+}
 
 const getError = (err: Error, from: string): CurrencyRateSection => {
   logger.error({ error: err }, `Can't fetch currency from ${from}`)
@@ -60,8 +68,13 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
   }
 }
 
-export const getCurrencyMessages = async (): Promise<CurrencyMessages> => {
+export const getCurrencyMessages = async ({
+  includeBackgroundImage = false,
+}: GetCurrencyMessagesOptions = {}): Promise<CurrencyMessages> => {
   const currenciesRatesPromise = getCurrenciesRates()
+  const backgroundPromise = includeBackgroundImage
+    ? getCurrencyBackgroundImage()
+    : Promise.resolve(undefined)
   const promises = [
     getMainCurrencySection(currenciesRatesPromise).catch((err) =>
       getError(err, 'ExchangeRate and Fixer'),
@@ -72,13 +85,36 @@ export const getCurrencyMessages = async (): Promise<CurrencyMessages> => {
     getCryptoCurrencySection().catch((err) => getError(err, 'crypto')),
   ]
 
-  return buildCurrencyMessages(await Promise.all(promises))
+  const [sections, background] = await Promise.all([
+    Promise.all(promises),
+    backgroundPromise,
+  ])
+
+  return {
+    ...buildCurrencyMessages(sections),
+    background,
+  }
 }
 
 type SendRichMessageParams = Parameters<typeof sendRichMessageWithFallback>[0]
 type SendPhotoOptions = Parameters<Api['sendPhoto']>[2]
+type CurrencySendOptions = SendRichMessageParams['richOptions'] &
+  SendPhotoOptions
 type CurrencyApi = SendRichMessageParams['api'] &
   Partial<Pick<Api, 'sendPhoto'>>
+
+function getFallbackOptions(
+  options: CurrencySendOptions | undefined,
+): SendRichMessageParams['richOptions'] {
+  if (!options) {
+    return undefined
+  }
+
+  const fallbackOptions = { ...options }
+  delete fallbackOptions.caption
+
+  return fallbackOptions
+}
 
 export async function sendCurrencyMessages({
   api,
@@ -90,16 +126,19 @@ export async function sendCurrencyMessages({
   api: CurrencyApi
   chatId: number | string
   messages: CurrencyMessages
-  options?: SendRichMessageParams['richOptions']
+  options?: CurrencySendOptions
   forceFallback?: boolean
 }) {
   if (!forceFallback && typeof api.sendPhoto === 'function') {
-    const image = await getCurrencyImage(messages.sections)
+    const image = await getCurrencyImage(
+      messages.sections,
+      messages.background?.image,
+    )
 
     if (image) {
       try {
         return await api.sendPhoto(chatId, new InputFile(image, 'rates.png'), {
-          ...(options as SendPhotoOptions | undefined),
+          ...options,
         })
       } catch (error) {
         logger.warn({ chatId, error }, 'currency.image_send_failed')
@@ -112,15 +151,26 @@ export async function sendCurrencyMessages({
     chatId,
     richMessage: messages.richMessage,
     fallbackText: messages.text,
-    richOptions: options,
+    richOptions: getFallbackOptions(options),
     fallbackOptions: {
-      ...options,
+      ...getFallbackOptions(options),
       parse_mode: 'HTML',
     },
   })
 }
 
-async function sendCurrencyCommand(ctx: Context, forceFallback = false) {
+async function sendCurrencyCommand(
+  ctx: Context,
+  {
+    forceFallback = false,
+    includeBackgroundImage = false,
+    debugBackground = false,
+  }: {
+    readonly forceFallback?: boolean
+    readonly includeBackgroundImage?: boolean
+    readonly debugBackground?: boolean
+  } = {},
+) {
   const chatId = ctx.chat?.id
   if (!chatId) return
 
@@ -129,20 +179,31 @@ async function sendCurrencyCommand(ctx: Context, forceFallback = false) {
     typeof messageThreadId === 'number'
       ? { message_thread_id: messageThreadId }
       : undefined
-  const messages = await getCurrencyMessages()
+  const messages = await getCurrencyMessages({
+    includeBackgroundImage: includeBackgroundImage || debugBackground,
+  })
+  const caption = debugBackground
+    ? buildCurrencyBackgroundDebugCaption(messages.background)
+    : undefined
 
   return sendCurrencyMessages({
     api: ctx.api,
     chatId,
     messages,
-    options,
+    options: caption ? { ...options, caption } : options,
     forceFallback,
   })
 }
 
 const setupCurrencyCommands = (bot: Bot) => {
   bot.command('c', (ctx) => sendCurrencyCommand(ctx))
-  bot.command('cf', (ctx) => sendCurrencyCommand(ctx, true))
+  bot.command('cf', (ctx) => sendCurrencyCommand(ctx, { forceFallback: true }))
+  bot.command('ci', (ctx) =>
+    sendCurrencyCommand(ctx, {
+      includeBackgroundImage: true,
+      debugBackground: true,
+    }),
+  )
 }
 
 export default setupCurrencyCommands

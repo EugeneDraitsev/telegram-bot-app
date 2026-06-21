@@ -65,6 +65,8 @@ functions:
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default
+    timeout: 300
+    memorySize: 1536
     events:
       - schedule:
           name: currency-scheduler-event

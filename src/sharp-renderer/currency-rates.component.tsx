@@ -290,13 +290,23 @@ function FlagIcon({
   )
 }
 
-function Section({ layout }: { readonly layout: SectionLayout }) {
+function Section({
+  hasBackgroundImage,
+  layout,
+}: {
+  readonly hasBackgroundImage: boolean
+  readonly layout: SectionLayout
+}) {
   const { section, rows, columns, showHeader, y, tableY, tableHeight } = layout
   const tableX = PADDING
   const tableWidth = WIDTH - PADDING * 2
   const headerHeight = showHeader ? HEADER_HEIGHT : 0
   const valueX = (index: number) =>
     VALUE_RIGHT - (columns.length - 1 - index) * VALUE_COLUMN_WIDTH
+  const tableFill = hasBackgroundImage ? '#111827' : '#1f2a3a'
+  const rowFill = hasBackgroundImage ? '#172033' : '#263449'
+  const headerFill = hasBackgroundImage ? '#0f172a' : '#1b2636'
+  const tableOpacity = hasBackgroundImage ? 0.88 : undefined
 
   return (
     <g>
@@ -316,7 +326,8 @@ function Section({ layout }: { readonly layout: SectionLayout }) {
         width={tableWidth}
         height={tableHeight}
         rx={TABLE_RADIUS}
-        fill="#1f2a3a"
+        fill={tableFill}
+        opacity={tableOpacity}
         stroke="#40516a"
       />
       {showHeader ? (
@@ -327,7 +338,8 @@ function Section({ layout }: { readonly layout: SectionLayout }) {
             width={tableWidth}
             height={HEADER_HEIGHT}
             rx={TABLE_RADIUS}
-            fill="#1b2636"
+            fill={headerFill}
+            opacity={tableOpacity}
           />
           <line
             x1={tableX}
@@ -368,8 +380,8 @@ function Section({ layout }: { readonly layout: SectionLayout }) {
                 width={tableWidth}
                 height={ROW_HEIGHT}
                 rx={isLastRow ? TABLE_RADIUS : 0}
-                fill="#263449"
-                opacity={0.72}
+                fill={rowFill}
+                opacity={hasBackgroundImage ? 0.8 : 0.72}
               />
             ) : null}
             {!isLastRow ? (
@@ -416,12 +428,15 @@ function Section({ layout }: { readonly layout: SectionLayout }) {
 }
 
 export function CurrencyRates({
+  backgroundImage,
   sections,
 }: {
+  readonly backgroundImage?: string
   readonly sections: CurrencyRateSection[]
 }) {
   const layouts = getLayouts(sections)
   const height = getHeight(layouts)
+  const hasBackgroundImage = Boolean(backgroundImage)
 
   return (
     <svg
@@ -437,16 +452,52 @@ export function CurrencyRates({
           <stop offset="55%" stopColor="#18263a" />
           <stop offset="100%" stopColor="#241d36" />
         </linearGradient>
+        <linearGradient id="background-overlay" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#020617" stopOpacity={0.58} />
+          <stop offset="48%" stopColor="#020617" stopOpacity={0.68} />
+          <stop offset="100%" stopColor="#020617" stopOpacity={0.78} />
+        </linearGradient>
       </defs>
-      <rect width={WIDTH} height={height} fill="url(#background)" />
-      <circle cx={478} cy={48} r={50} fill="#10b981" opacity={0.12} />
-      <circle cx={44} cy={height - 58} r={68} fill="#60a5fa" opacity={0.1} />
+      {backgroundImage ? (
+        <g>
+          <image
+            href={`data:image/png;base64,${backgroundImage}`}
+            x={0}
+            y={0}
+            width={WIDTH}
+            height={height}
+            preserveAspectRatio="xMidYMid slice"
+          />
+          <rect width={WIDTH} height={height} fill="url(#background-overlay)" />
+        </g>
+      ) : (
+        <g>
+          <rect width={WIDTH} height={height} fill="url(#background)" />
+          <circle cx={478} cy={48} r={50} fill="#10b981" opacity={0.12} />
+          <circle
+            cx={44}
+            cy={height - 58}
+            r={68}
+            fill="#60a5fa"
+            opacity={0.1}
+          />
+        </g>
+      )}
       {layouts.map((layout) => (
-        <Section key={`${layout.section.title}-${layout.y}`} layout={layout} />
+        <Section
+          key={`${layout.section.title}-${layout.y}`}
+          hasBackgroundImage={hasBackgroundImage}
+          layout={layout}
+        />
       ))}
     </svg>
   )
 }
 
-export const getCurrencyRatesSvg = (sections: CurrencyRateSection[]): string =>
-  ReactDOMServer.renderToStaticMarkup(<CurrencyRates sections={sections} />)
+export const getCurrencyRatesSvg = (
+  sections: CurrencyRateSection[],
+  backgroundImage?: string,
+): string =>
+  ReactDOMServer.renderToStaticMarkup(
+    <CurrencyRates backgroundImage={backgroundImage} sections={sections} />,
+  )

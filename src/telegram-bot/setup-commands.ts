@@ -154,6 +154,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   setupGoogleCommands(bot)
 
   // /c - get currency rates
+  // /ci - get currency rates with generated news background debug info
   setupCurrencyCommands(bot)
 
   // /z - get chat statistics for all time

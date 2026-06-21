@@ -43,12 +43,40 @@ describe('sendCurrencyMessages', () => {
       options: { message_thread_id: 456 },
     })
 
-    expect(mockGetCurrencyImage).toHaveBeenCalledWith(messages.sections)
+    expect(mockGetCurrencyImage).toHaveBeenCalledWith(
+      messages.sections,
+      undefined,
+    )
     expect(api.sendPhoto).toHaveBeenCalledWith(123, expect.anything(), {
       message_thread_id: 456,
     })
     expect(api.sendRichMessage).not.toHaveBeenCalled()
     expect(api.sendMessage).not.toHaveBeenCalled()
+  })
+
+  test('passes generated background image to renderer', async () => {
+    const api = createApi()
+    const backgroundImage = Buffer.from('background')
+    const messagesWithBackground = {
+      ...messages,
+      background: {
+        image: backgroundImage,
+        news: { answers: [], errors: [], items: [] },
+      },
+    }
+    mockGetCurrencyImage.mockResolvedValue(Buffer.from('png'))
+
+    await sendCurrencyMessages({
+      api,
+      chatId: 123,
+      messages: messagesWithBackground,
+    })
+
+    expect(mockGetCurrencyImage).toHaveBeenCalledWith(
+      messages.sections,
+      backgroundImage,
+    )
+    expect(api.sendPhoto).toHaveBeenCalled()
   })
 
   test('falls back to rich text when image rendering is unavailable', async () => {

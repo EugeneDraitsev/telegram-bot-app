@@ -6,6 +6,7 @@ import { getCurrencyMessages, sendCurrencyMessages } from './currency'
 const CHAT_IDS = ['-1001306676509.0']
 
 type SendCurrencyMessagesParams = Parameters<typeof sendCurrencyMessages>[0]
+type GetCurrencyMessages = typeof getCurrencyMessages
 
 export async function sendScheduledCurrencyMessages({
   api,
@@ -15,10 +16,10 @@ export async function sendScheduledCurrencyMessages({
 }: {
   api: SendCurrencyMessagesParams['api']
   chatIds?: Array<number | string>
-  getMessages?: typeof getCurrencyMessages
+  getMessages?: GetCurrencyMessages
   sendMessages?: typeof sendCurrencyMessages
 }) {
-  const messages = await getMessages()
+  const messages = await getMessages({ includeBackgroundImage: true })
 
   for (const chatId of chatIds) {
     await sendMessages({

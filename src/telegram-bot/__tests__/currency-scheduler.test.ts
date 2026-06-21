@@ -18,7 +18,7 @@ describe('currency scheduler', () => {
       sendMessages,
     })
 
-    expect(getMessages).toHaveBeenCalledTimes(1)
+    expect(getMessages).toHaveBeenCalledWith({ includeBackgroundImage: true })
     expect(sendMessages).toHaveBeenCalledWith({
       api,
       chatId: 'chat-1',

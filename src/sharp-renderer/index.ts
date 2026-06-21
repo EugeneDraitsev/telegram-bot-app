@@ -6,6 +6,7 @@ import { getCurrencyRatesSvg } from './currency-rates.component'
 import { getDailyUsersBarsSvg } from './daily-users-bars.component'
 
 type CurrencyRatesEvent = {
+  currencyBackgroundImage?: string
   currencySections?: CurrencyRateSection[]
 }
 
@@ -32,9 +33,16 @@ function pngResponse(image: Buffer) {
 
 const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
   const currencySections = (event as CurrencyRatesEvent).currencySections
+  const currencyBackgroundImage = (event as CurrencyRatesEvent)
+    .currencyBackgroundImage
 
   if (Array.isArray(currencySections)) {
-    const svg = getCurrencyRatesSvg(currencySections)
+    const svg = getCurrencyRatesSvg(
+      currencySections,
+      typeof currencyBackgroundImage === 'string'
+        ? currencyBackgroundImage
+        : undefined,
+    )
     const image = await renderPng(svg)
 
     return pngResponse(image)

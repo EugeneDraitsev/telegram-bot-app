@@ -19,14 +19,20 @@ type SharpFactory = (input: Buffer) => {
 }
 
 type CurrencyRatesComponent = {
-  getCurrencyRatesSvg: (sections: CurrencyRateSection[]) => string
+  getCurrencyRatesSvg: (
+    sections: CurrencyRateSection[],
+    backgroundImage?: string,
+  ) => string
 }
 
 function shouldRenderLocally() {
   return process.env.stage === 'local' || process.env.IS_OFFLINE === 'true'
 }
 
-async function renderCurrencyImageLocally(sections: CurrencyRateSection[]) {
+async function renderCurrencyImageLocally(
+  sections: CurrencyRateSection[],
+  backgroundImage?: Buffer,
+) {
   const requireFromSharpRenderer = createNodeRequire(
     SHARP_RENDERER_PACKAGE_PATH,
   )
@@ -35,22 +41,30 @@ async function renderCurrencyImageLocally(sections: CurrencyRateSection[]) {
     '../../sharp-renderer/currency-rates.component.js'
   )) as CurrencyRatesComponent
 
-  return sharp(Buffer.from(getCurrencyRatesSvg(sections)))
+  return sharp(
+    Buffer.from(
+      getCurrencyRatesSvg(sections, backgroundImage?.toString('base64')),
+    ),
+  )
     .png()
     .toBuffer()
 }
 
 export async function getCurrencyImage(
   sections: CurrencyRateSection[],
+  backgroundImage?: Buffer,
 ): Promise<Buffer | null> {
   try {
     if (shouldRenderLocally()) {
-      return await renderCurrencyImageLocally(sections)
+      return await renderCurrencyImageLocally(sections, backgroundImage)
     }
 
     const sharpResponse = await invokeLambda({
       name: SHARP_RENDERER_LAMBDA_NAME,
-      payload: { currencySections: sections },
+      payload: {
+        currencySections: sections,
+        currencyBackgroundImage: backgroundImage?.toString('base64'),
+      },
     })
 
     if (sharpResponse.FunctionError) {
