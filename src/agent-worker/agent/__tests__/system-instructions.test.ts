@@ -11,6 +11,8 @@ describe('agentSystemInstructions', () => {
     expect(agentSystemInstructions).toContain(
       'When calling generate_or_edit_image, build the image prompt from the current user message',
     )
+    expect(agentSystemInstructions).toContain('call render_latex')
+    expect(agentSystemInstructions).toContain('call render_svg_to_png')
     expect(agentSystemInstructions).toContain('Search exact names first')
     expect(agentSystemInstructions).not.toContain('AUTONOMY MODE')
     expect(agentSystemInstructions).not.toContain(

@@ -21,6 +21,8 @@ import { getHistoryTool } from './get-history.tool'
 import { magic8BallTool } from './magic8ball.tool'
 import { getMemoryTool, updateMemoryTool } from './memory.tool'
 import { randomChoiceTool, randomNumberTool } from './random.tool'
+import { renderLatexTool } from './render-latex.tool'
+import { renderSvgTool } from './render-svg.tool'
 import { searchGifTool } from './search-gif.tool'
 import { searchImageTool } from './search-image.tool'
 import { searchVideoTool } from './search-video.tool'
@@ -50,6 +52,8 @@ export {
   magic8BallTool,
   randomChoiceTool,
   randomNumberTool,
+  renderLatexTool,
+  renderSvgTool,
   searchGifTool,
   searchImageTool,
   searchVideoTool,
@@ -68,6 +72,8 @@ const baseAgentTools: AgentTool[] = [
   magic8BallTool,
   telegramDiceTool,
   searchImageTool,
+  renderLatexTool,
+  renderSvgTool,
   generateImageTool,
   searchVideoTool,
   searchGifTool,

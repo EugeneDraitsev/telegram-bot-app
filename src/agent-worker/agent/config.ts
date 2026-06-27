@@ -13,6 +13,8 @@ export const TERMINAL_TOOLS = new Set([
   'search_gif',
   'animate_text',
   'generate_voice',
+  'render_svg_to_png',
+  'render_latex',
   'get_weather',
 ])
 
@@ -22,6 +24,8 @@ export const TERMINAL_TOOLS = new Set([
 export const CONTENT_TOOLS = new Set([
   'generate_voice',
   'generate_or_edit_image',
+  'render_svg_to_png',
+  'render_latex',
   'animate_text',
 ])
 

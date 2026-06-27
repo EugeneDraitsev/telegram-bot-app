@@ -78,6 +78,7 @@ describe('sendResponses', () => {
     mockLogger.info.mockClear()
     mockLogger.warn.mockClear()
     mockLogger.error.mockClear()
+    mockSendRichMessageWithFallback.mockClear()
   })
 
   test('uses rich delivery for text-only responses', async () => {
@@ -100,6 +101,41 @@ describe('sendResponses', () => {
     )
     expect(api.sendMessage).not.toHaveBeenCalled()
     expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 9 })
+  })
+
+  test('sends rich responses directly with plain text fallback', async () => {
+    const api = createApi()
+    api.sendRichMessage.mockResolvedValueOnce({ message_id: 10 })
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'rich',
+          richMessage: {
+            html: '<tg-math-block>x^2</tg-math-block>',
+            skip_entity_detection: true,
+          },
+          fallbackText: 'x^2',
+        },
+      ],
+    })
+
+    expect(mockSendRichMessageWithFallback).toHaveBeenCalledWith({
+      api,
+      chatId: 123,
+      richMessage: {
+        html: '<tg-math-block>x^2</tg-math-block>',
+        skip_entity_detection: true,
+      },
+      fallbackText: 'x^2',
+      richOptions: { reply_parameters: { message_id: 456 } },
+      fallbackOptions: { reply_parameters: { message_id: 456 } },
+    })
+    expect(api.sendMessage).not.toHaveBeenCalled()
+    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
   })
 
   test('sends voice with text as a single captioned message', async () => {

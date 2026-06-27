@@ -12,6 +12,7 @@ import type {
   AnimationResponse,
   DiceResponse,
   ImageResponse,
+  RichResponse,
   StickerResponse,
   TelegramApi,
   VideoResponse,
@@ -32,6 +33,7 @@ interface DeliveryBundle {
   voice: Buffer | null
   sticker: StickerResponse | null
   dice: DiceResponse | null
+  rich: RichResponse | null
 }
 
 function getReplyOptions(replyToMessageId?: number) {
@@ -111,11 +113,13 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     voice: null,
     sticker: null,
     dice: null,
+    rich: null,
   }
   const textParts: string[] = []
 
   for (const r of responses) {
     if (r.type === 'text') textParts.push(cleanModelMessage(r.text))
+    else if (r.type === 'rich') bundle.rich = r
     else if (r.type === 'voice') bundle[r.type] = r.buffer
     // biome-ignore lint/suspicious/noExplicitAny: generic mapping
     else bundle[r.type] = r as any
@@ -123,6 +127,21 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
 
   bundle.text = textParts.join('\n\n').trim()
   return bundle
+}
+
+async function sendRichResponse(
+  params: DeliveryParams & { rich: RichResponse },
+) {
+  const sentMessage = await sendRichMessageWithFallback({
+    api: params.api,
+    chatId: params.chatId,
+    richMessage: params.rich.richMessage,
+    fallbackText: params.rich.fallbackText.slice(0, MAX_TEXT_LENGTH),
+    richOptions: getReplyOptions(params.replyToMessageId),
+    fallbackOptions: getReplyOptions(params.replyToMessageId),
+  })
+  await saveBotReplyToHistory(sentMessage)
+  return sentMessage
 }
 
 async function sendText(params: DeliveryParams & { text: string }) {
@@ -312,6 +331,22 @@ export async function sendResponses(
   try {
     // Keep voice+text as a single message, but preserve legacy voice-only
     // behavior for mixed bundles (e.g. image + voice).
+    if (bundle.rich) {
+      const sentMessage = await sendRichResponse({
+        ...base,
+        rich: bundle.rich,
+      })
+      if (bundle.text) {
+        await sendText({
+          ...base,
+          text: bundle.text,
+          replyToMessageId:
+            getSentMessageId(sentMessage) ?? base.replyToMessageId,
+        })
+      }
+      return
+    }
+
     if (bundle.voice && bundle.text) {
       await sendVoice({
         ...base,

@@ -10,16 +10,107 @@ type CurrencyRatesEvent = {
   currencySections?: CurrencyRateSection[]
 }
 
-async function renderPng(
-  svg: string,
-  resize?: { width: number; height: number },
-) {
-  let pipeline = sharp(Buffer.from(svg))
-  if (resize) {
-    pipeline = pipeline.resize(resize.width, resize.height)
+type SvgRenderEvent = {
+  svg?: unknown
+  width?: unknown
+  height?: unknown
+  backgroundColor?: unknown
+}
+
+type RenderPngOptions = {
+  resize?: { width?: number; height?: number }
+  backgroundColor?: string
+  allowDataResources?: boolean
+}
+
+const MAX_SVG_BYTES = 250_000
+const MAX_RENDER_DIMENSION = 2_000
+const DEFAULT_BACKGROUND_COLOR = '#ffffff'
+const TRANSPARENT_BACKGROUND = 'transparent'
+
+function normalizeRenderDimension(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined
   }
 
-  return pipeline.flatten({ background: '#fff' }).png().toBuffer()
+  return Math.max(1, Math.min(MAX_RENDER_DIMENSION, Math.round(value)))
+}
+
+function normalizeBackgroundColor(value: unknown): string {
+  if (typeof value !== 'string') {
+    return DEFAULT_BACKGROUND_COLOR
+  }
+
+  const normalized = value.trim()
+  if (normalized === TRANSPARENT_BACKGROUND) {
+    return normalized
+  }
+
+  return /^#[0-9a-f]{3,8}$/i.test(normalized)
+    ? normalized
+    : DEFAULT_BACKGROUND_COLOR
+}
+
+function validateSvg(svg: string, allowDataResources = false): string {
+  const normalized = svg.trim()
+  if (!normalized) {
+    throw new Error('SVG cannot be empty')
+  }
+
+  if (Buffer.byteLength(normalized, 'utf8') > MAX_SVG_BYTES) {
+    throw new Error(`SVG exceeds ${MAX_SVG_BYTES} bytes`)
+  }
+
+  if (!/<svg[\s>]/i.test(normalized)) {
+    throw new Error('SVG markup must contain an <svg> element')
+  }
+
+  if (
+    /<!doctype|<!entity|<script\b|<foreignObject\b|<iframe\b|<object\b/i.test(
+      normalized,
+    )
+  ) {
+    throw new Error('SVG contains unsupported active content')
+  }
+
+  if (
+    /(?:href|src)\s*=\s*["']\s*(?:https?:|file:)/i.test(normalized) ||
+    /url\(\s*["']?\s*(?:https?:|file:)/i.test(normalized)
+  ) {
+    throw new Error('SVG must not reference external resources')
+  }
+
+  if (
+    !allowDataResources &&
+    (/(?:href|src)\s*=\s*["']\s*data:/i.test(normalized) ||
+      /url\(\s*["']?\s*data:/i.test(normalized))
+  ) {
+    throw new Error('SVG must not embed data resources')
+  }
+
+  return normalized
+}
+
+export async function renderSvgPng(
+  svg: string,
+  options: RenderPngOptions = {},
+) {
+  const safeSvg = validateSvg(svg, options.allowDataResources)
+  let pipeline = sharp(Buffer.from(safeSvg))
+  if (options.resize?.width || options.resize?.height) {
+    pipeline = pipeline.resize(options.resize.width, options.resize.height, {
+      fit: 'inside',
+      withoutEnlargement: false,
+    })
+  }
+
+  if (options.backgroundColor !== TRANSPARENT_BACKGROUND) {
+    pipeline = pipeline.flatten({
+      background: options.backgroundColor ?? DEFAULT_BACKGROUND_COLOR,
+    })
+  }
+
+  return pipeline.png().toBuffer()
 }
 
 function pngResponse(image: Buffer) {
@@ -32,6 +123,31 @@ function pngResponse(image: Buffer) {
 }
 
 const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
+  const svgPayload = (event as SvgRenderEvent).svg
+  if (typeof svgPayload === 'string') {
+    try {
+      const image = await renderSvgPng(svgPayload, {
+        resize: {
+          width: normalizeRenderDimension((event as SvgRenderEvent).width),
+          height: normalizeRenderDimension((event as SvgRenderEvent).height),
+        },
+        backgroundColor: normalizeBackgroundColor(
+          (event as SvgRenderEvent).backgroundColor,
+        ),
+      })
+
+      return pngResponse(image)
+    } catch (error) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      }
+    }
+  }
+
   const currencySections = (event as CurrencyRatesEvent).currencySections
   const currencyBackgroundImage = (event as CurrencyRatesEvent)
     .currencyBackgroundImage
@@ -43,7 +159,7 @@ const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
         ? currencyBackgroundImage
         : undefined,
     )
-    const image = await renderPng(svg)
+    const image = await renderSvgPng(svg, { allowDataResources: true })
 
     return pngResponse(image)
   }
@@ -51,9 +167,11 @@ const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
   const chatId =
     event.queryStringParameters?.chatId || event.pathParameters?.chatId || ''
   const chatData = await get24hChatStats(chatId)
-  const svg = getDailyUsersBarsSvg(chatData)
+  const statsSvg = getDailyUsersBarsSvg(chatData)
 
-  const image = await renderPng(svg, { width: 1200, height: 400 })
+  const image = await renderSvgPng(statsSvg, {
+    resize: { width: 1200, height: 400 },
+  })
 
   return pngResponse(image)
 }

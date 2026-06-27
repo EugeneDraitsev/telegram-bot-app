@@ -20,7 +20,7 @@ export const codeExecutionTool: AgentTool = {
     type: 'function',
     name: 'code_execution',
     description:
-      'Execute code to perform calculations, data processing, or any computational task. Use for math, conversions, date calculations, sorting, formatting, etc. Powered by Python — can handle anything a calculator can and much more.',
+      'Execute code to perform calculations, data processing, or computational tasks. Use for math, conversions, date calculations, sorting, formatting, etc. Do not use this merely to prepare SVG path data or LaTeX for visual answers; call render_svg_to_png or render_latex directly for those.',
     parameters: {
       type: 'object',
       properties: {

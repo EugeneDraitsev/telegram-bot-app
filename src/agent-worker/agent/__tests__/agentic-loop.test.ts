@@ -6,7 +6,11 @@ import type { AgentTool, TelegramApi } from '../../types'
 import {
   buildNativeTools,
   extractFallbackTextFromToolResults,
+  extractSvgMarkup,
+  filterToolsForRequest,
   getAgentDeliveryReplyMessageId,
+  shouldIncludeHistoryMediaInModel,
+  shouldUseDirectSvgRender,
 } from '../agentic-loop'
 
 describe('buildNativeTools', () => {
@@ -41,6 +45,112 @@ describe('buildNativeTools', () => {
   })
 })
 
+describe('filterToolsForRequest', () => {
+  const codeTool = {
+    declaration: {
+      type: 'function',
+      name: 'code_execution',
+      description: 'Execute code',
+    },
+    execute: async () => 'ok',
+  } satisfies AgentTool
+  const renderTool = {
+    declaration: {
+      type: 'function',
+      name: 'render_svg_to_png',
+      description: 'Render SVG',
+    },
+    execute: async () => 'ok',
+  } satisfies AgentTool
+  const searchTool = {
+    declaration: {
+      type: 'function',
+      name: 'web_search',
+      description: 'Search web',
+    },
+    execute: async () => 'ok',
+  } satisfies AgentTool
+
+  test('removes code execution for visual render requests', () => {
+    expect(
+      filterToolsForRequest(
+        [codeTool, renderTool, searchTool],
+        'Построй PNG-график y = sin(x) + 0.25x',
+      ).map((tool) => tool.declaration.name),
+    ).toEqual(['render_svg_to_png'])
+  })
+
+  test('keeps code execution for ordinary calculations', () => {
+    expect(
+      filterToolsForRequest([codeTool, renderTool], 'посчитай 15% от 240').map(
+        (tool) => tool.declaration.name,
+      ),
+    ).toEqual(['code_execution', 'render_svg_to_png'])
+  })
+})
+
+describe('shouldIncludeHistoryMediaInModel', () => {
+  test('does not include unrelated history media for creative SVG requests', () => {
+    expect(
+      shouldIncludeHistoryMediaInModel(
+        '/qq нарисуй красивого пеликана на велосипеде в SVG',
+        false,
+      ),
+    ).toBe(false)
+  })
+
+  test('includes history media when user explicitly asks about recent media', () => {
+    expect(
+      shouldIncludeHistoryMediaInModel('что на последнем фото?', false),
+    ).toBe(true)
+  })
+
+  test('does not include history media when current message is a reply', () => {
+    expect(
+      shouldIncludeHistoryMediaInModel('что на последнем фото?', true),
+    ).toBe(false)
+  })
+})
+
+describe('shouldUseDirectSvgRender', () => {
+  const renderTool = {
+    declaration: {
+      type: 'function',
+      name: 'render_svg_to_png',
+      description: 'Render SVG',
+    },
+    execute: async () => 'ok',
+  } satisfies AgentTool
+
+  test('uses direct SVG path for explicit SVG drawing requests', () => {
+    expect(
+      shouldUseDirectSvgRender(
+        [renderTool],
+        '/qq draw and show a beautiful pelican on a bicycle in SVG',
+        false,
+        false,
+      ),
+    ).toBe(true)
+  })
+
+  test('does not use direct SVG path for media/reply requests', () => {
+    expect(
+      shouldUseDirectSvgRender([renderTool], 'render this as SVG', true, false),
+    ).toBe(false)
+    expect(
+      shouldUseDirectSvgRender([renderTool], 'render this as SVG', false, true),
+    ).toBe(false)
+  })
+})
+
+describe('extractSvgMarkup', () => {
+  test('extracts SVG from fenced model output', () => {
+    expect(
+      extractSvgMarkup('```svg\n<svg><circle cx="1" cy="1" r="1"/></svg>\n```'),
+    ).toBe('<svg><circle cx="1" cy="1" r="1"/></svg>')
+  })
+})
+
 describe('extractFallbackTextFromToolResults', () => {
   test('uses successful tool output and ignores tool errors', () => {
     expect(
@@ -56,6 +166,14 @@ describe('extractFallbackTextFromToolResults', () => {
       extractFallbackTextFromToolResults([
         'Error searching web: service unavailable',
         'Code execution failed: no output',
+      ]),
+    ).toBe('')
+  })
+
+  test('ignores descriptive code execution summaries as fallback text', () => {
+    expect(
+      extractFallbackTextFromToolResults([
+        'The user provided Python code that generates an SVG path string.\n\nThe tool_code block executed the provided Python code, and the code_output block contains the generated SVG path string.\n\nI have no further questions and the output is generated as requested.',
       ]),
     ).toBe('')
   })

@@ -34,6 +34,11 @@ export interface TextResponse {
   type: 'text'
   text: string
 }
+export interface RichResponse {
+  type: 'rich'
+  richMessage: Parameters<Api['sendRichMessage']>[1]
+  fallbackText: string
+}
 export interface ImageResponse {
   type: 'image'
   buffer?: Buffer
@@ -65,6 +70,7 @@ export interface DiceResponse {
 
 export type AgentResponse =
   | TextResponse
+  | RichResponse
   | ImageResponse
   | VideoResponse
   | AnimationResponse
