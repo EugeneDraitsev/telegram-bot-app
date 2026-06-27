@@ -14,6 +14,7 @@
     "tsc": "tsgo --noEmit",
     "tsc:js": "tsc --noEmit",
     "test": "bun test",
+    "audit": "bun audit",
     "biome": "biome check ./src",
     "biome:fix": "biome check ./src --fix --unsafe",
     "logs": "sls logs -f telegram-bot -t",
@@ -23,14 +24,14 @@
     "preview:currency": "bun tools/preview-currency-rates.mts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
+    "@biomejs/biome": "^2.5.1",
     "@types/aws-lambda": "^8.10.162",
     "@types/jest": "^30.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260614.1",
+    "@typescript/native-preview": "7.0.0-dev.20260627.2",
     "esbuild": "0.28.1",
-    "serverless": "^4.37.0",
+    "serverless": "^4.38.1",
     "serverless-esbuild": "^1.57.2",
-    "serverless-offline": "^14.7.2",
+    "serverless-offline": "^14.7.4",
     "typescript": "^6.0.3"
   },
   "workspaces": [

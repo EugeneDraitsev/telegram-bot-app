@@ -113,12 +113,12 @@ async function generateSingleModelWithRetry<TOOLS extends ToolSet>(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const request: Parameters<typeof generateText<TOOLS>>[0] = {
+      const request = {
         ...params,
         model: getAiSdkLanguageModel(modelConfig),
         maxRetries: 0,
         timeout: timeoutMs + 1_000,
-      }
+      } as unknown as Parameters<typeof generateText<TOOLS>>[0]
       const promise = generateText<TOOLS>(request)
       return await withTimeout(
         promise,
