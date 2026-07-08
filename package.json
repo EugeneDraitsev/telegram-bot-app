@@ -11,8 +11,7 @@
   "scripts": {
     "start": "sls offline start --stage local",
     "build": "bun run prepare:sharp-layer && sls package",
-    "tsc": "tsgo --noEmit",
-    "tsc:js": "tsc --noEmit",
+    "tsc": "tsc --noEmit",
     "test": "bun test",
     "audit": "bun audit",
     "biome": "biome check ./src",
@@ -27,12 +26,11 @@
     "@biomejs/biome": "^2.5.1",
     "@types/aws-lambda": "^8.10.162",
     "@types/jest": "^30.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260627.2",
     "esbuild": "0.28.1",
     "serverless": "^4.38.1",
     "serverless-esbuild": "^1.57.2",
     "serverless-offline": "^14.7.4",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "workspaces": [
     "src/*"
