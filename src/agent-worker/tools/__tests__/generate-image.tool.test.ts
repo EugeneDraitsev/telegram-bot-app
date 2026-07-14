@@ -53,13 +53,11 @@ describe('generateImageTool', () => {
       },
     )
 
-    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
+    expect(mockGenerateImage).toHaveBeenCalledWith(
       expect.stringContaining('Reply message image (message_id=41)'),
       [Buffer.from('reply-image')],
     )
-    expect(mockGenerateImageOpenAi.mock.calls[0]?.[0]).not.toContain(
-      'old screenshot',
-    )
+    expect(mockGenerateImage.mock.calls[0]?.[0]).not.toContain('old screenshot')
   })
 
   test('does not use history images by default when there is no direct media', async () => {
@@ -83,13 +81,11 @@ describe('generateImageTool', () => {
       },
     )
 
-    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
+    expect(mockGenerateImage).toHaveBeenCalledWith(
       expect.not.stringContaining('newest image'),
       undefined,
     )
-    expect(mockGenerateImageOpenAi.mock.calls[0]?.[0]).not.toContain(
-      'older image',
-    )
+    expect(mockGenerateImage.mock.calls[0]?.[0]).not.toContain('older image')
   })
 
   test('uses newest history image only when explicitly requested', async () => {
@@ -113,13 +109,26 @@ describe('generateImageTool', () => {
       },
     )
 
-    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
+    expect(mockGenerateImage).toHaveBeenCalledWith(
       expect.stringContaining('newest image'),
       [Buffer.from('newest-history')],
     )
-    expect(mockGenerateImageOpenAi.mock.calls[0]?.[0]).not.toContain(
-      'older image',
+    expect(mockGenerateImage.mock.calls[0]?.[0]).not.toContain('older image')
+  })
+
+  test('routes agentic image generation through Gemini by default', async () => {
+    await runWithToolContext(message, undefined, () =>
+      generateImageTool.execute({
+        prompt: 'draw a fox',
+        mediaSource: 'none',
+      }),
     )
+
+    expect(mockGenerateImage).toHaveBeenCalledWith(
+      expect.stringContaining('draw a fox'),
+      undefined,
+    )
+    expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
   })
 
   test('routes /ge image generation through Gemini', async () => {
@@ -140,5 +149,30 @@ describe('generateImageTool', () => {
       undefined,
     )
     expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    'e',
+    'ee',
+    'gp',
+    'de',
+  ])('keeps /%s on GPT Image', async (commandName) => {
+    await runWithToolContext(
+      message,
+      undefined,
+      () =>
+        generateImageTool.execute({
+          prompt: 'draw a fox',
+          mediaSource: 'none',
+        }),
+      undefined,
+      commandName,
+    )
+
+    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
+      expect.stringContaining('draw a fox'),
+      undefined,
+    )
+    expect(mockGenerateImage).not.toHaveBeenCalled()
   })
 })

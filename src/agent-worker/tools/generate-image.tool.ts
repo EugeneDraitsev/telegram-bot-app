@@ -13,6 +13,8 @@ import { addResponse, requireToolContext } from './context'
 
 type ImageMediaSource = 'none' | 'request' | 'history'
 
+const OPENAI_IMAGE_COMMANDS = new Set(['e', 'ee', 'gp', 'de'])
+
 function isHistoryImage(media: MediaBuffer): boolean {
   return (media.label ?? '').toLowerCase().includes('recent chat history')
 }
@@ -99,7 +101,9 @@ export const generateImageTool: AgentTool = {
       const imagesToEdit =
         imageCandidates.length > 0 ? imageCandidates : undefined
       const generate =
-        commandName === 'ge' ? generateImage : generateImageOpenAi
+        commandName && OPENAI_IMAGE_COMMANDS.has(commandName)
+          ? generateImageOpenAi
+          : generateImage
       const result = await generate(
         buildImageEditTargetPrompt(
           prompt,
