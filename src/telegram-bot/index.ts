@@ -13,6 +13,7 @@ import {
   getRegisteredCommandName,
 } from './command-registry'
 import { setupAllCommands } from './setup-commands'
+import { hasValidTelegramWebhookSecret } from './webhook-auth'
 
 const bot = createBot()
 
@@ -68,6 +69,16 @@ const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
 })
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
+  if (
+    !hasValidTelegramWebhookSecret(
+      event.headers,
+      process.env.TELEGRAM_WEBHOOK_SECRET,
+    )
+  ) {
+    logger.warn({ requestId: context.awsRequestId }, 'webhook.unauthorized')
+    return { statusCode: 403, body: '' }
+  }
+
   try {
     await handleUpdate(
       { body: event.body ?? '', headers: event.headers },
@@ -76,7 +87,7 @@ const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ body: event.body ?? '' }),
+      body: '',
     }
   } catch (e) {
     logger.error({ error: e }, 'Bot handler error')

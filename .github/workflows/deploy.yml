@@ -27,6 +27,7 @@ jobs:
           COMMON_GOOGLE_API_KEY: ${{secrets.COMMON_GOOGLE_API_KEY}}
           OPEN_WEATHER_MAP_TOKEN: ${{secrets.OPEN_WEATHER_MAP_TOKEN}}
           TOKEN: ${{secrets.TOKEN}}
+          TELEGRAM_WEBHOOK_SECRET: ${{secrets.TELEGRAM_WEBHOOK_SECRET}}
           YOUTUBE_TOKEN: ${{secrets.YOUTUBE_TOKEN}}
           FIXER_API_KEY: ${{secrets.FIXER_API_KEY}}
           EXCHANGE_RATE_API_KEY: ${{secrets.EXCHANGE_RATE_API_KEY}}

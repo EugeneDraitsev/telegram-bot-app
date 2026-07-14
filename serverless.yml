@@ -40,6 +40,7 @@ functions:
     timeout: 10
     handler: src/telegram-bot/index.default
     environment:
+      TELEGRAM_WEBHOOK_SECRET: ${env:TELEGRAM_WEBHOOK_SECRET}
       REPLY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-reply-worker
       AGENT_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-agent-worker
       ACTIVITY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-activity-worker
