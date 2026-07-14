@@ -1,0 +1,219 @@
+Resources:
+  TelegramIngressRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: &lambdaAssumeRole
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns: &lambdaBasicExecution
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: invoke-ingress-workers
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-telegram-reply-worker
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-telegram-agent-worker
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-telegram-activity-worker
+
+  TelegramReplyWorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: reply-worker-aws-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-sharp-renderer
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+
+  TelegramAgentWorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: invoke-sharp-renderer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-sharp-renderer
+
+  TelegramActivityWorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: track-chat-activity
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-websocket-broadcast-stats
+
+  CurrencySchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: invoke-sharp-renderer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-sharp-renderer
+
+  RedisSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+
+  SharpRendererRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: read-chat-events
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
+
+  WebsocketConnectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: create-websocket-connection
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
+
+  WebsocketDisconnectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: delete-websocket-connection
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:DeleteItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
+
+  WebsocketStatsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: websocket-stats-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
+              - Effect: Allow
+                Action:
+                  - execute-api:ManageConnections
+                Resource:
+                  - Fn::Join:
+                      - ''
+                      - - 'arn:aws:execute-api:'
+                        - Ref: AWS::Region
+                        - ':'
+                        - Ref: AWS::AccountId
+                        - ':'
+                        - Ref: WebsocketsApi
+                        - /${sls:stage}/POST/@connections/*
+
+  ChatSearchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: scan-chat-statistics
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
