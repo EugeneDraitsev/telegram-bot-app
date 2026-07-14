@@ -158,7 +158,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
       bot.api,
       mediaData.mediaBuffers,
       effectiveBotInfo,
-      { bypassReplyGate },
+      { bypassReplyGate, commandName },
     )
     logger.info(
       {

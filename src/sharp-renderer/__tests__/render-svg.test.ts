@@ -31,4 +31,13 @@ describe('renderSvgPng', () => {
       ),
     ).rejects.toThrow('must not embed data resources')
   })
+
+  test('allows a larger explicit limit for trusted internal svg', async () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><desc>${'x'.repeat(260_000)}</desc><rect width="1" height="1"/></svg>`
+
+    await expect(renderSvgPng(svg)).rejects.toThrow('SVG exceeds 250000 bytes')
+
+    const image = await renderSvgPng(svg, { maxSvgBytes: 300_000 })
+    expect(image.length).toBeGreaterThan(0)
+  })
 })

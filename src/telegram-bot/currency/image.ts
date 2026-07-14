@@ -78,7 +78,11 @@ export async function getCurrencyImage(
     const payload = safeJSONParse(
       new TextDecoder().decode(sharpResponse.Payload),
     )
-    if (typeof payload?.body !== 'string') {
+    if (payload?.statusCode !== 200 || typeof payload.body !== 'string') {
+      logger.warn(
+        { statusCode: payload?.statusCode, error: payload?.body },
+        'currency.image_render_failed',
+      )
       return null
     }
 

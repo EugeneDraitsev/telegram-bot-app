@@ -1,13 +1,8 @@
-import { generateImage as generateAiImage } from 'ai'
-
 import {
-  buildOpenAiImagePrompt,
-  getAiSdkOpenAiImageModel,
-  getAiSdkOpenAiImageSize,
+  GEMINI_FLASH_LITE_IMAGE_MODEL,
+  generateGeminiImage,
   getErrorMessage,
-  isOpenAiGptImageModel,
   logger,
-  OPENAI_GPT_IMAGE_MODEL,
 } from '@tg-bot/common'
 import {
   buildCurrencyBackgroundImagePrompt,
@@ -16,6 +11,7 @@ import {
 import type { CurrencyBackground } from './types'
 
 const MAX_IMAGE_RETRIES = 2
+const IMAGE_TIMEOUT_MS = 15_000
 
 export async function getCurrencyBackgroundImage(): Promise<CurrencyBackground> {
   const news = await fetchCurrencyBackgroundNews()
@@ -28,37 +24,26 @@ export async function getCurrencyBackgroundImage(): Promise<CurrencyBackground> 
   }
 
   const prompt = buildCurrencyBackgroundImagePrompt(news)
-  const imagePrompt = buildOpenAiImagePrompt(prompt)
-  const imageSize = getAiSdkOpenAiImageSize()
-  const isGptImageModel = isOpenAiGptImageModel(OPENAI_GPT_IMAGE_MODEL)
   let lastError: string | undefined
 
   for (let attempt = 1; attempt <= MAX_IMAGE_RETRIES; attempt++) {
     try {
-      const response = await generateAiImage({
-        model: getAiSdkOpenAiImageModel(OPENAI_GPT_IMAGE_MODEL),
-        prompt: imagePrompt,
-        n: 1,
-        ...(imageSize ? { size: imageSize } : {}),
-        maxRetries: 0,
-        providerOptions: {
-          openai: {
-            quality: isGptImageModel ? 'medium' : 'standard',
-          },
-        },
+      const response = await generateGeminiImage(prompt, undefined, {
+        aspectRatio: '9:16',
+        timeoutMs: IMAGE_TIMEOUT_MS,
       })
 
-      if (response.image?.uint8Array) {
+      if (response.image) {
         return {
-          image: Buffer.from(response.image.uint8Array),
+          image: response.image,
           news,
           prompt,
         }
       }
 
-      lastError = 'OpenAI returned no image'
+      lastError = `${GEMINI_FLASH_LITE_IMAGE_MODEL.model} returned no image`
       logger.warn(
-        { attempt, maxRetries: MAX_IMAGE_RETRIES, warnings: response.warnings },
+        { attempt, maxRetries: MAX_IMAGE_RETRIES },
         'currency.background_no_image',
       )
     } catch (error) {
@@ -73,7 +58,8 @@ export async function getCurrencyBackgroundImage(): Promise<CurrencyBackground> 
   return {
     news,
     prompt,
-    error: lastError ?? 'OpenAI returned no image',
+    error:
+      lastError ?? `${GEMINI_FLASH_LITE_IMAGE_MODEL.model} returned no image`,
   }
 }
 

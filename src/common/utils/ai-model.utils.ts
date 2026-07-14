@@ -38,6 +38,11 @@ export const GEMINI_FLASH_IMAGE_MODEL: AiModelConfig = {
   model: 'gemini-3.1-flash-image',
 }
 
+export const GEMINI_FLASH_LITE_IMAGE_MODEL: AiModelConfig = {
+  provider: 'google',
+  model: 'gemini-3.1-flash-lite-image',
+}
+
 export const GEMINI_PRO_IMAGE_MODEL: AiModelConfig = {
   provider: 'google',
   model: 'gemini-3-pro-image',

@@ -2,70 +2,31 @@
  * Google-backed image generation through AI SDK.
  */
 
-import { generateText, type ModelMessage } from 'ai'
+import { generateGeminiImage, logger } from '@tg-bot/common'
 
-import {
-  GEMINI_FLASH_IMAGE_MODEL,
-  getAiSdkLanguageModel,
-  logger,
-} from '@tg-bot/common'
-
-const IMAGE_GENERATION_TIMEOUT_MS = 120_000
+const MAX_IMAGE_ATTEMPTS = 2
 
 /**
  * Generate image with optional text response.
- * Uses the Interactions API with Gemini 3.1 Flash Image.
+ * Uses the Interactions API with Gemini 3.1 Flash Lite Image.
  */
 export async function generateImage(
   prompt: string,
   inputImages?: Buffer[],
 ): Promise<{ image?: Buffer; text?: string }> {
-  const messages: ModelMessage[] = []
-
-  if (inputImages?.length) {
-    for (const image of inputImages) {
-      messages.push({
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            image,
-            mediaType: 'image/jpeg',
-          },
-        ],
-      })
-    }
-  }
-
-  messages.push({
-    role: 'user',
-    content: [{ type: 'text', text: prompt }],
-  })
-
-  const maxRetries = 3
   let result: { image?: Buffer; text?: string } = {}
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await generateText({
-      model: getAiSdkLanguageModel(GEMINI_FLASH_IMAGE_MODEL),
-      messages,
-      maxRetries: 0,
-      timeout: IMAGE_GENERATION_TIMEOUT_MS,
-    })
-
-    const imageFile = response.files.find((file) =>
-      file.mediaType?.startsWith('image/'),
-    )
-    result = {
-      image: imageFile ? Buffer.from(imageFile.uint8Array) : undefined,
-      text: response.text,
-    }
+  for (let attempt = 1; attempt <= MAX_IMAGE_ATTEMPTS; attempt++) {
+    result = await generateGeminiImage(prompt, inputImages)
 
     if (result.image) {
       break
     }
 
-    logger.warn({ attempt, maxRetries }, 'image_gen.no_image')
+    logger.warn(
+      { attempt, maxAttempts: MAX_IMAGE_ATTEMPTS },
+      'image_gen.no_image',
+    )
   }
 
   if (result.text) {

@@ -7,7 +7,7 @@ import {
   getErrorMessage,
   type MediaBuffer,
 } from '@tg-bot/common'
-import { generateImageOpenAi } from '../services'
+import { generateImage, generateImageOpenAi } from '../services'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
@@ -85,7 +85,7 @@ export const generateImageTool: AgentTool = {
     },
   },
   execute: async (args) => {
-    const { mediaBuffers } = requireToolContext()
+    const { commandName, mediaBuffers } = requireToolContext()
 
     try {
       const prompt = (args.prompt as string).trim()
@@ -98,7 +98,9 @@ export const generateImageTool: AgentTool = {
       const imageCandidates = getImageEditCandidates(mediaBuffers, mediaSource)
       const imagesToEdit =
         imageCandidates.length > 0 ? imageCandidates : undefined
-      const result = await generateImageOpenAi(
+      const generate =
+        commandName === 'ge' ? generateImage : generateImageOpenAi
+      const result = await generate(
         buildImageEditTargetPrompt(
           prompt,
           imagesToEdit?.map(

@@ -21,9 +21,11 @@ type RenderPngOptions = {
   resize?: { width?: number; height?: number }
   backgroundColor?: string
   allowDataResources?: boolean
+  maxSvgBytes?: number
 }
 
 const MAX_SVG_BYTES = 250_000
+const MAX_CURRENCY_SVG_BYTES = 6_000_000
 const MAX_RENDER_DIMENSION = 2_000
 const DEFAULT_BACKGROUND_COLOR = '#ffffff'
 const TRANSPARENT_BACKGROUND = 'transparent'
@@ -51,14 +53,18 @@ function normalizeBackgroundColor(value: unknown): string {
     : DEFAULT_BACKGROUND_COLOR
 }
 
-function validateSvg(svg: string, allowDataResources = false): string {
+function validateSvg(
+  svg: string,
+  allowDataResources = false,
+  maxSvgBytes = MAX_SVG_BYTES,
+): string {
   const normalized = svg.trim()
   if (!normalized) {
     throw new Error('SVG cannot be empty')
   }
 
-  if (Buffer.byteLength(normalized, 'utf8') > MAX_SVG_BYTES) {
-    throw new Error(`SVG exceeds ${MAX_SVG_BYTES} bytes`)
+  if (Buffer.byteLength(normalized, 'utf8') > maxSvgBytes) {
+    throw new Error(`SVG exceeds ${maxSvgBytes} bytes`)
   }
 
   if (!/<svg[\s>]/i.test(normalized)) {
@@ -95,7 +101,11 @@ export async function renderSvgPng(
   svg: string,
   options: RenderPngOptions = {},
 ) {
-  const safeSvg = validateSvg(svg, options.allowDataResources)
+  const safeSvg = validateSvg(
+    svg,
+    options.allowDataResources,
+    options.maxSvgBytes,
+  )
   let pipeline = sharp(Buffer.from(safeSvg))
   if (options.resize?.width || options.resize?.height) {
     pipeline = pipeline.resize(options.resize.width, options.resize.height, {
@@ -159,7 +169,10 @@ const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
         ? currencyBackgroundImage
         : undefined,
     )
-    const image = await renderSvgPng(svg, { allowDataResources: true })
+    const image = await renderSvgPng(svg, {
+      allowDataResources: true,
+      maxSvgBytes: MAX_CURRENCY_SVG_BYTES,
+    })
 
     return pngResponse(image)
   }

@@ -33,6 +33,7 @@ import { webSearchTool } from './web-search.tool'
 export {
   addResponse,
   getCollectedResponses,
+  getToolCommandName,
   requireToolContext,
   runWithToolContext,
   withToolMediaBuffers,

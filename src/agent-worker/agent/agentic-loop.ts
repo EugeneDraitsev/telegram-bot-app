@@ -21,6 +21,7 @@ import {
   collectMediaFileRefs,
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
+  GEMINI_FLASH_LITE_IMAGE_MODEL,
   getAiSdkProviderOptions,
   getChatMemory,
   getGlobalMemory,
@@ -42,6 +43,7 @@ import {
   getAgentTools,
   getBaseAgentTools,
   getCollectedResponses,
+  getToolCommandName,
   runWithToolContext,
   withToolMediaBuffers,
 } from '../tools'
@@ -183,6 +185,10 @@ function getHistoryMediaPrompt(message: Message): string {
 }
 
 function getToolModel(toolName: string): string {
+  if (toolName === GENERATE_IMAGE_TOOL_NAME && getToolCommandName() === 'ge') {
+    return GEMINI_FLASH_LITE_IMAGE_MODEL.model
+  }
+
   return TOOL_MODELS[toolName] ?? 'none'
 }
 
@@ -918,7 +924,7 @@ export async function runAgenticLoop(
   api: TelegramApi,
   mediaBuffers?: MediaBuffer[],
   botInfo?: BotIdentity,
-  options: { bypassReplyGate?: boolean } = {},
+  options: { bypassReplyGate?: boolean; commandName?: string } = {},
 ): Promise<void> {
   const startedAt = Date.now()
   const chatId = message.chat?.id
@@ -945,7 +951,13 @@ export async function runAgenticLoop(
   let stopTyping: (() => void) | undefined
   let stopThinkingDraft: (() => void) | undefined
   const runInToolContext = <T>(callback: () => Promise<T>): Promise<T> =>
-    runWithToolContext(message, mediaBuffers, callback, api)
+    runWithToolContext(
+      message,
+      mediaBuffers,
+      callback,
+      api,
+      options.commandName,
+    )
 
   try {
     await runInToolContext(async () => {

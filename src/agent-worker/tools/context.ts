@@ -7,6 +7,7 @@ import type { AgentResponse } from '../types'
 interface ToolContext {
   message: Message
   api?: ChatAdminApi
+  commandName?: string
   mediaBuffers?: MediaBuffer[]
   responses: AgentResponse[]
 }
@@ -29,6 +30,10 @@ export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
 }
 
+export function getToolCommandName(): string | undefined {
+  return contextStorage.getStore()?.commandName
+}
+
 export async function withToolMediaBuffers<T>(
   mediaBuffers: MediaBuffer[] | undefined,
   callback: () => Promise<T>,
@@ -49,9 +54,10 @@ export async function runWithToolContext<T>(
   mediaBuffers: MediaBuffer[] | undefined,
   callback: () => Promise<T>,
   api?: ChatAdminApi,
+  commandName?: string,
 ): Promise<T> {
   return contextStorage.run(
-    { message, api, mediaBuffers, responses: [] },
+    { message, api, commandName, mediaBuffers, responses: [] },
     callback,
   )
 }

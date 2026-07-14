@@ -2,9 +2,11 @@ import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
 
+const mockGenerateImage = jest.fn()
 const mockGenerateImageOpenAi = jest.fn()
 
 jest.mock('../../services', () => ({
+  generateImage: (...args: unknown[]) => mockGenerateImage(...args),
   generateImageOpenAi: (...args: unknown[]) => mockGenerateImageOpenAi(...args),
 }))
 
@@ -27,6 +29,8 @@ function image(label: string, data: string): MediaBuffer {
 
 describe('generateImageTool', () => {
   beforeEach(() => {
+    mockGenerateImage.mockReset()
+    mockGenerateImage.mockResolvedValue({ image: Buffer.from('out') })
     mockGenerateImageOpenAi.mockReset()
     mockGenerateImageOpenAi.mockResolvedValue({ image: Buffer.from('out') })
   })
@@ -116,5 +120,25 @@ describe('generateImageTool', () => {
     expect(mockGenerateImageOpenAi.mock.calls[0]?.[0]).not.toContain(
       'older image',
     )
+  })
+
+  test('routes /ge image generation through Gemini', async () => {
+    await runWithToolContext(
+      message,
+      undefined,
+      () =>
+        generateImageTool.execute({
+          prompt: 'draw a fox',
+          mediaSource: 'none',
+        }),
+      undefined,
+      'ge',
+    )
+
+    expect(mockGenerateImage).toHaveBeenCalledWith(
+      expect.stringContaining('draw a fox'),
+      undefined,
+    )
+    expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
   })
 })
