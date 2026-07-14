@@ -8,6 +8,7 @@ interface ChatStat {
   chatId: string
   chatInfo?: Chat
   users: UserStat[]
+  version?: number
 }
 
 export interface FormattedChatStatistics {
@@ -16,6 +17,7 @@ export interface FormattedChatStatistics {
 }
 
 const RICH_STATISTICS_ROW_LIMIT = 100
+const MAX_WRITE_ATTEMPTS = 8
 
 const isUserStat = (value: unknown): value is UserStat =>
   typeof value === 'object' &&
@@ -40,8 +42,16 @@ const toChatStat = (value: unknown): ChatStat | undefined => {
     users: Array.isArray(chatStat.users)
       ? chatStat.users.filter(isUserStat)
       : [],
+    version:
+      typeof chatStat.version === 'number' ? chatStat.version : undefined,
   }
 }
+
+const isConditionalWriteConflict = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'name' in error &&
+  error.name === 'ConditionalCheckFailedException'
 
 const readChatUsers = async (chat_id: number | string): Promise<UserStat[]> =>
   (await getChatStatistic(chat_id))?.users ?? []
@@ -57,6 +67,71 @@ const getChatStatistic = async (
 
   const result = await dynamoQuery(params)
   return toChatStat(result.Items?.[0])
+}
+
+interface ChatStatMutation<T> {
+  result: T
+  next?: ChatStat
+}
+
+async function putVersionedChatStatistic(
+  current: ChatStat | undefined,
+  next: ChatStat,
+): Promise<void> {
+  const item = { ...next, version: (current?.version ?? 0) + 1 }
+
+  if (!current) {
+    await dynamoPutItem({
+      TableName: 'chat-statistics',
+      Item: item,
+      ConditionExpression: 'attribute_not_exists(#chatId)',
+      ExpressionAttributeNames: { '#chatId': 'chatId' },
+    })
+    return
+  }
+
+  const hasVersion = typeof current.version === 'number'
+  await dynamoPutItem({
+    TableName: 'chat-statistics',
+    Item: item,
+    ConditionExpression: hasVersion
+      ? '#version = :expectedVersion'
+      : 'attribute_not_exists(#version)',
+    ExpressionAttributeNames: { '#version': 'version' },
+    ...(hasVersion
+      ? { ExpressionAttributeValues: { ':expectedVersion': current.version } }
+      : {}),
+  })
+}
+
+async function mutateChatStatistic<T>(
+  chatId: string | number,
+  mutate: (current: ChatStat | undefined) => ChatStatMutation<T>,
+): Promise<T> {
+  let lastConflict: unknown
+
+  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const current = await getChatStatistic(chatId)
+    const mutation = mutate(current)
+    if (!mutation.next) {
+      return mutation.result
+    }
+
+    try {
+      await putVersionedChatStatistic(current, mutation.next)
+      return mutation.result
+    } catch (error) {
+      if (!isConditionalWriteConflict(error)) {
+        throw error
+      }
+      lastConflict = error
+    }
+  }
+
+  throw new Error(
+    `Could not update chat statistics after ${MAX_WRITE_ATTEMPTS} attempts`,
+    { cause: lastConflict },
+  )
 }
 
 export const getChatUsers = async (
@@ -81,27 +156,30 @@ export const setUserOptOut = async (
   user_id: number,
   optedOut: boolean,
 ): Promise<'updated' | 'no_chat' | 'no_user' | 'already_set'> => {
-  const chatStatistics = await getChatStatistic(chat_id)
+  return mutateChatStatistic(chat_id, (chatStatistics) => {
+    if (!chatStatistics) {
+      return { result: 'no_chat' }
+    }
 
-  if (!chatStatistics) {
-    return 'no_chat'
-  }
+    const user = chatStatistics.users.find((item) => item.id === user_id)
+    if (!user) {
+      return { result: 'no_user' }
+    }
 
-  const user = chatStatistics.users.find((u) => u.id === user_id)
+    if (Boolean(user.optedOut) === optedOut) {
+      return { result: 'already_set' }
+    }
 
-  if (!user) {
-    return 'no_user'
-  }
-
-  if (Boolean(user.optedOut) === optedOut) {
-    return 'already_set'
-  }
-
-  // Legacy users[] storage intentionally stays read-modify-write in this PR.
-  // Moving it to atomic map updates needs a separate data-shape change.
-  user.optedOut = optedOut
-  await dynamoPutItem({ TableName: 'chat-statistics', Item: chatStatistics })
-  return 'updated'
+    return {
+      result: 'updated',
+      next: {
+        ...chatStatistics,
+        users: chatStatistics.users.map((item) =>
+          item.id === user_id ? { ...item, optedOut } : item,
+        ),
+      },
+    }
+  })
 }
 
 export const getUsersList = async (
@@ -208,37 +286,35 @@ export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
   const chat_id = chat?.id
 
   if (userInfo && chat_id) {
-    const chatStatistics = await getChatStatistic(chat_id)
-    const statistics = chatStatistics
-      ? { ...chatStatistics, chatInfo: chat }
-      : {
+    return mutateChatStatistic(chat_id, (chatStatistics) => {
+      const currentUsers = chatStatistics?.users ?? []
+      const existingUser = currentUsers.find((item) => item.id === userInfo.id)
+      const userStatistic: UserStat = existingUser
+        ? {
+            ...existingUser,
+            msgCount: existingUser.msgCount + 1,
+            username: getUserName(userInfo),
+          }
+        : {
+            id: userInfo.id,
+            msgCount: 1,
+            username: getUserName(userInfo),
+          }
+
+      return {
+        result: undefined,
+        next: {
+          ...chatStatistics,
           chatId: String(chat_id),
-          users: [] as UserStat[],
           chatInfo: chat,
-        }
-
-    let userStatistic: UserStat | undefined = statistics.users?.find(
-      (x) => x.id === userInfo.id,
-    )
-
-    if (!userStatistic) {
-      userStatistic = {
-        id: userInfo.id,
-        msgCount: 1,
-        username: getUserName(userInfo),
+          users: existingUser
+            ? currentUsers.map((item) =>
+                item.id === userInfo.id ? userStatistic : item,
+              )
+            : [...currentUsers, userStatistic],
+        },
       }
-      statistics.users = [...(statistics.users || []), userStatistic]
-    } else {
-      userStatistic.msgCount += 1
-      userStatistic.username = getUserName(userInfo)
-    }
-
-    const params = {
-      TableName: 'chat-statistics',
-      Item: statistics,
-    }
-
-    return dynamoPutItem(params)
+    })
   }
 
   return Promise.resolve()

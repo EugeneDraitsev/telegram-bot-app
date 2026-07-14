@@ -1,4 +1,4 @@
-import { shouldSkipStatsBroadcast } from '../chat-events'
+import { getChatEventSortKey, shouldSkipStatsBroadcast } from '../chat-events'
 
 describe('shouldSkipStatsBroadcast', () => {
   const originalEnv = process.env
@@ -29,5 +29,27 @@ describe('shouldSkipStatsBroadcast', () => {
     process.env.IS_OFFLINE = 'false'
 
     expect(shouldSkipStatsBroadcast()).toBe(false)
+  })
+})
+
+describe('getChatEventSortKey', () => {
+  test('uses the message id to avoid same-second collisions', () => {
+    const date = 1_750_000_000
+    const first = getChatEventSortKey(date, 10)
+    const second = getChatEventSortKey(date, 11)
+
+    expect(first).not.toBe(second)
+    expect(first).toBeGreaterThanOrEqual(date * 1000)
+    expect(first).toBeLessThan(date * 1000 + 1000)
+  })
+
+  test('is deterministic for duplicate delivery of the same message', () => {
+    expect(getChatEventSortKey(1_750_000_000, 42)).toBe(
+      getChatEventSortKey(1_750_000_000, 42),
+    )
+  })
+
+  test('preserves millisecond timestamps when no message id is available', () => {
+    expect(getChatEventSortKey(1_750_000_000_123)).toBe(1_750_000_000_123)
   })
 })

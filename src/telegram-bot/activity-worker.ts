@@ -31,7 +31,13 @@ const activityWorker: Handler<ActivityWorkerPayload> = async (event) => {
 
   const tasks = [
     updateStatistics(message.from, chat),
-    saveEvent(message.from, chat.id, event.command ?? '', message.date),
+    saveEvent(
+      message.from,
+      chat.id,
+      event.command ?? '',
+      message.date,
+      message.message_id,
+    ),
   ]
 
   if (isAiEnabledChat(chat.id)) {

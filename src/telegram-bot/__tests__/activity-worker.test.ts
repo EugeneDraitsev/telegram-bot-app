@@ -1,32 +1,34 @@
 import type { Chat, Message, User } from 'grammy/types'
 
+import * as common from '@tg-bot/common'
 import activityWorker from '../activity-worker'
 
-const updateStatisticsMock = jest.fn()
-const saveEventMock = jest.fn()
-const saveMessageMock = jest.fn()
-const loggerErrorMock = jest.fn()
-const loggerWarnMock = jest.fn()
-
-jest.mock('@tg-bot/common', () => ({
-  isAiEnabledChat: (chatId: number | string | undefined) => chatId === 123,
-  logger: {
-    info: jest.fn(),
-    error: (...args: unknown[]) => loggerErrorMock(...args),
-    warn: (...args: unknown[]) => loggerWarnMock(...args),
-  },
-  saveEvent: (...args: unknown[]) => saveEventMock(...args),
-  saveMessage: (...args: unknown[]) => saveMessageMock(...args),
-  updateStatistics: (...args: unknown[]) => updateStatisticsMock(...args),
-}))
+const updateStatisticsMock = jest.spyOn(common, 'updateStatistics')
+const saveEventMock = jest.spyOn(common, 'saveEvent')
+const saveMessageMock = jest.spyOn(common, 'saveMessage')
+const isAiEnabledChatMock = jest.spyOn(common, 'isAiEnabledChat')
+const loggerErrorMock = jest.spyOn(common.logger, 'error')
+const loggerWarnMock = jest.spyOn(common.logger, 'warn')
 
 describe('activity worker', () => {
   beforeEach(() => {
     updateStatisticsMock.mockReset().mockResolvedValue(undefined)
     saveEventMock.mockReset().mockResolvedValue(undefined)
     saveMessageMock.mockReset().mockResolvedValue(undefined)
-    loggerErrorMock.mockReset()
-    loggerWarnMock.mockReset()
+    isAiEnabledChatMock
+      .mockReset()
+      .mockImplementation((chatId) => chatId === 123)
+    loggerErrorMock.mockReset().mockImplementation(() => {})
+    loggerWarnMock.mockReset().mockImplementation(() => {})
+  })
+
+  afterAll(() => {
+    updateStatisticsMock.mockRestore()
+    saveEventMock.mockRestore()
+    saveMessageMock.mockRestore()
+    isAiEnabledChatMock.mockRestore()
+    loggerErrorMock.mockRestore()
+    loggerWarnMock.mockRestore()
   })
 
   test('tracks statistics, events and AI chat history outside ingress', async () => {
@@ -43,7 +45,7 @@ describe('activity worker', () => {
     await activityWorker({ message, command: '/x' }, {} as never, jest.fn())
 
     expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
-    expect(saveEventMock).toHaveBeenCalledWith(user, 123, '/x', 123456)
+    expect(saveEventMock).toHaveBeenCalledWith(user, 123, '/x', 123456, 10)
     expect(saveMessageMock).toHaveBeenCalledWith(message, 123)
   })
 
@@ -74,7 +76,7 @@ describe('activity worker', () => {
     await activityWorker({ message, command: '' }, {} as never, jest.fn())
 
     expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
-    expect(saveEventMock).toHaveBeenCalledWith(user, 999, '', 123456)
+    expect(saveEventMock).toHaveBeenCalledWith(user, 999, '', 123456, 10)
     expect(saveMessageMock).not.toHaveBeenCalled()
   })
 
