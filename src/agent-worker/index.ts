@@ -17,6 +17,11 @@ import {
   REPLY_GATE_MODEL,
   runAgenticLoop,
 } from './agent'
+import {
+  AGENT_WORKER_HEARTBEAT_INTERVAL_MS,
+  type AgentWorkerLease,
+  acquireAgentWorkerLease,
+} from './idempotency'
 
 const bot = createBot()
 
@@ -52,8 +57,30 @@ async function resolveBotInfo(
   }
 }
 
-const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
+function startLeaseHeartbeat(
+  lease: AgentWorkerLease,
+  messageMeta: ReturnType<typeof getMessageLogMeta>,
+): ReturnType<typeof setInterval> {
+  const heartbeat = setInterval(() => {
+    void lease
+      .renew()
+      .then((renewed) => {
+        if (!renewed) {
+          logger.warn(messageMeta, 'worker.idempotency_lease_lost')
+        }
+      })
+      .catch((error) =>
+        logger.warn({ ...messageMeta, error }, 'worker.heartbeat_failed'),
+      )
+  }, AGENT_WORKER_HEARTBEAT_INTERVAL_MS)
+  heartbeat.unref()
+  return heartbeat
+}
+
+const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
   const startedAt = Date.now()
+  let lease: AgentWorkerLease | undefined
+  let heartbeat: ReturnType<typeof setInterval> | undefined
   try {
     const { message, imagesData, imageFileIds, botInfo, bypassReplyGate } =
       event
@@ -79,6 +106,18 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       )
       return { statusCode: 200, body: 'Skipped' }
     }
+
+    lease =
+      (await acquireAgentWorkerLease(
+        message.chat.id,
+        message.message_id,
+        context.awsRequestId,
+      )) ?? undefined
+    if (!lease) {
+      logger.info(messageMeta, 'worker.duplicate_skipped')
+      return { statusCode: 200, body: 'Duplicate' }
+    }
+    heartbeat = startLeaseHeartbeat(lease, messageMeta)
 
     logger.info(
       {
@@ -124,8 +163,26 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       'worker.done',
     )
 
+    try {
+      if (!(await lease.complete())) {
+        logger.warn(messageMeta, 'worker.idempotency_completion_failed')
+      }
+    } catch (completionError) {
+      logger.warn(
+        { ...messageMeta, error: completionError },
+        'worker.idempotency_completion_failed',
+      )
+    }
+
     return { statusCode: 200, body: 'OK' }
   } catch (error) {
+    if (lease) {
+      try {
+        await lease.release()
+      } catch (releaseError) {
+        logger.warn({ error: releaseError }, 'worker.lease_release_failed')
+      }
+    }
     logger.error(
       {
         model: CHAT_MODEL_LABEL,
@@ -136,7 +193,11 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event) => {
       },
       'worker.failed',
     )
-    return { statusCode: 200, body: 'Error' }
+    throw error
+  } finally {
+    if (heartbeat) {
+      clearInterval(heartbeat)
+    }
   }
 }
 

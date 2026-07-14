@@ -58,6 +58,8 @@ functions:
     handler: src/agent-worker/index.default
     timeout: 300
     memorySize: 1536
+    maximumEventAge: 3600
+    maximumRetryAttempts: 2
 
   telegram-activity-worker:
     handler: src/telegram-bot/activity-worker.default
