@@ -7,8 +7,21 @@ import {
   dynamoQuery,
   getOptionalEnv,
   invokeLambda,
-  random,
 } from '../../utils'
+
+const TELEGRAM_EVENT_ID_SPACE = 1_000_000
+
+export function getChatEventSortKey(date: number, messageId?: number): number {
+  const dateMs = date < 10_000_000_000 ? date * 1000 : date
+  if (!Number.isInteger(messageId) || (messageId ?? -1) < 0) {
+    return dateMs
+  }
+
+  const secondStartMs = Math.floor(dateMs / 1000) * 1000
+  return (
+    secondStartMs + ((messageId as number) % TELEGRAM_EVENT_ID_SPACE) / 1000
+  )
+}
 
 export function shouldSkipStatsBroadcast(): boolean {
   return (
@@ -44,12 +57,12 @@ export const saveEvent = async (
   chat_id?: number,
   command?: string,
   date = Date.now(),
+  messageId?: number,
 ): Promise<void> => {
   if (userInfo && chat_id) {
     const event = {
       userInfo,
-      // trying to avoid lost messages
-      date: date * 1000 + random(-500, 500),
+      date: getChatEventSortKey(date, messageId),
       chatId: String(chat_id),
       command,
     }
