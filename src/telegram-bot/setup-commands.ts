@@ -158,6 +158,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /e, /ee, /ge, /gp, /de <text, image> - generate or edit an image via the agent
 
   // /c - get currency rates
+  // /cs - get currency rates with the same generated background as scheduler
   // /ci - get currency rates with generated news background debug info
   setupCurrencyCommands(bot)
 

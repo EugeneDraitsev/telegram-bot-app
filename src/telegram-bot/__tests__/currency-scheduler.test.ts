@@ -1,3 +1,4 @@
+import { SCHEDULED_CURRENCY_MESSAGE_OPTIONS } from '../currency'
 import { sendScheduledCurrencyMessages } from '../currency-scheduler'
 
 describe('currency scheduler', () => {
@@ -18,7 +19,7 @@ describe('currency scheduler', () => {
       sendMessages,
     })
 
-    expect(getMessages).toHaveBeenCalledWith({ includeBackgroundImage: true })
+    expect(getMessages).toHaveBeenCalledWith(SCHEDULED_CURRENCY_MESSAGE_OPTIONS)
     expect(sendMessages).toHaveBeenCalledWith({
       api,
       chatId: 'chat-1',

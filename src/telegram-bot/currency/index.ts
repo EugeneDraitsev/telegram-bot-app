@@ -23,6 +23,10 @@ export type GetCurrencyMessagesOptions = {
   readonly includeBackgroundImage?: boolean
 }
 
+export const SCHEDULED_CURRENCY_MESSAGE_OPTIONS = {
+  includeBackgroundImage: true,
+} as const satisfies GetCurrencyMessagesOptions
+
 const getError = (err: Error, from: string): CurrencyRateSection => {
   logger.error({ error: err }, `Can't fetch currency from ${from}`)
   return {
@@ -198,6 +202,9 @@ async function sendCurrencyCommand(
 const setupCurrencyCommands = (bot: Bot) => {
   bot.command('c', (ctx) => sendCurrencyCommand(ctx))
   bot.command('cf', (ctx) => sendCurrencyCommand(ctx, { forceFallback: true }))
+  bot.command('cs', (ctx) =>
+    sendCurrencyCommand(ctx, SCHEDULED_CURRENCY_MESSAGE_OPTIONS),
+  )
   bot.command('ci', (ctx) =>
     sendCurrencyCommand(ctx, {
       includeBackgroundImage: true,
