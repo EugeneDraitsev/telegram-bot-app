@@ -5,7 +5,6 @@ import { setupAllCommands } from '../setup-commands'
 
 const setupAgenticConfigMock = jest.fn((..._args: unknown[]) => undefined)
 const setupCurrencyCommandsMock = jest.fn((..._args: unknown[]) => undefined)
-const setupDat1coCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupExternalApisCommandsMock = jest.fn(
   (..._args: unknown[]) => undefined,
 )
@@ -14,13 +13,8 @@ const setupGoogleCommandsMock = jest.fn((bot: unknown, ..._args: unknown[]) => {
     bot as {
       command: (command: string | string[], ...middleware: unknown[]) => Bot
     }
-  )
-    .command(['q', 'qq'], jest.fn())
-    .command('g', jest.fn())
-    .command('ge', jest.fn())
-    .command('gp', jest.fn())
+  ).command('g', jest.fn())
 })
-const setupOpenAiCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupTextCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupUsersCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 
@@ -33,11 +27,6 @@ jest.mock('../currency', () => ({
   default: (...args: unknown[]) => setupCurrencyCommandsMock(...args),
 }))
 
-jest.mock('../dat1co', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => setupDat1coCommandsMock(...args),
-}))
-
 jest.mock('../external-apis', () => ({
   __esModule: true,
   default: (...args: unknown[]) => setupExternalApisCommandsMock(...args),
@@ -47,12 +36,6 @@ jest.mock('../google', () => ({
   __esModule: true,
   default: (bot: unknown, ...args: unknown[]) =>
     setupGoogleCommandsMock(bot, ...args),
-}))
-
-jest.mock('../open-ai', () => ({
-  __esModule: true,
-  default: (bot: unknown, ...args: unknown[]) =>
-    setupOpenAiCommandsMock(bot, ...args),
 }))
 
 jest.mock('../text', () => ({
@@ -162,6 +145,7 @@ describe('setupAllCommands', () => {
     expect(invokeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         bypassReplyGate: true,
+        commandName: 'q',
         message: expect.objectContaining({ text: 'test' }),
       }),
     )
@@ -192,9 +176,43 @@ describe('setupAllCommands', () => {
     expect(invokeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         bypassReplyGate: true,
+        commandName: 'q',
         message: expect.objectContaining({ text: 'summarize this' }),
       }),
     )
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  test('message middleware sends legacy AI image commands to agent worker', async () => {
+    const agentSpy = jest
+      .spyOn(common, 'invokeAgentLambda')
+      .mockResolvedValue(
+        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+      )
+    const replySpy = jest.spyOn(common, 'invokeReplyLambda')
+    const { bot, getHandler } = createBotStub()
+
+    setupAllCommands(bot, true)
+
+    const messageHandler = getHandler('message')
+    const message = {
+      text: '/ge draw a fox',
+      chat: { id: 123 },
+      entities: [{ type: 'bot_command', offset: 0, length: 3 }],
+    }
+    const ctx = { message, chat: { id: 123 } } as unknown as Context
+    const next = jest.fn().mockResolvedValue(undefined)
+
+    await messageHandler?.(ctx, next as NextFunction)
+
+    expect(agentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bypassReplyGate: true,
+        commandName: 'ge',
+        message: expect.objectContaining({ text: 'draw a fox' }),
+      }),
+    )
+    expect(replySpy).not.toHaveBeenCalled()
     expect(next).not.toHaveBeenCalled()
   })
 
@@ -210,13 +228,12 @@ describe('setupAllCommands', () => {
 
     const messageHandler = getHandler('message')
     expect(messageHandler).toBeDefined()
-    expect(commandRegistry.has('ge')).toBe(true)
-    expect(commandRegistry.has('gp')).toBe(true)
+    expect(commandRegistry.has('g')).toBe(true)
 
     const message = {
-      text: '/ge draw',
+      text: '/g cats',
       chat: { id: 123 },
-      entities: [{ type: 'bot_command', offset: 0, length: 3 }],
+      entities: [{ type: 'bot_command', offset: 0, length: 2 }],
     }
     const update = { update_id: 777, message }
     const ctx = { update, message, chat: { id: 123 } } as unknown as Context
@@ -240,9 +257,9 @@ describe('setupAllCommands', () => {
 
     const messageHandler = getHandler('message')
     const message = {
-      text: '/GE draw',
+      text: '/G cats',
       chat: { id: 123 },
-      entities: [{ type: 'bot_command', offset: 0, length: 3 }],
+      entities: [{ type: 'bot_command', offset: 0, length: 2 }],
     }
     const update = { update_id: 778, message }
     const ctx = { update, message, chat: { id: 123 } } as unknown as Context
@@ -252,9 +269,9 @@ describe('setupAllCommands', () => {
 
     expect(invokeSpy).toHaveBeenCalledWith({
       ...update,
-      message: { ...message, text: '/ge draw' },
+      message: { ...message, text: '/g cats' },
     })
-    expect(message.text).toBe('/GE draw')
+    expect(message.text).toBe('/G cats')
     expect(next).not.toHaveBeenCalled()
   })
 

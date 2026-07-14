@@ -58,7 +58,7 @@ flowchart TB
 
   BOT -.->|"every message"| ACT
   BOT -.->|"registered cmds"| REPLY
-  BOT -.->|"/q · /qq · fallback"| AGENT
+  BOT -.->|"AI commands · fallback"| AGENT
 
   REPLY -->|"reply"| TG
   AGENT -->|"reply"| TG
