@@ -17,7 +17,7 @@
     - dynamodb:UpdateItem
     - dynamodb:DeleteItem
   Resource:
-    - arn:aws:dynamodb:*:*:table/chat-statistics
-    - arn:aws:dynamodb:*:*:table/chat-events
+    - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+    - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
     - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
     - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}/index/${self:custom.websocketConnectionsChatIdIndexName}

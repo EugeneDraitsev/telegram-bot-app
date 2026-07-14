@@ -2,12 +2,7 @@ import { webhookCallback } from 'grammy/web'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Message } from 'grammy/types'
 
-import {
-  createBot,
-  invokeActivityLambda,
-  logger,
-  saveBotMessageMiddleware,
-} from '@tg-bot/common'
+import { createBot, invokeActivityLambda, logger } from '@tg-bot/common'
 import {
   type CommandRegistry,
   getRegisteredCommandName,
@@ -16,8 +11,6 @@ import { setupAllCommands } from './setup-commands'
 import { hasValidTelegramWebhookSecret } from './webhook-auth'
 
 const bot = createBot()
-
-bot.use(saveBotMessageMiddleware)
 
 let commandRegistry: CommandRegistry = new Set<string>()
 

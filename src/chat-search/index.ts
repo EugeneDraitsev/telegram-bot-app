@@ -2,6 +2,7 @@ import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
 
 import {
   CHAT_SEARCH_DEFAULT_ALLOWED_ORIGINS,
+  CHAT_STATISTICS_TABLE_NAME,
   dynamoScan,
   FRONTEND_BASE_URL,
   getOptionalEnv,
@@ -80,7 +81,7 @@ const isSearchableChat = (
 const getChats = () =>
   dynamoScan<ChatStatisticsRecord>(
     {
-      TableName: 'chat-statistics',
+      TableName: CHAT_STATISTICS_TABLE_NAME,
       ProjectionExpression: 'chatInfo',
       Limit: searchScanPageLimit,
     },
