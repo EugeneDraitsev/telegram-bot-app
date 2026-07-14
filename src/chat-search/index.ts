@@ -13,8 +13,6 @@ import type {
   SearchableChatStatisticsRecord,
 } from './types'
 
-const searchScanPageLimit = 100
-const searchScanMaxPages = 10
 const corsAllowedMethods = 'GET,OPTIONS'
 const corsAllowedHeaders = [
   'Content-Type',
@@ -79,14 +77,10 @@ const isSearchableChat = (
   chat.chatInfo.type !== 'private'
 
 const getChats = () =>
-  dynamoScan<ChatStatisticsRecord>(
-    {
-      TableName: CHAT_STATISTICS_TABLE_NAME,
-      ProjectionExpression: 'chatInfo',
-      Limit: searchScanPageLimit,
-    },
-    { maxPages: searchScanMaxPages },
-  )
+  dynamoScan<ChatStatisticsRecord>({
+    TableName: CHAT_STATISTICS_TABLE_NAME,
+    ProjectionExpression: 'chatInfo',
+  })
 
 export const getChatByName: APIGatewayProxyHandler = async (event) => {
   const origin = getRequestOrigin(event)
