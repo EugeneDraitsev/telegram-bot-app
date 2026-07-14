@@ -57,9 +57,9 @@ describe('chat search', () => {
       expect.objectContaining({
         TableName: 'chat-statistics',
         ProjectionExpression: 'chatInfo',
-        Limit: 100,
       }),
     )
+    expect(sendSpy.mock.calls[0][0].input).not.toHaveProperty('Limit')
     expect(response.headers).not.toHaveProperty(
       'Access-Control-Allow-Credentials',
     )
@@ -68,6 +68,39 @@ describe('chat search', () => {
       'http://localhost:5173',
     )
     expect(response.headers).toHaveProperty('Vary', 'Origin')
+  })
+
+  test('continues scanning until chats after the first page are found', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [
+            { chatInfo: { id: 1, type: 'group', title: 'Another chat' } },
+          ],
+          LastEvaluatedKey: { chatId: 'first-page-end' },
+        }),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [
+            { chatInfo: { id: 2, type: 'supergroup', title: 'Kabold camp' } },
+          ],
+        }),
+      )
+
+    const response = await callHandler('kabold')
+
+    expect(response.statusCode).toBe(200)
+    expect(JSON.parse(response.body)).toEqual([
+      { id: 2, type: 'supergroup', title: 'Kabold camp' },
+    ])
+    expect(sendSpy).toHaveBeenCalledTimes(2)
+    expect(sendSpy.mock.calls[1][0].input).toEqual(
+      expect.objectContaining({
+        ExclusiveStartKey: { chatId: 'first-page-end' },
+      }),
+    )
   })
 
   test('falls back to the first allowed origin for disallowed request origins', async () => {
