@@ -151,6 +151,58 @@ describe('generateImageTool', () => {
     expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
   })
 
+  test('does not fall back to GPT Image for /ge', async () => {
+    mockGenerateImage.mockRejectedValueOnce(new Error('banana unavailable'))
+
+    const result = await runWithToolContext(
+      message,
+      undefined,
+      () =>
+        generateImageTool.execute({
+          prompt: 'draw a fox',
+          mediaSource: 'none',
+        }),
+      undefined,
+      'ge',
+    )
+
+    expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
+    expect(result).toContain('banana unavailable')
+  })
+
+  test('falls back to GPT Image when Gemini fails', async () => {
+    mockGenerateImage.mockRejectedValueOnce(new Error('banana unavailable'))
+
+    const result = await runWithToolContext(message, undefined, () =>
+      generateImageTool.execute({
+        prompt: 'draw a fox',
+        mediaSource: 'none',
+      }),
+    )
+
+    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
+      expect.stringContaining('draw a fox'),
+      undefined,
+    )
+    expect(result).toContain('Successfully generated image')
+  })
+
+  test('falls back to GPT Image when Gemini returns no image', async () => {
+    mockGenerateImage.mockResolvedValueOnce({})
+
+    await runWithToolContext(message, undefined, () =>
+      generateImageTool.execute({
+        prompt: 'draw a fox',
+        mediaSource: 'none',
+      }),
+    )
+
+    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
+      expect.stringContaining('draw a fox'),
+      undefined,
+    )
+  })
+
   test.each([
     'e',
     'ee',

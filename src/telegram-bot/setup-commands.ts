@@ -137,6 +137,8 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
       await next()
     })
 
+    // /q, /qq, /o, /gemma <text, image> - invoke the agent without reply gate
+    // /e, /ee, /ge, /gp, /de <text, image> - generate or edit an image via the agent
     setupAgentCommands(bot)
   }
 
@@ -154,10 +156,8 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /v <text> - search random video in YouTube
   setupGoogleCommands(bot)
 
-  // /q, /qq, /o, /gemma <text, image> - invoke the agent without reply gate
-  // /e, /ee, /ge, /gp, /de <text, image> - generate or edit an image via the agent
-
   // /c - get currency rates
+  // /cf - get currency rates as rich-text fallback
   // /cs - get currency rates with the same generated background as scheduler
   // /ci - get currency rates with generated news background debug info
   setupCurrencyCommands(bot)

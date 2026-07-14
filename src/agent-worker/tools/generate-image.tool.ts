@@ -5,6 +5,7 @@
 import {
   buildImageEditTargetPrompt,
   getErrorMessage,
+  logger,
   type MediaBuffer,
 } from '@tg-bot/common'
 import { generateImage, generateImageOpenAi } from '../services'
@@ -14,6 +15,40 @@ import { addResponse, requireToolContext } from './context'
 type ImageMediaSource = 'none' | 'request' | 'history'
 
 const OPENAI_IMAGE_COMMANDS = new Set(['e', 'ee', 'gp', 'de'])
+
+async function generateWithFallback(
+  prompt: string,
+  inputImages: Buffer[] | undefined,
+  useOpenAiPrimary: boolean,
+  commandName?: string,
+) {
+  if (useOpenAiPrimary) {
+    return generateImageOpenAi(prompt, inputImages)
+  }
+
+  if (commandName === 'ge') {
+    return generateImage(prompt, inputImages)
+  }
+
+  try {
+    const result = await generateImage(prompt, inputImages)
+    if (result.image) {
+      return result
+    }
+
+    logger.warn(
+      { commandName, reason: 'no_image' },
+      'image_gen.openai_fallback',
+    )
+  } catch (error) {
+    logger.warn(
+      { commandName, error: getErrorMessage(error) },
+      'image_gen.openai_fallback',
+    )
+  }
+
+  return generateImageOpenAi(prompt, inputImages)
+}
 
 function isHistoryImage(media: MediaBuffer): boolean {
   return (media.label ?? '').toLowerCase().includes('recent chat history')
@@ -100,18 +135,17 @@ export const generateImageTool: AgentTool = {
       const imageCandidates = getImageEditCandidates(mediaBuffers, mediaSource)
       const imagesToEdit =
         imageCandidates.length > 0 ? imageCandidates : undefined
-      const generate =
-        commandName && OPENAI_IMAGE_COMMANDS.has(commandName)
-          ? generateImageOpenAi
-          : generateImage
-      const result = await generate(
-        buildImageEditTargetPrompt(
-          prompt,
-          imagesToEdit?.map(
-            (media) => media.label || 'Unlabeled image context',
-          ) ?? [],
-        ),
+      const imagePrompt = buildImageEditTargetPrompt(
+        prompt,
+        imagesToEdit?.map(
+          (media) => media.label || 'Unlabeled image context',
+        ) ?? [],
+      )
+      const result = await generateWithFallback(
+        imagePrompt,
         imagesToEdit?.map((media) => media.buffer),
+        Boolean(commandName && OPENAI_IMAGE_COMMANDS.has(commandName)),
+        commandName,
       )
 
       if (result.image) {
