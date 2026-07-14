@@ -1,5 +1,5 @@
 import type { Message } from 'grammy/types'
-import type { Context } from 'grammy/web'
+import type { Bot, Context } from 'grammy/web'
 
 import {
   collectMessageImageFileIds,
@@ -12,13 +12,33 @@ export interface AgentPayload {
   message: Message
   imageFileIds?: string[]
   bypassReplyGate?: boolean
+  commandName?: AgentCommandName
 }
 
-export const DIRECT_AGENT_COMMANDS = ['q', 'qq']
+export const AGENT_COMMANDS = [
+  'q',
+  'qq',
+  'o',
+  'gemma',
+  'e',
+  'ee',
+  'ge',
+  'gp',
+  'de',
+] as const
+
+export type AgentCommandName = (typeof AGENT_COMMANDS)[number]
+
+export function isAgentCommand(
+  commandName: string,
+): commandName is AgentCommandName {
+  return (AGENT_COMMANDS as readonly string[]).includes(commandName)
+}
 
 interface AgentInvokeOptions {
   bypassReplyGate?: boolean
   stripCommand?: boolean
+  commandName?: AgentCommandName
 }
 
 function stripCommandText(message: Message): Message {
@@ -56,6 +76,7 @@ export async function handleMessageWithAgent(
     message: agentMessage,
     imageFileIds: collectMessageImageFileIds(agentMessage),
     bypassReplyGate: options.bypassReplyGate,
+    commandName: options.commandName,
   }
 
   try {
@@ -65,7 +86,10 @@ export async function handleMessageWithAgent(
   }
 }
 
-export async function handleAgenticCommand(ctx: Context): Promise<void> {
+export async function handleAgenticCommand(
+  ctx: Context,
+  commandName: AgentCommandName,
+): Promise<void> {
   if (!ctx.message) {
     return
   }
@@ -73,5 +97,12 @@ export async function handleAgenticCommand(ctx: Context): Promise<void> {
   await handleMessageWithAgent(ctx.message as Message, {
     bypassReplyGate: true,
     stripCommand: true,
+    commandName,
   })
+}
+
+export function setupAgentCommands(bot: Bot): void {
+  for (const commandName of AGENT_COMMANDS) {
+    bot.command(commandName, (ctx) => handleAgenticCommand(ctx, commandName))
+  }
 }

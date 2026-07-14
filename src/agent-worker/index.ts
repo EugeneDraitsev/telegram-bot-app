@@ -17,6 +17,7 @@ import {
   REPLY_GATE_MODEL,
   runAgenticLoop,
 } from './agent'
+import { prepareAgentCommandMessage } from './commands'
 import {
   AGENT_WORKER_HEARTBEAT_INTERVAL_MS,
   type AgentWorkerLease,
@@ -31,6 +32,7 @@ export interface AgentWorkerPayload {
   imageFileIds?: string[]
   botInfo?: BotIdentity
   bypassReplyGate?: boolean
+  commandName?: string
 }
 
 let cachedBotInfo: BotIdentity | undefined
@@ -82,10 +84,16 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
   let lease: AgentWorkerLease | undefined
   let heartbeat: ReturnType<typeof setInterval> | undefined
   try {
-    const { message, imagesData, imageFileIds, botInfo, bypassReplyGate } =
-      event
+    const {
+      message: incomingMessage,
+      imagesData,
+      imageFileIds,
+      botInfo,
+      bypassReplyGate,
+      commandName,
+    } = event
 
-    if (!message?.chat?.id) {
+    if (!incomingMessage?.chat?.id) {
       logger.error(
         {
           reason: 'missing_message_chat_id',
@@ -94,6 +102,8 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
       )
       return { statusCode: 200, body: 'Invalid payload' }
     }
+
+    const message = prepareAgentCommandMessage(incomingMessage, commandName)
 
     const messageMeta = getMessageLogMeta(message)
     if (!(await isAgenticChatEnabled(message.chat.id))) {

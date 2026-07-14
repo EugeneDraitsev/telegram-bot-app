@@ -62,11 +62,13 @@ describe('handleMessageWithAgent', () => {
     await handleMessageWithAgent(message, {
       bypassReplyGate: true,
       stripCommand: true,
+      commandName: 'q',
     })
 
     expect(invokeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         bypassReplyGate: true,
+        commandName: 'q',
         message: expect.objectContaining({
           message_id: 10,
           text: 'explain this',

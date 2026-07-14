@@ -2,7 +2,11 @@ import type { Message } from 'grammy/types'
 import type { Bot, Context } from 'grammy/web'
 
 import { invokeReplyLambda, logger } from '@tg-bot/common'
-import { DIRECT_AGENT_COMMANDS, handleMessageWithAgent } from './agent'
+import {
+  handleMessageWithAgent,
+  isAgentCommand,
+  setupAgentCommands,
+} from './agent'
 import {
   type CommandRegistry,
   getRegisteredCommandName,
@@ -11,10 +15,8 @@ import {
 } from './command-registry'
 import { setupAgenticConfig } from './configuration-commands'
 import setupCurrencyCommands from './currency'
-import setupDat1coCommands from './dat1co'
 import setupExternalApisCommands from './external-apis'
 import setupGoogleCommands from './google'
-import setupOpenAiCommands from './open-ai'
 import setupTextCommands from './text'
 import setupUsersCommands from './users'
 
@@ -101,10 +103,11 @@ async function deferRegisteredCommand(
     return false
   }
 
-  if (DIRECT_AGENT_COMMANDS.includes(commandName)) {
+  if (isAgentCommand(commandName)) {
     await handleMessageWithAgent(message, {
       bypassReplyGate: true,
       stripCommand: true,
+      commandName,
     })
     return true
   }
@@ -133,6 +136,8 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
 
       await next()
     })
+
+    setupAgentCommands(bot)
   }
 
   // /h <text?> - huyator
@@ -143,15 +148,14 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /ps <text> - punto switcher
   setupTextCommands(bot)
 
-  // /q /qq <text, image> - invoke the agentic bot without reply gate
-  // /o <text, image> - generate chat completion with gpt-5.5 medium reasoning
   // /g <text> - search random image in google search
   // /t <text> - translate detected language to russian / english
   // /tb, /tr, /tp, /ts, /td, /te - translate to specific languages
   // /v <text> - search random video in YouTube
-  // /ge <text, image> - generate image with Gemini Flash
-  // /gp <text, image> - generate image with Gemini Pro
   setupGoogleCommands(bot)
+
+  // /q, /qq, /o, /gemma <text, image> - invoke the agent without reply gate
+  // /e, /ee, /ge, /gp, /de <text, image> - generate or edit an image via the agent
 
   // /c - get currency rates
   // /ci - get currency rates with generated news background debug info
@@ -169,13 +173,6 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /p <text> - get horoscope
   // /f <text?> - get weather forecast
   setupExternalApisCommands(bot)
-
-  // /e, /ee <text, image> - generate or edit images with gpt-image-2
-  setupOpenAiCommands(bot)
-
-  // /de <text> - generate image with dat1co
-  // /gemma <text, image> - generate with Gemma 4 model
-  setupDat1coCommands(bot)
 
   // /toggle - enable/disable agentic bot for the chat
   setupAgenticConfig(bot)
