@@ -8,6 +8,7 @@ import {
   getOptionalEnv,
   invokeLambda,
 } from '../../utils'
+import { CHAT_EVENTS_TABLE_NAME } from './table-names'
 
 const TELEGRAM_EVENT_ID_SPACE = 1_000_000
 
@@ -68,7 +69,7 @@ export const saveEvent = async (
     }
 
     const params = {
-      TableName: 'chat-events',
+      TableName: CHAT_EVENTS_TABLE_NAME,
       Item: event,
     }
 
@@ -88,7 +89,7 @@ const DAY = 1000 * 60 * 60 * 24
 
 export const get24hChatStats = async (chatId: string | number) => {
   const { Items } = await dynamoQuery({
-    TableName: 'chat-events',
+    TableName: CHAT_EVENTS_TABLE_NAME,
     KeyConditionExpression: 'chatId = :chatId AND #date > :date',
     ExpressionAttributeValues: {
       ':chatId': String(Number(chatId)),

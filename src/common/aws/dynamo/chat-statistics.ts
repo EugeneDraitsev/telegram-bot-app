@@ -3,6 +3,7 @@ import type { Chat, User } from 'grammy/types'
 import { logger } from '../../logger'
 import type { UserStat } from '../../types'
 import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
+import { CHAT_STATISTICS_TABLE_NAME } from './table-names'
 
 interface ChatStat {
   chatId: string
@@ -60,7 +61,7 @@ const getChatStatistic = async (
   chat_id: number | string,
 ): Promise<ChatStat | undefined> => {
   const params = {
-    TableName: 'chat-statistics',
+    TableName: CHAT_STATISTICS_TABLE_NAME,
     ExpressionAttributeValues: { ':chatId': String(chat_id) },
     KeyConditionExpression: 'chatId = :chatId',
   }
@@ -82,7 +83,7 @@ async function putVersionedChatStatistic(
 
   if (!current) {
     await dynamoPutItem({
-      TableName: 'chat-statistics',
+      TableName: CHAT_STATISTICS_TABLE_NAME,
       Item: item,
       ConditionExpression: 'attribute_not_exists(#chatId)',
       ExpressionAttributeNames: { '#chatId': 'chatId' },
@@ -92,7 +93,7 @@ async function putVersionedChatStatistic(
 
   const hasVersion = typeof current.version === 'number'
   await dynamoPutItem({
-    TableName: 'chat-statistics',
+    TableName: CHAT_STATISTICS_TABLE_NAME,
     Item: item,
     ConditionExpression: hasVersion
       ? '#version = :expectedVersion'

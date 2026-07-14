@@ -26,7 +26,7 @@ Resources:
   ChatStatisticsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: chat-statistics
+      TableName: ${self:custom.chatStatisticsTableName}
       AttributeDefinitions:
         - AttributeName: chatId
           AttributeType: S
@@ -38,7 +38,7 @@ Resources:
   ChatEventsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: chat-events
+      TableName: ${self:custom.chatEventsTableName}
       AttributeDefinitions:
         - AttributeName: chatId
           AttributeType: S
@@ -92,8 +92,8 @@ Resources:
                 Action:
                   - dynamodb:Query
                 Resource:
-                  - arn:aws:dynamodb:*:*:table/chat-statistics
-                  - arn:aws:dynamodb:*:*:table/chat-events
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}/index/${self:custom.websocketConnectionsChatIdIndexName}
               - Effect: Allow
                 Action:
