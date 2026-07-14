@@ -22,7 +22,7 @@ flowchart TB
     IMG@{ icon: "logos:aws-lambda", label: "sharp-renderer<br/>PNG images", h: 42 }
 
     WSS@{ icon: "logos:aws-api-gateway", label: "WebSocket API", h: 40 }
-    HTTP@{ icon: "logos:aws-api-gateway", label: "REST API<br/>/search · /statistics", h: 40 }
+    HTTP@{ icon: "logos:aws-api-gateway", label: "REST API<br/>/search", h: 40 }
   end
 
   TG@{ icon: "logos:telegram", label: "Telegram", h: 46 }
@@ -79,7 +79,6 @@ flowchart TB
   BCAST -.->|"push live stats"| WSS
   WSS <--> WSL
   HTTP <--> SEARCH
-  HTTP <--> IMG
 
   NEXT <-->|"live stats"| WSS
   NEXT <-->|"search · charts"| HTTP

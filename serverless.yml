@@ -150,10 +150,6 @@ functions:
     environment:
       FONTCONFIG_PATH: "./fonts"
     memorySize: 1536
-    events:
-      - http:
-          path: /statistics/{chatId}
-          method: get
 
   websocket-connect:
     handler: src/websockets/index.connect
