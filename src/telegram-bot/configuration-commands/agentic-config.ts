@@ -1,12 +1,16 @@
 import type { Bot } from 'grammy/web'
 
-import { toggleAgenticChat } from '@tg-bot/common'
+import { isMessageAuthorChatAdmin, toggleAgenticChat } from '@tg-bot/common'
 
 const setupAgenticConfig = (bot: Bot) => {
   bot.command('toggle', async (ctx) => {
     const chatId = ctx.chat?.id
     if (!chatId) {
       return ctx.reply('❌ Could not determine chat ID')
+    }
+
+    if (!(await isMessageAuthorChatAdmin(ctx.message, ctx.api))) {
+      return ctx.reply('❌ Only chat administrators can change this setting')
     }
 
     const result = await toggleAgenticChat(chatId)

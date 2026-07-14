@@ -11,6 +11,7 @@ import type { Api } from 'grammy'
 type TelegramApiMethods = Pick<
   Api,
   | 'getFile'
+  | 'getChatMember'
   | 'sendMessage'
   | 'sendPhoto'
   | 'sendVoice'

@@ -1,11 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Message } from 'grammy/types'
 
-import type { MediaBuffer } from '@tg-bot/common'
+import type { ChatAdminApi, MediaBuffer } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 interface ToolContext {
   message: Message
+  api?: ChatAdminApi
   mediaBuffers?: MediaBuffer[]
   responses: AgentResponse[]
 }
@@ -47,6 +48,10 @@ export async function runWithToolContext<T>(
   message: Message,
   mediaBuffers: MediaBuffer[] | undefined,
   callback: () => Promise<T>,
+  api?: ChatAdminApi,
 ): Promise<T> {
-  return contextStorage.run({ message, mediaBuffers, responses: [] }, callback)
+  return contextStorage.run(
+    { message, api, mediaBuffers, responses: [] },
+    callback,
+  )
 }

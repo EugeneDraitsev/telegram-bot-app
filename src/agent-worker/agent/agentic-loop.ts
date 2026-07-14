@@ -944,9 +944,11 @@ export async function runAgenticLoop(
 
   let stopTyping: (() => void) | undefined
   let stopThinkingDraft: (() => void) | undefined
+  const runInToolContext = <T>(callback: () => Promise<T>): Promise<T> =>
+    runWithToolContext(message, mediaBuffers, callback, api)
 
   try {
-    await runWithToolContext(message, mediaBuffers, async () => {
+    await runInToolContext(async () => {
       const textContent = message.text || message.caption || ''
       const hasMedia =
         !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0

@@ -57,6 +57,7 @@ import { sendResponses } from '../delivery'
 
 function createApi(): TestTelegramApi {
   return {
+    getChatMember: jest.fn(),
     getFile: jest.fn(),
     sendMessage: jest.fn().mockResolvedValue({ message_id: 1 }),
     sendRichMessage: jest.fn().mockResolvedValue({ message_id: 8 }),
