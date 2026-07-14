@@ -25,7 +25,7 @@ export const DEFAULT_HELPER_TEXT_MODEL: AiModelConfig = {
 
 export const DEFAULT_OPENAI_TEXT_MODEL: AiModelConfig = {
   provider: 'openai',
-  model: 'gpt-5.5',
+  model: 'gpt-5.6',
 }
 
 export const DEFAULT_WEB_SEARCH_MODEL: AiModelConfig = {

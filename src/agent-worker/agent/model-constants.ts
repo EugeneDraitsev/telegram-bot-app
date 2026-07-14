@@ -2,6 +2,7 @@ import {
   type AiModelConfig,
   DEFAULT_FAST_TEXT_MODEL,
   DEFAULT_HELPER_TEXT_MODEL,
+  DEFAULT_OPENAI_TEXT_MODEL,
   DEFAULT_WEB_SEARCH_MODEL,
   formatAiModelConfig,
   getAiModelConfig,
@@ -60,6 +61,22 @@ export const CHAT_FALLBACK_MODEL = formatAiModelConfig(
   CHAT_FALLBACK_MODEL_CONFIG,
 )
 export const CHAT_FALLBACK_REASONING_EFFORT = 'medium'
+
+export function resolveAgentChatModel(commandName?: string) {
+  const config =
+    commandName === 'o' ? DEFAULT_OPENAI_TEXT_MODEL : CHAT_MODEL_CONFIG
+  const isDefaultChatModel =
+    config.provider === CHAT_MODEL_CONFIG.provider &&
+    config.model === CHAT_MODEL_CONFIG.model
+
+  return {
+    config,
+    label: formatAiModelConfig(config),
+    reasoningEffort: isDefaultChatModel
+      ? CHAT_MODEL_REASONING_EFFORT
+      : CHAT_FALLBACK_REASONING_EFFORT,
+  }
+}
 export const REPLY_GATE_MODEL = formatAiModelConfig(REPLY_GATE_MODEL_CONFIG)
 export const REPLY_GATE_FALLBACK_MODEL = formatAiModelConfig(
   REPLY_GATE_FALLBACK_MODEL_CONFIG,

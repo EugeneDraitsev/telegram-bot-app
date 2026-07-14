@@ -37,6 +37,12 @@ function normalizeLine(value: string) {
   return value.replace(/\r?\n/g, ' ').trim()
 }
 
+function getBackgroundImageMediaType(backgroundImage: string) {
+  if (backgroundImage.startsWith('/9j/')) return 'image/jpeg'
+  if (backgroundImage.startsWith('UklGR')) return 'image/webp'
+  return 'image/png'
+}
+
 function splitIcon(label: string): { icon?: IconKind; label: string } {
   const normalized = normalizeLine(label)
   const iconMap: Array<[string, IconKind]> = [
@@ -457,16 +463,20 @@ export function CurrencyRates({
           <stop offset="48%" stopColor="#020617" stopOpacity={0.68} />
           <stop offset="100%" stopColor="#020617" stopOpacity={0.78} />
         </linearGradient>
+        <filter id="background-blur" x="-4%" y="-4%" width="108%" height="108%">
+          <feGaussianBlur stdDeviation={2.4} />
+        </filter>
       </defs>
       {backgroundImage ? (
         <g>
           <image
-            href={`data:image/png;base64,${backgroundImage}`}
+            href={`data:${getBackgroundImageMediaType(backgroundImage)};base64,${backgroundImage}`}
             x={0}
             y={0}
             width={WIDTH}
             height={height}
             preserveAspectRatio="xMidYMid slice"
+            filter="url(#background-blur)"
           />
           <rect width={WIDTH} height={height} fill="url(#background-overlay)" />
         </g>

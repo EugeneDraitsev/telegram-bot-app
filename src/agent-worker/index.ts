@@ -12,9 +12,8 @@ import {
   logger,
 } from '@tg-bot/common'
 import {
-  CHAT_MODEL_LABEL,
-  CHAT_MODEL_REASONING_EFFORT,
   REPLY_GATE_MODEL,
+  resolveAgentChatModel,
   runAgenticLoop,
 } from './agent'
 import { prepareAgentCommandMessage } from './commands'
@@ -83,6 +82,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
   const startedAt = Date.now()
   let lease: AgentWorkerLease | undefined
   let heartbeat: ReturnType<typeof setInterval> | undefined
+  let chatModel = resolveAgentChatModel()
   try {
     const {
       message: incomingMessage,
@@ -92,6 +92,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
       bypassReplyGate,
       commandName,
     } = event
+    chatModel = resolveAgentChatModel(commandName)
 
     if (!incomingMessage?.chat?.id) {
       logger.error(
@@ -132,8 +133,8 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
     logger.info(
       {
         ...messageMeta,
-        model: CHAT_MODEL_LABEL,
-        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+        model: chatModel.label,
+        reasoningEffort: chatModel.reasoningEffort,
         replyGateModel: REPLY_GATE_MODEL,
         hasInlineImages: Boolean(imagesData?.length),
         imageFileIdsCount: imageFileIds?.length ?? 0,
@@ -163,8 +164,8 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
     logger.info(
       {
         ...messageMeta,
-        model: CHAT_MODEL_LABEL,
-        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+        model: chatModel.label,
+        reasoningEffort: chatModel.reasoningEffort,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
         mediaCount: mediaData.mediaBuffers.length,
@@ -195,8 +196,8 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
     }
     logger.error(
       {
-        model: CHAT_MODEL_LABEL,
-        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+        model: chatModel.label,
+        reasoningEffort: chatModel.reasoningEffort,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
         error,

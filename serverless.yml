@@ -22,8 +22,8 @@ provider:
     stage: ${sls:stage}
     FRONTEND_BASE_URL: ${self:custom.frontendBaseUrl}
     CHAT_SEARCH_ALLOWED_ORIGINS: ${env:CHAT_SEARCH_ALLOWED_ORIGINS, self:custom.chatSearchAllowedOrigins}
-    CHAT_STATISTICS_TABLE_NAME: ${self:custom.chatStatisticsTableName}
-    CHAT_EVENTS_TABLE_NAME: ${self:custom.chatEventsTableName}
+    CHAT_STATISTICS_TABLE_NAME: ${self:custom.runtimeChatStatisticsTableNameByStage.${sls:stage}, self:custom.chatStatisticsTableName}
+    CHAT_EVENTS_TABLE_NAME: ${self:custom.runtimeChatEventsTableNameByStage.${sls:stage}, self:custom.chatEventsTableName}
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
     WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME: ${self:custom.websocketConnectionsChatIdIndexName}
 functions:
@@ -234,6 +234,10 @@ build:
 custom:
   runtimeByStage:
     local: nodejs24.x
+  runtimeChatStatisticsTableNameByStage:
+    local: chat-statistics
+  runtimeChatEventsTableNameByStage:
+    local: chat-events
   esbuildTargetByStage:
     local: node24
   websocketConnectionsTableName: ${self:service}-${sls:stage}-websocket-connections

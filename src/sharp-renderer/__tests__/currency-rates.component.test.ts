@@ -78,7 +78,7 @@ describe('getCurrencyRatesSvg', () => {
           background: '#123456',
         },
       })
-        .png()
+        .jpeg()
         .toBuffer()
     ).toString('base64')
     const svg = getCurrencyRatesSvg(
@@ -92,7 +92,7 @@ describe('getCurrencyRatesSvg', () => {
       backgroundImage,
     )
 
-    expect(svg).toContain('data:image/png;base64')
+    expect(svg).toContain('data:image/jpeg;base64')
     expect(svg).toContain('background-overlay')
 
     const image = await sharp(Buffer.from(svg)).png().toBuffer()

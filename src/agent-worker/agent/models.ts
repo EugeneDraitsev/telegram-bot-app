@@ -25,6 +25,7 @@ export {
   REPLY_GATE_MODEL,
   REPLY_GATE_MODEL_CONFIG,
   REPLY_GATE_REASONING_EFFORT,
+  resolveAgentChatModel,
   WEB_SEARCH_MODEL_CONFIG,
   WEB_SEARCH_MODEL_ID,
 } from './model-constants'

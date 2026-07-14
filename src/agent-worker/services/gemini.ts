@@ -8,7 +8,7 @@ const MAX_IMAGE_ATTEMPTS = 2
 
 /**
  * Generate image with optional text response.
- * Uses the Interactions API with Gemini 3.1 Flash Lite Image.
+ * Uses Gemini 3.1 Flash Lite Image through the AI SDK image API.
  */
 export async function generateImage(
   prompt: string,

@@ -20,6 +20,7 @@ import {
   collectHistoryMediaFileRefs,
   collectMediaFileRefs,
   DEFAULT_AGENT_HISTORY_LIMIT,
+  formatAiModelConfig,
   formatHistoryForDisplay,
   GEMINI_FLASH_LITE_IMAGE_MODEL,
   getAiSdkProviderOptions,
@@ -65,11 +66,11 @@ import {
 import {
   CHAT_FALLBACK_REASONING_EFFORT,
   CHAT_MODEL_CONFIG,
-  CHAT_MODEL_LABEL,
   CHAT_MODEL_REASONING_EFFORT,
   FAST_MODEL,
   HELPER_TEXT_MODEL_CONFIG,
   REPLY_GATE_MODEL,
+  resolveAgentChatModel,
 } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
@@ -744,11 +745,12 @@ async function runToolLoop(
   tools: ToolSet,
   toolByName: Map<string, AgentTool>,
   chatId: number,
+  initialModelConfig: AiModelConfig,
 ): Promise<{ finalText: string; toolResults: string[] }> {
   let finalText = ''
   const toolResults: string[] = []
-  let activeModelConfig = CHAT_MODEL_CONFIG
-  let activeModel = CHAT_MODEL_LABEL
+  let activeModelConfig = initialModelConfig
+  let activeModel = formatAiModelConfig(initialModelConfig)
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     let modelResult: GenerateModelWithRetryResult<ToolSet>
@@ -933,6 +935,8 @@ export async function runAgenticLoop(
     return
   }
 
+  const chatModel = resolveAgentChatModel(options.commandName)
+
   const messageMeta = getMessageLogMeta(message)
   const deliveryReplyMessageId = getAgentDeliveryReplyMessageId(
     message,
@@ -941,8 +945,8 @@ export async function runAgenticLoop(
   logger.info(
     {
       ...messageMeta,
-      model: CHAT_MODEL_LABEL,
-      reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+      model: chatModel.label,
+      reasoningEffort: chatModel.reasoningEffort,
       replyGateModel: REPLY_GATE_MODEL,
     },
     'loop.start',
@@ -1165,8 +1169,8 @@ export async function runAgenticLoop(
         logger.info(
           {
             chatId,
-            model: CHAT_MODEL_LABEL,
-            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+            model: chatModel.label,
+            reasoningEffort: chatModel.reasoningEffort,
             exposedTools: Object.keys(tools),
             hiddenTools: agentTools
               .filter((tool) => tool.exposeToModel === false)
@@ -1218,8 +1222,8 @@ export async function runAgenticLoop(
           logger.info(
             {
               ...messageMeta,
-              model: CHAT_MODEL_LABEL,
-              reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+              model: chatModel.label,
+              reasoningEffort: chatModel.reasoningEffort,
               durationMs: Date.now() - startedAt,
               deliveryDurationMs: Date.now() - deliveryStart,
               responseCount: responsesToSend.length,
@@ -1245,6 +1249,7 @@ export async function runAgenticLoop(
           tools,
           toolByName,
           chatId,
+          chatModel.config,
         )
 
         // Collect any responses produced by tools (media, text drafts, etc.)
@@ -1263,7 +1268,7 @@ export async function runAgenticLoop(
             logger.warn(
               {
                 ...messageMeta,
-                model: CHAT_MODEL_LABEL,
+                model: chatModel.label,
                 toolResultCount: toolResults.length,
               },
               'loop.tool_result_fallback_text',
@@ -1283,7 +1288,7 @@ export async function runAgenticLoop(
           logger.warn(
             {
               ...messageMeta,
-              model: CHAT_MODEL_LABEL,
+              model: chatModel.label,
               durationMs: Date.now() - startedAt,
             },
             'loop.no_response_fallback_text',
@@ -1301,8 +1306,8 @@ export async function runAgenticLoop(
         logger.info(
           {
             ...messageMeta,
-            model: CHAT_MODEL_LABEL,
-            reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+            model: chatModel.label,
+            reasoningEffort: chatModel.reasoningEffort,
             durationMs: Date.now() - startedAt,
             deliveryDurationMs: Date.now() - deliveryStart,
             responseCount: responsesToSend.length,
@@ -1318,8 +1323,8 @@ export async function runAgenticLoop(
     logger.error(
       {
         ...messageMeta,
-        model: CHAT_MODEL_LABEL,
-        reasoningEffort: CHAT_MODEL_REASONING_EFFORT,
+        model: chatModel.label,
+        reasoningEffort: chatModel.reasoningEffort,
         durationMs: Date.now() - startedAt,
         error: extractErrorInfo(error),
       },

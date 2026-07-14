@@ -12,6 +12,21 @@ import {
   shouldIncludeHistoryMediaInModel,
   shouldUseDirectSvgRender,
 } from '../agentic-loop'
+import { CHAT_MODEL_CONFIG, resolveAgentChatModel } from '../models'
+
+describe('resolveAgentChatModel', () => {
+  test('routes /o to GPT-5.6 with medium reasoning', () => {
+    expect(resolveAgentChatModel('o')).toEqual({
+      config: { provider: 'openai', model: 'gpt-5.6' },
+      label: 'openai/gpt-5.6',
+      reasoningEffort: 'medium',
+    })
+  })
+
+  test('keeps other commands on the default chat model', () => {
+    expect(resolveAgentChatModel('q').config).toBe(CHAT_MODEL_CONFIG)
+  })
+})
 
 describe('buildNativeTools', () => {
   test('wraps legacy JSON parameters as AI SDK schemas', async () => {
