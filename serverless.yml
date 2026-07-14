@@ -26,14 +26,14 @@ provider:
     CHAT_EVENTS_TABLE_NAME: ${self:custom.chatEventsTableName}
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
     WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME: ${self:custom.websocketConnectionsChatIdIndexName}
-  iam:
-    role:
-      statements: ${file(roleStatements.yml)}
-
 functions:
   telegram-bot:
     timeout: 10
     handler: src/telegram-bot/index.default
+    role:
+      Fn::GetAtt:
+        - TelegramIngressRole
+        - Arn
     environment:
       TOKEN: ${env:TOKEN}
       TELEGRAM_WEBHOOK_SECRET: ${env:TELEGRAM_WEBHOOK_SECRET}
@@ -47,6 +47,10 @@ functions:
 
   telegram-reply-worker:
     handler: src/telegram-bot/telegram-reply-worker.default
+    role:
+      Fn::GetAtt:
+        - TelegramReplyWorkerRole
+        - Arn
     timeout: 300
     memorySize: 1536
     environment:
@@ -67,6 +71,10 @@ functions:
 
   telegram-agent-worker:
     handler: src/agent-worker/index.default
+    role:
+      Fn::GetAtt:
+        - TelegramAgentWorkerRole
+        - Arn
     timeout: 300
     memorySize: 1536
     maximumEventAge: 3600
@@ -85,6 +93,10 @@ functions:
 
   telegram-activity-worker:
     handler: src/telegram-bot/activity-worker.default
+    role:
+      Fn::GetAtt:
+        - TelegramActivityWorkerRole
+        - Arn
     environment:
       OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
@@ -93,6 +105,10 @@ functions:
 
   currency-scheduler:
     handler: src/telegram-bot/currency-scheduler.default
+    role:
+      Fn::GetAtt:
+        - CurrencySchedulerRole
+        - Arn
     timeout: 300
     memorySize: 1536
     environment:
@@ -109,6 +125,10 @@ functions:
 
   redis-scheduler:
     handler: src/telegram-bot/redis-scheduler.default
+    role:
+      Fn::GetAtt:
+        - RedisSchedulerRole
+        - Arn
     environment:
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
@@ -120,6 +140,10 @@ functions:
 
   sharp-renderer:
     handler: src/sharp-renderer/index.default
+    role:
+      Fn::GetAtt:
+        - SharpRendererRole
+        - Arn
     package:
       patterns:
         - fonts/**
@@ -135,18 +159,30 @@ functions:
 
   websocket-connect:
     handler: src/websockets/index.connect
+    role:
+      Fn::GetAtt:
+        - WebsocketConnectRole
+        - Arn
     events:
       - websocket:
           route: $connect
 
   websocket-disconnect:
     handler: src/websockets/index.disconnect
+    role:
+      Fn::GetAtt:
+        - WebsocketDisconnectRole
+        - Arn
     events:
       - websocket:
           route: $disconnect
 
   websocket-stats:
     handler: src/websockets/index.stats
+    role:
+      Fn::GetAtt:
+        - WebsocketStatsRole
+        - Arn
     events:
       - websocket:
           route: stats
@@ -170,6 +206,10 @@ functions:
 
   chat-search:
     handler: src/chat-search/index.getChatByName
+    role:
+      Fn::GetAtt:
+        - ChatSearchRole
+        - Arn
     events:
       - http:
           path: /search
@@ -227,4 +267,6 @@ custom:
       - "@aws-sdk/client-s3"
       - "@aws-sdk/lib-dynamodb"
 
-resources: ${file(resources.yml)}
+resources:
+  - ${file(resources.yml)}
+  - ${file(iamRoles.yml)}
