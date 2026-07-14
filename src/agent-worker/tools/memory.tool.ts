@@ -7,7 +7,6 @@ import {
   getErrorMessage,
   getGlobalMemory,
   setChatMemory,
-  setGlobalMemory,
 } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
@@ -54,41 +53,29 @@ export const updateMemoryTool: AgentTool = {
     type: 'function',
     name: 'update_memory',
     description:
-      'Save or update your memory notes (markdown). Use sparingly — only when you learn something genuinely worth remembering. Content replaces the previous value entirely.',
+      'Save or update chat-scoped memory notes (markdown). Use sparingly — only when you learn something genuinely worth remembering. Content replaces the previous chat memory entirely. Global memory is read-only.',
     parameters: {
       type: 'object',
       properties: {
-        scope: {
-          type: 'string',
-          description: 'Which memory to update: "chat" or "global".',
-          enum: ['chat', 'global'],
-        },
         content: {
           type: 'string',
           description:
             'Full markdown content to save. Replaces the existing memory entirely.',
         },
       },
-      required: ['scope', 'content'],
+      required: ['content'],
     },
   },
   execute: async (args) => {
     const { message } = requireToolContext()
 
     try {
-      if (args.scope === 'chat') {
-        const chatId = message.chat?.id
-        if (!chatId) return 'Error: No chat ID available'
-        const ok = await setChatMemory(chatId, args.content as string)
-        return ok
-          ? 'Chat memory updated successfully.'
-          : 'Error: failed to save chat memory.'
-      }
-
-      const ok = await setGlobalMemory(args.content as string)
+      const chatId = message.chat?.id
+      if (!chatId) return 'Error: No chat ID available'
+      const ok = await setChatMemory(chatId, args.content as string)
       return ok
-        ? 'Global memory updated successfully.'
-        : 'Error: failed to save global memory.'
+        ? 'Chat memory updated successfully.'
+        : 'Error: failed to save chat memory.'
     } catch (error) {
       return `Error updating memory: ${getErrorMessage(error)}`
     }

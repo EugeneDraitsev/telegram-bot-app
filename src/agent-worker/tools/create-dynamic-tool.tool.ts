@@ -5,6 +5,7 @@
 import {
   getDynamicToolsRawByScope,
   getErrorMessage,
+  isMessageAuthorChatAdmin,
   logger,
   saveDynamicToolsRaw,
 } from '@tg-bot/common'
@@ -123,10 +124,14 @@ export const createDynamicToolTool: AgentTool = {
     },
   },
   execute: async (args) => {
-    const { message } = requireToolContext()
+    const { message, api } = requireToolContext()
     const chatId = message.chat?.id
     if (!chatId) {
       return 'Error creating dynamic tool: Chat ID is missing'
+    }
+
+    if (!(await isMessageAuthorChatAdmin(message, api))) {
+      return 'Error creating dynamic tool: only chat administrators can change persistent commands'
     }
 
     try {

@@ -14,6 +14,9 @@ describe('agentSystemInstructions', () => {
     expect(agentSystemInstructions).toContain('call render_latex')
     expect(agentSystemInstructions).toContain('call render_svg_to_png')
     expect(agentSystemInstructions).toContain('Search exact names first')
+    expect(agentSystemInstructions).toContain(
+      'Never attempt to modify global memory',
+    )
     expect(agentSystemInstructions).not.toContain('AUTONOMY MODE')
     expect(agentSystemInstructions).not.toContain(
       'Tool results are evidence, not a style guide',

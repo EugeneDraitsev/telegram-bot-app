@@ -1,3 +1,4 @@
+import type { Api } from 'grammy'
 import type { Message } from 'grammy/types'
 
 import * as common from '@tg-bot/common'
@@ -23,7 +24,8 @@ describe('createDynamicToolTool', () => {
     const result = await runWithToolContext(
       {
         message_id: 1,
-        chat: { id: 777, type: 'group' },
+        chat: { id: 777, type: 'private' },
+        from: { id: 777 },
       } as Message,
       undefined,
       () =>
@@ -68,7 +70,8 @@ describe('createDynamicToolTool', () => {
     const result = await runWithToolContext(
       {
         message_id: 1,
-        chat: { id: 777, type: 'group' },
+        chat: { id: 777, type: 'private' },
+        from: { id: 777 },
       } as Message,
       undefined,
       () =>
@@ -102,7 +105,8 @@ describe('createDynamicToolTool', () => {
     const result = await runWithToolContext(
       {
         message_id: 1,
-        chat: { id: 777, type: 'group' },
+        chat: { id: 777, type: 'private' },
+        from: { id: 777 },
       } as Message,
       undefined,
       () =>
@@ -138,7 +142,8 @@ describe('createDynamicToolTool', () => {
     await runWithToolContext(
       {
         message_id: 1,
-        chat: { id: 777, type: 'group' },
+        chat: { id: 777, type: 'private' },
+        from: { id: 777 },
       } as Message,
       undefined,
       () =>
@@ -170,5 +175,32 @@ describe('createDynamicToolTool', () => {
       ],
       777,
     )
+  })
+
+  test('rejects persistent command changes from regular group members', async () => {
+    const memberApi = {
+      getChatMember: jest.fn().mockResolvedValue({ status: 'member' }),
+    } as unknown as Pick<Api, 'getChatMember'>
+
+    const result = await runWithToolContext(
+      {
+        message_id: 1,
+        chat: { id: -100, type: 'group' },
+        from: { id: 7 },
+      } as Message,
+      undefined,
+      () =>
+        createDynamicToolTool.execute({
+          name: 'val',
+          description: 'Command for Valorant party',
+          action: 'send_text',
+          template: 'VALORANT',
+        }),
+      memberApi,
+    )
+
+    expect(result).toContain('only chat administrators')
+    expect(mockedGetDynamicToolsRawByScope).not.toHaveBeenCalled()
+    expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
   })
 })
