@@ -3,7 +3,6 @@ import type { Bot, Context, NextFunction } from 'grammy/web'
 import * as common from '@tg-bot/common'
 import { setupAllCommands } from '../setup-commands'
 
-const setupAgenticConfigMock = jest.fn((..._args: unknown[]) => undefined)
 const setupCurrencyCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupExternalApisCommandsMock = jest.fn(
   (..._args: unknown[]) => undefined,
@@ -17,10 +16,6 @@ const setupGoogleCommandsMock = jest.fn((bot: unknown, ..._args: unknown[]) => {
 })
 const setupTextCommandsMock = jest.fn((..._args: unknown[]) => undefined)
 const setupUsersCommandsMock = jest.fn((..._args: unknown[]) => undefined)
-
-jest.mock('../configuration-commands', () => ({
-  setupAgenticConfig: (...args: unknown[]) => setupAgenticConfigMock(...args),
-}))
 
 jest.mock('../currency', () => ({
   __esModule: true,
