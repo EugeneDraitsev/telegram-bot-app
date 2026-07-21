@@ -15,12 +15,12 @@ export interface AiModelConfig {
 
 export const DEFAULT_FAST_TEXT_MODEL: AiModelConfig = {
   provider: 'google',
-  model: 'gemini-3.5-flash',
+  model: 'gemini-3.6-flash',
 }
 
 export const DEFAULT_HELPER_TEXT_MODEL: AiModelConfig = {
   provider: 'google',
-  model: 'gemini-2.5-flash-lite',
+  model: 'gemini-3.5-flash-lite',
 }
 
 export const DEFAULT_OPENAI_TEXT_MODEL: AiModelConfig = {

@@ -18,7 +18,7 @@ jest.mock('@tg-bot/common', () => ({
 jest.mock('../../agent/models', () => ({
   HELPER_TEXT_MODEL_CONFIG: {
     provider: 'google',
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.5-flash-lite',
   },
 }))
 
@@ -54,7 +54,7 @@ describe('codeExecutionTool', () => {
     await expect(executeTool({ task: '6 * 7' })).resolves.toBe('42')
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'google/gemini-3.5-flash-lite',
         prompt: '6 * 7',
         tools: { code_execution: { type: 'provider' } },
         toolChoice: 'auto',

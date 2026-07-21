@@ -156,7 +156,7 @@ describe('getFormattedMetrics', () => {
         source: 'agentic',
         name: 'routing',
         model: 'gemini-2.5-flash',
-        fallbackFrom: 'gemini-3.1-flash-lite',
+        fallbackFrom: 'gemini-3.5-flash-lite',
         chatId: 1,
         durationMs: 4000,
         success: true,
@@ -196,7 +196,7 @@ describe('getFormattedMetrics', () => {
     expect(result).toContain('routing')
     expect(result).toContain('web_search')
     expect(result).toContain('Models')
-    expect(result).toContain('2.5-flash &lt;= 3.1-flash-lite')
+    expect(result).toContain('2.5-flash &lt;= 3.5-flash-lite')
   })
 
   test('clamps hoursBack to safe range', async () => {

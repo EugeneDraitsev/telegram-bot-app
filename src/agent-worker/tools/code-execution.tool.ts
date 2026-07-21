@@ -10,8 +10,7 @@ import {
   getAiSdkLanguageModel,
   getErrorMessage,
 } from '@tg-bot/common'
-import { TOOL_CALL_TIMEOUT_MS } from '../agent/config'
-import { HELPER_TEXT_MODEL_CONFIG } from '../agent/models'
+import { HELPER_TEXT_MODEL_CONFIG, TOOL_CALL_TIMEOUT_MS } from '../agent'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
