@@ -1,19 +1,16 @@
 import { prepareAgentCommandMessage } from '../commands'
 
 describe('prepareAgentCommandMessage', () => {
-  test.each([
-    'e',
-    'ee',
-    'ge',
-    'gp',
-    'de',
-  ])('turns /%s into an explicit image request', (commandName) => {
-    const message = { text: 'a red fox' } as never
+  test.each(['e', 'ee', 'ge', 'gp', 'de'])(
+    'turns /%s into an explicit image request',
+    (commandName) => {
+      const message = { text: 'a red fox' } as never
 
-    expect(prepareAgentCommandMessage(message, commandName)).toEqual({
-      text: 'Generate or edit an image for this request:\na red fox',
-    })
-  })
+      expect(prepareAgentCommandMessage(message, commandName)).toEqual({
+        text: 'Generate or edit an image for this request:\na red fox',
+      })
+    },
+  )
 
   test('preserves caption-based media commands', () => {
     const message = { caption: 'make it blue', photo: [{}] } as never

@@ -16,14 +16,14 @@ function apiWithStatus(status: string) {
 }
 
 describe('isMessageAuthorChatAdmin', () => {
-  test.each([
-    'creator',
-    'administrator',
-  ])('allows Telegram chat %s', async (status) => {
-    expect(
-      await isMessageAuthorChatAdmin(groupMessage, apiWithStatus(status)),
-    ).toBe(true)
-  })
+  test.each(['creator', 'administrator'])(
+    'allows Telegram chat %s',
+    async (status) => {
+      expect(
+        await isMessageAuthorChatAdmin(groupMessage, apiWithStatus(status)),
+      ).toBe(true)
+    },
+  )
 
   test('rejects regular members and failed lookups', async () => {
     expect(

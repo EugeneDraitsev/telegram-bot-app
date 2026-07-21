@@ -203,28 +203,26 @@ describe('generateImageTool', () => {
     )
   })
 
-  test.each([
-    'e',
-    'ee',
-    'gp',
-    'de',
-  ])('keeps /%s on GPT Image', async (commandName) => {
-    await runWithToolContext(
-      message,
-      undefined,
-      () =>
-        generateImageTool.execute({
-          prompt: 'draw a fox',
-          mediaSource: 'none',
-        }),
-      undefined,
-      commandName,
-    )
+  test.each(['e', 'ee', 'gp', 'de'])(
+    'keeps /%s on GPT Image',
+    async (commandName) => {
+      await runWithToolContext(
+        message,
+        undefined,
+        () =>
+          generateImageTool.execute({
+            prompt: 'draw a fox',
+            mediaSource: 'none',
+          }),
+        undefined,
+        commandName,
+      )
 
-    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
-      expect.stringContaining('draw a fox'),
-      undefined,
-    )
-    expect(mockGenerateImage).not.toHaveBeenCalled()
-  })
+      expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
+        expect.stringContaining('draw a fox'),
+        undefined,
+      )
+      expect(mockGenerateImage).not.toHaveBeenCalled()
+    },
+  )
 })

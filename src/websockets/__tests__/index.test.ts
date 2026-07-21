@@ -239,24 +239,24 @@ describe('websocket handlers', () => {
     expect(dynamoSendSpy).not.toHaveBeenCalled()
   })
 
-  test.each([
-    { chatId: '0' },
-    { chatId: 0 },
-  ])('stats rejects zero chat ids before reading or sending stats', async (body) => {
-    const { stats } = await loadHandlers()
-    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
-    const apiSendSpy = jest.spyOn(
-      ApiGatewayManagementApiClient.prototype,
-      'send',
-    )
+  test.each([{ chatId: '0' }, { chatId: 0 }])(
+    'stats rejects zero chat ids before reading or sending stats',
+    async (body) => {
+      const { stats } = await loadHandlers()
+      const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+      const apiSendSpy = jest.spyOn(
+        ApiGatewayManagementApiClient.prototype,
+        'send',
+      )
 
-    const response = await stats(createStatsEvent(body))
+      const response = await stats(createStatsEvent(body))
 
-    expect(response.statusCode).toBe(400)
-    expect(JSON.parse(response.body)).toEqual({ message: 'invalid chat id' })
-    expect(dynamoSendSpy).not.toHaveBeenCalled()
-    expect(apiSendSpy).not.toHaveBeenCalled()
-  })
+      expect(response.statusCode).toBe(400)
+      expect(JSON.parse(response.body)).toEqual({ message: 'invalid chat id' })
+      expect(dynamoSendSpy).not.toHaveBeenCalled()
+      expect(apiSendSpy).not.toHaveBeenCalled()
+    },
+  )
 
   test('stats treats null chat id as missing before reading or sending stats', async () => {
     const { stats } = await loadHandlers()
@@ -323,26 +323,24 @@ describe('websocket handlers', () => {
     expect(apiSendSpy).not.toHaveBeenCalled()
   })
 
-  test.each([
-    'null',
-    'true',
-    '123',
-    '[]',
-  ])('stats rejects non-object json bodies before reading or sending stats', async (body) => {
-    const { stats } = await loadHandlers()
-    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
-    const apiSendSpy = jest.spyOn(
-      ApiGatewayManagementApiClient.prototype,
-      'send',
-    )
+  test.each(['null', 'true', '123', '[]'])(
+    'stats rejects non-object json bodies before reading or sending stats',
+    async (body) => {
+      const { stats } = await loadHandlers()
+      const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+      const apiSendSpy = jest.spyOn(
+        ApiGatewayManagementApiClient.prototype,
+        'send',
+      )
 
-    const response = await stats({ ...createStatsEvent({}), body })
+      const response = await stats({ ...createStatsEvent({}), body })
 
-    expect(response.statusCode).toBe(400)
-    expect(JSON.parse(response.body)).toEqual({
-      message: 'invalid stats body',
-    })
-    expect(dynamoSendSpy).not.toHaveBeenCalled()
-    expect(apiSendSpy).not.toHaveBeenCalled()
-  })
+      expect(response.statusCode).toBe(400)
+      expect(JSON.parse(response.body)).toEqual({
+        message: 'invalid stats body',
+      })
+      expect(dynamoSendSpy).not.toHaveBeenCalled()
+      expect(apiSendSpy).not.toHaveBeenCalled()
+    },
+  )
 })
