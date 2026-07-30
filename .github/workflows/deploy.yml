@@ -10,6 +10,10 @@ concurrency:
   group: telegram-prod-deploy
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -19,6 +23,14 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+          role-session-name: telegram-bot-${{ github.run_id }}
+
+      - run: aws sts get-caller-identity
+
       - run: bun install --frozen-lockfile
       - run: bun run audit
       - run: bun run biome
@@ -26,8 +38,6 @@ jobs:
       - run: bun test
       - run: bun run deploy
         env:
-          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
           SERVERLESS_ACCESS_KEY: ${{secrets.SERVERLESS_ACCESS_KEY}}
           TAVILY_API_KEY: ${{secrets.TAVILY_API_KEY}}
           GOOGLE_CX_TOKEN: ${{secrets.GOOGLE_CX_TOKEN}}
