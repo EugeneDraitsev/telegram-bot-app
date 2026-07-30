@@ -27,13 +27,6 @@
         "zod": "^4.4.3",
       },
     },
-    "src/chat-search": {
-      "name": "@tg-bot/chat-search",
-      "version": "1.0.0",
-      "dependencies": {
-        "@tg-bot/common": "workspace:*",
-      },
-    },
     "src/common": {
       "name": "@tg-bot/common",
       "version": "1.0.0",
@@ -462,8 +455,6 @@
     "@tg-bot/agent-worker": ["@tg-bot/agent-worker@workspace:src/agent-worker"],
 
     "@tg-bot/chat-bot": ["@tg-bot/chat-bot@workspace:src/telegram-bot"],
-
-    "@tg-bot/chat-search": ["@tg-bot/chat-search@workspace:src/chat-search"],
 
     "@tg-bot/common": ["@tg-bot/common@workspace:src/common"],
 

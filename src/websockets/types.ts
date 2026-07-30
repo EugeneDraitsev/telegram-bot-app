@@ -1,4 +1,4 @@
-import type { User } from 'grammy/types'
+import type { Chat, User } from 'grammy/types'
 
 import type { UserStat } from '@tg-bot/common'
 
@@ -14,6 +14,14 @@ export type ConnectionIndexRecord = Pick<Connection, 'connectionId'> & {
 }
 
 export type StatsPayload = {
+  chatInfo?: Pick<
+    Chat,
+    'id' | 'type' | 'title' | 'username' | 'first_name' | 'last_name'
+  >
   usersData: Array<User & { messages: number }>
   historicalData: UserStat[]
+}
+
+export type StatsErrorPayload = {
+  error: string
 }

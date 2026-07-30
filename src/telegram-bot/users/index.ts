@@ -2,7 +2,6 @@ import { InputFile } from 'grammy/web'
 import type { Bot } from 'grammy/web'
 
 import {
-  FRONTEND_BASE_URL,
   getChatName,
   getCommandData,
   getFormattedChatStatisticsMessages,
@@ -151,13 +150,9 @@ const setupUsersCommands = (bot: Bot) => {
       })
     }
 
-    return ctx.reply(
-      `${chatName} chat statistics: ${FRONTEND_BASE_URL}/chat/${chatId}`,
-      {
-        reply_parameters: { message_id: replyId },
-        parse_mode: 'HTML',
-      },
-    )
+    return ctx.reply(message, {
+      reply_parameters: { message_id: replyId },
+    })
   })
 
   bot.command('all', async (ctx) => {

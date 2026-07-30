@@ -5,7 +5,7 @@ import type { UserStat } from '../../types'
 import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
 import { CHAT_STATISTICS_TABLE_NAME } from './table-names'
 
-interface ChatStat {
+export interface ChatStat {
   chatId: string
   chatInfo?: Chat
   users: UserStat[]
@@ -69,6 +69,8 @@ const getChatStatistic = async (
   const result = await dynamoQuery(params)
   return toChatStat(result.Items?.[0])
 }
+
+export const getStoredChatStatistics = getChatStatistic
 
 interface ChatStatMutation<T> {
   result: T

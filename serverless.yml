@@ -21,7 +21,6 @@ provider:
     region: eu-central-1
     stage: ${sls:stage}
     FRONTEND_BASE_URL: ${self:custom.frontendBaseUrl}
-    CHAT_SEARCH_ALLOWED_ORIGINS: ${env:CHAT_SEARCH_ALLOWED_ORIGINS, self:custom.chatSearchAllowedOrigins}
     CHAT_STATISTICS_TABLE_NAME: ${self:custom.runtimeChatStatisticsTableNameByStage.${sls:stage}, self:custom.chatStatisticsTableName}
     CHAT_EVENTS_TABLE_NAME: ${self:custom.runtimeChatEventsTableNameByStage.${sls:stage}, self:custom.chatEventsTableName}
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
@@ -55,6 +54,7 @@ functions:
     memorySize: 1536
     environment:
       TOKEN: ${env:TOKEN}
+      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
       COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
@@ -178,6 +178,8 @@ functions:
       Fn::GetAtt:
         - WebsocketStatsRole
         - Arn
+    environment:
+      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
     events:
       - websocket:
           route: stats
@@ -198,20 +200,6 @@ functions:
             - .
             - Ref: AWS::URLSuffix
             - /${sls:stage}
-
-  chat-search:
-    handler: src/chat-search/index.getChatByName
-    role:
-      Fn::GetAtt:
-        - ChatSearchRole
-        - Arn
-    events:
-      - http:
-          path: /search
-          method: get
-      - http:
-          path: /search
-          method: options
 
 plugins:
   - serverless-esbuild
@@ -245,7 +233,6 @@ custom:
   chatStatisticsTableName: ${param:chatStatisticsTableName}
   chatEventsTableName: ${param:chatEventsTableName}
   frontendBaseUrl: ${env:FRONTEND_BASE_URL, 'https://telegram-bot-ui.vercel.app'}
-  chatSearchAllowedOrigins: ${self:custom.frontendBaseUrl},http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
   serverless-offline:
     httpPort: 4000
     reloadHandler: true

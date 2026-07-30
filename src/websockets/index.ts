@@ -13,13 +13,19 @@ import {
   dynamoUpdateItem,
   get24hChatStats,
   getRequiredEnv,
-  getStoredChatUsers,
+  getStoredChatStatistics,
   logger,
+  verifyStatisticsAccessToken,
 } from '@tg-bot/common'
-import type { Connection, ConnectionIndexRecord, StatsPayload } from './types'
+import type {
+  Connection,
+  ConnectionIndexRecord,
+  StatsErrorPayload,
+  StatsPayload,
+} from './types'
 
 type StatsBodyParseResult =
-  | { kind: 'ok'; value: { chatId?: unknown } }
+  | { kind: 'ok'; value: { chatId?: unknown; accessToken?: unknown } }
   | { kind: 'invalid_json' }
   | { kind: 'invalid_body' }
 
@@ -73,7 +79,10 @@ const parseStatsBody = (
       return { kind: 'invalid_body' }
     }
 
-    return { kind: 'ok', value: parsed as { chatId?: unknown } }
+    return {
+      kind: 'ok',
+      value: parsed as { chatId?: unknown; accessToken?: unknown },
+    }
   } catch {
     return { kind: 'invalid_json' }
   }
@@ -102,7 +111,7 @@ const isConditionalCheckFailedError = (error: unknown) => {
 const sendEvent = async (
   connectionId: string,
   endpoint: string,
-  data: StatsPayload,
+  data: StatsPayload | StatsErrorPayload,
 ) => {
   const client = getClient(endpoint)
 
@@ -156,12 +165,27 @@ const subscribeConnectionToChat = (connectionId: string, chatId: string) =>
   })
 
 const getStatsPayload = async (chatId: string): Promise<StatsPayload> => {
-  const [usersData, historicalData] = await Promise.all([
+  const [usersData, storedStatistics] = await Promise.all([
     get24hChatStats(chatId),
-    getStoredChatUsers(chatId),
+    getStoredChatStatistics(chatId),
   ])
 
-  return { usersData, historicalData }
+  const chatInfo = storedStatistics?.chatInfo
+
+  return {
+    chatInfo: chatInfo
+      ? {
+          id: chatInfo.id,
+          type: chatInfo.type,
+          title: chatInfo.title,
+          username: chatInfo.username,
+          first_name: chatInfo.first_name,
+          last_name: chatInfo.last_name,
+        }
+      : undefined,
+    usersData,
+    historicalData: storedStatistics?.users ?? [],
+  }
 }
 
 const sendStatsToConnection = async (
@@ -222,7 +246,7 @@ export const stats = async (
     return badRequest('invalid stats body')
   }
 
-  const { chatId } = statsBodyResult.value
+  const { chatId, accessToken } = statsBodyResult.value
   if (chatId === undefined || chatId === null) {
     return badRequest('missing chat id')
   }
@@ -230,6 +254,17 @@ export const stats = async (
   const normalizedChatId = normalizeChatId(chatId)
   if (!normalizedChatId) {
     return badRequest('invalid chat id')
+  }
+
+  if (!verifyStatisticsAccessToken(normalizedChatId, accessToken)) {
+    await sendEvent(connectionId, `${domainName}/${stage}`, {
+      error:
+        'This statistics link is invalid or expired. Run /s in the Telegram chat to get a fresh link.',
+    })
+    return {
+      statusCode: 401,
+      body: JSON.stringify({ message: 'invalid or expired access token' }),
+    }
   }
 
   try {

@@ -2,7 +2,7 @@ import { ApiGatewayManagementApiClient } from '@aws-sdk/client-apigatewaymanagem
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyWebsocketEventV2 } from 'aws-lambda'
 
-import { logger } from '@tg-bot/common'
+import { createStatisticsAccessToken, logger } from '@tg-bot/common'
 
 const connectionsTableName = 'websocket-connections'
 const connectionsChatIdIndexName = 'websocket-connections-chat-id'
@@ -13,6 +13,7 @@ beforeAll(() => {
   process.env.WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME =
     connectionsChatIdIndexName
   process.env.WEBSOCKET_BROADCAST_ENDPOINT = 'example.execute-api.test/prod'
+  process.env.STATISTICS_ACCESS_SECRET = 'test-statistics-secret'
 })
 
 afterAll(() => {
@@ -23,15 +24,26 @@ const loadHandlers = async () => {
   return require('..') as typeof import('../index.js')
 }
 
-const createStatsEvent = (body: unknown) =>
-  ({
-    body: JSON.stringify(body),
+const createStatsEvent = (body: unknown) => {
+  const bodyWithAccess =
+    body && typeof body === 'object' && !Array.isArray(body)
+      ? {
+          accessToken: createStatisticsAccessToken(
+            String((body as { chatId?: unknown }).chatId ?? '123'),
+          ),
+          ...body,
+        }
+      : body
+
+  return {
+    body: JSON.stringify(bodyWithAccess),
     requestContext: {
       connectionId: 'connection-1',
       domainName: 'example.execute-api.test',
       stage: 'prod',
     },
-  }) as APIGatewayProxyWebsocketEventV2
+  } as APIGatewayProxyWebsocketEventV2
+}
 
 const createConnectEvent = () =>
   ({
@@ -98,6 +110,12 @@ describe('websocket handlers', () => {
             Items: [
               {
                 chatId: '123',
+                chatInfo: {
+                  id: 123,
+                  type: 'group',
+                  title: 'Test chat',
+                  invite_link: 'https://example.test/private-invite',
+                },
                 users: [{ id: 1, msgCount: 2, username: 'Jane' }],
               },
             ],
@@ -118,6 +136,7 @@ describe('websocket handlers', () => {
     const postInput = apiSendSpy.mock.calls[0][0].input as { Data: unknown }
 
     expect(JSON.parse(String(postInput.Data))).toEqual({
+      chatInfo: { id: 123, type: 'group', title: 'Test chat' },
       usersData: [{ id: 1, first_name: 'Jane', messages: 1 }],
       historicalData: [{ id: 1, msgCount: 2, username: 'Jane' }],
     })
@@ -272,6 +291,26 @@ describe('websocket handlers', () => {
     expect(JSON.parse(response.body)).toEqual({ message: 'missing chat id' })
     expect(dynamoSendSpy).not.toHaveBeenCalled()
     expect(apiSendSpy).not.toHaveBeenCalled()
+  })
+
+  test('stats rejects invalid access tokens before reading chat data', async () => {
+    const { stats } = await loadHandlers()
+    const dynamoSendSpy = jest.spyOn(DynamoDBDocumentClient.prototype, 'send')
+    const apiSendSpy = jest
+      .spyOn(ApiGatewayManagementApiClient.prototype, 'send')
+      .mockImplementation(() => Promise.resolve({}) as never)
+
+    const response = await stats(
+      createStatsEvent({ chatId: '123', accessToken: 'invalid' }),
+    )
+
+    expect(response.statusCode).toBe(401)
+    expect(dynamoSendSpy).not.toHaveBeenCalled()
+    expect(apiSendSpy).toHaveBeenCalledTimes(1)
+    const postInput = apiSendSpy.mock.calls[0][0].input as { Data: unknown }
+    expect(JSON.parse(String(postInput.Data))).toEqual({
+      error: expect.stringContaining('invalid or expired'),
+    })
   })
 
   test('stats keeps subscription when initial snapshot fetch fails', async () => {
