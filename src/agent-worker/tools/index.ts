@@ -34,8 +34,10 @@ export {
   addResponse,
   getCollectedResponses,
   getToolCommandName,
+  getToolMetricAttribution,
   requireToolContext,
   runWithToolContext,
+  trackToolModelCall,
   withToolMediaBuffers,
 } from './context'
 // Individual tools

@@ -25,7 +25,7 @@ export interface SearchWebOptions {
 
 export const WEB_SEARCH_MODEL = WEB_SEARCH_MODEL_ID
 const WEB_SEARCH_TYPE = `${WEB_SEARCH_MODEL_CONFIG.provider}_web_search`
-const WEB_SEARCH_MODEL_LABEL = `${WEB_SEARCH_MODEL_CONFIG.provider}/${WEB_SEARCH_MODEL_CONFIG.model}`
+export const WEB_SEARCH_MODEL_LABEL = `${WEB_SEARCH_MODEL_CONFIG.provider}/${WEB_SEARCH_MODEL_CONFIG.model}`
 
 function getProviderTools(): ToolSet {
   if (WEB_SEARCH_MODEL_CONFIG.provider === 'google') {

@@ -139,6 +139,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
         hasInlineImages: Boolean(imagesData?.length),
         imageFileIdsCount: imageFileIds?.length ?? 0,
         bypassReplyGate: Boolean(bypassReplyGate),
+        commandName,
       },
       'worker.start',
     )
@@ -170,6 +171,7 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
         durationMs: Date.now() - startedAt,
         mediaCount: mediaData.mediaBuffers.length,
         bypassReplyGate: Boolean(bypassReplyGate),
+        commandName,
       },
       'worker.done',
     )
@@ -196,10 +198,12 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
     }
     logger.error(
       {
+        ...(event.message ? getMessageLogMeta(event.message) : {}),
         model: chatModel.label,
         reasoningEffort: chatModel.reasoningEffort,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
+        commandName: event.commandName,
         error,
       },
       'worker.failed',

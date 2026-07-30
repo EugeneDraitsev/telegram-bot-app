@@ -11,7 +11,10 @@ jest.mock('../../services', () => ({
 }))
 
 import { runWithToolContext } from '../context'
-import { generateImageTool } from '../generate-image.tool'
+import {
+  generateImageTool,
+  getImageGenerationRoute,
+} from '../generate-image.tool'
 
 const message = {
   chat: { id: 123 },
@@ -225,4 +228,23 @@ describe('generateImageTool', () => {
       expect(mockGenerateImage).not.toHaveBeenCalled()
     },
   )
+
+  test('keeps provider routing and metric labels in one definition', () => {
+    expect(getImageGenerationRoute()).toEqual([
+      {
+        provider: 'gemini',
+        model: 'google/gemini-3.1-flash-lite-image',
+      },
+      { provider: 'openai', model: 'openai/gpt-image-2' },
+    ])
+    expect(getImageGenerationRoute('ge')).toEqual([
+      {
+        provider: 'gemini',
+        model: 'google/gemini-3.1-flash-lite-image',
+      },
+    ])
+    expect(getImageGenerationRoute('e')).toEqual([
+      { provider: 'openai', model: 'openai/gpt-image-2' },
+    ])
+  })
 })

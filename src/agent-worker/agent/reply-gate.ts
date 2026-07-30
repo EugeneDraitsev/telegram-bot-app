@@ -116,7 +116,7 @@ function getChatId(message: Message): number | undefined {
   return typeof chatId === 'number' ? chatId : undefined
 }
 
-function recordReplyGateMetric(params: {
+async function recordReplyGateMetric(params: {
   chatId?: number
   durationMs: number
   model: string
@@ -130,7 +130,7 @@ function recordReplyGateMetric(params: {
     ? 'success'
     : getMetricStatusFromError(params.error)
 
-  void recordMetric({
+  await recordMetric({
     type: 'model_call',
     source: 'agentic',
     name: 'reply_gate',
@@ -203,7 +203,7 @@ async function callReplyGateModel(params: {
       },
       'reply_gate.done',
     )
-    recordReplyGateMetric({
+    await recordReplyGateMetric({
       chatId: params.chatId,
       durationMs,
       model: params.model,
@@ -227,7 +227,7 @@ async function callReplyGateModel(params: {
         ? 'reply_gate.fallback_failed'
         : 'reply_gate.failed',
     )
-    recordReplyGateMetric({
+    await recordReplyGateMetric({
       chatId: params.chatId,
       durationMs,
       model: params.model,

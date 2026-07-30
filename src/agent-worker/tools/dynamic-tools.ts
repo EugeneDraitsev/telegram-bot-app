@@ -12,10 +12,11 @@ import {
   type SearchWebOptions,
   searchWebOpenAi as searchWeb,
   WEB_SEARCH_MODEL,
+  WEB_SEARCH_MODEL_LABEL,
   type WebSearchResponseFormat,
 } from '../services/openai-web-search'
 import type { AgentTool } from '../types'
-import { addResponse, requireToolContext } from './context'
+import { addResponse, requireToolContext, trackToolModelCall } from './context'
 
 const MAX_DYNAMIC_TOOLS = 16
 
@@ -187,11 +188,19 @@ function createDynamicTool(
           return `Error: Dynamic tool "${name}" has empty query`
         }
 
-        const text = await dependencies.searchWeb(
-          preparedQuery,
-          (args.format as 'brief' | 'detailed' | 'list') ??
-            definition.searchFormat,
-          { chatId: message.chat?.id },
+        const text = await trackToolModelCall(
+          {
+            name: 'web_search',
+            model: WEB_SEARCH_MODEL_LABEL,
+            attribution: { source: 'command', command: name },
+          },
+          () =>
+            dependencies.searchWeb(
+              preparedQuery,
+              (args.format as 'brief' | 'detailed' | 'list') ??
+                definition.searchFormat,
+              { chatId: message.chat?.id },
+            ),
         )
         addStickerResponseIfPresent()
         return text

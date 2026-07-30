@@ -1,9 +1,14 @@
 import sharp from 'sharp'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 
-import { type CurrencyRateSection, get24hChatStats } from '@tg-bot/common'
+import {
+  type CurrencyRateSection,
+  get24hChatStats,
+  type MetricsReport,
+} from '@tg-bot/common'
 import { getCurrencyRatesSvg } from './currency-rates.component'
 import { getDailyUsersBarsSvg } from './daily-users-bars.component'
+import { getMetricsDashboardSvg } from './metrics-dashboard.component'
 
 type CurrencyRatesEvent = {
   currencyBackgroundImage?: string
@@ -15,6 +20,10 @@ type SvgRenderEvent = {
   width?: unknown
   height?: unknown
   backgroundColor?: unknown
+}
+
+type MetricsDashboardEvent = {
+  metricsReport?: unknown
 }
 
 type RenderPngOptions = {
@@ -135,7 +144,27 @@ function pngResponse(image: Buffer) {
   }
 }
 
+function isMetricsReport(value: unknown): value is MetricsReport {
+  if (!value || typeof value !== 'object') return false
+  const report = value as Partial<MetricsReport>
+  return (
+    typeof report.hours === 'number' &&
+    typeof report.toMs === 'number' &&
+    typeof report.totalOperations === 'number' &&
+    Array.isArray(report.timeline) &&
+    Array.isArray(report.modelStages) &&
+    Array.isArray(report.tools) &&
+    Array.isArray(report.models)
+  )
+}
+
 const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
+  const metricsReport = (event as MetricsDashboardEvent).metricsReport
+  if (isMetricsReport(metricsReport)) {
+    const image = await renderSvgPng(getMetricsDashboardSvg(metricsReport))
+    return pngResponse(image)
+  }
+
   const svgPayload = (event as SvgRenderEvent).svg
   if (typeof svgPayload === 'string') {
     try {

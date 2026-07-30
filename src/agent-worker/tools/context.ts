@@ -1,7 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Message } from 'grammy/types'
 
-import type { ChatAdminApi, MediaBuffer } from '@tg-bot/common'
+import {
+  type ChatAdminApi,
+  type MediaBuffer,
+  type MetricSource,
+  type MetricStatus,
+  timedCall,
+} from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 interface ToolContext {
@@ -32,6 +38,37 @@ export function getCollectedResponses(): AgentResponse[] {
 
 export function getToolCommandName(): string | undefined {
   return contextStorage.getStore()?.commandName
+}
+
+export function getToolMetricAttribution(): {
+  source: MetricSource
+  command?: string
+} {
+  const command = getToolCommandName()
+  return command ? { source: 'command', command } : { source: 'agentic' }
+}
+
+export async function trackToolModelCall<T>(
+  options: {
+    name: string
+    model: string
+    fallbackFrom?: string
+    attribution?: { source: MetricSource; command?: string }
+    classifyResult?: (result: T) => MetricStatus
+  },
+  fn: () => Promise<T>,
+): Promise<T> {
+  const { message } = requireToolContext()
+  const { attribution, ...metricOptions } = options
+  return timedCall(
+    {
+      type: 'model_call',
+      ...(attribution ?? getToolMetricAttribution()),
+      ...metricOptions,
+      chatId: message.chat.id,
+    },
+    fn,
+  )
 }
 
 export async function withToolMediaBuffers<T>(

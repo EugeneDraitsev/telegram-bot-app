@@ -6,6 +6,7 @@ import {
   getAiSdkLanguageModel,
   getAiSdkProviderOptions,
   logger,
+  type MetricSource,
   type MetricStatus,
   recordMetric,
 } from '@tg-bot/common'
@@ -36,6 +37,11 @@ export interface GenerateModelWithRetryResult<TOOLS extends ToolSet> {
   modelConfig: AiModelConfig
   model: string
   fallbackFrom?: string
+}
+
+export interface ModelMetricAttribution {
+  source: MetricSource
+  command?: string
 }
 
 export class ModelCallTimeoutError extends Error {
@@ -163,6 +169,7 @@ export async function generateModelWithRetryWithInfo<
   metricName: string,
   modelConfig: AiModelConfig = CHAT_MODEL_CONFIG,
   timeoutMs: number = CHAT_MODEL_TIMEOUT_MS,
+  attribution: ModelMetricAttribution = { source: 'agentic' },
 ): Promise<GenerateModelWithRetryResult<TOOLS>> {
   const model = formatAiModelConfig(modelConfig)
   const startedAt = Date.now()
@@ -173,19 +180,20 @@ export async function generateModelWithRetryWithInfo<
       name: metricName,
       model,
       timeoutMs,
+      ...attribution,
     },
     'model.call_start',
   )
 
-  const track = (
+  const track = async (
     attemptStartedAt: number,
     attemptModel: string,
     status: MetricStatus = 'success',
     fallbackFrom?: string,
   ) => {
-    void recordMetric({
+    await recordMetric({
       type: 'model_call',
-      source: 'agentic',
+      ...attribution,
       name: metricName,
       model: attemptModel,
       fallbackFrom,
@@ -204,10 +212,10 @@ export async function generateModelWithRetryWithInfo<
       chatId,
       timeoutMs,
     )
-    track(startedAt, model)
+    await track(startedAt, model)
     return { response, modelConfig, model }
   } catch (primaryError) {
-    track(startedAt, model, getModelErrorStatus(primaryError))
+    await track(startedAt, model, getModelErrorStatus(primaryError))
 
     if (!shouldUseFallback(modelConfig)) {
       throw primaryError
@@ -221,6 +229,7 @@ export async function generateModelWithRetryWithInfo<
         name: metricName,
         model: fallbackModel,
         fallbackFrom: model,
+        ...attribution,
         error: primaryError,
       },
       'model.fallback_invoked',
@@ -232,6 +241,7 @@ export async function generateModelWithRetryWithInfo<
         model: fallbackModel,
         timeoutMs,
         fallbackFrom: model,
+        ...attribution,
       },
       'model.call_start',
     )
@@ -243,7 +253,7 @@ export async function generateModelWithRetryWithInfo<
         chatId,
         timeoutMs,
       )
-      track(fallbackStartedAt, fallbackModel, 'success', model)
+      await track(fallbackStartedAt, fallbackModel, 'success', model)
       return {
         response,
         modelConfig: CHAT_FALLBACK_MODEL_CONFIG,
@@ -251,7 +261,7 @@ export async function generateModelWithRetryWithInfo<
         fallbackFrom: model,
       }
     } catch (fallbackError) {
-      track(
+      await track(
         fallbackStartedAt,
         fallbackModel,
         getModelErrorStatus(fallbackError),
@@ -268,6 +278,7 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
   metricName: string,
   modelConfig: AiModelConfig = CHAT_MODEL_CONFIG,
   timeoutMs: number = CHAT_MODEL_TIMEOUT_MS,
+  attribution: ModelMetricAttribution = { source: 'agentic' },
 ): Promise<GenerateTextResult<TOOLS>> {
   const result = await generateModelWithRetryWithInfo(
     params,
@@ -275,6 +286,7 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
     metricName,
     modelConfig,
     timeoutMs,
+    attribution,
   )
   return result.response
 }

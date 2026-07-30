@@ -4,8 +4,9 @@
 
 import { getErrorMessage } from '@tg-bot/common'
 import { generateVoice } from '../services'
+import { VOICE_MODEL } from '../services/openai-tts'
 import type { AgentTool } from '../types'
-import { addResponse, requireToolContext } from './context'
+import { addResponse, requireToolContext, trackToolModelCall } from './context'
 
 export const generateVoiceTool: AgentTool = {
   declaration: {
@@ -48,7 +49,10 @@ export const generateVoiceTool: AgentTool = {
           | 'onyx'
           | 'nova'
           | 'shimmer') || 'nova'
-      const buffer = await generateVoice(text, voice)
+      const buffer = await trackToolModelCall(
+        { name: 'voice_generation', model: `openai/${VOICE_MODEL}` },
+        () => generateVoice(text, voice),
+      )
 
       addResponse({ type: 'voice', buffer })
       return `Generated voice message (${voice}): "${text.slice(0, 50)}..."`
