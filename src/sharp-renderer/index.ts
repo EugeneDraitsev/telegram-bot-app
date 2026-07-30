@@ -79,18 +79,21 @@ function validateSvg(
     throw new Error('SVG contains unsupported active content')
   }
 
+  const resourceScan = normalized
+    .toLowerCase()
+    .replaceAll('http://www.w3.org/2000/svg', '')
+    .replaceAll('http://www.w3.org/1999/xlink', '')
+    .replace(/\s/g, '')
+
   if (
-    /(?:href|src)\s*=\s*["']\s*(?:https?:|file:)/i.test(normalized) ||
-    /url\(\s*["']?\s*(?:https?:|file:)/i.test(normalized)
+    resourceScan.includes('http:') ||
+    resourceScan.includes('https:') ||
+    resourceScan.includes('file:')
   ) {
     throw new Error('SVG must not reference external resources')
   }
 
-  if (
-    !allowDataResources &&
-    (/(?:href|src)\s*=\s*["']\s*data:/i.test(normalized) ||
-      /url\(\s*["']?\s*data:/i.test(normalized))
-  ) {
+  if (!allowDataResources && resourceScan.includes('data:')) {
     throw new Error('SVG must not embed data resources')
   }
 

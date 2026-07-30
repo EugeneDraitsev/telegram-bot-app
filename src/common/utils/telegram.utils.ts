@@ -178,7 +178,13 @@ export const getMultimodalCommandData = async (
       files.map(async (file): Promise<CommandImageInput | undefined> => {
         if (!file.file_path) return undefined
 
-        const url = `https://api.telegram.org/file/bot${process.env.TOKEN || ''}/${file.file_path}`
+        const token = process.env.TOKEN
+        if (!token) {
+          logger.warn('getCommandImageData: TOKEN is not set')
+          return undefined
+        }
+
+        const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`
         const [data] = await getImageBuffers([url])
 
         return data
@@ -217,8 +223,7 @@ export async function getImageBuffers(imagesUrls: string[]) {
       } catch (error) {
         logger.error(
           {
-            err: toError(error),
-            imageUrl: url,
+            errorType: toError(error).name,
           },
           'getImageBuffers fetch error',
         )

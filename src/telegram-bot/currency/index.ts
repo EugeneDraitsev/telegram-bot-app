@@ -55,7 +55,7 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
     return { rates: conversion_rates, provider: 'ExchangeRate' }
   } catch (e) {
     logger.error({ error: e }, 'ExchangeRate API error')
-    const url = 'http://data.fixer.io/api/latest'
+    const url = 'https://data.fixer.io/api/latest'
     const params = new URLSearchParams({
       access_key: process.env.FIXER_API_KEY || 'set_your_token',
       format: '1',
@@ -65,6 +65,10 @@ const getCurrenciesRates = async (): Promise<CurrenciesResponse> => {
     const response = await fetch(`${url}?${params}`, {
       signal: globalThis.AbortSignal.timeout(timeout),
     })
+
+    if (!response.ok) {
+      throw new Error(`Fixer API error: ${response.statusText}`)
+    }
 
     const { rates } = await response.json()
 

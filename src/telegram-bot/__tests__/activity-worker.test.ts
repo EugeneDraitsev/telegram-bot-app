@@ -42,7 +42,7 @@ describe('activity worker', () => {
       text: 'hello',
     } as Message
 
-    await activityWorker({ message, command: '/x' }, {} as never, jest.fn())
+    await activityWorker({ message, command: '/x' })
 
     expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
     expect(saveEventMock).toHaveBeenCalledWith(user, 123, '/x', 123456, 10)
@@ -50,7 +50,7 @@ describe('activity worker', () => {
   })
 
   test('returns early for invalid payload', async () => {
-    const result = await activityWorker({}, {} as never, jest.fn())
+    const result = await activityWorker({})
 
     expect(result).toBeUndefined()
     expect(loggerWarnMock).toHaveBeenCalledWith(
@@ -73,7 +73,7 @@ describe('activity worker', () => {
       text: 'hello',
     } as Message
 
-    await activityWorker({ message, command: '' }, {} as never, jest.fn())
+    await activityWorker({ message, command: '' })
 
     expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
     expect(saveEventMock).toHaveBeenCalledWith(user, 999, '', 123456, 10)
@@ -94,7 +94,7 @@ describe('activity worker', () => {
       text: 'hello',
     } as Message
 
-    await activityWorker({ message, command: '' }, {} as never, jest.fn())
+    await activityWorker({ message, command: '' })
 
     expect(loggerErrorMock).toHaveBeenCalledWith(
       { err: error },

@@ -1,4 +1,4 @@
-import { dedent, hasRussiansLetters, normalize, unEscape } from '..'
+import { dedent, escapeHtml, hasRussiansLetters, normalize, unEscape } from '..'
 
 describe('hasRussiansLetters', () => {
   test('can check is provided text on russian or not', () => {
@@ -33,6 +33,20 @@ describe('normalize', () => {
   test('fixes spacings of strings', () => {
     expect(normalize('  some redundant  spaces here')).toEqual(
       'some redundant spaces here',
+    )
+  })
+
+  test('removes html tags without backtracking', () => {
+    expect(normalize('<p>Hello <strong>world</strong></p>')).toEqual(
+      'Hello world',
+    )
+  })
+})
+
+describe('escapeHtml', () => {
+  test('escapes Telegram HTML control characters', () => {
+    expect(escapeHtml(`<script>alert('x') & "y"</script>`)).toEqual(
+      '&lt;script&gt;alert(&#39;x&#39;) &amp; &quot;y&quot;&lt;/script&gt;',
     )
   })
 })

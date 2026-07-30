@@ -899,7 +899,6 @@ async function runToolLoop(
         'finalize',
         activeModelConfig,
       )
-      activeModelConfig = finalizeResult.modelConfig
       activeModel = finalizeResult.model
       const finalizeResponse = finalizeResult.response
       const finalizeText = finalizeResponse.text.trim()

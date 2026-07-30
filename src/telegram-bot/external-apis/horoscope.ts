@@ -1,5 +1,5 @@
 import { logger } from '@tg-bot/common'
-import { normalize } from '@tg-bot/common/utils'
+import { escapeHtml, normalize } from '@tg-bot/common/utils'
 
 const timeout = 10_000
 const rus = [
@@ -38,7 +38,9 @@ function getAstrologicalSigns(query: string): string {
 function formatHoroscopeResponse(data: {
   content: { text: Array<{ content: string }> }
 }) {
-  return data?.content?.text?.map((x) => x.content).join('\n')
+  return escapeHtml(
+    normalize(data?.content?.text?.map((x) => x.content).join('\n') ?? ''),
+  )
 }
 
 export const getHoroscope = async (query: string): Promise<string> => {
@@ -60,9 +62,7 @@ export const getHoroscope = async (query: string): Promise<string> => {
       }).then((x) => x.json()),
     ])
 
-    return `<b>Сегодня:</b>\n\n${normalize(
-      formatHoroscopeResponse(today),
-    )}\n\n<b>Завтра:</b>\n\n${formatHoroscopeResponse(tomorrow)}`
+    return `<b>Сегодня:</b>\n\n${formatHoroscopeResponse(today)}\n\n<b>Завтра:</b>\n\n${formatHoroscopeResponse(tomorrow)}`
   } catch (e) {
     logger.error({ error: e }, 'getHoroscope error')
     return 'Request error 😿'

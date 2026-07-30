@@ -37,11 +37,33 @@ export const dedent = (callSite: DedentInput, ...args: string[]) => {
   return format(output)
 }
 
+const stripHtmlTags = (value: string) => {
+  let result = ''
+  let insideTag = false
+
+  for (const character of value) {
+    if (character === '<') {
+      insideTag = true
+    } else if (character === '>') {
+      insideTag = false
+    } else if (!insideTag) {
+      result += character
+    }
+  }
+
+  return result
+}
+
 export const normalize = (str: string) =>
-  str
-    .replace(/<[^>]*?>/g, '')
-    .replace(/\s\s+/g, ' ')
-    .trim()
+  stripHtmlTags(str).replace(/\s+/g, ' ').trim()
+
+export const escapeHtml = (value: string) =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 
 export const unEscape = (htmlStr: string) =>
   htmlStr

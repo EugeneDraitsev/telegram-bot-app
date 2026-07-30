@@ -32,6 +32,14 @@ describe('renderSvgPng', () => {
     ).rejects.toThrow('must not embed data resources')
   })
 
+  test('rejects external resources with whitespace-obfuscated protocols', async () => {
+    await expect(
+      renderSvgPng(
+        '<svg xmlns="http://www.w3.org/2000/svg"><image href="h t t p s : //example.com/image.png"/></svg>',
+      ),
+    ).rejects.toThrow('must not reference external resources')
+  })
+
   test('allows a larger explicit limit for trusted internal svg', async () => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><desc>${'x'.repeat(260_000)}</desc><rect width="1" height="1"/></svg>`
 

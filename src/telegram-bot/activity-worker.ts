@@ -14,7 +14,7 @@ export interface ActivityWorkerPayload {
   command?: string
 }
 
-const activityWorker: Handler<ActivityWorkerPayload> = async (event) => {
+const activityWorker = async (event: ActivityWorkerPayload) => {
   const message = event.message
   const chat = message?.chat
 
@@ -52,4 +52,4 @@ const activityWorker: Handler<ActivityWorkerPayload> = async (event) => {
   }
 }
 
-export default activityWorker
+export default activityWorker satisfies Handler<ActivityWorkerPayload>
