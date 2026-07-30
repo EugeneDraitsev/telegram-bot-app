@@ -3,11 +3,9 @@ useDotenv: true
 
 params:
   default:
-    chatStatisticsTableName: ${self:service}-${sls:stage}-chat-statistics
     chatUserStatisticsTableName: ${self:service}-${sls:stage}-chat-user-statistics
     chatEventsTableName: ${self:service}-${sls:stage}-chat-events
   prod:
-    chatStatisticsTableName: chat-statistics
     chatUserStatisticsTableName: chat-user-statistics
     chatEventsTableName: chat-events
 
@@ -238,8 +236,6 @@ build:
 custom:
   runtimeByStage:
     local: nodejs24.x
-  runtimeChatStatisticsTableNameByStage:
-    local: chat-statistics
   runtimeChatUserStatisticsTableNameByStage:
     local: chat-user-statistics
   runtimeChatEventsTableNameByStage:
@@ -248,7 +244,6 @@ custom:
     local: node24
   websocketConnectionsTableName: ${self:service}-${sls:stage}-websocket-connections
   websocketConnectionsChatIdIndexName: ${self:service}-${sls:stage}-websocket-connections-chat-id
-  chatStatisticsTableName: ${param:chatStatisticsTableName}
   chatUserStatisticsTableName: ${param:chatUserStatisticsTableName}
   chatEventsTableName: ${param:chatEventsTableName}
   frontendBaseUrl: ${env:FRONTEND_BASE_URL, 'https://telegram-bot-ui.vercel.app'}

@@ -30,18 +30,6 @@ Resources:
         AttributeName: ttl
         Enabled: true
 
-  ChatStatisticsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: ${self:custom.chatStatisticsTableName}
-      AttributeDefinitions:
-        - AttributeName: chatId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: chatId
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
-
   ChatEventsTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -118,7 +106,6 @@ Resources:
                 Action:
                   - dynamodb:Query
                 Resource:
-                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}/index/${self:custom.websocketConnectionsChatIdIndexName}
