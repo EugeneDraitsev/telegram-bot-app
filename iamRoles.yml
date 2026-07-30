@@ -52,6 +52,13 @@ Resources:
                   - dynamodb:PutItem
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - Fn::GetAtt:
+                      - AsyncWorkerFailuresQueue
+                      - Arn
 
   TelegramAgentWorkerRole:
     Type: AWS::IAM::Role
@@ -68,6 +75,13 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - arn:aws:lambda:*:*:${self:service}-${sls:stage}-sharp-renderer
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - Fn::GetAtt:
+                      - AsyncWorkerFailuresQueue
+                      - Arn
 
   TelegramActivityWorkerRole:
     Type: AWS::IAM::Role
@@ -95,6 +109,13 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - arn:aws:lambda:*:*:${self:service}-${sls:stage}-websocket-broadcast-stats
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - Fn::GetAtt:
+                      - AsyncWorkerFailuresQueue
+                      - Arn
 
   CurrencySchedulerRole:
     Type: AWS::IAM::Role
@@ -111,12 +132,6 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - arn:aws:lambda:*:*:${self:service}-${sls:stage}-sharp-renderer
-
-  RedisSchedulerRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument: *lambdaAssumeRole
-      ManagedPolicyArns: *lambdaBasicExecution
 
   SharpRendererRole:
     Type: AWS::IAM::Role

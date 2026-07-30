@@ -38,6 +38,29 @@ export const dynamoQuery = (
   return docClient.send(command)
 }
 
+export const dynamoQueryAll = async <T = Record<string, unknown>>(
+  inputParams: QueryCommandInput,
+): Promise<T[]> => {
+  const results: T[] = []
+  let exclusiveStartKey = inputParams.ExclusiveStartKey
+
+  while (true) {
+    const queryResults = await docClient.send(
+      new QueryCommand({
+        ...inputParams,
+        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+      }),
+    )
+    results.push(...((queryResults.Items as T[]) ?? []))
+
+    if (!queryResults.LastEvaluatedKey) {
+      return results
+    }
+
+    exclusiveStartKey = queryResults.LastEvaluatedKey
+  }
+}
+
 export const dynamoPutItem = (
   params: PutCommandInput,
 ): Promise<PutCommandOutput> => {

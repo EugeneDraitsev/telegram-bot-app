@@ -52,6 +52,16 @@ functions:
         - Arn
     timeout: 300
     memorySize: 1536
+    reservedConcurrency: 5
+    maximumEventAge: 3600
+    maximumRetryAttempts: 2
+    destinations:
+      onFailure:
+        type: sqs
+        arn:
+          Fn::GetAtt:
+            - AsyncWorkerFailuresQueue
+            - Arn
     environment:
       TOKEN: ${env:TOKEN}
       STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
@@ -76,8 +86,16 @@ functions:
         - Arn
     timeout: 300
     memorySize: 1536
+    reservedConcurrency: 5
     maximumEventAge: 3600
     maximumRetryAttempts: 2
+    destinations:
+      onFailure:
+        type: sqs
+        arn:
+          Fn::GetAtt:
+            - AsyncWorkerFailuresQueue
+            - Arn
     environment:
       TOKEN: ${env:TOKEN}
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
@@ -96,6 +114,16 @@ functions:
       Fn::GetAtt:
         - TelegramActivityWorkerRole
         - Arn
+    reservedConcurrency: 10
+    maximumEventAge: 3600
+    maximumRetryAttempts: 2
+    destinations:
+      onFailure:
+        type: sqs
+        arn:
+          Fn::GetAtt:
+            - AsyncWorkerFailuresQueue
+            - Arn
     environment:
       OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
@@ -121,21 +149,6 @@ functions:
           name: ${self:service}-${sls:stage}-currency-scheduler-event
           enabled: ${env:ENABLE_SCHEDULING, true}
           rate: cron(0 9,17 ? * MON-FRI *)
-
-  redis-scheduler:
-    handler: src/telegram-bot/redis-scheduler.default
-    role:
-      Fn::GetAtt:
-        - RedisSchedulerRole
-        - Arn
-    environment:
-      UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
-      UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
-    events:
-      - schedule:
-          name: ${self:service}-${sls:stage}-redis-scheduler-event
-          enabled: ${env:ENABLE_SCHEDULING, true}
-          rate: rate(1 hour)
 
   sharp-renderer:
     handler: src/sharp-renderer/index.default

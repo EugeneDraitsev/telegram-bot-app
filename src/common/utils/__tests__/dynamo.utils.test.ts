@@ -7,6 +7,7 @@ import {
   dynamoDeleteItem,
   dynamoPutItem,
   dynamoQuery,
+  dynamoQueryAll,
   dynamoScan,
   dynamoUpdateItem,
 } from '..'
@@ -32,6 +33,27 @@ describe('dynamo utils', () => {
 
     const options = {} as PutCommandInput
     expect(await dynamoQuery(options)).toEqual('query response!!')
+  })
+
+  test('dynamoQueryAll should collect all paginated query results', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [{ id: 1 }],
+          LastEvaluatedKey: { id: 1 },
+        }),
+      )
+      .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 2 }] }))
+
+    expect(await dynamoQueryAll({ TableName: 'table' })).toEqual([
+      { id: 1 },
+      { id: 2 },
+    ])
+    expect(
+      (sendSpy.mock.calls[1][0].input as { ExclusiveStartKey?: unknown })
+        .ExclusiveStartKey,
+    ).toEqual({ id: 1 })
   })
 
   test('dynamoDeleteItem should call send on dynamo object and return promise with result', async () => {

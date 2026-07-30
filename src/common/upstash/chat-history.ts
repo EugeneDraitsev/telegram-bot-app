@@ -11,6 +11,7 @@ import { getRedisClient } from './client'
 
 const ONE_HOUR = 60 * 60 * 1000
 const TTL_MS = 24 * ONE_HOUR
+const TTL_SECONDS = TTL_MS / 1000
 const CHAT_HISTORY_REDIS_KEY = 'chat-history'
 export const DEFAULT_AGENT_HISTORY_LIMIT = 40
 export const MAX_HISTORY_TOOL_LIMIT = 200
@@ -104,10 +105,15 @@ export const saveMessage = async (message: Message, chatId?: number) => {
 
   const key = `${CHAT_HISTORY_REDIS_KEY}:${chatId}`
 
-  await redis.zadd(key, {
-    score: Date.now(),
-    member: JSON.stringify(message),
-  })
+  const now = Date.now()
+  await Promise.all([
+    redis.zadd(key, {
+      score: now,
+      member: JSON.stringify(message),
+    }),
+    redis.zremrangebyscore(key, 0, now - TTL_MS),
+    redis.expire(key, TTL_SECONDS),
+  ])
 }
 
 async function readRawHistory(
@@ -228,25 +234,4 @@ export function formatHistoryForDisplay(
 
   const headerLabel = options.headerLabel || 'Recent'
   return `${headerLabel} ${visibleMessages.length} messages:\n${formatted.join('\n')}`
-}
-
-/**
- * Remove messages older than 24h (used by scheduler)
- */
-export const clearOldMessages = async () => {
-  const redis = getRedisClient()
-  if (!redis) {
-    return
-  }
-
-  const keys = await redis.keys('chat-history:*')
-
-  for (const key of keys) {
-    await redis.zremrangebyscore(key, 0, Date.now() - TTL_MS)
-
-    const count = await redis.zcard(key)
-    if (count === 0) {
-      await redis.del(key)
-    }
-  }
 }

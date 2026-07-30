@@ -1,4 +1,8 @@
-import { getChatEventSortKey, shouldSkipStatsBroadcast } from '../chat-events'
+import {
+  getChatEventSortKey,
+  getChatEventTtl,
+  shouldSkipStatsBroadcast,
+} from '../chat-events'
 
 describe('shouldSkipStatsBroadcast', () => {
   const originalEnv = process.env
@@ -51,5 +55,13 @@ describe('getChatEventSortKey', () => {
 
   test('preserves millisecond timestamps when no message id is available', () => {
     expect(getChatEventSortKey(1_750_000_000_123)).toBe(1_750_000_000_123)
+  })
+})
+
+describe('getChatEventTtl', () => {
+  test('retains new chat events for three days', () => {
+    const dateSeconds = 1_750_000_000
+
+    expect(getChatEventTtl(dateSeconds)).toBe(dateSeconds + 3 * 24 * 60 * 60)
   })
 })

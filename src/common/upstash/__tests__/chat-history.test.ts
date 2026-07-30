@@ -5,15 +5,22 @@ import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
   getRecentRawHistory,
+  saveMessage,
 } from '../chat-history'
 import * as client from '../client'
 
 const mockZrange = jest.fn()
+const mockZadd = jest.fn()
+const mockZremrangebyscore = jest.fn()
+const mockExpire = jest.fn()
 
 const mockGetRedisClient = jest
   .spyOn(client, 'getRedisClient')
   .mockReturnValue({
     zrange: mockZrange,
+    zadd: mockZadd,
+    zremrangebyscore: mockZremrangebyscore,
+    expire: mockExpire,
   } as unknown as ReturnType<typeof client.getRedisClient>)
 
 const mockIsAiEnabledChat = jest.spyOn(utils, 'isAiEnabledChat')
@@ -38,6 +45,9 @@ function createMessage(
 
 beforeEach(() => {
   mockZrange.mockReset()
+  mockZadd.mockReset().mockResolvedValue(1)
+  mockZremrangebyscore.mockReset().mockResolvedValue(0)
+  mockExpire.mockReset().mockResolvedValue(1)
   mockIsAiEnabledChat.mockReset()
   mockIsAiEnabledChat.mockReturnValue(true)
 })
@@ -146,5 +156,28 @@ describe('getRecentRawHistory', () => {
       },
     )
     expect(history.map((message) => message.message_id)).toEqual([2, 3])
+  })
+})
+
+describe('saveMessage', () => {
+  test('prunes and expires the chat key without scanning Redis', async () => {
+    const dateNowSpy = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(1_800_000_000_000)
+    const message = createMessage(1)
+
+    await saveMessage(message, 777)
+    dateNowSpy.mockRestore()
+
+    expect(mockZadd).toHaveBeenCalledWith('chat-history:777', {
+      score: 1_800_000_000_000,
+      member: JSON.stringify(message),
+    })
+    expect(mockZremrangebyscore).toHaveBeenCalledWith(
+      'chat-history:777',
+      0,
+      1_800_000_000_000 - 24 * 60 * 60 * 1000,
+    )
+    expect(mockExpire).toHaveBeenCalledWith('chat-history:777', 24 * 60 * 60)
   })
 })

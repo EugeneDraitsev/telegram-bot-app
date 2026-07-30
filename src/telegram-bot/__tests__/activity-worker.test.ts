@@ -9,6 +9,11 @@ const saveMessageMock = jest.spyOn(common, 'saveMessage')
 const isAiEnabledChatMock = jest.spyOn(common, 'isAiEnabledChat')
 const loggerErrorMock = jest.spyOn(common.logger, 'error')
 const loggerWarnMock = jest.spyOn(common.logger, 'warn')
+const runIdempotentWorkerTaskMock = jest.spyOn(
+  common,
+  'runIdempotentWorkerTask',
+)
+const lambdaContext = { awsRequestId: 'request-1' }
 
 describe('activity worker', () => {
   beforeEach(() => {
@@ -20,6 +25,12 @@ describe('activity worker', () => {
       .mockImplementation((chatId) => chatId === 123)
     loggerErrorMock.mockReset().mockImplementation(() => {})
     loggerWarnMock.mockReset().mockImplementation(() => {})
+    runIdempotentWorkerTaskMock
+      .mockReset()
+      .mockImplementation(async ({ task }) => ({
+        duplicate: false,
+        value: await task(),
+      }))
   })
 
   afterAll(() => {
@@ -29,6 +40,7 @@ describe('activity worker', () => {
     isAiEnabledChatMock.mockRestore()
     loggerErrorMock.mockRestore()
     loggerWarnMock.mockRestore()
+    runIdempotentWorkerTaskMock.mockRestore()
   })
 
   test('tracks statistics, events and AI chat history outside ingress', async () => {
@@ -42,7 +54,7 @@ describe('activity worker', () => {
       text: 'hello',
     } as Message
 
-    await activityWorker({ message, command: '/x' })
+    await activityWorker({ message, command: '/x' }, lambdaContext)
 
     expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
     expect(saveEventMock).toHaveBeenCalledWith(user, 123, '/x', 123456, 10)
@@ -50,7 +62,7 @@ describe('activity worker', () => {
   })
 
   test('returns early for invalid payload', async () => {
-    const result = await activityWorker({})
+    const result = await activityWorker({}, lambdaContext)
 
     expect(result).toBeUndefined()
     expect(loggerWarnMock).toHaveBeenCalledWith(
@@ -73,7 +85,7 @@ describe('activity worker', () => {
       text: 'hello',
     } as Message
 
-    await activityWorker({ message, command: '' })
+    await activityWorker({ message, command: '' }, lambdaContext)
 
     expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
     expect(saveEventMock).toHaveBeenCalledWith(user, 999, '', 123456, 10)
@@ -94,7 +106,9 @@ describe('activity worker', () => {
       text: 'hello',
     } as Message
 
-    await activityWorker({ message, command: '' })
+    await expect(
+      activityWorker({ message, command: '' }, lambdaContext),
+    ).rejects.toThrow('One or more activity tasks failed')
 
     expect(loggerErrorMock).toHaveBeenCalledWith(
       { err: error },

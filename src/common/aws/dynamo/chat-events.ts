@@ -4,13 +4,19 @@ import { logger } from '../../logger'
 import type { ChatEvent } from '../../types'
 import {
   dynamoPutItem,
-  dynamoQuery,
+  dynamoQueryAll,
   getOptionalEnv,
   invokeLambda,
 } from '../../utils'
 import { CHAT_EVENTS_TABLE_NAME } from './table-names'
 
 const TELEGRAM_EVENT_ID_SPACE = 1_000_000
+const CHAT_EVENT_TTL_SECONDS = 60 * 60 * 24 * 3
+
+export function getChatEventTtl(date: number): number {
+  const dateMs = date < 10_000_000_000 ? date * 1000 : date
+  return Math.floor(dateMs / 1000) + CHAT_EVENT_TTL_SECONDS
+}
 
 export function getChatEventSortKey(date: number, messageId?: number): number {
   const dateMs = date < 10_000_000_000 ? date * 1000 : date
@@ -66,6 +72,7 @@ export const saveEvent = async (
       date: getChatEventSortKey(date, messageId),
       chatId: String(chat_id),
       command,
+      ttl: getChatEventTtl(date),
     }
 
     const params = {
@@ -88,7 +95,7 @@ export const saveEvent = async (
 const DAY = 1000 * 60 * 60 * 24
 
 export const get24hChatStats = async (chatId: string | number) => {
-  const { Items } = await dynamoQuery({
+  const data = await dynamoQueryAll<ChatEvent>({
     TableName: CHAT_EVENTS_TABLE_NAME,
     KeyConditionExpression: 'chatId = :chatId AND #date > :date',
     ExpressionAttributeValues: {
@@ -97,8 +104,6 @@ export const get24hChatStats = async (chatId: string | number) => {
     },
     ExpressionAttributeNames: { '#date': 'date' },
   })
-
-  const data = Items as ChatEvent[]
 
   const groupedData =
     data?.reduce(

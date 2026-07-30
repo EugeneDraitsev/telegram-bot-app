@@ -1,4 +1,11 @@
 Resources:
+  AsyncWorkerFailuresQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:service}-${sls:stage}-async-worker-failures
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
   ChatWebsocketConnectionsTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -50,6 +57,9 @@ Resources:
         - AttributeName: date
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   WebsocketBroadcastStatsRole:
     Type: AWS::IAM::Role

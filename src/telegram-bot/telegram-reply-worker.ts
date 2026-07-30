@@ -1,7 +1,13 @@
 import { webhookCallback } from 'grammy/web'
-import type { LambdaFunctionURLHandler } from 'aws-lambda'
+import type { Handler, Context as LambdaContext } from 'aws-lambda'
+import type { Update } from 'grammy/types'
 
-import { createBot, logger, saveBotMessageMiddleware } from '@tg-bot/common'
+import {
+  createBot,
+  logger,
+  runIdempotentWorkerTask,
+  saveBotMessageMiddleware,
+} from '@tg-bot/common'
 import { setupAllCommands } from './setup-commands'
 
 const bot = createBot()
@@ -16,24 +22,39 @@ const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
   timeoutMilliseconds: 300_000,
 })
 
-const telegramReplyWorker: LambdaFunctionURLHandler = async (
-  event,
-  context,
-) => {
+const telegramReplyWorker = async (event: Update, context: LambdaContext) => {
+  const message = event.message
+  if (!message?.chat.id || !message.message_id) {
+    logger.warn({ updateId: event.update_id }, 'reply_worker.invalid_payload')
+    return { statusCode: 200, body: 'Invalid payload' }
+  }
+
   try {
-    await handleUpdate({ body: JSON.stringify(event), headers: {} }, context)
+    const result = await runIdempotentWorkerTask({
+      namespace: 'reply-worker',
+      chatId: message.chat.id,
+      messageId: message.message_id,
+      ownerToken: context.awsRequestId,
+      task: () =>
+        handleUpdate({ body: JSON.stringify(event), headers: {} }, context),
+    })
+
+    if (result.duplicate) {
+      logger.info(
+        { chatId: message.chat.id, messageId: message.message_id },
+        'reply_worker.duplicate_skipped',
+      )
+      return { statusCode: 200, body: 'Duplicate' }
+    }
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ body: event.body ?? '' }),
+      body: 'OK',
     }
-  } catch (e) {
-    logger.error({ error: e }, 'telegramReplyWorker error')
-    return {
-      body: JSON.stringify({ message: 'Something went wrong' }),
-      // we need to send 200 here to avoid issue with telegram attempts to resend you a message
-      statusCode: 200,
-    }
+  } catch (error) {
+    logger.error({ error }, 'reply_worker.failed')
+    throw error
   }
 }
 
-export default telegramReplyWorker
+export default telegramReplyWorker satisfies Handler<Update>
