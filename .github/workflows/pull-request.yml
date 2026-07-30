@@ -22,3 +22,18 @@ jobs:
       - run: bun run build
         env:
           SERVERLESS_ACCESS_KEY: ${{secrets.SERVERLESS_ACCESS_KEY}}
+          TOKEN: ci-placeholder
+          TELEGRAM_WEBHOOK_SECRET: ci-placeholder
+          GOOGLE_CX_TOKEN: ci-placeholder
+          COMMON_GOOGLE_API_KEY: ci-placeholder
+          OPEN_WEATHER_MAP_TOKEN: ci-placeholder
+          YOUTUBE_TOKEN: ci-placeholder
+          FIXER_API_KEY: ci-placeholder
+          EXCHANGE_RATE_API_KEY: ci-placeholder
+          OPENAI_API_KEY: ci-placeholder
+          GEMINI_API_KEY: ci-placeholder
+          OPENAI_CHAT_IDS: "0"
+          UPSTASH_REDIS_URL: https://ci.invalid
+          UPSTASH_REDIS_TOKEN: ci-placeholder
+          TAVILY_API_KEY: ci-placeholder
+          GIPHY_API_KEY: ci-placeholder
