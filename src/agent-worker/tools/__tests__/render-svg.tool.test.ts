@@ -25,7 +25,12 @@ const executeTool = (args: Record<string, unknown>) =>
   })
 
 describe('renderSvgTool', () => {
+  beforeEach(() => {
+    process.env.SHARP_RENDERER_FUNCTION_NAME = 'test-sharp-renderer'
+  })
+
   afterEach(() => {
+    delete process.env.SHARP_RENDERER_FUNCTION_NAME
     jest.restoreAllMocks()
   })
 
@@ -61,6 +66,7 @@ describe('renderSvgTool', () => {
       width: 640,
       height: 320,
     })
+    expect(capturedCommand?.input.FunctionName).toBe('test-sharp-renderer')
     expect(responses).toHaveLength(1)
     expect(responses[0]).toMatchObject({ type: 'image', caption: 'chart' })
     expect((responses[0] as { buffer?: Buffer }).buffer?.equals(image)).toBe(

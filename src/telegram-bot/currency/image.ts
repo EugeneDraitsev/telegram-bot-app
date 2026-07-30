@@ -1,10 +1,14 @@
 import { createRequire as createNodeRequire } from 'node:module'
 import path from 'node:path'
 
-import { invokeLambda, logger, safeJSONParse } from '@tg-bot/common'
+import {
+  getRequiredEnv,
+  invokeLambda,
+  logger,
+  safeJSONParse,
+} from '@tg-bot/common'
 import type { CurrencyRateSection } from './types'
 
-const SHARP_RENDERER_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-renderer`
 const SHARP_RENDERER_PACKAGE_PATH = path.join(
   process.cwd(),
   'src',
@@ -60,7 +64,7 @@ export async function getCurrencyImage(
     }
 
     const sharpResponse = await invokeLambda({
-      name: SHARP_RENDERER_LAMBDA_NAME,
+      name: getRequiredEnv('SHARP_RENDERER_FUNCTION_NAME'),
       payload: {
         currencySections: sections,
         currencyBackgroundImage: backgroundImage?.toString('base64'),

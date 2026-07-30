@@ -2,11 +2,15 @@
  * Tool for rendering model-authored SVG into a Telegram-ready PNG.
  */
 
-import { getErrorMessage, invokeLambda, safeJSONParse } from '@tg-bot/common'
+import {
+  getErrorMessage,
+  getRequiredEnv,
+  invokeLambda,
+  safeJSONParse,
+} from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
-const SHARP_RENDERER_LAMBDA_NAME = `telegram-${process.env.stage}-sharp-renderer`
 const MAX_SVG_CHARS = 250_000
 const MAX_RENDER_DIMENSION = 2_000
 
@@ -86,7 +90,7 @@ export const renderSvgTool: AgentTool = {
 
     try {
       const sharpResponse = await invokeLambda({
-        name: SHARP_RENDERER_LAMBDA_NAME,
+        name: getRequiredEnv('SHARP_RENDERER_FUNCTION_NAME'),
         customEndpoint: true,
         payload: {
           svg,
