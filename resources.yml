@@ -57,6 +57,22 @@ Resources:
         - AttributeName: date
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
+
+  ChatUserStatisticsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.chatUserStatisticsTableName}
+      AttributeDefinitions:
+        - AttributeName: chatId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: N
+      KeySchema:
+        - AttributeName: chatId
+          KeyType: HASH
+        - AttributeName: userId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
@@ -103,6 +119,7 @@ Resources:
                   - dynamodb:Query
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}/index/${self:custom.websocketConnectionsChatIdIndexName}
               - Effect: Allow

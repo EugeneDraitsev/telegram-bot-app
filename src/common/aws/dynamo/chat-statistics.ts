@@ -2,8 +2,18 @@ import type { Chat, User } from 'grammy/types'
 
 import { logger } from '../../logger'
 import type { UserStat } from '../../types'
-import { dedent, dynamoPutItem, dynamoQuery, getUserName } from '../../utils'
-import { CHAT_STATISTICS_TABLE_NAME } from './table-names'
+import {
+  dedent,
+  dynamoPutItem,
+  dynamoQuery,
+  dynamoQueryAll,
+  dynamoUpdateItem,
+  getUserName,
+} from '../../utils'
+import {
+  CHAT_STATISTICS_TABLE_NAME,
+  CHAT_USER_STATISTICS_TABLE_NAME,
+} from './table-names'
 
 export interface ChatStat {
   chatId: string
@@ -19,6 +29,16 @@ export interface FormattedChatStatistics {
 
 const RICH_STATISTICS_ROW_LIMIT = 100
 const MAX_WRITE_ATTEMPTS = 8
+
+interface StoredUserStat {
+  chatId: string
+  userId: number
+  msgCount: number
+  username: string
+  optedOut?: boolean
+  chatInfo?: Chat
+  updatedAt?: number
+}
 
 const isUserStat = (value: unknown): value is UserStat =>
   typeof value === 'object' &&
@@ -48,16 +68,37 @@ const toChatStat = (value: unknown): ChatStat | undefined => {
   }
 }
 
+const toStoredUserStat = (value: unknown): StoredUserStat | undefined => {
+  const item = value as Partial<StoredUserStat> | null
+  if (
+    typeof item !== 'object' ||
+    item === null ||
+    typeof item.chatId !== 'string' ||
+    typeof item.userId !== 'number' ||
+    typeof item.msgCount !== 'number' ||
+    typeof item.username !== 'string'
+  ) {
+    return undefined
+  }
+
+  return {
+    chatId: item.chatId,
+    userId: item.userId,
+    msgCount: item.msgCount,
+    username: item.username,
+    optedOut: item.optedOut,
+    chatInfo: item.chatInfo,
+    updatedAt: item.updatedAt,
+  }
+}
+
 const isConditionalWriteConflict = (error: unknown): boolean =>
   typeof error === 'object' &&
   error !== null &&
   'name' in error &&
   error.name === 'ConditionalCheckFailedException'
 
-const readChatUsers = async (chat_id: number | string): Promise<UserStat[]> =>
-  (await getChatStatistic(chat_id))?.users ?? []
-
-const getChatStatistic = async (
+const getLegacyChatStatistic = async (
   chat_id: number | string,
 ): Promise<ChatStat | undefined> => {
   const params = {
@@ -70,72 +111,84 @@ const getChatStatistic = async (
   return toChatStat(result.Items?.[0])
 }
 
-export const getStoredChatStatistics = getChatStatistic
+const getStoredUserStatistic = async (
+  chatId: number | string,
+  userId: number,
+): Promise<StoredUserStat | undefined> => {
+  const result = await dynamoQuery({
+    TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+    ExpressionAttributeValues: {
+      ':chatId': String(chatId),
+      ':userId': userId,
+    },
+    KeyConditionExpression: 'chatId = :chatId AND userId = :userId',
+  })
 
-interface ChatStatMutation<T> {
-  result: T
-  next?: ChatStat
+  return toStoredUserStat(result.Items?.[0])
 }
 
-async function putVersionedChatStatistic(
-  current: ChatStat | undefined,
-  next: ChatStat,
-): Promise<void> {
-  const item = { ...next, version: (current?.version ?? 0) + 1 }
+const getStoredUserStatistics = async (
+  chatId: number | string,
+): Promise<StoredUserStat[]> => {
+  const items = await dynamoQueryAll({
+    TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+    ExpressionAttributeValues: { ':chatId': String(chatId) },
+    KeyConditionExpression: 'chatId = :chatId',
+  })
 
-  if (!current) {
-    await dynamoPutItem({
-      TableName: CHAT_STATISTICS_TABLE_NAME,
-      Item: item,
-      ConditionExpression: 'attribute_not_exists(#chatId)',
-      ExpressionAttributeNames: { '#chatId': 'chatId' },
-    })
-    return
-  }
-
-  const hasVersion = typeof current.version === 'number'
-  await dynamoPutItem({
-    TableName: CHAT_STATISTICS_TABLE_NAME,
-    Item: item,
-    ConditionExpression: hasVersion
-      ? '#version = :expectedVersion'
-      : 'attribute_not_exists(#version)',
-    ExpressionAttributeNames: { '#version': 'version' },
-    ...(hasVersion
-      ? { ExpressionAttributeValues: { ':expectedVersion': current.version } }
-      : {}),
+  return items.flatMap((item) => {
+    const user = toStoredUserStat(item)
+    return user ? [user] : []
   })
 }
 
-async function mutateChatStatistic<T>(
-  chatId: string | number,
-  mutate: (current: ChatStat | undefined) => ChatStatMutation<T>,
-): Promise<T> {
-  let lastConflict: unknown
+const toUserStat = (item: StoredUserStat): UserStat => ({
+  id: item.userId,
+  msgCount: item.msgCount,
+  username: item.username,
+  optedOut: item.optedOut,
+})
 
-  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
-    const current = await getChatStatistic(chatId)
-    const mutation = mutate(current)
-    if (!mutation.next) {
-      return mutation.result
-    }
+const getChatStatistic = async (
+  chatId: number | string,
+): Promise<ChatStat | undefined> => {
+  const [legacy, storedUsers] = await Promise.all([
+    getLegacyChatStatistic(chatId),
+    getStoredUserStatistics(chatId),
+  ])
 
-    try {
-      await putVersionedChatStatistic(current, mutation.next)
-      return mutation.result
-    } catch (error) {
-      if (!isConditionalWriteConflict(error)) {
-        throw error
-      }
-      lastConflict = error
-    }
+  if (!legacy && storedUsers.length === 0) {
+    return undefined
   }
 
-  throw new Error(
-    `Could not update chat statistics after ${MAX_WRITE_ATTEMPTS} attempts`,
-    { cause: lastConflict },
+  const usersById = new Map(
+    (legacy?.users ?? []).map((user) => [user.id, user]),
   )
+  for (const user of storedUsers) {
+    usersById.set(user.userId, toUserStat(user))
+  }
+
+  const latestChatInfo = storedUsers.reduce<StoredUserStat | undefined>(
+    (latest, item) =>
+      item.chatInfo &&
+      (item.updatedAt ?? 0) >= (latest?.updatedAt ?? Number.NEGATIVE_INFINITY)
+        ? item
+        : latest,
+    undefined,
+  )?.chatInfo
+
+  return {
+    chatId: String(chatId),
+    chatInfo: latestChatInfo ?? legacy?.chatInfo,
+    users: [...usersById.values()],
+    version: legacy?.version,
+  }
 }
+
+const readChatUsers = async (chatId: number | string): Promise<UserStat[]> =>
+  (await getChatStatistic(chatId))?.users ?? []
+
+export const getStoredChatStatistics = getChatStatistic
 
 export const getChatUsers = async (
   chat_id: number | string,
@@ -159,30 +212,90 @@ export const setUserOptOut = async (
   user_id: number,
   optedOut: boolean,
 ): Promise<'updated' | 'no_chat' | 'no_user' | 'already_set'> => {
-  return mutateChatStatistic(chat_id, (chatStatistics) => {
-    if (!chatStatistics) {
-      return { result: 'no_chat' }
+  const chatId = String(chat_id)
+  let lastConflict: unknown
+
+  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const storedUser = await getStoredUserStatistic(chatId, user_id)
+    if (storedUser) {
+      if (Boolean(storedUser.optedOut) === optedOut) {
+        return 'already_set'
+      }
+
+      try {
+        await dynamoUpdateItem({
+          TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+          Key: { chatId, userId: user_id },
+          UpdateExpression: 'SET #optedOut = :optedOut',
+          ConditionExpression:
+            'attribute_exists(#chatId) AND attribute_exists(#userId)',
+          ExpressionAttributeNames: {
+            '#chatId': 'chatId',
+            '#userId': 'userId',
+            '#optedOut': 'optedOut',
+          },
+          ExpressionAttributeValues: { ':optedOut': optedOut },
+        })
+        return 'updated'
+      } catch (error) {
+        if (!isConditionalWriteConflict(error)) {
+          throw error
+        }
+        lastConflict = error
+        continue
+      }
     }
 
-    const user = chatStatistics.users.find((item) => item.id === user_id)
-    if (!user) {
-      return { result: 'no_user' }
+    const legacy = await getLegacyChatStatistic(chatId)
+    const legacyUser = legacy?.users.find((item) => item.id === user_id)
+    if (!legacyUser) {
+      if (legacy) {
+        return 'no_user'
+      }
+
+      const anyStoredUsers = await dynamoQuery({
+        TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+        ExpressionAttributeValues: { ':chatId': chatId },
+        KeyConditionExpression: 'chatId = :chatId',
+        Limit: 1,
+      })
+      return anyStoredUsers.Items?.length ? 'no_user' : 'no_chat'
     }
 
-    if (Boolean(user.optedOut) === optedOut) {
-      return { result: 'already_set' }
+    if (Boolean(legacyUser.optedOut) === optedOut) {
+      return 'already_set'
     }
 
-    return {
-      result: 'updated',
-      next: {
-        ...chatStatistics,
-        users: chatStatistics.users.map((item) =>
-          item.id === user_id ? { ...item, optedOut } : item,
-        ),
-      },
+    try {
+      await dynamoPutItem({
+        TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+        Item: {
+          chatId,
+          userId: user_id,
+          msgCount: legacyUser.msgCount,
+          username: legacyUser.username,
+          optedOut,
+        },
+        ConditionExpression:
+          'attribute_not_exists(#chatId) AND attribute_not_exists(#userId)',
+        ExpressionAttributeNames: {
+          '#chatId': 'chatId',
+          '#userId': 'userId',
+        },
+      })
+      return 'updated'
+    } catch (error) {
+      if (!isConditionalWriteConflict(error)) {
+        throw error
+      }
+      lastConflict = error
     }
-  })
+  }
+
+  throw new Error(
+    `Could not update user opt-out after ${MAX_WRITE_ATTEMPTS} attempts`,
+    { cause: lastConflict },
+  )
 }
 
 export const getUsersList = async (
@@ -289,35 +402,68 @@ export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
   const chat_id = chat?.id
 
   if (userInfo && chat_id) {
-    return mutateChatStatistic(chat_id, (chatStatistics) => {
-      const currentUsers = chatStatistics?.users ?? []
-      const existingUser = currentUsers.find((item) => item.id === userInfo.id)
-      const userStatistic: UserStat = existingUser
-        ? {
-            ...existingUser,
-            msgCount: existingUser.msgCount + 1,
-            username: getUserName(userInfo),
-          }
-        : {
-            id: userInfo.id,
-            msgCount: 1,
-            username: getUserName(userInfo),
-          }
+    const chatId = String(chat_id)
+    const username = getUserName(userInfo)
+    const updatedAt = Date.now()
+    const storedUser = await getStoredUserStatistic(chatId, userInfo.id)
 
-      return {
-        result: undefined,
-        next: {
-          ...chatStatistics,
-          chatId: String(chat_id),
-          chatInfo: chat,
-          users: existingUser
-            ? currentUsers.map((item) =>
-                item.id === userInfo.id ? userStatistic : item,
-              )
-            : [...currentUsers, userStatistic],
+    const incrementUser = () =>
+      dynamoUpdateItem({
+        TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+        Key: { chatId, userId: userInfo.id },
+        UpdateExpression:
+          'SET #username = :username, #chatInfo = :chatInfo, #updatedAt = :updatedAt ADD #msgCount :one',
+        ConditionExpression:
+          'attribute_exists(#chatId) AND attribute_exists(#userId)',
+        ExpressionAttributeNames: {
+          '#chatId': 'chatId',
+          '#userId': 'userId',
+          '#username': 'username',
+          '#chatInfo': 'chatInfo',
+          '#updatedAt': 'updatedAt',
+          '#msgCount': 'msgCount',
         },
+        ExpressionAttributeValues: {
+          ':username': username,
+          ':chatInfo': chat,
+          ':updatedAt': updatedAt,
+          ':one': 1,
+        },
+      })
+
+    if (storedUser) {
+      await incrementUser()
+      return
+    }
+
+    const legacy = await getLegacyChatStatistic(chatId)
+    const legacyUser = legacy?.users.find((item) => item.id === userInfo.id)
+
+    try {
+      await dynamoPutItem({
+        TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+        Item: {
+          chatId,
+          userId: userInfo.id,
+          msgCount: (legacyUser?.msgCount ?? 0) + 1,
+          username,
+          optedOut: legacyUser?.optedOut,
+          chatInfo: chat,
+          updatedAt,
+        },
+        ConditionExpression:
+          'attribute_not_exists(#chatId) AND attribute_not_exists(#userId)',
+        ExpressionAttributeNames: {
+          '#chatId': 'chatId',
+          '#userId': 'userId',
+        },
+      })
+    } catch (error) {
+      if (!isConditionalWriteConflict(error)) {
+        throw error
       }
-    })
+      await incrementUser()
+    }
   }
 
   return Promise.resolve()

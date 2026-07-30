@@ -122,6 +122,10 @@ describe('websocket handlers', () => {
           })
         }
 
+        if (input.TableName === 'chat-user-statistics') {
+          return Promise.resolve({ Items: [] })
+        }
+
         return Promise.reject(new Error(`unexpected table ${input.TableName}`))
       })
     const apiSendSpy = jest
@@ -131,7 +135,7 @@ describe('websocket handlers', () => {
     const response = await stats(createStatsEvent({ chatId: '123' }))
 
     expect(response.statusCode).toBe(200)
-    expect(dynamoSendSpy).toHaveBeenCalledTimes(3)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(4)
     expect(apiSendSpy).toHaveBeenCalledTimes(1)
     const postInput = apiSendSpy.mock.calls[0][0].input as { Data: unknown }
 
@@ -163,6 +167,10 @@ describe('websocket handlers', () => {
           return Promise.resolve({
             Items: [{ chatId: '123', users: [] }],
           })
+        }
+
+        if (input.TableName === 'chat-user-statistics') {
+          return Promise.resolve({ Items: [] })
         }
 
         if (
@@ -217,6 +225,10 @@ describe('websocket handlers', () => {
           return Promise.resolve({
             Items: [{ chatId: '123', users: [] }],
           })
+        }
+
+        if (input.TableName === 'chat-user-statistics') {
+          return Promise.resolve({ Items: [] })
         }
 
         return Promise.reject(new Error(`unexpected input ${input.TableName}`))
@@ -332,6 +344,10 @@ describe('websocket handlers', () => {
           return Promise.resolve({ Items: [] })
         }
 
+        if (input.TableName === 'chat-user-statistics') {
+          return Promise.resolve({ Items: [] })
+        }
+
         return Promise.reject(new Error(`unexpected table ${input.TableName}`))
       })
     const apiSendSpy = jest.spyOn(
@@ -342,7 +358,7 @@ describe('websocket handlers', () => {
     const response = await stats(createStatsEvent({ chatId: '123' }))
 
     expect(response.statusCode).toBe(200)
-    expect(dynamoSendSpy).toHaveBeenCalledTimes(3)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(4)
     expect(apiSendSpy).not.toHaveBeenCalled()
   })
 
