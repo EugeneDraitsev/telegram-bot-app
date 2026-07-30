@@ -22,7 +22,6 @@ import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatAiModelConfig,
   formatHistoryForDisplay,
-  GEMINI_FLASH_LITE_IMAGE_MODEL,
   getAiSdkProviderOptions,
   getChatMemory,
   getGlobalMemory,
@@ -36,15 +35,12 @@ import {
   startThinkingRichDraftIndicator,
   startTypingIndicator,
 } from '@tg-bot/common'
-import { IMAGE_MODEL } from '../services/openai-image'
-import { VOICE_MODEL } from '../services/openai-tts'
-import { WEB_SEARCH_MODEL } from '../services/openai-web-search'
 import {
   executeDynamicCommandFromMessage,
   getAgentTools,
   getBaseAgentTools,
   getCollectedResponses,
-  getToolCommandName,
+  getToolMetricAttribution,
   runWithToolContext,
   withToolMediaBuffers,
 } from '../tools'
@@ -67,7 +63,6 @@ import {
   CHAT_FALLBACK_REASONING_EFFORT,
   CHAT_MODEL_CONFIG,
   CHAT_MODEL_REASONING_EFFORT,
-  FAST_MODEL,
   HELPER_TEXT_MODEL_CONFIG,
   REPLY_GATE_MODEL,
   resolveAgentChatModel,
@@ -119,14 +114,6 @@ export function buildNativeTools(agentTools: AgentTool[]): ToolSet {
   )
 }
 
-/** Maps tool names to their underlying AI model for metrics */
-const TOOL_MODELS: Record<string, string> = {
-  web_search: WEB_SEARCH_MODEL,
-  generate_or_edit_image: IMAGE_MODEL,
-  generate_voice: VOICE_MODEL,
-  search_video: WEB_SEARCH_MODEL,
-  code_execution: FAST_MODEL,
-}
 const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
 
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
@@ -183,14 +170,6 @@ function getHistoryMediaPrompt(message: Message): string {
   return sourceText
     ? `Context image from recent chat history. Related message text: ${sourceText.slice(0, 200)}`
     : 'Context image from recent chat history.'
-}
-
-function getToolModel(toolName: string): string {
-  if (toolName === GENERATE_IMAGE_TOOL_NAME && getToolCommandName() === 'ge') {
-    return GEMINI_FLASH_LITE_IMAGE_MODEL.model
-  }
-
-  return TOOL_MODELS[toolName] ?? 'none'
 }
 
 export function filterToolsForRequest(
@@ -362,6 +341,7 @@ async function generateDirectSvg(
       'direct_svg',
       HELPER_TEXT_MODEL_CONFIG,
       DIRECT_SVG_MODEL_TIMEOUT_MS,
+      getToolMetricAttribution(),
     )
 
     const svg = extractSvgMarkup(result.response.text)
@@ -480,14 +460,13 @@ async function executeToolCall(
   const tool = toolByName.get(name)
   if (!tool) return { name, result: `Error: tool "${name}" not found` }
 
-  const model = getToolModel(name)
+  const attribution = getToolMetricAttribution()
   const parsedArgs = parseToolArguments(toolCall.args, chatId, name)
   if (!parsedArgs.ok) {
-    void recordMetric({
+    await recordMetric({
       type: 'tool_call',
-      source: 'agentic',
+      ...attribution,
       name,
-      model,
       chatId,
       durationMs: 0,
       success: false,
@@ -498,7 +477,10 @@ async function executeToolCall(
   }
 
   const args = parsedArgs.args
-  logger.info({ chatId, tool: name, model, payload: args }, 'tool.call')
+  logger.info(
+    { chatId, tool: name, ...attribution, payload: args },
+    'tool.call',
+  )
 
   const toolStart = Date.now()
   try {
@@ -513,20 +495,19 @@ async function executeToolCall(
     const status = getToolResultStatus(result)
     if (status === 'success') {
       logger.info(
-        { chatId, tool: name, model, durationMs, result },
+        { chatId, tool: name, ...attribution, durationMs, result },
         'tool.done',
       )
     } else {
       logger.warn(
-        { chatId, tool: name, model, durationMs, result, status },
+        { chatId, tool: name, ...attribution, durationMs, result, status },
         'tool.done_non_success',
       )
     }
-    void recordMetric({
+    await recordMetric({
       type: 'tool_call',
-      source: 'agentic',
+      ...attribution,
       name,
-      model,
       chatId,
       durationMs,
       success: status === 'success',
@@ -539,14 +520,20 @@ async function executeToolCall(
     const errorMsg = error instanceof Error ? error.message : String(error)
     const status = getMetricStatusFromError(error)
     logger.error(
-      { chatId, tool: name, model, durationMs, error: errorMsg, status },
+      {
+        chatId,
+        tool: name,
+        ...attribution,
+        durationMs,
+        error: errorMsg,
+        status,
+      },
       'tool.failed',
     )
-    void recordMetric({
+    await recordMetric({
       type: 'tool_call',
-      source: 'agentic',
+      ...attribution,
       name,
-      model,
       chatId,
       durationMs,
       success: false,
@@ -767,6 +754,7 @@ async function runToolLoop(
         iteration === 0 ? 'routing' : `iteration_${iteration}`,
         activeModelConfig,
         AGENT_ROUTING_MODEL_TIMEOUT_MS,
+        getToolMetricAttribution(),
       )
     } catch (error) {
       if (
@@ -898,6 +886,8 @@ async function runToolLoop(
         chatId,
         'finalize',
         activeModelConfig,
+        AGENT_ROUTING_MODEL_TIMEOUT_MS,
+        getToolMetricAttribution(),
       )
       activeModel = finalizeResult.model
       const finalizeResponse = finalizeResult.response
@@ -935,6 +925,9 @@ export async function runAgenticLoop(
   }
 
   const chatModel = resolveAgentChatModel(options.commandName)
+  const attribution = options.commandName
+    ? { source: 'command' as const, command: options.commandName }
+    : { source: 'agentic' as const }
 
   const messageMeta = getMessageLogMeta(message)
   const deliveryReplyMessageId = getAgentDeliveryReplyMessageId(
@@ -947,6 +940,7 @@ export async function runAgenticLoop(
       model: chatModel.label,
       reasoningEffort: chatModel.reasoningEffort,
       replyGateModel: REPLY_GATE_MODEL,
+      ...attribution,
     },
     'loop.start',
   )

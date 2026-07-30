@@ -190,6 +190,27 @@ describe('model-call', () => {
     )
   })
 
+  test('records explicit commands separately from agentic traffic', async () => {
+    mockGenerateText.mockResolvedValue({ text: 'ok', output: [] })
+
+    await generateModelWithRetry(
+      { prompt: 'hello' },
+      1305082,
+      'routing',
+      { provider: 'openai', model: 'gpt-5.4-nano' },
+      45_000,
+      { source: 'command', command: 'o' },
+    )
+
+    expect(mockRecordMetric).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'command',
+        command: 'o',
+        name: 'routing',
+      }),
+    )
+  })
+
   test('treats transient errors as retryable', () => {
     expect(isRetryableModelError({ status: 408 })).toBe(true)
     expect(isRetryableModelError({ status: 429 })).toBe(true)

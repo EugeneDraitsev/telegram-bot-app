@@ -1,30 +1,96 @@
 /**
- * Metrics collection — logs and stores timing data for model calls and tools.
- * Stores in Redis sorted set keyed by timestamp for time-series queries.
+ * Durable operational metrics for agent model and tool calls.
+ *
+ * Model calls and tool calls are intentionally separate. A tool may invoke a
+ * model, in which case both operations are recorded with their own duration
+ * and outcome.
  */
 
+import { randomUUID } from 'node:crypto'
+
+import { logger } from '../logger'
 import * as client from './client'
 
-const METRICS_KEY = 'agent:metrics'
-/** Keep metrics for 30 days */
+const METRICS_SCHEMA_VERSION = 2
+const METRICS_KEY = `agent:metrics:v${METRICS_SCHEMA_VERSION}`
+/** Keep metrics for 30 days. */
 const METRICS_TTL_MS = 30 * 24 * 60 * 60 * 1000
+const MAX_REPORT_GROUPS = 8
 let redisClientOverride: ReturnType<typeof client.getRedisClient> | undefined
 
 export type MetricStatus = 'success' | 'error' | 'timeout'
+export type MetricSource = 'agentic' | 'command'
+export type MetricType = 'model_call' | 'tool_call'
 
 export interface MetricEntry {
-  /** 'model_call' for AI model invocations, 'tool_call' for tool executions */
-  type: 'model_call' | 'tool_call'
-  /** 'agentic' for agent loop calls, 'command' for /q /o /ge /e etc. */
-  source: 'agentic' | 'command'
+  /** Unique member ID prevents equal concurrent calls from collapsing in Redis. */
+  id?: string
+  schemaVersion?: number
+  type: MetricType
+  source: MetricSource
+  /** Stage or tool name, for example routing or generate_or_edit_image. */
   name: string
+  /** Exact provider/model label for model_call entries only. */
   model?: string
   fallbackFrom?: string
+  /** Explicit command attribution, without the leading slash. */
+  command?: string
   chatId: number
   durationMs: number
   success: boolean
   status?: MetricStatus
   timestamp: number
+}
+
+export interface MetricOutcomeCounts {
+  success: number
+  timeout: number
+  error: number
+  fallback: number
+}
+
+export interface MetricGroupSummary extends MetricOutcomeCounts {
+  label: string
+  count: number
+  medianMs: number
+}
+
+export interface MetricTimeBucket extends MetricOutcomeCounts {
+  startMs: number
+  endMs: number
+  count: number
+}
+
+export interface MetricsReport {
+  hours: number
+  fromMs: number
+  toMs: number
+  totalOperations: number
+  successRate: number
+  medianMs: number
+  outcomes: MetricOutcomeCounts
+  modelCalls: number
+  toolCalls: number
+  modelMedianMs: number
+  toolMedianMs: number
+  agenticCalls: number
+  commandCalls: number
+  modelStages: MetricGroupSummary[]
+  tools: MetricGroupSummary[]
+  models: MetricGroupSummary[]
+  commands: MetricGroupSummary[]
+  timeline: MetricTimeBucket[]
+}
+
+type TimedCallOptions<T> = {
+  type: MetricType
+  source: MetricSource
+  name: string
+  model?: string
+  fallbackFrom?: string
+  command?: string
+  chatId: number
+  classifyResult?: (result: T) => MetricStatus
 }
 
 function normalizeMetricEntry(entry: MetricEntry): MetricEntry {
@@ -34,6 +100,24 @@ function normalizeMetricEntry(entry: MetricEntry): MetricEntry {
     status,
     success: status === 'success',
   }
+}
+
+function isMetricEntry(value: unknown): value is MetricEntry {
+  if (!value || typeof value !== 'object') return false
+  const entry = value as Partial<MetricEntry>
+  return (
+    (entry.type === 'model_call' || entry.type === 'tool_call') &&
+    (entry.source === 'agentic' || entry.source === 'command') &&
+    typeof entry.name === 'string' &&
+    entry.name.length > 0 &&
+    typeof entry.chatId === 'number' &&
+    Number.isFinite(entry.chatId) &&
+    typeof entry.durationMs === 'number' &&
+    Number.isFinite(entry.durationMs) &&
+    entry.durationMs >= 0 &&
+    typeof entry.timestamp === 'number' &&
+    Number.isFinite(entry.timestamp)
+  )
 }
 
 export function setMetricsRedisClientForTests(
@@ -69,7 +153,7 @@ export function getMetricStatusFromError(error: unknown): MetricStatus {
   return 'error'
 }
 
-/** Record a metric entry — stores in Redis for graphing (fire-and-forget) */
+/** Persist one metric. Failures remain non-fatal but are visible in logs. */
 export async function recordMetric(entry: MetricEntry): Promise<void> {
   try {
     const redis = getMetricsRedisClient()
@@ -78,30 +162,32 @@ export async function recordMetric(entry: MetricEntry): Promise<void> {
     const timestamp = Number.isFinite(entry.timestamp)
       ? entry.timestamp
       : Date.now()
-    const metricEntry = normalizeMetricEntry({ ...entry, timestamp })
-
-    await redis.zadd(METRICS_KEY, {
-      score: timestamp,
-      member: JSON.stringify(metricEntry),
+    const metricEntry = normalizeMetricEntry({
+      ...entry,
+      id: entry.id ?? randomUUID(),
+      schemaVersion: METRICS_SCHEMA_VERSION,
+      durationMs: Math.max(0, entry.durationMs),
+      timestamp,
     })
 
-    // Trim old entries (older than TTL)
-    await redis.zremrangebyscore(METRICS_KEY, 0, timestamp - METRICS_TTL_MS)
-  } catch {
-    // Silently ignore Redis errors — metrics are best-effort
+    await Promise.all([
+      redis.zadd(METRICS_KEY, {
+        score: timestamp,
+        member: JSON.stringify(metricEntry),
+      }),
+      redis.zremrangebyscore(METRICS_KEY, 0, timestamp - METRICS_TTL_MS),
+    ])
+  } catch (error) {
+    logger.warn(
+      { error, metricType: entry.type, metricName: entry.name },
+      'metrics.write_failed',
+    )
   }
 }
 
-/** Time an async operation and record metrics */
+/** Time one logical operation and persist its actual outcome. */
 export async function timedCall<T>(
-  opts: {
-    type: MetricEntry['type']
-    source: MetricEntry['source']
-    name: string
-    model?: string
-    chatId: number
-    classifyResult?: (result: T) => MetricStatus
-  },
+  opts: TimedCallOptions<T>,
   fn: () => Promise<T>,
 ): Promise<T> {
   const { classifyResult, ...metricOpts } = opts
@@ -112,7 +198,7 @@ export async function timedCall<T>(
     const end = Date.now()
     const status = classifyResult?.(result) ?? 'success'
 
-    void recordMetric({
+    await recordMetric({
       ...metricOpts,
       durationMs: end - start,
       success: status === 'success',
@@ -125,7 +211,7 @@ export async function timedCall<T>(
     const end = Date.now()
     const status = getMetricStatusFromError(error)
 
-    void recordMetric({
+    await recordMetric({
       ...metricOpts,
       durationMs: end - start,
       success: false,
@@ -137,7 +223,7 @@ export async function timedCall<T>(
   }
 }
 
-/** Retrieve metric entries from Redis within a time range */
+/** Retrieve v2 metric entries from Redis within a time range. */
 export async function getMetrics(
   fromMs: number,
   toMs: number = Date.now(),
@@ -150,22 +236,16 @@ export async function getMetrics(
     return (raw as unknown[])
       .map((value) => {
         try {
-          if (typeof value === 'string') {
-            return normalizeMetricEntry(JSON.parse(value) as MetricEntry)
-          }
-          if (typeof value === 'object' && value !== null) {
-            return normalizeMetricEntry(value as MetricEntry)
-          }
-          return null
+          const parsed =
+            typeof value === 'string' ? (JSON.parse(value) as unknown) : value
+          return isMetricEntry(parsed) ? normalizeMetricEntry(parsed) : null
         } catch {
           return null
         }
       })
-      .filter(
-        (entry): entry is MetricEntry =>
-          entry !== null && typeof entry.durationMs === 'number',
-      )
-  } catch {
+      .filter((entry): entry is MetricEntry => entry !== null)
+  } catch (error) {
+    logger.warn({ error }, 'metrics.read_failed')
     return []
   }
 }
@@ -179,159 +259,195 @@ function median(values: number[]): number {
     : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
+function getOutcomeCounts(entries: MetricEntry[]): MetricOutcomeCounts {
+  return {
+    success: entries.filter((entry) => entry.status === 'success').length,
+    timeout: entries.filter((entry) => entry.status === 'timeout').length,
+    error: entries.filter((entry) => entry.status === 'error').length,
+    fallback: entries.filter((entry) => entry.fallbackFrom).length,
+  }
+}
+
+function summarizeGroups(
+  entries: MetricEntry[],
+  getLabel: (entry: MetricEntry) => string | undefined,
+): MetricGroupSummary[] {
+  const groups = new Map<string, MetricEntry[]>()
+  for (const entry of entries) {
+    const label = getLabel(entry)?.trim()
+    if (!label) continue
+    groups.set(label, [...(groups.get(label) ?? []), entry])
+  }
+
+  return [...groups.entries()]
+    .map(([label, group]) => ({
+      label,
+      count: group.length,
+      medianMs: median(group.map((entry) => entry.durationMs)),
+      ...getOutcomeCounts(group),
+    }))
+    .sort(
+      (left, right) =>
+        right.count - left.count || right.medianMs - left.medianMs,
+    )
+    .slice(0, MAX_REPORT_GROUPS)
+}
+
+function getTimeline(
+  entries: MetricEntry[],
+  fromMs: number,
+  toMs: number,
+  hours: number,
+): MetricTimeBucket[] {
+  const bucketCount = Math.min(24, Math.max(1, Math.ceil(hours)))
+  const bucketMs = Math.max(1, (toMs - fromMs) / bucketCount)
+  const buckets: MetricEntry[][] = Array.from({ length: bucketCount }, () => [])
+
+  for (const entry of entries) {
+    const index = Math.min(
+      bucketCount - 1,
+      Math.max(0, Math.floor((entry.timestamp - fromMs) / bucketMs)),
+    )
+    buckets[index]?.push(entry)
+  }
+
+  return buckets.map((bucketEntries, index) => ({
+    startMs: Math.round(fromMs + index * bucketMs),
+    endMs: Math.round(fromMs + (index + 1) * bucketMs),
+    count: bucketEntries.length,
+    ...getOutcomeCounts(bucketEntries),
+  }))
+}
+
+export function clampMetricsHours(hoursBack = 24): number {
+  return Math.max(1, Math.min(720, Math.trunc(hoursBack || 24)))
+}
+
+export function buildMetricsReport(
+  entries: MetricEntry[],
+  hoursBack = 24,
+  toMs = Date.now(),
+): MetricsReport {
+  const hours = clampMetricsHours(hoursBack)
+  const fromMs = toMs - hours * 60 * 60 * 1000
+  const inRange = entries.filter(
+    (entry) => entry.timestamp >= fromMs && entry.timestamp <= toMs,
+  )
+  const modelEntries = inRange.filter((entry) => entry.type === 'model_call')
+  const toolEntries = inRange.filter((entry) => entry.type === 'tool_call')
+  const outcomes = getOutcomeCounts(inRange)
+  const totalOperations = inRange.length
+
+  return {
+    hours,
+    fromMs,
+    toMs,
+    totalOperations,
+    successRate: totalOperations ? outcomes.success / totalOperations : 0,
+    medianMs: median(inRange.map((entry) => entry.durationMs)),
+    outcomes,
+    modelCalls: modelEntries.length,
+    toolCalls: toolEntries.length,
+    modelMedianMs: median(modelEntries.map((entry) => entry.durationMs)),
+    toolMedianMs: median(toolEntries.map((entry) => entry.durationMs)),
+    agenticCalls: inRange.filter((entry) => entry.source === 'agentic').length,
+    commandCalls: inRange.filter((entry) => entry.source === 'command').length,
+    modelStages: summarizeGroups(modelEntries, (entry) => entry.name),
+    tools: summarizeGroups(toolEntries, (entry) => entry.name),
+    models: summarizeGroups(modelEntries, (entry) => entry.model),
+    commands: summarizeGroups(
+      inRange.filter((entry) => entry.source === 'command'),
+      (entry) => (entry.command ? `/${entry.command}` : undefined),
+    ),
+    timeline: getTimeline(inRange, fromMs, toMs, hours),
+  }
+}
+
+export async function getMetricsReport(hoursBack = 24): Promise<MetricsReport> {
+  const hours = clampMetricsHours(hoursBack)
+  const toMs = Date.now()
+  const fromMs = toMs - hours * 60 * 60 * 1000
+  return buildMetricsReport(await getMetrics(fromMs, toMs), hours, toMs)
+}
+
 function fmtMs(ms: number): string {
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`
   return `${Math.round(ms)}ms`
 }
 
-function progressBar(ratio: number, length = 15): string {
+function progressBar(ratio: number, length = 12): string {
   const filled = Math.round(ratio * length)
   return '▰'.repeat(filled) + '▱'.repeat(length - filled)
 }
 
-function getOutcomeCounts(entries: MetricEntry[]) {
-  const success = entries.filter((entry) => entry.status === 'success').length
-  const timeout = entries.filter((entry) => entry.status === 'timeout').length
-  const error = entries.filter((entry) => entry.status === 'error').length
-  const fallback = entries.filter((entry) => entry.fallbackFrom).length
-
-  return {
-    success,
-    timeout,
-    error,
-    fallback,
-  }
-}
-
 function shortModelName(model: string): string {
-  return model.replace(/^gemini-/, '').replace(/-preview$/, '')
+  return model
+    .replace(/^(?:google|openai)\//, '')
+    .replace(/^gemini-/, '')
+    .replace(/-preview$/, '')
 }
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function formatOutcomeSummary(entries: MetricEntry[]): string {
-  if (entries.length === 0) return ''
-
-  const { success, timeout, error, fallback } = getOutcomeCounts(entries)
-  const parts = [`${Math.round((success / entries.length) * 100)}% ok`]
-
-  if (timeout > 0) parts.push(`${timeout} t/o`)
-  if (error > 0) parts.push(`${error} err`)
-  if (fallback > 0) parts.push(`${fallback} fb`)
-
-  return ` (${parts.join(' · ')})`
+function formatOutcomeSummary(group: MetricGroupSummary): string {
+  const parts = [`${Math.round((group.success / group.count) * 100)}% ok`]
+  if (group.timeout) parts.push(`${group.timeout} t/o`)
+  if (group.error) parts.push(`${group.error} err`)
+  if (group.fallback) parts.push(`${group.fallback} fb`)
+  return parts.join(' · ')
 }
 
-/** Format metrics into a Telegram HTML message (mobile-friendly) */
-export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
-  hoursBack = Math.max(1, Math.min(720, hoursBack || 24))
-  const fromMs = Date.now() - hoursBack * 60 * 60 * 1000
-  const entries = await getMetrics(fromMs)
+function formatGroup(title: string, groups: MetricGroupSummary[]): string[] {
+  if (!groups.length) return []
+  const rows = groups.map(
+    (group) =>
+      `${group.label}  ${group.count}× ~${fmtMs(group.medianMs)} (${formatOutcomeSummary(group)})`,
+  )
+  return ['', `<b>${title}</b>`, `<pre>${escapeHtml(rows.join('\n'))}</pre>`]
+}
 
-  if (entries.length === 0) {
-    return `📊 No metrics in the last ${hoursBack}h`
+export function formatMetricsReport(report: MetricsReport): string {
+  if (!report.totalOperations) {
+    return `📊 No v2 metrics in the last ${report.hours}h`
   }
 
-  const total = entries.length
-  const { success, timeout, error, fallback } = getOutcomeCounts(entries)
-  const successRate = total > 0 ? success / total : 0
-  const agenticCount = entries.filter(
-    (entry) => entry.source === 'agentic',
-  ).length
-  const commandCount = entries.filter(
-    (entry) => entry.source === 'command',
-  ).length
-
-  const lines: string[] = []
-  const summaryCode = `${progressBar(successRate)} ${Math.round(successRate * 100)}% ok - ${total} calls`
-
-  lines.push(`<b>📊 Metrics — last ${hoursBack}h</b>`)
-  lines.push('')
-  lines.push(
-    `<code>${progressBar(successRate)} ${Math.round(successRate * 100)}% ok · ${total} calls</code>`,
-  )
-
-  lines[lines.length - 1] = `<code>${escapeHtml(summaryCode)}</code>`
-
-  const summaryParts = [
-    `🤖 Agentic: ${agenticCount}`,
-    `⚡ Commands: ${commandCount}`,
+  const successPercent = Math.round(report.successRate * 100)
+  const lines = [
+    `<b>📊 AI operations · last ${report.hours}h</b>`,
+    '',
+    `<code>${progressBar(report.successRate)} ${successPercent}% healthy · ${report.totalOperations} operations</code>`,
+    `🧠 Models: ${report.modelCalls}  🔧 Tools: ${report.toolCalls}  🤖 Agentic: ${report.agenticCalls}  ⚡ Commands: ${report.commandCalls}`,
   ]
-  if (timeout > 0) summaryParts.push(`⏱ ${timeout} timeout`)
-  if (error > 0) summaryParts.push(`❌ ${error} error`)
-  if (fallback > 0) summaryParts.push(`↪ ${fallback} fallback`)
-  lines.push(summaryParts.join('  '))
 
-  const renderGroup = (title: string, items: MetricEntry[]) => {
-    if (items.length === 0) return
-
-    const byName = new Map<string, MetricEntry[]>()
-    for (const entry of items) {
-      if (!byName.has(entry.name)) {
-        byName.set(entry.name, [])
-      }
-      byName.get(entry.name)?.push(entry)
-    }
-
-    lines.push('')
-    lines.push(`<b>${title}</b>`)
-
-    const rows: string[] = []
-    for (const [name, group] of [...byName.entries()].sort(
-      (left, right) => right[1].length - left[1].length,
-    )) {
-      const durations = group.map((entry) => entry.durationMs)
-      rows.push(
-        `${name}  ${group.length}× ~${fmtMs(median(durations))}${formatOutcomeSummary(group)}`,
-      )
-    }
-
-    lines.push(`<pre>${rows.join('\n')}</pre>`)
-    lines[lines.length - 1] = `<pre>${escapeHtml(rows.join('\n'))}</pre>`
+  const incidents: string[] = []
+  if (report.outcomes.timeout) {
+    incidents.push(`⏱ ${report.outcomes.timeout} timeout`)
   }
-
-  renderGroup(
-    '🤖 Agentic',
-    entries.filter((entry) => entry.source === 'agentic'),
-  )
-  renderGroup(
-    '⚡ Commands',
-    entries.filter((entry) => entry.source === 'command'),
-  )
-
-  const modelEntries = entries.filter((entry) => entry.model)
-  if (modelEntries.length > 0) {
-    const byModel = new Map<string, MetricEntry[]>()
-    for (const entry of modelEntries) {
-      const modelName = entry.model ?? ''
-      const label = entry.fallbackFrom
-        ? `${shortModelName(modelName)} <= ${shortModelName(entry.fallbackFrom)}`
-        : shortModelName(modelName)
-
-      if (!byModel.has(label)) {
-        byModel.set(label, [])
-      }
-      byModel.get(label)?.push(entry)
-    }
-
-    lines.push('')
-    lines.push('<b>🧠 Models</b>')
-
-    const rows: string[] = []
-    for (const [label, group] of [...byModel.entries()].sort(
-      (left, right) => right[1].length - left[1].length,
-    )) {
-      const durations = group.map((entry) => entry.durationMs)
-      rows.push(
-        `${label}  ${group.length}× ~${fmtMs(median(durations))}${formatOutcomeSummary(group)}`,
-      )
-    }
-
-    lines.push(`<pre>${rows.join('\n')}</pre>`)
-    lines[lines.length - 1] = `<pre>${escapeHtml(rows.join('\n'))}</pre>`
+  if (report.outcomes.error) incidents.push(`❌ ${report.outcomes.error} error`)
+  if (report.outcomes.fallback) {
+    incidents.push(`↪ ${report.outcomes.fallback} fallback`)
   }
+  if (incidents.length) lines.push(incidents.join('  '))
+
+  lines.push(...formatGroup('🧠 Model stages', report.modelStages))
+  lines.push(...formatGroup('🔧 Tools', report.tools))
+  lines.push(
+    ...formatGroup(
+      '⚙ Models',
+      report.models.map((group) => ({
+        ...group,
+        label: shortModelName(group.label),
+      })),
+    ),
+  )
+  lines.push(...formatGroup('⚡ Commands', report.commands))
 
   return lines.join('\n')
+}
+
+/** Telegram HTML fallback used when the PNG dashboard cannot be rendered. */
+export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
+  return formatMetricsReport(await getMetricsReport(hoursBack))
 }

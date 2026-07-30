@@ -2,10 +2,11 @@ import { InputFile } from 'grammy/web'
 import type { Bot } from 'grammy/web'
 
 import {
+  formatMetricsReport,
   getChatName,
   getCommandData,
   getFormattedChatStatisticsMessages,
-  getFormattedMetrics,
+  getMetricsReport,
   getStoredChatUsers,
   isAiEnabledChat,
   logger,
@@ -14,6 +15,7 @@ import {
   setUserOptOut,
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
+import { getMetricsDashboardImage } from './metrics-dashboard'
 
 const USERNAME_REGEX = /^[A-Za-z0-9_]+$/
 const TELEGRAM_USERNAME_MIN_LENGTH = 5
@@ -222,7 +224,27 @@ const setupUsersCommands = (bot: Bot) => {
     const rawHours = text.trim()
     const parsedHours = rawHours ? Number(rawHours) : Number.NaN
     const hours = Number.isFinite(parsedHours) ? Math.trunc(parsedHours) : 24
-    return ctx.reply(await getFormattedMetrics(hours), {
+    const report = await getMetricsReport(hours)
+    const fallbackText = formatMetricsReport(report)
+    const image = report.totalOperations
+      ? await getMetricsDashboardImage(report)
+      : null
+
+    if (image) {
+      try {
+        return await ctx.replyWithPhoto(
+          new InputFile(image, 'ai-operations.png'),
+          {
+            reply_parameters: { message_id: replyId },
+            caption: `AI operations · last ${report.hours}h · ${Math.round(report.successRate * 100)}% healthy · ${report.totalOperations} ops`,
+          },
+        )
+      } catch (error) {
+        logger.warn({ chatId: ctx.chat.id, error }, 'metrics.image_send_failed')
+      }
+    }
+
+    return ctx.reply(fallbackText, {
       reply_parameters: { message_id: replyId },
       parse_mode: 'HTML',
     })

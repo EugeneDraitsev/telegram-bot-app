@@ -2,10 +2,11 @@ import { getErrorMessage } from '@tg-bot/common'
 import { OPENAI_WEB_SEARCH_TIMEOUT_MS } from '../agent/models'
 import {
   searchWebOpenAi,
+  WEB_SEARCH_MODEL_LABEL,
   type WebSearchResponseFormat,
 } from '../services/openai-web-search'
 import type { AgentTool } from '../types'
-import { requireToolContext } from './context'
+import { requireToolContext, trackToolModelCall } from './context'
 
 const SEARCH_FORMATS = new Set<WebSearchResponseFormat>([
   'brief',
@@ -51,9 +52,13 @@ export const webSearchTool: AgentTool = {
     }
 
     try {
-      return await searchWebOpenAi(query, getSearchFormat(args.format), {
-        chatId: message.chat?.id,
-      })
+      return await trackToolModelCall(
+        { name: 'web_search', model: WEB_SEARCH_MODEL_LABEL },
+        () =>
+          searchWebOpenAi(query, getSearchFormat(args.format), {
+            chatId: message.chat?.id,
+          }),
+      )
     } catch (error) {
       return `Error searching web: ${getErrorMessage(error)}`
     }

@@ -6,6 +6,7 @@
 import { generateText } from 'ai'
 
 import {
+  formatAiModelConfig,
   getAiSdkGoogleTools,
   getAiSdkLanguageModel,
   getErrorMessage,
@@ -13,7 +14,7 @@ import {
 import { TOOL_CALL_TIMEOUT_MS } from '../agent/config'
 import { HELPER_TEXT_MODEL_CONFIG } from '../agent/models'
 import type { AgentTool } from '../types'
-import { requireToolContext } from './context'
+import { requireToolContext, trackToolModelCall } from './context'
 
 export const codeExecutionTool: AgentTool = {
   declaration: {
@@ -45,17 +46,26 @@ export const codeExecutionTool: AgentTool = {
         return 'Code execution failed: configured helper model provider does not support Google code_execution'
       }
 
-      const result = await generateText({
-        model: getAiSdkLanguageModel(HELPER_TEXT_MODEL_CONFIG),
-        prompt: task,
-        tools: {
-          code_execution: getAiSdkGoogleTools().codeExecution({}),
+      const result = await trackToolModelCall(
+        {
+          name: 'code_execution',
+          model: formatAiModelConfig(HELPER_TEXT_MODEL_CONFIG),
+          classifyResult: (response) =>
+            response.text.trim() ? 'success' : 'error',
         },
-        toolChoice: 'auto',
-        maxRetries: 0,
-        timeout: TOOL_CALL_TIMEOUT_MS,
-        providerOptions: { google: { serviceTier: 'priority' } },
-      })
+        () =>
+          generateText({
+            model: getAiSdkLanguageModel(HELPER_TEXT_MODEL_CONFIG),
+            prompt: task,
+            tools: {
+              code_execution: getAiSdkGoogleTools().codeExecution({}),
+            },
+            toolChoice: 'auto',
+            maxRetries: 0,
+            timeout: TOOL_CALL_TIMEOUT_MS,
+            providerOptions: { google: { serviceTier: 'priority' } },
+          }),
+      )
 
       if (result.text.trim()) {
         return result.text.trim()

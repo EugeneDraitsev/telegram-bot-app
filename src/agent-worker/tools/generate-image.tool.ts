@@ -4,50 +4,103 @@
 
 import {
   buildImageEditTargetPrompt,
+  formatAiModelConfig,
+  GEMINI_FLASH_LITE_IMAGE_MODEL,
   getErrorMessage,
   logger,
   type MediaBuffer,
 } from '@tg-bot/common'
 import { generateImage, generateImageOpenAi } from '../services'
+import { IMAGE_MODEL } from '../services/openai-image'
 import type { AgentTool } from '../types'
-import { addResponse, requireToolContext } from './context'
+import { addResponse, requireToolContext, trackToolModelCall } from './context'
 
 type ImageMediaSource = 'none' | 'request' | 'history'
 
 const OPENAI_IMAGE_COMMANDS = new Set(['e', 'ee', 'gp', 'de'])
+const IMAGE_METRIC_NAME = 'image_generation'
+const GEMINI_IMAGE_MODEL = formatAiModelConfig(GEMINI_FLASH_LITE_IMAGE_MODEL)
+const OPENAI_IMAGE_MODEL = `openai/${IMAGE_MODEL}`
+
+type ImageGenerationResult = { image?: Buffer; text?: string }
+type ImageProvider = 'gemini' | 'openai'
+type ImageGenerationRoute = { provider: ImageProvider; model: string }
+
+const GEMINI_IMAGE_ROUTE: ImageGenerationRoute = {
+  provider: 'gemini',
+  model: GEMINI_IMAGE_MODEL,
+}
+const OPENAI_IMAGE_ROUTE: ImageGenerationRoute = {
+  provider: 'openai',
+  model: OPENAI_IMAGE_MODEL,
+}
+
+export function getImageGenerationRoute(
+  commandName?: string,
+): ImageGenerationRoute[] {
+  if (commandName && OPENAI_IMAGE_COMMANDS.has(commandName)) {
+    return [OPENAI_IMAGE_ROUTE]
+  }
+  if (commandName === 'ge') {
+    return [GEMINI_IMAGE_ROUTE]
+  }
+  return [GEMINI_IMAGE_ROUTE, OPENAI_IMAGE_ROUTE]
+}
+
+function classifyImageResult(result: ImageGenerationResult) {
+  return result.image ? ('success' as const) : ('error' as const)
+}
+
+function generateTracked(
+  route: ImageGenerationRoute,
+  prompt: string,
+  inputImages: Buffer[] | undefined,
+  fallbackFrom?: string,
+) {
+  const generate =
+    route.provider === 'gemini' ? generateImage : generateImageOpenAi
+  return trackToolModelCall(
+    {
+      name: IMAGE_METRIC_NAME,
+      model: route.model,
+      fallbackFrom,
+      classifyResult: classifyImageResult,
+    },
+    () => generate(prompt, inputImages),
+  )
+}
 
 async function generateWithFallback(
   prompt: string,
   inputImages: Buffer[] | undefined,
-  useOpenAiPrimary: boolean,
   commandName?: string,
 ) {
-  if (useOpenAiPrimary) {
-    return generateImageOpenAi(prompt, inputImages)
-  }
-
-  if (commandName === 'ge') {
-    return generateImage(prompt, inputImages)
-  }
+  const [primary, fallback] = getImageGenerationRoute(commandName)
+  if (!primary) throw new Error('Image generation route is empty')
+  if (!fallback) return generateTracked(primary, prompt, inputImages)
 
   try {
-    const result = await generateImage(prompt, inputImages)
+    const result = await generateTracked(primary, prompt, inputImages)
     if (result.image) {
       return result
     }
 
     logger.warn(
-      { commandName, reason: 'no_image' },
+      { commandName, model: primary.model, reason: 'no_image' },
       'image_gen.openai_fallback',
     )
   } catch (error) {
     logger.warn(
-      { commandName, error: getErrorMessage(error) },
+      {
+        commandName,
+        model: primary.model,
+        error: getErrorMessage(error),
+      },
       'image_gen.openai_fallback',
     )
   }
 
-  return generateImageOpenAi(prompt, inputImages)
+  return generateTracked(fallback, prompt, inputImages, primary.model)
 }
 
 function isHistoryImage(media: MediaBuffer): boolean {
@@ -144,7 +197,6 @@ export const generateImageTool: AgentTool = {
       const result = await generateWithFallback(
         imagePrompt,
         imagesToEdit?.map((media) => media.buffer),
-        Boolean(commandName && OPENAI_IMAGE_COMMANDS.has(commandName)),
         commandName,
       )
 

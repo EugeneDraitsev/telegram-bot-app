@@ -5,6 +5,7 @@ const mockZrange = jest.fn()
 const mockZremrangebyscore = jest.fn()
 
 const {
+  buildMetricsReport,
   getFormattedMetrics,
   getMetrics,
   recordMetric,
@@ -28,7 +29,7 @@ beforeEach(() => {
 })
 
 describe('recordMetric', () => {
-  test('silently ignores Redis errors', async () => {
+  test('keeps Redis errors non-fatal', async () => {
     mockZadd.mockRejectedValue(new Error('redis down'))
 
     await recordMetric({
@@ -145,7 +146,7 @@ describe('getFormattedMetrics', () => {
   test('returns empty message when no metrics', async () => {
     mockZrange.mockResolvedValue([])
     const result = await getFormattedMetrics(24)
-    expect(result).toContain('No metrics')
+    expect(result).toContain('No v2 metrics')
   })
 
   test('formats timeout, error, and fallback breakdowns', async () => {
@@ -189,14 +190,14 @@ describe('getFormattedMetrics', () => {
 
     const result = await getFormattedMetrics(24)
 
-    expect(result).toContain('Metrics')
-    expect(result).toContain('33% ok')
+    expect(result).toContain('AI operations')
+    expect(result).toContain('33% healthy')
     expect(result).toContain('timeout')
     expect(result).toContain('fallback')
     expect(result).toContain('routing')
     expect(result).toContain('web_search')
     expect(result).toContain('Models')
-    expect(result).toContain('2.5-flash &lt;= 3.5-flash-lite')
+    expect(result).toContain('2.5-flash')
   })
 
   test('clamps hoursBack to safe range', async () => {
@@ -204,6 +205,50 @@ describe('getFormattedMetrics', () => {
     await getFormattedMetrics(-5)
     await getFormattedMetrics(99999)
     await getFormattedMetrics(0)
+  })
+})
+
+describe('buildMetricsReport', () => {
+  test('separates models, tools, and command attribution', () => {
+    const now = Date.now()
+    const report = buildMetricsReport(
+      [
+        {
+          type: 'model_call',
+          source: 'command',
+          command: 'e',
+          name: 'image_generation',
+          model: 'openai/gpt-image-2',
+          chatId: 1,
+          durationMs: 9000,
+          success: true,
+          status: 'success',
+          timestamp: now,
+        },
+        {
+          type: 'tool_call',
+          source: 'command',
+          command: 'e',
+          name: 'generate_or_edit_image',
+          model: 'this-must-not-appear-as-a-model',
+          chatId: 1,
+          durationMs: 9100,
+          success: true,
+          status: 'success',
+          timestamp: now,
+        },
+      ],
+      24,
+      now,
+    )
+
+    expect(report.modelCalls).toBe(1)
+    expect(report.toolCalls).toBe(1)
+    expect(report.commandCalls).toBe(2)
+    expect(report.commands[0]?.label).toBe('/e')
+    expect(report.models.map(({ label }) => label)).toEqual([
+      'openai/gpt-image-2',
+    ])
   })
 })
 
