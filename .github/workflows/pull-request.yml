@@ -11,8 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
 
-      - run: bun install
-      - run: bun biome
+      - run: bun install --frozen-lockfile
+      - run: bun run audit
+      - run: bun run biome
       - run: bun run tsc
       - run: bun test
+      - run: bun run build

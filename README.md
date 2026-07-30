@@ -67,21 +67,25 @@ tracking, initial `stats` responses and live broadcast fanout when new chat
 events are written. `saveEvent` lives in `src/common`; any lambda that writes a
 chat event through it can trigger the broadcast lambda.
 
-`src/chat-search` owns the REST `/search` endpoint used by
-`telegram-bot-ui` to discover chats. It reads `chat-statistics`; it is separate
-from WebSockets because it is ordinary request/response HTTP.
+Statistics pages are private. The reply worker creates a short-lived,
+chat-specific signed URL, and the WebSocket handler verifies that token before
+subscribing a browser or returning chat data. There is no public chat search
+endpoint.
+
+User counters live in `chat-user-statistics`, one DynamoDB item per user and
+chat. Existing aggregate `chat-statistics` records remain readable and are
+migrated lazily per user, so deployment does not require a destructive or
+blocking data migration.
 
 `src/sharp-renderer` renders PNG images for Telegram messages, including
 chat activity charts and currency rate cards.
 
-`src/telegram-bot/currency-scheduler` and `src/telegram-bot/redis-scheduler`
-are cron lambdas: the first posts a currency digest to selected chats on
-weekday mornings and evenings, the second hourly clears old AI chat history
-in Redis.
+`src/telegram-bot/currency-scheduler` posts a currency digest to selected chats
+on weekday mornings and evenings. AI chat history is bounded and expires from
+Redis as messages are written, so it does not need a global key-scan cron.
 
 `src/common` contains shared runtime code: Telegram helpers, DynamoDB access,
-Lambda invocation, S3 helpers, Upstash Redis access, logging, formatting and
-shared types.
+Lambda invocation, Upstash Redis access, logging, formatting and shared types.
 
 ## Related Projects
 
