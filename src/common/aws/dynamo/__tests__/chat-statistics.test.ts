@@ -72,7 +72,6 @@ describe('per-user chat statistics storage', () => {
         userId: 7,
         msgCount: 1,
         username: 'alice',
-        optedOut: undefined,
         chatInfo: chat,
         updatedAt: expect.any(Number),
       },
@@ -125,37 +124,6 @@ describe('per-user chat statistics storage', () => {
     })
   })
 
-  test('migrates a legacy count on the first new write', async () => {
-    querySpy
-      .mockResolvedValueOnce({ Items: [] } as never)
-      .mockResolvedValueOnce({
-        Items: [
-          {
-            chatId: '-100',
-            chatInfo: chat,
-            users: [
-              { id: 7, msgCount: 5, username: 'old-name', optedOut: true },
-            ],
-          },
-        ],
-      } as never)
-
-    await updateStatistics(user, chat)
-
-    expect(querySpy).toHaveBeenCalledTimes(2)
-    expect(putSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        Item: expect.objectContaining({
-          chatId: '-100',
-          userId: 7,
-          msgCount: 6,
-          username: 'alice',
-          optedOut: true,
-        }),
-      }),
-    )
-  })
-
   test('falls back to atomic increment after a concurrent first write', async () => {
     querySpy.mockResolvedValue({ Items: [] } as never)
     putSpy.mockRejectedValueOnce(
@@ -202,47 +170,7 @@ describe('per-user chat statistics storage', () => {
     })
   })
 
-  test('migrates a legacy user when changing opt-out state', async () => {
-    querySpy
-      .mockResolvedValueOnce({ Items: [] } as never)
-      .mockResolvedValueOnce({
-        Items: [
-          {
-            chatId: '-100',
-            chatInfo: chat,
-            users: [{ id: 7, msgCount: 5, username: 'alice' }],
-          },
-        ],
-      } as never)
-
-    await expect(setUserOptOut(-100, 7, true)).resolves.toBe('updated')
-    expect(putSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        TableName: 'chat-user-statistics',
-        Item: {
-          chatId: '-100',
-          userId: 7,
-          msgCount: 5,
-          username: 'alice',
-          optedOut: true,
-        },
-      }),
-    )
-  })
-
-  test('merges legacy users with new per-user records', async () => {
-    querySpy.mockResolvedValue({
-      Items: [
-        {
-          chatId: '-100',
-          chatInfo: chat,
-          users: [
-            { id: 7, msgCount: 5, username: 'old-alice' },
-            { id: 8, msgCount: 2, username: 'bob' },
-          ],
-        },
-      ],
-    } as never)
+  test('reads chat statistics only from per-user records', async () => {
     const currentChat = { ...chat, title: 'Renamed chat' } as Chat
     queryAllSpy.mockResolvedValue([
       {
@@ -253,6 +181,14 @@ describe('per-user chat statistics storage', () => {
         chatInfo: currentChat,
         updatedAt: 10,
       },
+      {
+        chatId: '-100',
+        userId: 8,
+        msgCount: 2,
+        username: 'bob',
+        chatInfo: chat,
+        updatedAt: 5,
+      },
     ])
 
     await expect(getStoredChatStatistics(-100)).resolves.toEqual({
@@ -260,9 +196,9 @@ describe('per-user chat statistics storage', () => {
       chatInfo: currentChat,
       users: [
         { id: 7, msgCount: 8, username: 'alice', optedOut: undefined },
-        { id: 8, msgCount: 2, username: 'bob' },
+        { id: 8, msgCount: 2, username: 'bob', optedOut: undefined },
       ],
-      version: undefined,
     })
+    expect(querySpy).not.toHaveBeenCalled()
   })
 })

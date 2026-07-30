@@ -105,25 +105,24 @@ describe('websocket handlers', () => {
           })
         }
 
-        if (input.TableName === 'chat-statistics') {
+        if (input.TableName === 'chat-user-statistics') {
           return Promise.resolve({
             Items: [
               {
                 chatId: '123',
+                userId: 1,
+                msgCount: 2,
+                username: 'Jane',
                 chatInfo: {
                   id: 123,
                   type: 'group',
                   title: 'Test chat',
                   invite_link: 'https://example.test/private-invite',
                 },
-                users: [{ id: 1, msgCount: 2, username: 'Jane' }],
+                updatedAt: 1,
               },
             ],
           })
-        }
-
-        if (input.TableName === 'chat-user-statistics') {
-          return Promise.resolve({ Items: [] })
         }
 
         return Promise.reject(new Error(`unexpected table ${input.TableName}`))
@@ -135,7 +134,7 @@ describe('websocket handlers', () => {
     const response = await stats(createStatsEvent({ chatId: '123' }))
 
     expect(response.statusCode).toBe(200)
-    expect(dynamoSendSpy).toHaveBeenCalledTimes(4)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(3)
     expect(apiSendSpy).toHaveBeenCalledTimes(1)
     const postInput = apiSendSpy.mock.calls[0][0].input as { Data: unknown }
 
@@ -161,12 +160,6 @@ describe('websocket handlers', () => {
 
         if (input.TableName === 'chat-events') {
           return Promise.resolve({ Items: [] })
-        }
-
-        if (input.TableName === 'chat-statistics') {
-          return Promise.resolve({
-            Items: [{ chatId: '123', users: [] }],
-          })
         }
 
         if (input.TableName === 'chat-user-statistics') {
@@ -219,12 +212,6 @@ describe('websocket handlers', () => {
 
         if (input.TableName === 'chat-events') {
           return Promise.resolve({ Items: [] })
-        }
-
-        if (input.TableName === 'chat-statistics') {
-          return Promise.resolve({
-            Items: [{ chatId: '123', users: [] }],
-          })
         }
 
         if (input.TableName === 'chat-user-statistics') {
@@ -340,10 +327,6 @@ describe('websocket handlers', () => {
           return Promise.reject(new Error('chat events unavailable'))
         }
 
-        if (input.TableName === 'chat-statistics') {
-          return Promise.resolve({ Items: [] })
-        }
-
         if (input.TableName === 'chat-user-statistics') {
           return Promise.resolve({ Items: [] })
         }
@@ -358,7 +341,7 @@ describe('websocket handlers', () => {
     const response = await stats(createStatsEvent({ chatId: '123' }))
 
     expect(response.statusCode).toBe(200)
-    expect(dynamoSendSpy).toHaveBeenCalledTimes(4)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(3)
     expect(apiSendSpy).not.toHaveBeenCalled()
   })
 

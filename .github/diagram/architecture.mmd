@@ -35,7 +35,6 @@ flowchart TB
   subgraph DATA["data stores"]
     direction LR
     REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>AI history", h: 40 }
-    STATS@{ icon: "logos:aws-dynamodb", label: "chat-statistics<br/>legacy read", h: 40 }
     USERSTATS@{ icon: "logos:aws-dynamodb", label: "chat-user-statistics", h: 40 }
     EVENTS@{ icon: "logos:aws-dynamodb", label: "chat-events", h: 40 }
     CONNS@{ icon: "logos:aws-dynamodb", label: "websocket-connections", h: 40 }
@@ -65,8 +64,8 @@ flowchart TB
   ACT -->|"AI history"| REDIS
   ACT -.->|"stats fanout"| BCAST
 
-  BCAST --> STATS & USERSTATS & EVENTS & CONNS
-  WSL --> STATS & USERSTATS & EVENTS & CONNS
+  BCAST --> USERSTATS & EVENTS & CONNS
+  WSL --> USERSTATS & EVENTS & CONNS
   IMG --> EVENTS
 
   BCAST -.->|"push live stats"| WSS

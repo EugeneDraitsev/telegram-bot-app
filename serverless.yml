@@ -23,7 +23,6 @@ provider:
     region: eu-central-1
     stage: ${sls:stage}
     FRONTEND_BASE_URL: ${self:custom.frontendBaseUrl}
-    CHAT_STATISTICS_TABLE_NAME: ${self:custom.runtimeChatStatisticsTableNameByStage.${sls:stage}, self:custom.chatStatisticsTableName}
     CHAT_USER_STATISTICS_TABLE_NAME: ${self:custom.runtimeChatUserStatisticsTableNameByStage.${sls:stage}, self:custom.chatUserStatisticsTableName}
     CHAT_EVENTS_TABLE_NAME: ${self:custom.runtimeChatEventsTableNameByStage.${sls:stage}, self:custom.chatEventsTableName}
     SHARP_RENDERER_FUNCTION_NAME: ${self:service}-${sls:stage}-sharp-renderer

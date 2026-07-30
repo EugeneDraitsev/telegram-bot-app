@@ -72,10 +72,9 @@ chat-specific signed URL, and the WebSocket handler verifies that token before
 subscribing a browser or returning chat data. There is no public chat search
 endpoint.
 
-User counters live in `chat-user-statistics`, one DynamoDB item per user and
-chat. Existing aggregate `chat-statistics` records remain readable and are
-migrated lazily per user, so deployment does not require a destructive or
-blocking data migration.
+User counters live only in `chat-user-statistics`, one DynamoDB item per user
+and chat. The former aggregate `chat-statistics` data was migrated with
+per-user count verification before the runtime was cut over.
 
 `src/sharp-renderer` renders PNG images for Telegram messages, including
 chat activity charts and currency rate cards.

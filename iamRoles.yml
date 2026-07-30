@@ -45,7 +45,6 @@ Resources:
                 Action:
                   - dynamodb:Query
                 Resource:
-                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
               - Effect: Allow
@@ -101,7 +100,6 @@ Resources:
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
                 Resource:
-                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
               - Effect: Allow
                 Action:
@@ -205,7 +203,6 @@ Resources:
                 Action:
                   - dynamodb:Query
                 Resource:
-                  - arn:aws:dynamodb:*:*:table/${self:custom.chatStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
               - Effect: Allow
