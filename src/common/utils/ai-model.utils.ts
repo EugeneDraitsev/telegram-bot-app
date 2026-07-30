@@ -28,9 +28,14 @@ export const DEFAULT_OPENAI_TEXT_MODEL: AiModelConfig = {
   model: 'gpt-5.6',
 }
 
-export const DEFAULT_WEB_SEARCH_MODEL: AiModelConfig = {
+export const DEFAULT_OPENAI_NANO_MODEL: AiModelConfig = {
   provider: 'openai',
   model: 'gpt-5.4-nano',
+}
+
+export const DEFAULT_WEB_SEARCH_MODEL: AiModelConfig = {
+  provider: 'openai',
+  model: 'gpt-5.6-luna',
 }
 
 export const GEMINI_FLASH_IMAGE_MODEL: AiModelConfig = {

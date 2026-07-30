@@ -15,7 +15,7 @@ flowchart TB
 
     BCAST@{ icon: "logos:aws-lambda", label: "broadcast-stats", h: 42 }
     WSL@{ icon: "logos:aws-lambda", label: "websockets", h: 42 }
-    IMG@{ icon: "logos:aws-lambda", label: "sharp-renderer<br/>PNG images", h: 42 }
+    IMG@{ icon: "logos:aws-lambda", label: "sharp-renderer<br/>SVG → PNG", h: 42 }
 
     WSS@{ icon: "logos:aws-api-gateway", label: "WebSocket API", h: 40 }
   end
@@ -28,13 +28,13 @@ flowchart TB
   end
 
   subgraph THIRD["3rd party services"]
-    GEM@{ icon: "logos:google-gemini", label: "gemini-3.6-flash", h: 38 }
-    APIS["Google / YouTube / Weather<br/>Tavily / OpenAI / Giphy"]:::ext
+    GEM@{ icon: "logos:google-gemini", label: "Gemini models<br/>gate / loop / images", h: 38 }
+    APIS["OpenAI / Google Search / YouTube<br/>Weather / Tavily / Giphy"]:::ext
   end
 
   subgraph DATA["data stores"]
     direction LR
-    REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>AI history", h: 40 }
+    REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>AI state / history / metrics", h: 40 }
     USERSTATS@{ icon: "logos:aws-dynamodb", label: "chat-user-statistics", h: 40 }
     EVENTS@{ icon: "logos:aws-dynamodb", label: "chat-events", h: 40 }
     CONNS@{ icon: "logos:aws-dynamodb", label: "websocket-connections", h: 40 }
@@ -55,10 +55,15 @@ flowchart TB
 
   REPLY -->|"reply"| TG
   AGENT -->|"reply"| TG
+  CRON1 <--> APIS
   REPLY <--> APIS
   AGENT <--> APIS
   AGENT <-->|"gate + loop"| GEM
-  AGENT <-->|"chat history"| REDIS
+  AGENT <-->|"state / history / metrics"| REDIS
+  REPLY -->|"read metrics"| REDIS
+  CRON1 <-.->|"currency PNG"| IMG
+  REPLY <-.->|"stats / currency / metrics PNG"| IMG
+  AGENT <-.->|"SVG → PNG"| IMG
 
   ACT --> USERSTATS & EVENTS
   ACT -->|"AI history"| REDIS
@@ -66,7 +71,7 @@ flowchart TB
 
   BCAST --> USERSTATS & EVENTS & CONNS
   WSL --> USERSTATS & EVENTS & CONNS
-  IMG --> EVENTS
+  IMG -->|"read 24h stats"| EVENTS
 
   BCAST -.->|"push live stats"| WSS
   WSS <--> WSL

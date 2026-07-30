@@ -91,12 +91,12 @@ describe('executeDynamicCommandFromMessage', () => {
       'Курс Cardano\nCardano ADA price',
       'brief',
       { chatId: 777 },
+      { attribution: { source: 'command', command: 'ada' } },
     )
     expect(result.execution).toEqual({
       matched: true,
       name: 'ada',
       result: 'ADA is $0.44 right now',
-      model: 'gpt-5.4-nano',
     })
     expect(result.responses).toEqual([])
   })

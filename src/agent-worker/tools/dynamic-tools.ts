@@ -8,15 +8,16 @@ import {
   getParsedText,
   getWeather,
 } from '@tg-bot/common'
-import {
-  type SearchWebOptions,
-  searchWebOpenAi as searchWeb,
-  WEB_SEARCH_MODEL,
-  WEB_SEARCH_MODEL_LABEL,
-  type WebSearchResponseFormat,
+import type {
+  SearchWebOptions,
+  WebSearchResponseFormat,
 } from '../services/openai-web-search'
 import type { AgentTool } from '../types'
-import { addResponse, requireToolContext, trackToolModelCall } from './context'
+import { addResponse, requireToolContext } from './context'
+import {
+  searchWebWithFallback,
+  type WebSearchTrackingOptions,
+} from './web-search-runner'
 
 const MAX_DYNAMIC_TOOLS = 16
 
@@ -25,11 +26,12 @@ export interface DynamicToolDependencies {
     query: string,
     format?: WebSearchResponseFormat,
     options?: SearchWebOptions,
+    tracking?: WebSearchTrackingOptions,
   ) => Promise<string>
 }
 
 const defaultDynamicToolDependencies: DynamicToolDependencies = {
-  searchWeb,
+  searchWeb: searchWebWithFallback,
 }
 
 export const dynamicToolDefinitionSchema = z.object({
@@ -50,7 +52,6 @@ export interface DynamicCommandExecutionResult {
   matched: boolean
   name?: string
   result?: string
-  model?: string
 }
 
 function normalizeDynamicToolName(value: string): string {
@@ -188,19 +189,14 @@ function createDynamicTool(
           return `Error: Dynamic tool "${name}" has empty query`
         }
 
-        const text = await trackToolModelCall(
+        const text = await dependencies.searchWeb(
+          preparedQuery,
+          (args.format as 'brief' | 'detailed' | 'list') ??
+            definition.searchFormat,
+          { chatId: message.chat?.id },
           {
-            name: 'web_search',
-            model: WEB_SEARCH_MODEL_LABEL,
             attribution: { source: 'command', command: name },
           },
-          () =>
-            dependencies.searchWeb(
-              preparedQuery,
-              (args.format as 'brief' | 'detailed' | 'list') ??
-                definition.searchFormat,
-              { chatId: message.chat?.id },
-            ),
         )
         addStickerResponseIfPresent()
         return text
@@ -295,7 +291,6 @@ export async function executeDynamicCommandFromMessage(
     matched: true,
     name: definition.name,
     result,
-    ...(definition.action === 'web_search' ? { model: WEB_SEARCH_MODEL } : {}),
   }
 }
 

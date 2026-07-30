@@ -4,10 +4,10 @@
  */
 
 import { getErrorMessage } from '@tg-bot/common'
-import { searchWeb } from '../services'
-import { WEB_SEARCH_MODEL_LABEL } from '../services/openai-web-search'
+import { WEB_SEARCH_TOTAL_TIMEOUT_MS } from '../agent/models'
 import type { AgentTool } from '../types'
-import { addResponse, requireToolContext, trackToolModelCall } from './context'
+import { addResponse, requireToolContext } from './context'
+import { searchWebWithFallback } from './web-search-runner'
 
 const URL_REGEX = /https?:\/\/[^\s<>)"\]}]+/i
 
@@ -52,6 +52,7 @@ export const searchVideoTool: AgentTool = {
       required: ['query'],
     },
   },
+  timeoutMs: WEB_SEARCH_TOTAL_TIMEOUT_MS,
   execute: async (args) => {
     const { message } = requireToolContext()
 
@@ -61,14 +62,15 @@ export const searchVideoTool: AgentTool = {
         return 'Error searching video: Query cannot be empty'
       }
 
-      const searchResult = await trackToolModelCall(
-        { name: 'video_search', model: WEB_SEARCH_MODEL_LABEL },
-        () =>
-          searchWeb(query, 'brief', {
-            groundedPrompt: buildVideoSearchPrompt(query),
-            fallbackQuery: query,
-            chatId: message.chat.id,
-          }),
+      const searchResult = await searchWebWithFallback(
+        query,
+        'brief',
+        {
+          groundedPrompt: buildVideoSearchPrompt(query),
+          fallbackQuery: query,
+          chatId: message.chat.id,
+        },
+        { name: 'video_search' },
       )
       const videoUrl = extractFirstUrl(searchResult)
 

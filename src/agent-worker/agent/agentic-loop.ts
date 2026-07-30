@@ -992,7 +992,6 @@ export async function runAgenticLoop(
             durationMs: Date.now() - startedAt,
             deliveryDurationMs: Date.now() - deliveryStart,
             commandName: dynamicCommand.name,
-            ...(dynamicCommand.model ? { model: dynamicCommand.model } : {}),
             responseCount: responsesToSend.length,
           },
           'loop.dynamic_command_done',

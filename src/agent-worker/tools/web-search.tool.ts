@@ -1,12 +1,9 @@
 import { getErrorMessage } from '@tg-bot/common'
-import { OPENAI_WEB_SEARCH_TIMEOUT_MS } from '../agent/models'
-import {
-  searchWebOpenAi,
-  WEB_SEARCH_MODEL_LABEL,
-  type WebSearchResponseFormat,
-} from '../services/openai-web-search'
+import { WEB_SEARCH_TOTAL_TIMEOUT_MS } from '../agent/models'
+import type { WebSearchResponseFormat } from '../services/openai-web-search'
 import type { AgentTool } from '../types'
-import { requireToolContext, trackToolModelCall } from './context'
+import { requireToolContext } from './context'
+import { searchWebWithFallback } from './web-search-runner'
 
 const SEARCH_FORMATS = new Set<WebSearchResponseFormat>([
   'brief',
@@ -42,7 +39,7 @@ export const webSearchTool: AgentTool = {
       required: ['query'],
     },
   },
-  timeoutMs: OPENAI_WEB_SEARCH_TIMEOUT_MS + 5_000,
+  timeoutMs: WEB_SEARCH_TOTAL_TIMEOUT_MS,
   execute: async (args) => {
     const { message } = requireToolContext()
     const query = typeof args.query === 'string' ? args.query.trim() : ''
@@ -52,13 +49,9 @@ export const webSearchTool: AgentTool = {
     }
 
     try {
-      return await trackToolModelCall(
-        { name: 'web_search', model: WEB_SEARCH_MODEL_LABEL },
-        () =>
-          searchWebOpenAi(query, getSearchFormat(args.format), {
-            chatId: message.chat?.id,
-          }),
-      )
+      return await searchWebWithFallback(query, getSearchFormat(args.format), {
+        chatId: message.chat?.id,
+      })
     } catch (error) {
       return `Error searching web: ${getErrorMessage(error)}`
     }
