@@ -28,7 +28,8 @@ flowchart TB
   end
 
   subgraph THIRD["3rd party services"]
-    GEM@{ icon: "logos:google-gemini", label: "Gemini models<br/>gate / loop / images", h: 38 }
+    GPT@{ icon: "simple-icons:openai", label: "GPT-5.6 Luna<br/>gate / loop / helpers", h: 38 }
+    GEM@{ icon: "logos:google-gemini", label: "Gemini models<br/>fallbacks / images", h: 38 }
     APIS["OpenAI / Google Search / YouTube<br/>Weather / Tavily / Giphy"]:::ext
   end
 
@@ -41,7 +42,8 @@ flowchart TB
   end
 
   GHAPP ~~~ BOT
-  TG ~~~ GEM
+  TG ~~~ GPT
+  GPT ~~~ GEM
   GEM ~~~ APIS
   APIS ~~~ GHUI
   GHUI ~~~ NEXT
@@ -58,7 +60,8 @@ flowchart TB
   CRON1 <--> APIS
   REPLY <--> APIS
   AGENT <--> APIS
-  AGENT <-->|"gate + loop"| GEM
+  AGENT <-->|"gate + loop"| GPT
+  AGENT <-->|"fallbacks / images"| GEM
   AGENT <-->|"state / history / metrics"| REDIS
   REPLY -->|"read metrics"| REDIS
   CRON1 <-.->|"currency PNG"| IMG

@@ -1,5 +1,8 @@
 import {
+  DEFAULT_FAST_TEXT_FALLBACK_MODEL,
   DEFAULT_FAST_TEXT_MODEL,
+  DEFAULT_HELPER_TEXT_FALLBACK_MODEL,
+  DEFAULT_HELPER_TEXT_MODEL,
   formatAiModelConfig,
   GEMINI_FLASH_IMAGE_MODEL,
   GEMINI_FLASH_LITE_IMAGE_MODEL,
@@ -46,8 +49,20 @@ describe('ai-model.utils', () => {
 
   test('formats provider-neutral model labels', () => {
     expect(formatAiModelConfig(DEFAULT_FAST_TEXT_MODEL)).toBe(
-      'google/gemini-3.6-flash',
+      'openai/gpt-5.6-luna',
     )
+  })
+
+  test('keeps the previous Gemini text models as fallbacks', () => {
+    expect(DEFAULT_FAST_TEXT_FALLBACK_MODEL).toEqual({
+      provider: 'google',
+      model: 'gemini-3.6-flash',
+    })
+    expect(DEFAULT_HELPER_TEXT_MODEL).toBe(DEFAULT_FAST_TEXT_MODEL)
+    expect(DEFAULT_HELPER_TEXT_FALLBACK_MODEL).toEqual({
+      provider: 'google',
+      model: 'gemini-3.5-flash-lite',
+    })
   })
 
   test('exports Gemini image generation models', () => {

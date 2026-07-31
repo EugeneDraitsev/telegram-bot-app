@@ -25,8 +25,8 @@
   history inline.
 - Ingress should dispatch to workers asynchronously and return.
 - Agent worker performs:
-  1. single reply gate check with Gemini 3.5 Flash-Lite
-  2. agentic loop with Gemini 3.6 Flash
+  1. single reply gate check with GPT-5.6 Luna (Gemini 3.5 Flash-Lite fallback)
+  2. agentic loop with GPT-5.6 Luna (Gemini 3.6 Flash fallback)
 - Registered command dispatch:
   - `/q` and `/qq` go to `agent-worker` with reply gate bypassed.
   - other registered commands go to `telegram-reply-worker`.

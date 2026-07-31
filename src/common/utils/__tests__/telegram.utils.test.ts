@@ -10,7 +10,31 @@ import {
   getUserName,
   isBotCommand,
   isLink,
+  isTelegramReplyTargetMissingError,
 } from '..'
+
+describe('isTelegramReplyTargetMissingError', () => {
+  test('matches Telegram missing reply target errors only', () => {
+    expect(
+      isTelegramReplyTargetMissingError({
+        error_code: 400,
+        description: 'Bad Request: message to be replied not found',
+      }),
+    ).toBe(true)
+    expect(
+      isTelegramReplyTargetMissingError({
+        error_code: 400,
+        description: 'Bad Request: chat not found',
+      }),
+    ).toBe(false)
+    expect(
+      isTelegramReplyTargetMissingError({
+        error_code: 500,
+        description: 'message to be replied not found',
+      }),
+    ).toBe(false)
+  })
+})
 
 describe('findCommand', () => {
   test('must properly commands from first word in message or string ending with @', () => {

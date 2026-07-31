@@ -13,12 +13,21 @@ export interface AiModelConfig {
   model: string
 }
 
-export const DEFAULT_FAST_TEXT_MODEL: AiModelConfig = {
+export const DEFAULT_OPENAI_LUNA_MODEL: AiModelConfig = {
+  provider: 'openai',
+  model: 'gpt-5.6-luna',
+}
+
+export const DEFAULT_FAST_TEXT_MODEL = DEFAULT_OPENAI_LUNA_MODEL
+
+export const DEFAULT_FAST_TEXT_FALLBACK_MODEL: AiModelConfig = {
   provider: 'google',
   model: 'gemini-3.6-flash',
 }
 
-export const DEFAULT_HELPER_TEXT_MODEL: AiModelConfig = {
+export const DEFAULT_HELPER_TEXT_MODEL = DEFAULT_OPENAI_LUNA_MODEL
+
+export const DEFAULT_HELPER_TEXT_FALLBACK_MODEL: AiModelConfig = {
   provider: 'google',
   model: 'gemini-3.5-flash-lite',
 }
@@ -33,10 +42,7 @@ export const DEFAULT_OPENAI_NANO_MODEL: AiModelConfig = {
   model: 'gpt-5.4-nano',
 }
 
-export const DEFAULT_WEB_SEARCH_MODEL: AiModelConfig = {
-  provider: 'openai',
-  model: 'gpt-5.6-luna',
-}
+export const DEFAULT_WEB_SEARCH_MODEL = DEFAULT_OPENAI_LUNA_MODEL
 
 export const GEMINI_FLASH_IMAGE_MODEL: AiModelConfig = {
   provider: 'google',

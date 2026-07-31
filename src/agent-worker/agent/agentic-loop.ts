@@ -28,6 +28,7 @@ import {
   getMessageLogMeta,
   getMetricStatusFromError,
   getRecentRawHistory,
+  isTelegramReplyTargetMissingError,
   logger,
   type MetricStatus,
   recordMetric,
@@ -63,7 +64,10 @@ import {
   CHAT_FALLBACK_REASONING_EFFORT,
   CHAT_MODEL_CONFIG,
   CHAT_MODEL_REASONING_EFFORT,
+  HELPER_TEXT_FALLBACK_MODEL_CONFIG,
+  HELPER_TEXT_FALLBACK_REASONING_EFFORT,
   HELPER_TEXT_MODEL_CONFIG,
+  HELPER_TEXT_MODEL_REASONING_EFFORT,
   REPLY_GATE_MODEL,
   resolveAgentChatModel,
 } from './models'
@@ -342,6 +346,10 @@ async function generateDirectSvg(
       HELPER_TEXT_MODEL_CONFIG,
       DIRECT_SVG_MODEL_TIMEOUT_MS,
       getToolMetricAttribution(),
+      {
+        modelConfig: HELPER_TEXT_FALLBACK_MODEL_CONFIG,
+        reasoningEffort: HELPER_TEXT_FALLBACK_REASONING_EFFORT,
+      },
     )
 
     const svg = extractSvgMarkup(result.response.text)
@@ -715,11 +723,16 @@ function getChatProviderOptions(modelConfig: AiModelConfig, chatId: number) {
   const isPrimaryChatModel =
     modelConfig.provider === CHAT_MODEL_CONFIG.provider &&
     modelConfig.model === CHAT_MODEL_CONFIG.model
+  const isHelperTextModel =
+    modelConfig.provider === HELPER_TEXT_MODEL_CONFIG.provider &&
+    modelConfig.model === HELPER_TEXT_MODEL_CONFIG.model
 
   return getAiSdkProviderOptions(modelConfig, {
     reasoningEffort: isPrimaryChatModel
       ? CHAT_MODEL_REASONING_EFFORT
-      : CHAT_FALLBACK_REASONING_EFFORT,
+      : isHelperTextModel
+        ? HELPER_TEXT_MODEL_REASONING_EFFORT
+        : CHAT_FALLBACK_REASONING_EFFORT,
     chatId,
     store: false,
     serviceTier: modelConfig.provider === 'google' ? 'priority' : undefined,
@@ -1323,11 +1336,27 @@ export async function runAgenticLoop(
       'loop.failed',
     )
     try {
+      const failureReply = getLoopFailureReply(error)
       const replyOptions =
         typeof deliveryReplyMessageId === 'number'
           ? { reply_parameters: { message_id: deliveryReplyMessageId } }
           : undefined
-      await api.sendMessage(chatId, getLoopFailureReply(error), replyOptions)
+      try {
+        await api.sendMessage(chatId, failureReply, replyOptions)
+      } catch (sendError) {
+        if (
+          deliveryReplyMessageId === undefined ||
+          !isTelegramReplyTargetMissingError(sendError)
+        ) {
+          throw sendError
+        }
+
+        logger.warn(
+          { chatId, replyToMessageId: deliveryReplyMessageId },
+          'loop.error_reply_target_missing',
+        )
+        await api.sendMessage(chatId, failureReply)
+      }
     } catch (sendError) {
       logger.error({ chatId, sendError }, 'loop.error_reply_failed')
     }

@@ -2,6 +2,7 @@ import { generateText, type ToolSet } from 'ai'
 
 import {
   type AiModelConfig,
+  type AiReasoningEffort,
   formatAiModelConfig,
   getAiSdkLanguageModel,
   getAiSdkProviderOptions,
@@ -44,6 +45,11 @@ export interface ModelMetricAttribution {
   command?: string
 }
 
+export interface ModelFallbackConfig {
+  modelConfig: AiModelConfig
+  reasoningEffort: AiReasoningEffort
+}
+
 export class ModelCallTimeoutError extends Error {
   constructor(
     readonly model: string,
@@ -82,28 +88,37 @@ function isSameModelConfig(a: AiModelConfig, b: AiModelConfig): boolean {
   return a.provider === b.provider && a.model === b.model
 }
 
-function shouldUseFallback(modelConfig: AiModelConfig): boolean {
-  return (
-    modelConfig.provider === 'google' &&
-    isSameModelConfig(modelConfig, CHAT_MODEL_CONFIG) &&
-    !isSameModelConfig(modelConfig, CHAT_FALLBACK_MODEL_CONFIG)
-  )
+function resolveFallbackConfig(
+  modelConfig: AiModelConfig,
+  fallback?: ModelFallbackConfig,
+): ModelFallbackConfig | undefined {
+  const resolved =
+    fallback ??
+    (isSameModelConfig(modelConfig, CHAT_MODEL_CONFIG)
+      ? {
+          modelConfig: CHAT_FALLBACK_MODEL_CONFIG,
+          reasoningEffort: CHAT_FALLBACK_REASONING_EFFORT,
+        }
+      : undefined)
+
+  return resolved && !isSameModelConfig(modelConfig, resolved.modelConfig)
+    ? resolved
+    : undefined
 }
 
 function getFallbackParams<TOOLS extends ToolSet>(
   params: GenerateTextOptions<TOOLS>,
   chatId: number,
+  fallback: ModelFallbackConfig,
 ): GenerateTextOptions<TOOLS> {
   return {
     ...params,
-    providerOptions: getAiSdkProviderOptions(CHAT_FALLBACK_MODEL_CONFIG, {
-      reasoningEffort: CHAT_FALLBACK_REASONING_EFFORT,
+    providerOptions: getAiSdkProviderOptions(fallback.modelConfig, {
+      reasoningEffort: fallback.reasoningEffort,
       chatId,
       store: false,
       serviceTier:
-        CHAT_FALLBACK_MODEL_CONFIG.provider === 'google'
-          ? 'priority'
-          : undefined,
+        fallback.modelConfig.provider === 'google' ? 'priority' : undefined,
     }),
   }
 }
@@ -170,6 +185,7 @@ export async function generateModelWithRetryWithInfo<
   modelConfig: AiModelConfig = CHAT_MODEL_CONFIG,
   timeoutMs: number = CHAT_MODEL_TIMEOUT_MS,
   attribution: ModelMetricAttribution = { source: 'agentic' },
+  fallback?: ModelFallbackConfig,
 ): Promise<GenerateModelWithRetryResult<TOOLS>> {
   const model = formatAiModelConfig(modelConfig)
   const startedAt = Date.now()
@@ -217,12 +233,13 @@ export async function generateModelWithRetryWithInfo<
   } catch (primaryError) {
     await track(startedAt, model, getModelErrorStatus(primaryError))
 
-    if (!shouldUseFallback(modelConfig)) {
+    const resolvedFallback = resolveFallbackConfig(modelConfig, fallback)
+    if (!resolvedFallback) {
       throw primaryError
     }
 
     const fallbackStartedAt = Date.now()
-    const fallbackModel = formatAiModelConfig(CHAT_FALLBACK_MODEL_CONFIG)
+    const fallbackModel = formatAiModelConfig(resolvedFallback.modelConfig)
     logger.warn(
       {
         chatId,
@@ -248,15 +265,15 @@ export async function generateModelWithRetryWithInfo<
 
     try {
       const response = await generateSingleModelWithRetry(
-        CHAT_FALLBACK_MODEL_CONFIG,
-        getFallbackParams(params, chatId),
+        resolvedFallback.modelConfig,
+        getFallbackParams(params, chatId, resolvedFallback),
         chatId,
         timeoutMs,
       )
       await track(fallbackStartedAt, fallbackModel, 'success', model)
       return {
         response,
-        modelConfig: CHAT_FALLBACK_MODEL_CONFIG,
+        modelConfig: resolvedFallback.modelConfig,
         model: fallbackModel,
         fallbackFrom: model,
       }
@@ -279,6 +296,7 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
   modelConfig: AiModelConfig = CHAT_MODEL_CONFIG,
   timeoutMs: number = CHAT_MODEL_TIMEOUT_MS,
   attribution: ModelMetricAttribution = { source: 'agentic' },
+  fallback?: ModelFallbackConfig,
 ): Promise<GenerateTextResult<TOOLS>> {
   const result = await generateModelWithRetryWithInfo(
     params,
@@ -287,6 +305,7 @@ export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
     modelConfig,
     timeoutMs,
     attribution,
+    fallback,
   )
   return result.response
 }
