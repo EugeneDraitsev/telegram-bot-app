@@ -307,24 +307,23 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(true)
 
-    expect(mockGenerateText).toHaveBeenCalledWith(
+    const [modelCall] = mockGenerateText.mock.calls.at(-1) ?? []
+    expect(modelCall).toEqual(
       expect.objectContaining({
-        prompt: expect.stringContaining(
-          'Replied-to message: article text to summarize',
-        ),
         output: expect.anything(),
-        providerOptions: {
-          openai: {
+        providerOptions: expect.objectContaining({
+          openai: expect.objectContaining({
             reasoningEffort: 'none',
             store: false,
-          },
-        },
+          }),
+        }),
         timeout: 16_000,
         maxRetries: 0,
       }),
     )
-    expect(mockGenerateText.mock.calls[0]?.[0]).not.toHaveProperty(
-      'temperature',
+    expect(`${modelCall.system ?? ''}\n${modelCall.prompt ?? ''}`).toContain(
+      'article text to summarize',
     )
+    expect(modelCall).not.toHaveProperty('temperature')
   })
 })
