@@ -3,6 +3,7 @@ import { InputFile } from 'grammy/web'
 import {
   cleanModelMessage,
   formatTelegramMarkdownV2,
+  isTelegramReplyTargetMissingError,
   logger,
   saveBotReplyToHistory,
   sendRichMessageWithFallback,
@@ -316,7 +317,7 @@ async function sendDice(params: DeliveryParams & { dice: DiceResponse }) {
   await saveBotReplyToHistory(sentMessage)
 }
 
-export async function sendResponses(
+async function sendResponsesOnce(
   params: DeliveryParams & { responses: AgentResponse[] },
 ): Promise<void> {
   if (params.responses.length === 0) return
@@ -364,6 +365,12 @@ export async function sendResponses(
       try {
         await sendSticker({ ...base, sticker: bundle.sticker })
       } catch (error) {
+        if (
+          base.replyToMessageId !== undefined &&
+          isTelegramReplyTargetMissingError(error)
+        ) {
+          throw error
+        }
         logger.warn({ error, chatId: params.chatId }, 'delivery.sticker_failed')
       }
       if (bundle.text) await sendText(mediaParams)
@@ -377,6 +384,12 @@ export async function sendResponses(
       await sendText(mediaParams)
     }
   } catch (error) {
+    if (
+      params.replyToMessageId !== undefined &&
+      isTelegramReplyTargetMissingError(error)
+    ) {
+      throw error
+    }
     logger.error({ error, chatId: params.chatId }, 'delivery.primary_failed')
     if (!bundle.voice) {
       throw error
@@ -387,8 +400,38 @@ export async function sendResponses(
     try {
       await sendVoice({ ...base, voice: bundle.voice })
     } catch (error) {
+      if (
+        params.replyToMessageId !== undefined &&
+        isTelegramReplyTargetMissingError(error)
+      ) {
+        throw error
+      }
       logger.error({ error, chatId: params.chatId }, 'delivery.voice_failed')
       throw error
     }
+  }
+}
+
+export async function sendResponses(
+  params: DeliveryParams & { responses: AgentResponse[] },
+): Promise<void> {
+  try {
+    await sendResponsesOnce(params)
+  } catch (error) {
+    if (
+      params.replyToMessageId === undefined ||
+      !isTelegramReplyTargetMissingError(error)
+    ) {
+      throw error
+    }
+
+    logger.warn(
+      {
+        chatId: params.chatId,
+        replyToMessageId: params.replyToMessageId,
+      },
+      'delivery.reply_target_missing',
+    )
+    await sendResponsesOnce({ ...params, replyToMessageId: undefined })
   }
 }

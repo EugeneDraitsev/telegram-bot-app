@@ -48,6 +48,14 @@ const mockLogger = {
 jest.mock('@tg-bot/common', () => ({
   cleanModelMessage: (text: string) => text,
   formatTelegramMarkdownV2: (text: string) => text,
+  isTelegramReplyTargetMissingError: (error: unknown) => {
+    const candidate = error as { error_code?: unknown; description?: unknown }
+    return (
+      candidate?.error_code === 400 &&
+      typeof candidate.description === 'string' &&
+      candidate.description.includes('message to be replied not found')
+    )
+  },
   logger: mockLogger,
   saveBotReplyToHistory: mockSaveBotReplyToHistory,
   sendRichMessageWithFallback: mockSendRichMessageWithFallback,
@@ -292,6 +300,46 @@ describe('sendResponses', () => {
     expect(api.sendMessage).toHaveBeenNthCalledWith(2, 123, 'hello there', {
       reply_parameters: { message_id: 456 },
     })
+  })
+
+  test('retries without reply parameters when the reply target is missing', async () => {
+    const api = createApi()
+    const missingReplyError = Object.assign(new Error('missing reply'), {
+      error_code: 400,
+      description: 'Bad Request: message to be replied not found',
+    })
+    api.sendRichMessage
+      .mockRejectedValueOnce(missingReplyError)
+      .mockResolvedValueOnce({ message_id: 13 })
+    api.sendMessage.mockRejectedValue(missingReplyError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 900001,
+      responses: [{ type: 'text', text: 'hello there' }],
+    })
+
+    expect(api.sendRichMessage).toHaveBeenCalledTimes(2)
+    expect(api.sendRichMessage).toHaveBeenNthCalledWith(
+      1,
+      123,
+      { markdown: 'hello there' },
+      { reply_parameters: { message_id: 900001 } },
+      undefined,
+    )
+    expect(api.sendRichMessage).toHaveBeenNthCalledWith(
+      2,
+      123,
+      { markdown: 'hello there' },
+      {},
+      undefined,
+    )
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, replyToMessageId: 900001 },
+      'delivery.reply_target_missing',
+    )
+    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 13 })
   })
 
   test('does not swallow text delivery failure', async () => {

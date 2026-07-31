@@ -10,6 +10,29 @@ import type { Context } from 'grammy/web'
 
 import { logger } from '../logger'
 
+export function isTelegramReplyTargetMissingError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const candidate = error as {
+    error_code?: unknown
+    description?: unknown
+    message?: unknown
+  }
+  const description =
+    typeof candidate.description === 'string'
+      ? candidate.description
+      : typeof candidate.message === 'string'
+        ? candidate.message
+        : ''
+
+  return (
+    candidate.error_code === 400 &&
+    description.toLowerCase().includes('message to be replied not found')
+  )
+}
+
 export const isLink = (text = '') => text.includes('https://')
 
 export const findCommand = (text = ''): string =>

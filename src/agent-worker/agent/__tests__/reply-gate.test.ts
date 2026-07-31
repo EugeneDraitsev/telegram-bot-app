@@ -239,16 +239,9 @@ describe('shouldEngageWithMessage', () => {
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        providerOptions: {
-          openai: {
-            reasoningEffort: 'low',
-            store: false,
-          },
-        },
+        providerOptions: { google: { serviceTier: 'priority' } },
+        temperature: 0,
       }),
-    )
-    expect(mockGenerateText.mock.calls[1]?.[0]).not.toHaveProperty(
-      'temperature',
     )
   })
 
@@ -320,10 +313,18 @@ describe('shouldEngageWithMessage', () => {
           'Replied-to message: article text to summarize',
         ),
         output: expect.anything(),
-        temperature: 0,
+        providerOptions: {
+          openai: {
+            reasoningEffort: 'none',
+            store: false,
+          },
+        },
         timeout: 16_000,
         maxRetries: 0,
       }),
+    )
+    expect(mockGenerateText.mock.calls[0]?.[0]).not.toHaveProperty(
+      'temperature',
     )
   })
 })

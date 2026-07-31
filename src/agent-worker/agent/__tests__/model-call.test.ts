@@ -50,13 +50,13 @@ jest.mock('../config', () => ({
 
 jest.mock('../models', () => ({
   CHAT_FALLBACK_MODEL_CONFIG: {
-    provider: 'openai',
-    model: 'gpt-5.4-nano',
-  },
-  CHAT_FALLBACK_REASONING_EFFORT: 'medium',
-  CHAT_MODEL_CONFIG: {
     provider: 'google',
     model: 'gemini-3.6-flash',
+  },
+  CHAT_FALLBACK_REASONING_EFFORT: 'none',
+  CHAT_MODEL_CONFIG: {
+    provider: 'openai',
+    model: 'gpt-5.6-luna',
   },
   CHAT_MODEL_TIMEOUT_MS: 45_000,
 }))
@@ -108,7 +108,7 @@ describe('model-call', () => {
     )
   })
 
-  test('falls back from default Gemini chat model to gpt-5.4-nano medium reasoning', async () => {
+  test('falls back from Luna to the previous Gemini chat model', async () => {
     const overloadedError = Object.assign(new Error('model overloaded'), {
       status: 503,
     })
@@ -127,7 +127,13 @@ describe('model-call', () => {
       generateModelWithRetry(
         {
           prompt: 'hello',
-          providerOptions: { google: { serviceTier: 'priority' } },
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'none',
+              safetyIdentifier: '1305082',
+              store: false,
+            },
+          },
         },
         1305082,
         'routing',
@@ -138,23 +144,10 @@ describe('model-call', () => {
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        model: 'google/gemini-3.6-flash',
-        providerOptions: { google: { serviceTier: 'priority' } },
-      }),
-    )
-    expect(mockGenerateText).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        model: 'google/gemini-3.6-flash',
-      }),
-    )
-    expect(mockGenerateText).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({
-        model: 'openai/gpt-5.4-nano',
+        model: 'openai/gpt-5.6-luna',
         providerOptions: {
           openai: {
-            reasoningEffort: 'medium',
+            reasoningEffort: 'none',
             safetyIdentifier: '1305082',
             store: false,
           },
@@ -162,23 +155,36 @@ describe('model-call', () => {
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        model: 'openai/gpt-5.6-luna',
+      }),
+    )
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        model: 'google/gemini-3.6-flash',
+        providerOptions: { google: { serviceTier: 'priority' } },
+      }),
+    )
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
       4,
       expect.objectContaining({
-        model: 'openai/gpt-5.4-nano',
+        model: 'google/gemini-3.6-flash',
       }),
     )
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'google/gemini-3.6-flash',
+        model: 'openai/gpt-5.6-luna',
         success: false,
       }),
     )
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'openai/gpt-5.4-nano',
-        fallbackFrom: 'google/gemini-3.6-flash',
+        model: 'google/gemini-3.6-flash',
+        fallbackFrom: 'openai/gpt-5.6-luna',
         success: true,
       }),
     )
@@ -187,6 +193,41 @@ describe('model-call', () => {
   test('does not treat 400 errors as retryable', () => {
     expect(isRetryableModelError({ status: 400, message: 'bad request' })).toBe(
       false,
+    )
+  })
+
+  test('uses an explicit role-specific fallback instead of the chat fallback', async () => {
+    mockGenerateText
+      .mockRejectedValueOnce(
+        Object.assign(new Error('helper failed'), { status: 400 }),
+      )
+      .mockResolvedValueOnce({ text: '<svg />', output: [] })
+
+    await expect(
+      generateModelWithRetry(
+        { prompt: 'draw' },
+        1305082,
+        'direct_svg',
+        { provider: 'openai', model: 'gpt-5.6-luna' },
+        45_000,
+        { source: 'agentic' },
+        {
+          modelConfig: {
+            provider: 'google',
+            model: 'gemini-3.5-flash-lite',
+          },
+          reasoningEffort: 'none',
+        },
+      ),
+    ).resolves.toEqual({ text: '<svg />', output: [] })
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2)
+    expect(mockGenerateText).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        model: 'google/gemini-3.5-flash-lite',
+        providerOptions: { google: { serviceTier: 'priority' } },
+      }),
     )
   })
 
