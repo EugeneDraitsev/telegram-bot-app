@@ -35,8 +35,7 @@
     "src/*"
   ],
   "overrides": {
-    "brace-expansion": "5.0.8",
-    "uuid": "11.1.1",
-    "velocityjs": "2.1.7"
+    "undici": "6.28.0",
+    "uuid": "11.1.1"
   }
 }
