@@ -11,10 +11,10 @@ and [Serverless Framework](https://github.com/serverless/serverless).
 
 ## Architecture
 
-<a href=".github/architecture-light.svg">
+<a href=".github/architecture-sqs-light.svg">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-dark.svg">
-    <img alt="Architecture diagram" src=".github/architecture-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-sqs-dark.svg">
+    <img alt="Architecture diagram" src=".github/architecture-sqs-light.svg">
   </picture>
 </a>
 
