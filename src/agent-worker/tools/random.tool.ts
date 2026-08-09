@@ -37,7 +37,7 @@ export const randomNumberTool: AgentTool = {
     const countVal = Math.min((args.count as number) ?? 1, 20)
 
     if (minVal > maxVal) {
-      return `Error: min (${minVal}) cannot be greater than max (${maxVal})`
+      throw new Error(`min (${minVal}) cannot be greater than max (${maxVal})`)
     }
 
     const results: number[] = []
@@ -81,7 +81,7 @@ export const randomChoiceTool: AgentTool = {
 
     const options = args.options as string[]
     if (!options || options.length === 0) {
-      return 'Error: Please provide at least one option to choose from'
+      throw new Error('Please provide at least one option to choose from')
     }
 
     const countVal = Math.min((args.count as number) ?? 1, options.length)

@@ -102,22 +102,22 @@ describe('createDynamicToolTool', () => {
   test('rejects new send_text command without template', async () => {
     mockedGetDynamicToolsRawByScope.mockResolvedValue([])
 
-    const result = await runWithToolContext(
-      {
-        message_id: 1,
-        chat: { id: 777, type: 'private' },
-        from: { id: 777 },
-      } as Message,
-      undefined,
-      () =>
-        createDynamicToolTool.execute({
-          name: 'val',
-          description: 'Command for Valorant party',
-          action: 'send_text',
-        }),
-    )
-
-    expect(result).toContain('Error creating dynamic tool:')
+    await expect(
+      runWithToolContext(
+        {
+          message_id: 1,
+          chat: { id: 777, type: 'private' },
+          from: { id: 777 },
+        } as Message,
+        undefined,
+        () =>
+          createDynamicToolTool.execute({
+            name: 'val',
+            description: 'Command for Valorant party',
+            action: 'send_text',
+          }),
+      ),
+    ).rejects.toThrow('Error creating dynamic tool:')
     expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
   })
 
@@ -182,24 +182,24 @@ describe('createDynamicToolTool', () => {
       getChatMember: jest.fn().mockResolvedValue({ status: 'member' }),
     } as unknown as Pick<Api, 'getChatMember'>
 
-    const result = await runWithToolContext(
-      {
-        message_id: 1,
-        chat: { id: -100, type: 'group' },
-        from: { id: 7 },
-      } as Message,
-      undefined,
-      () =>
-        createDynamicToolTool.execute({
-          name: 'val',
-          description: 'Command for Valorant party',
-          action: 'send_text',
-          template: 'VALORANT',
-        }),
-      memberApi,
-    )
-
-    expect(result).toContain('only chat administrators')
+    await expect(
+      runWithToolContext(
+        {
+          message_id: 1,
+          chat: { id: -100, type: 'group' },
+          from: { id: 7 },
+        } as Message,
+        undefined,
+        () =>
+          createDynamicToolTool.execute({
+            name: 'val',
+            description: 'Command for Valorant party',
+            action: 'send_text',
+            template: 'VALORANT',
+          }),
+        memberApi,
+      ),
+    ).rejects.toThrow('only chat administrators')
     expect(mockedGetDynamicToolsRawByScope).not.toHaveBeenCalled()
     expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
   })

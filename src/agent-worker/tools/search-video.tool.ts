@@ -59,7 +59,7 @@ export const searchVideoTool: AgentTool = {
     try {
       const query = (args.query as string).trim()
       if (!query) {
-        return 'Error searching video: Query cannot be empty'
+        throw new Error('Query cannot be empty')
       }
 
       const searchResult = await searchWebWithFallback(
@@ -87,7 +87,7 @@ export const searchVideoTool: AgentTool = {
 
       return `Found video URL: ${videoUrl}`
     } catch (error) {
-      return `Error searching video: ${getErrorMessage(error)}`
+      throw new Error(`Error searching video: ${getErrorMessage(error)}`)
     }
   },
 }

@@ -127,11 +127,13 @@ export const createDynamicToolTool: AgentTool = {
     const { message, api } = requireToolContext()
     const chatId = message.chat?.id
     if (!chatId) {
-      return 'Error creating dynamic tool: Chat ID is missing'
+      throw new Error('Error creating dynamic tool: Chat ID is missing')
     }
 
     if (!(await isMessageAuthorChatAdmin(message, api))) {
-      return 'Error creating dynamic tool: only chat administrators can change persistent commands'
+      throw new Error(
+        'Error creating dynamic tool: only chat administrators can change persistent commands',
+      )
     }
 
     try {
@@ -148,7 +150,7 @@ export const createDynamicToolTool: AgentTool = {
         ...normalizedArgs,
       })
       if (!parsed.success) {
-        return `Error creating dynamic tool: ${parsed.error.message}`
+        throw new Error(parsed.error.message)
       }
 
       const definition: DynamicToolDefinition = {
@@ -157,7 +159,9 @@ export const createDynamicToolTool: AgentTool = {
       }
 
       if (RESERVED_TOOL_NAMES.has(definition.name)) {
-        return `Error creating dynamic tool: "${definition.name}" conflicts with built-in tool name`
+        throw new Error(
+          `"${definition.name}" conflicts with built-in tool name`,
+        )
       }
 
       const mergedTools = [
@@ -169,7 +173,7 @@ export const createDynamicToolTool: AgentTool = {
 
       const saved = await saveDynamicToolsRaw(mergedTools, chatId)
       if (!saved) {
-        return 'Error creating dynamic tool: failed to save in Redis'
+        throw new Error('failed to save in Redis')
       }
 
       logger.info(
@@ -196,7 +200,7 @@ export const createDynamicToolTool: AgentTool = {
         },
         'Dynamic tool save failed',
       )
-      return `Error creating dynamic tool: ${errorMsg}`
+      throw new Error(`Error creating dynamic tool: ${errorMsg}`)
     }
   },
 }

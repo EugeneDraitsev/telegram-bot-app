@@ -26,6 +26,8 @@ export interface FormattedChatStatistics {
 const RICH_STATISTICS_ROW_LIMIT = 100
 const MAX_WRITE_ATTEMPTS = 8
 
+// Aggregate per-user counters are permanent by design. Keep ttl out of current
+// writes; the table-level TTL setting only applies to legacy items that have it.
 interface StoredUserStat {
   chatId: string
   userId: number

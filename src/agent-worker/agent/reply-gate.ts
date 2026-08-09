@@ -1,5 +1,5 @@
 /**
- * Reply gate - deterministic pre-filter + structured engage/ignore decision.
+ * Reply gate - structured engage/ignore decision for every eligible message.
  */
 
 import { generateText, Output } from 'ai'
@@ -13,7 +13,6 @@ import {
   getAiSdkLanguageModel,
   getAiSdkProviderOptions,
   getMetricStatusFromError,
-  hasBotAddressSignal,
   isReplyToAnotherBot,
   isReplyToOurBot,
   logger,
@@ -50,6 +49,7 @@ class ReplyGateTimeoutError extends Error {
 
 function buildReplyGatePrompt(params: {
   isReplyToOur: boolean
+  isReplyToAnother: boolean
   hasOurMention: boolean
   mentionsOther: boolean
   hasMedia: boolean
@@ -85,10 +85,13 @@ IGNORE if any of these apply:
 
 Mention nuance:
 - Presence of THIS bot username alone is NOT enough.
+- A natural-language vocative such as "бот, ...", "ботик, ...", or "bot, ..." is strong evidence that the user is talking TO THIS bot, even without an @username. Engage when the rest of that message contains a request, question, follow-up, or conversational ping.
+- Still use the full sentence to distinguish direct address from third-person discussion about a bot. Do not rely on a keyword alone.
 - If THIS bot and another account are both mentioned, engage only with a clear direct ask to THIS bot; otherwise ignore.
 
 Context:
 - Is reply to OUR bot: ${params.isReplyToOur}
+- Is reply to ANOTHER bot: ${params.isReplyToAnother}
 - Mentions OUR bot: ${params.hasOurMention}
 - Mentions other account: ${params.mentionsOther}
 - Has media: ${params.hasMedia}
@@ -258,29 +261,10 @@ export async function shouldEngageWithMessage(params: {
   const isReplyToAnother = isReplyToAnotherBot(message, botInfo?.id)
   const hasOurMention = mentionsOurBot(textContent, botInfo?.username)
   const mentionsOther = mentionsAnotherAccount(textContent, botInfo?.username)
-  const hasBotAddress = hasBotAddressSignal(textContent, botInfo?.username)
-
-  if (isReplyToAnother && !hasOurMention) {
-    logger.info({ chatId, reason: 'reply_to_another_bot' }, 'reply_gate.skip')
-    return false
-  }
-
-  const addressedToBot = isReplyToOur || hasBotAddress
-  if (!addressedToBot) {
-    logger.info({ chatId, reason: 'not_addressed_to_bot' }, 'reply_gate.skip')
-    return false
-  }
-
-  if (isReplyToOur && mentionsOther && !hasBotAddress) {
-    logger.info(
-      { chatId, reason: 'reply_to_our_bot_but_addressed_to_other' },
-      'reply_gate.skip',
-    )
-    return false
-  }
 
   const instructions = buildReplyGatePrompt({
     isReplyToOur,
+    isReplyToAnother,
     hasOurMention,
     mentionsOther,
     hasMedia,

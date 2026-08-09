@@ -45,7 +45,7 @@ export const webSearchTool: AgentTool = {
     const query = typeof args.query === 'string' ? args.query.trim() : ''
 
     if (!query) {
-      return 'Error: web_search query cannot be empty'
+      throw new Error('Web search query cannot be empty')
     }
 
     try {
@@ -53,7 +53,7 @@ export const webSearchTool: AgentTool = {
         chatId: message.chat?.id,
       })
     } catch (error) {
-      return `Error searching web: ${getErrorMessage(error)}`
+      throw new Error(`Error searching web: ${getErrorMessage(error)}`)
     }
   },
 }

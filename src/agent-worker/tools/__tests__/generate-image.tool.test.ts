@@ -21,12 +21,17 @@ const message = {
   message_id: 55,
 } as Message
 
-function image(label: string, data: string): MediaBuffer {
+function image(
+  label: string,
+  data: string,
+  origin: NonNullable<MediaBuffer['origin']> = 'request',
+): MediaBuffer {
   return {
     buffer: Buffer.from(data),
     mimeType: 'image/jpeg',
     mediaType: 'image',
     label,
+    origin,
   }
 }
 
@@ -46,6 +51,7 @@ describe('generateImageTool', () => {
         image(
           'Context image from recent chat history. Related message text: old screenshot',
           'history-image',
+          'history',
         ),
       ],
       async () => {
@@ -70,10 +76,12 @@ describe('generateImageTool', () => {
         image(
           'Context image from recent chat history. Related message text: older image',
           'older-history',
+          'history',
         ),
         image(
           'Context image from recent chat history. Related message text: newest image',
           'newest-history',
+          'history',
         ),
       ],
       async () => {
@@ -98,10 +106,12 @@ describe('generateImageTool', () => {
         image(
           'Context image from recent chat history. Related message text: older image',
           'older-history',
+          'history',
         ),
         image(
           'Context image from recent chat history. Related message text: newest image',
           'newest-history',
+          'history',
         ),
       ],
       async () => {
@@ -157,7 +167,7 @@ describe('generateImageTool', () => {
   test('does not fall back to GPT Image for /ge', async () => {
     mockGenerateImage.mockRejectedValueOnce(new Error('banana unavailable'))
 
-    const result = await runWithToolContext(
+    const result = runWithToolContext(
       message,
       undefined,
       () =>
@@ -170,7 +180,7 @@ describe('generateImageTool', () => {
     )
 
     expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
-    expect(result).toContain('banana unavailable')
+    await expect(result).rejects.toThrow('banana unavailable')
   })
 
   test('falls back to GPT Image when Gemini fails', async () => {

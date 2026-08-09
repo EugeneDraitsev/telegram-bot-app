@@ -71,9 +71,9 @@ describe('codeExecutionTool', () => {
     mockCodeInterpreter.mockClear()
   })
 
-  test('returns validation error for empty task', async () => {
-    await expect(executeTool({ task: '   ' })).resolves.toBe(
-      'Error: task cannot be empty',
+  test('rejects an empty task', async () => {
+    await expect(executeTool({ task: '   ' })).rejects.toThrow(
+      'Task cannot be empty',
     )
     expect(mockGenerateText).not.toHaveBeenCalled()
   })
@@ -118,18 +118,18 @@ describe('codeExecutionTool', () => {
     )
   })
 
-  test('returns fallback message when model has no text output', async () => {
+  test('rejects when the model has no text output', async () => {
     mockGenerateText.mockResolvedValue({ text: '' })
 
-    await expect(executeTool({ task: '1 + 1' })).resolves.toBe(
-      'Code execution produced no output',
+    await expect(executeTool({ task: '1 + 1' })).rejects.toThrow(
+      'Code execution failed: Code execution produced no output',
     )
   })
 
-  test('returns error message when AI SDK call fails', async () => {
+  test('rejects when the AI SDK call fails', async () => {
     mockGenerateText.mockRejectedValue(new Error('service unavailable'))
 
-    await expect(executeTool({ task: '1 + 1' })).resolves.toBe(
+    await expect(executeTool({ task: '1 + 1' })).rejects.toThrow(
       'Code execution failed: service unavailable',
     )
   })

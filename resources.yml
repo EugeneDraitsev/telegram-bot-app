@@ -32,6 +32,9 @@ Resources:
 
   ChatEventsTable:
     Type: AWS::DynamoDB::Table
+    # Intentionally no TimeToLiveSpecification: chat event records are
+    # permanent. The application-level ttl attribute does not expire items
+    # unless DynamoDB TTL is explicitly enabled for this table.
     Properties:
       TableName: ${self:custom.chatEventsTableName}
       AttributeDefinitions:
@@ -48,6 +51,8 @@ Resources:
 
   ChatUserStatisticsTable:
     Type: AWS::DynamoDB::Table
+    # Aggregate chat statistics are permanent: current writes intentionally
+    # omit the ttl attribute. DynamoDB TTL only affects items that contain it.
     Properties:
       TableName: ${self:custom.chatUserStatisticsTableName}
       AttributeDefinitions:

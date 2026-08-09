@@ -240,6 +240,32 @@ describe('setupAllCommands', () => {
     expect(next).not.toHaveBeenCalled()
   })
 
+  test('registered command dispatch failures propagate to ingress', async () => {
+    const error = new Error('reply worker invoke failed')
+    jest.spyOn(common, 'invokeReplyLambda').mockRejectedValue(error)
+    const { bot, getHandler } = createBotStub()
+
+    setupAllCommands(bot, true)
+
+    const message = {
+      text: '/g cats',
+      chat: { id: 123 },
+      entities: [{ type: 'bot_command', offset: 0, length: 2 }],
+    }
+    const ctx = {
+      update: { update_id: 780, message },
+      message,
+      chat: { id: 123 },
+    } as unknown as Context
+
+    await expect(
+      getHandler('message')?.(
+        ctx,
+        jest.fn().mockResolvedValue(undefined) as NextFunction,
+      ),
+    ).rejects.toBe(error)
+  })
+
   test('message middleware normalizes uppercase commands for reply worker', async () => {
     const invokeSpy = jest
       .spyOn(common, 'invokeReplyLambda')

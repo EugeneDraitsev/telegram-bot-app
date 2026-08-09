@@ -29,7 +29,7 @@ export const weatherTool: AgentTool = {
     try {
       const location = (args.location as string).trim()
       if (!location) {
-        return 'Error getting weather: Location cannot be empty'
+        throw new Error('Location cannot be empty')
       }
 
       const weather = await getWeather(location)
@@ -39,7 +39,7 @@ export const weatherTool: AgentTool = {
 
       return `Got weather for ${weather.city}: ${weather.temperature}°C, ${weather.description}`
     } catch (error) {
-      return `Error getting weather: ${getErrorMessage(error)}`
+      throw new Error(`Error getting weather: ${getErrorMessage(error)}`)
     }
   },
 }

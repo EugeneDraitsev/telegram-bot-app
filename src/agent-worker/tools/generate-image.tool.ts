@@ -104,7 +104,7 @@ async function generateWithFallback(
 }
 
 function isHistoryImage(media: MediaBuffer): boolean {
-  return (media.label ?? '').toLowerCase().includes('recent chat history')
+  return media.origin === 'history'
 }
 
 function getMediaSource(args: Record<string, unknown>): ImageMediaSource {
@@ -180,7 +180,7 @@ export const generateImageTool: AgentTool = {
     try {
       const prompt = (args.prompt as string).trim()
       if (!prompt) {
-        return 'Error generating image: Prompt cannot be empty'
+        throw new Error('Prompt cannot be empty')
       }
 
       const mediaSource = getMediaSource(args)
@@ -215,12 +215,12 @@ export const generateImageTool: AgentTool = {
 
       if (result.text) {
         addResponse({ type: 'text', text: result.text })
-        return 'Could not generate image, added text response instead'
+        throw new Error('Could not generate image; added text response instead')
       }
 
-      return 'Error: No image or text generated'
+      throw new Error('No image or text generated')
     } catch (error) {
-      return `Error generating image: ${getErrorMessage(error)}`
+      throw new Error(`Error generating image: ${getErrorMessage(error)}`)
     }
   },
 }

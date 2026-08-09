@@ -6,8 +6,6 @@ export interface BotIdentity {
 }
 
 const TELEGRAM_MENTION_REGEX = /@([A-Za-z0-9_]{3,})/g
-const BOT_WORD_REGEX =
-  /(^|[^A-Za-z\u0400-\u04FF0-9_])(бот(?:ик)?|bot)(?=[^A-Za-z\u0400-\u04FF0-9_]|$)/i
 
 function normalizeMention(value?: string): string {
   return (value || '').replace(/^@/, '').trim().toLowerCase()
@@ -46,13 +44,6 @@ export function mentionsAnotherAccount(
   return extractMentions(text).some(
     (mention) => mention !== normalizedOurUsername,
   )
-}
-
-export function hasBotAddressSignal(
-  text: string,
-  ourBotUsername?: string,
-): boolean {
-  return mentionsOurBot(text, ourBotUsername) || BOT_WORD_REGEX.test(text)
 }
 
 export function isReplyToOurBot(message: Message, botId?: number): boolean {

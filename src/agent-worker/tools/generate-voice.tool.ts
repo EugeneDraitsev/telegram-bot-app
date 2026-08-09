@@ -38,7 +38,7 @@ export const generateVoiceTool: AgentTool = {
     try {
       const text = (args.text as string).trim()
       if (!text) {
-        return 'Error generating voice: Text cannot be empty'
+        throw new Error('Text cannot be empty')
       }
 
       const voice =
@@ -57,7 +57,7 @@ export const generateVoiceTool: AgentTool = {
       addResponse({ type: 'voice', buffer })
       return `Generated voice message (${voice}): "${text.slice(0, 50)}..."`
     } catch (error) {
-      return `Error generating voice: ${getErrorMessage(error)}`
+      throw new Error(`Error generating voice: ${getErrorMessage(error)}`)
     }
   },
 }

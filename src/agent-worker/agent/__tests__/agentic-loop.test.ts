@@ -4,15 +4,15 @@ import type { Message } from 'grammy/types'
 import { resolveHistoryMediaAttachments } from '@tg-bot/common'
 import type { AgentTool, TelegramApi } from '../../types'
 import {
-  buildNativeTools,
-  extractFallbackTextFromToolResults,
-  extractSvgMarkup,
-  filterToolsForRequest,
+  buildInitialInput,
   getAgentDeliveryReplyMessageId,
-  shouldIncludeHistoryMediaInModel,
-  shouldUseDirectSvgRender,
 } from '../agentic-loop'
+import { buildNativeTools } from '../model-tools'
 import { CHAT_MODEL_CONFIG, resolveAgentChatModel } from '../models'
+import {
+  extractFallbackTextFromToolResults,
+  getExecutableFunctionCalls,
+} from '../tool-loop'
 
 describe('resolveAgentChatModel', () => {
   test('routes /o to GPT-5.6 with medium reasoning', () => {
@@ -60,109 +60,18 @@ describe('buildNativeTools', () => {
   })
 })
 
-describe('filterToolsForRequest', () => {
-  const codeTool = {
-    declaration: {
-      type: 'function',
-      name: 'code_execution',
-      description: 'Execute code',
-    },
-    execute: async () => 'ok',
-  } satisfies AgentTool
-  const renderTool = {
-    declaration: {
-      type: 'function',
-      name: 'render_svg_to_png',
-      description: 'Render SVG',
-    },
-    execute: async () => 'ok',
-  } satisfies AgentTool
-  const searchTool = {
-    declaration: {
-      type: 'function',
-      name: 'web_search',
-      description: 'Search web',
-    },
-    execute: async () => 'ok',
-  } satisfies AgentTool
-
-  test('removes code execution for visual render requests', () => {
+describe('tool call normalization', () => {
+  test('keeps object inputs and normalizes all other inputs', () => {
     expect(
-      filterToolsForRequest(
-        [codeTool, renderTool, searchTool],
-        'Построй PNG-график y = sin(x) + 0.25x',
-      ).map((tool) => tool.declaration.name),
-    ).toEqual(['render_svg_to_png'])
-  })
-
-  test('keeps code execution for ordinary calculations', () => {
-    expect(
-      filterToolsForRequest([codeTool, renderTool], 'посчитай 15% от 240').map(
-        (tool) => tool.declaration.name,
-      ),
-    ).toEqual(['code_execution', 'render_svg_to_png'])
-  })
-})
-
-describe('shouldIncludeHistoryMediaInModel', () => {
-  test('does not include unrelated history media for creative SVG requests', () => {
-    expect(
-      shouldIncludeHistoryMediaInModel(
-        '/qq нарисуй красивого пеликана на велосипеде в SVG',
-        false,
-      ),
-    ).toBe(false)
-  })
-
-  test('includes history media when user explicitly asks about recent media', () => {
-    expect(
-      shouldIncludeHistoryMediaInModel('что на последнем фото?', false),
-    ).toBe(true)
-  })
-
-  test('does not include history media when current message is a reply', () => {
-    expect(
-      shouldIncludeHistoryMediaInModel('что на последнем фото?', true),
-    ).toBe(false)
-  })
-})
-
-describe('shouldUseDirectSvgRender', () => {
-  const renderTool = {
-    declaration: {
-      type: 'function',
-      name: 'render_svg_to_png',
-      description: 'Render SVG',
-    },
-    execute: async () => 'ok',
-  } satisfies AgentTool
-
-  test('uses direct SVG path for explicit SVG drawing requests', () => {
-    expect(
-      shouldUseDirectSvgRender(
-        [renderTool],
-        '/qq draw and show a beautiful pelican on a bicycle in SVG',
-        false,
-        false,
-      ),
-    ).toBe(true)
-  })
-
-  test('does not use direct SVG path for media/reply requests', () => {
-    expect(
-      shouldUseDirectSvgRender([renderTool], 'render this as SVG', true, false),
-    ).toBe(false)
-    expect(
-      shouldUseDirectSvgRender([renderTool], 'render this as SVG', false, true),
-    ).toBe(false)
-  })
-})
-
-describe('extractSvgMarkup', () => {
-  test('extracts SVG from fenced model output', () => {
-    expect(
-      extractSvgMarkup('```svg\n<svg><circle cx="1" cy="1" r="1"/></svg>\n```'),
-    ).toBe('<svg><circle cx="1" cy="1" r="1"/></svg>')
+      getExecutableFunctionCalls([
+        { toolCallId: '1', toolName: 'lookup', input: { query: 'x' } },
+        { toolCallId: '2', toolName: 'lookup', input: ['bad'] },
+        { toolCallId: '3', toolName: '', input: { ignored: true } },
+      ]),
+    ).toEqual([
+      { toolCallId: '1', name: 'lookup', args: { query: 'x' } },
+      { toolCallId: '2', name: 'lookup', args: {} },
+    ])
   })
 })
 
@@ -170,8 +79,14 @@ describe('extractFallbackTextFromToolResults', () => {
   test('uses successful tool output and ignores tool errors', () => {
     expect(
       extractFallbackTextFromToolResults([
-        'Error searching web: service unavailable',
-        'Fresh web result: current value is 42',
+        {
+          result: 'search service unavailable',
+          status: 'error',
+        },
+        {
+          result: 'Fresh web result: current value is 42',
+          status: 'success',
+        },
       ]),
     ).toBe('Fresh web result: current value is 42')
   })
@@ -179,18 +94,21 @@ describe('extractFallbackTextFromToolResults', () => {
   test('returns empty text when every tool failed', () => {
     expect(
       extractFallbackTextFromToolResults([
-        'Error searching web: service unavailable',
-        'Code execution failed: no output',
+        { result: 'search service unavailable', status: 'error' },
+        { result: 'code execution produced no output', status: 'error' },
       ]),
     ).toBe('')
   })
 
-  test('ignores descriptive code execution summaries as fallback text', () => {
+  test('does not infer status from successful result text', () => {
     expect(
       extractFallbackTextFromToolResults([
-        'The user provided Python code that generates an SVG path string.\n\nThe tool_code block executed the provided Python code, and the code_output block contains the generated SVG path string.\n\nI have no further questions and the output is generated as requested.',
+        {
+          result: 'Error is a valid word in this successful result',
+          status: 'success',
+        },
       ]),
-    ).toBe('')
+    ).toBe('Error is a valid word in this successful result')
   })
 })
 
@@ -238,6 +156,67 @@ describe('getAgentDeliveryReplyMessageId', () => {
         text: '',
       } as Message),
     ).toBe(10)
+  })
+})
+
+describe('buildInitialInput', () => {
+  test('orders request media, reply context, history media, and user text', () => {
+    const requestImage = {
+      buffer: Buffer.from('request'),
+      mimeType: 'image/png',
+      mediaType: 'image' as const,
+      label: 'Current image',
+    }
+    const historyImage = {
+      buffer: Buffer.from('history'),
+      mimeType: 'image/jpeg',
+      mediaType: 'image' as const,
+    }
+    const message = {
+      message_id: 10,
+      text: 'compare them',
+      reply_to_message: { message_id: 9, text: 'reply text' },
+    } as Message
+
+    expect(
+      buildInitialInput(
+        message,
+        message.text ?? '',
+        [requestImage],
+        [
+          {
+            media: historyImage,
+            message: { message_id: 8, caption: 'older photo' } as Message,
+          },
+        ],
+      ),
+    ).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Current image' },
+          {
+            type: 'image',
+            image: requestImage.buffer,
+            mediaType: 'image/png',
+          },
+          {
+            type: 'text',
+            text: 'Telegram reply target message_id=9: reply text',
+          },
+          {
+            type: 'text',
+            text: 'Context image from recent chat history. Related message text: older photo',
+          },
+          {
+            type: 'image',
+            image: historyImage.buffer,
+            mediaType: 'image/jpeg',
+          },
+          { type: 'text', text: 'compare them' },
+        ],
+      },
+    ])
   })
 })
 

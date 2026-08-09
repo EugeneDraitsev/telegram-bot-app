@@ -71,14 +71,14 @@ export const searchGifTool: AgentTool = {
 
     const query = (args.query as string).trim()
     if (!query) {
-      return 'Error searching gif: Query cannot be empty'
+      throw new Error('Error searching gif: Query cannot be empty')
     }
 
     try {
       const mediaUrl = await searchGiphyGif(query)
 
       if (!mediaUrl) {
-        return 'No GIF found for this query'
+        throw new Error('No GIF found for this query')
       }
 
       addResponse({
@@ -87,7 +87,7 @@ export const searchGifTool: AgentTool = {
       })
       return `Found GIF: ${mediaUrl}`
     } catch (error) {
-      return `Error searching gif: ${getErrorMessage(error)}`
+      throw new Error(`Error searching gif: ${getErrorMessage(error)}`)
     }
   },
 }

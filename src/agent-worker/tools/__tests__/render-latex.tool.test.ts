@@ -53,9 +53,8 @@ P(A \mid B)=\frac{P(B \mid A)P(A)}{P(B)}`,
   })
 
   test('rejects empty latex', async () => {
-    const { result, responses } = await executeTool({ latex: '   ' })
-
-    expect(result).toBe('Error rendering LaTeX: latex cannot be empty')
-    expect(responses).toEqual([])
+    await expect(executeTool({ latex: '   ' })).rejects.toThrow(
+      'Error rendering LaTeX: latex cannot be empty',
+    )
   })
 })

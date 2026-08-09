@@ -76,4 +76,13 @@ describe('handleMessageWithAgent', () => {
       }),
     )
   })
+
+  test('propagates invoke failures so Telegram can retry the update', async () => {
+    const error = new Error('Lambda invoke failed')
+    jest.spyOn(common, 'invokeAgentLambda').mockRejectedValue(error)
+
+    await expect(
+      handleMessageWithAgent({ chat: { id: 123 } } as Message),
+    ).rejects.toBe(error)
+  })
 })

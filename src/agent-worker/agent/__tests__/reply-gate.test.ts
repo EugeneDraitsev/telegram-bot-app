@@ -40,7 +40,7 @@ describe('shouldEngageWithMessage', () => {
     ).toEqual(false)
   })
 
-  test('returns false for mention of another account', async () => {
+  test('lets the model ignore a mention of another account', async () => {
     const message = { text: '@otherbot can you help?' } as Message
 
     expect(
@@ -51,9 +51,10 @@ describe('shouldEngageWithMessage', () => {
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)
+    expect(mockGenerateText).toHaveBeenCalled()
   })
 
-  test('returns false for non-addressed request', async () => {
+  test('lets the model decide a non-addressed request', async () => {
     const message = { text: 'can you help?' } as Message
 
     expect(
@@ -65,10 +66,10 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockGenerateText).toHaveBeenCalled()
   })
 
-  test('does not engage with standalone questions without bot address words', async () => {
+  test('can engage with standalone questions without bot address words', async () => {
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
     const text = 'какой курс биткоина ща челик?'
@@ -85,12 +86,36 @@ describe('shouldEngageWithMessage', () => {
         hasMedia: false,
         botInfo: OUR_BOT,
       }),
-    ).resolves.toBe(false)
+    ).resolves.toBe(true)
 
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockGenerateText).toHaveBeenCalled()
   })
 
-  test('does not engage with standalone project planning chat messages', async () => {
+  test('treats a natural bot vocative as a strong model-level address signal', async () => {
+    mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
+
+    const text = 'бот, нарисуй схему в svg'
+
+    await expect(
+      shouldEngageWithMessage({
+        message: { text, chat: { id: 777 } } as Message,
+        textContent: text,
+        hasMedia: false,
+        botInfo: OUR_BOT,
+      }),
+    ).resolves.toBe(true)
+
+    expect(mockGenerateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        system: expect.stringContaining(
+          'A natural-language vocative such as "бот, ..."',
+        ),
+        prompt: text,
+      }),
+    )
+  })
+
+  test('lets the model ignore standalone project planning chat messages', async () => {
     const text =
       'я хочу снять видос как заставка сериала друзья, где мы все бежим и по очереди садимся на диван'
 
@@ -103,10 +128,10 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).resolves.toBe(false)
 
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockGenerateText).toHaveBeenCalled()
   })
 
-  test('returns false for reply to another bot without our mention', async () => {
+  test('lets the model ignore a reply to another bot', async () => {
     const message = {
       text: 'some text',
       reply_to_message: { from: { is_bot: true, id: 999999 } },
@@ -120,9 +145,14 @@ describe('shouldEngageWithMessage', () => {
         botInfo: OUR_BOT,
       }),
     ).toEqual(false)
+    expect(mockGenerateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        system: expect.stringContaining('Is reply to ANOTHER bot: true'),
+      }),
+    )
   })
 
-  test('returns false when reply to our bot addresses another account', async () => {
+  test('lets the model ignore a reply to our bot that addresses another account', async () => {
     const message = {
       text: '@otheruser rank',
       reply_to_message: {
@@ -139,7 +169,7 @@ describe('shouldEngageWithMessage', () => {
       }),
     ).toEqual(false)
 
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockGenerateText).toHaveBeenCalled()
   })
 
   test('lets reply gate model ignore low-signal reaction reply to our bot', async () => {

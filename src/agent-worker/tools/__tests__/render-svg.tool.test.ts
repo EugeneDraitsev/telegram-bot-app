@@ -77,11 +77,10 @@ describe('renderSvgTool', () => {
   test('rejects empty svg before invoking renderer', async () => {
     const sendSpy = jest.spyOn(LambdaClient.prototype, 'send')
 
-    const { result, responses } = await executeTool({ svg: '   ' })
-
-    expect(result).toBe('Error rendering SVG: svg cannot be empty')
+    await expect(executeTool({ svg: '   ' })).rejects.toThrow(
+      'Error rendering SVG: svg cannot be empty',
+    )
     expect(sendSpy).not.toHaveBeenCalled()
-    expect(responses).toEqual([])
   })
 
   test('returns renderer validation errors', async () => {
@@ -96,13 +95,8 @@ describe('renderSvgTool', () => {
       }),
     )
 
-    const { result, responses } = await executeTool({
-      svg: '<svg><script /></svg>',
-    })
-
-    expect(result).toBe(
+    await expect(executeTool({ svg: '<svg><script /></svg>' })).rejects.toThrow(
       'Error rendering SVG: SVG contains unsupported active content',
     )
-    expect(responses).toEqual([])
   })
 })

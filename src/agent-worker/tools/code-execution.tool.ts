@@ -93,7 +93,7 @@ export const codeExecutionTool: AgentTool = {
     const { message } = requireToolContext()
     const task = (args.task as string)?.trim()
     if (!task) {
-      return 'Error: task cannot be empty'
+      throw new Error('Task cannot be empty')
     }
 
     try {
@@ -128,9 +128,9 @@ export const codeExecutionTool: AgentTool = {
         return result.text.trim()
       }
 
-      return 'Code execution produced no output'
+      throw new Error('Code execution produced no output')
     } catch (error) {
-      return `Code execution failed: ${getErrorMessage(error)}`
+      throw new Error(`Code execution failed: ${getErrorMessage(error)}`)
     }
   },
 }

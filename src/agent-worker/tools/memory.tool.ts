@@ -35,7 +35,7 @@ export const getMemoryTool: AgentTool = {
     try {
       if (args.scope === 'chat') {
         const chatId = message.chat?.id
-        if (!chatId) return 'Error: No chat ID available'
+        if (!chatId) throw new Error('No chat ID available')
         const memory = await getChatMemory(chatId)
         return memory || '(empty — no chat memory saved yet)'
       }
@@ -43,7 +43,7 @@ export const getMemoryTool: AgentTool = {
       const memory = await getGlobalMemory()
       return memory || '(empty — no global memory saved yet)'
     } catch (error) {
-      return `Error reading memory: ${getErrorMessage(error)}`
+      throw new Error(`Error reading memory: ${getErrorMessage(error)}`)
     }
   },
 }
@@ -71,13 +71,12 @@ export const updateMemoryTool: AgentTool = {
 
     try {
       const chatId = message.chat?.id
-      if (!chatId) return 'Error: No chat ID available'
+      if (!chatId) throw new Error('No chat ID available')
       const ok = await setChatMemory(chatId, args.content as string)
-      return ok
-        ? 'Chat memory updated successfully.'
-        : 'Error: failed to save chat memory.'
+      if (!ok) throw new Error('Failed to save chat memory')
+      return 'Chat memory updated successfully.'
     } catch (error) {
-      return `Error updating memory: ${getErrorMessage(error)}`
+      throw new Error(`Error updating memory: ${getErrorMessage(error)}`)
     }
   },
 }

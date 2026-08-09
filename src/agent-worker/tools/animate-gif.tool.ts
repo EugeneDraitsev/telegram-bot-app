@@ -39,14 +39,14 @@ export const animateGifTool: AgentTool = {
 
     const text = (args.text as string).trim()
     if (!text) {
-      return 'Error animating text: Text cannot be empty'
+      throw new Error('Error animating text: Text cannot be empty')
     }
 
     try {
       const mediaUrl = await animateGiphyText(text)
 
       if (!mediaUrl) {
-        return 'No animated GIF generated for this text'
+        throw new Error('No animated GIF generated for this text')
       }
 
       addResponse({
@@ -55,7 +55,7 @@ export const animateGifTool: AgentTool = {
       })
       return `Generated animated text GIF: ${mediaUrl}`
     } catch (error) {
-      return `Error animating text: ${getErrorMessage(error)}`
+      throw new Error(`Error animating text: ${getErrorMessage(error)}`)
     }
   },
 }

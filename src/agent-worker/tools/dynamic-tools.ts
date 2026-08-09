@@ -145,7 +145,7 @@ function createDynamicTool(
         requireToolContext()
         const text = buildPrompt(template, args.input as string)
         if (!text && !stickerFileId) {
-          return `Error: Dynamic tool "${name}" produced empty text`
+          throw new Error(`Dynamic tool "${name}" produced empty text`)
         }
 
         if (text) {
@@ -186,7 +186,7 @@ function createDynamicTool(
           stripOutputPlaceholder: true,
         })
         if (!preparedQuery) {
-          return `Error: Dynamic tool "${name}" has empty query`
+          throw new Error(`Dynamic tool "${name}" has empty query`)
         }
 
         const text = await dependencies.searchWeb(
@@ -225,7 +225,7 @@ function createDynamicTool(
       requireToolContext()
       const preparedLocation = buildPrompt(template, args.location as string)
       if (!preparedLocation) {
-        return `Error: Dynamic tool "${name}" has empty location`
+        throw new Error(`Dynamic tool "${name}" has empty location`)
       }
 
       const weather = await getWeather(preparedLocation)
@@ -286,7 +286,12 @@ export async function executeDynamicCommandFromMessage(
         ? { query: input, format: definition.searchFormat }
         : { location: input }
 
-  const result = await tool.execute(args)
+  let result: string
+  try {
+    result = await tool.execute(args)
+  } catch (error) {
+    result = error instanceof Error ? error.message : String(error)
+  }
   return {
     matched: true,
     name: definition.name,

@@ -45,7 +45,7 @@ export const getHistoryTool: AgentTool = {
     const chatId = message.chat?.id
 
     if (!chatId) {
-      return 'Error: No chat ID available'
+      throw new Error('No chat ID available')
     }
 
     try {
@@ -76,7 +76,7 @@ export const getHistoryTool: AgentTool = {
       }
       return formatHistoryForDisplay(recentHistory, normalizedLimit)
     } catch (error) {
-      return `Error getting history: ${getErrorMessage(error)}`
+      throw new Error(`Error getting history: ${getErrorMessage(error)}`)
     }
   },
 }

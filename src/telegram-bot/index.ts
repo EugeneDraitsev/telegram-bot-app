@@ -7,6 +7,10 @@ import {
   type CommandRegistry,
   getRegisteredCommandName,
 } from './command-registry'
+import {
+  respondToWebhookDispatch,
+  waitForIngressDispatch,
+} from './ingress-dispatch'
 import { setupAllCommands } from './setup-commands'
 import { hasValidTelegramWebhookSecret } from './webhook-auth'
 
@@ -42,16 +46,10 @@ bot.use(async (ctx, next) => {
     return
   }
 
-  try {
-    await Promise.all([
-      forwardActivity(message, ctx.me?.username).catch((error) =>
-        logger.error({ error }, 'Failed to invoke activity worker'),
-      ),
-      next(),
-    ])
-  } catch (error) {
-    logger.error({ error }, 'Root error')
-  }
+  await waitForIngressDispatch([
+    forwardActivity(message, ctx.me?.username),
+    next(),
+  ])
 })
 
 // Setup all commands with deferred mode (async via Lambda)
@@ -72,24 +70,11 @@ const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
     return { statusCode: 403, body: '' }
   }
 
-  try {
-    await handleUpdate(
-      { body: event.body ?? '', headers: event.headers },
-      context,
-    )
-
-    return {
-      statusCode: 200,
-      body: '',
-    }
-  } catch (e) {
-    logger.error({ error: e }, 'Bot handler error')
-    return {
-      body: JSON.stringify({ message: 'Something went wrong' }),
-      // we need to send 200 here to avoid issue with telegram attempts to resend you a message
-      statusCode: 200,
-    }
-  }
+  return respondToWebhookDispatch(
+    () =>
+      handleUpdate({ body: event.body ?? '', headers: event.headers }, context),
+    (error) => logger.error({ error }, 'Bot handler error'),
+  )
 }
 
 export default telegramBotHandler

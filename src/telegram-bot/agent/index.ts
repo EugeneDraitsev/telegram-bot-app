@@ -5,7 +5,6 @@ import {
   collectMessageImageFileIds,
   getParsedText,
   invokeAgentLambda,
-  logger,
 } from '@tg-bot/common'
 
 export interface AgentPayload {
@@ -79,11 +78,7 @@ export async function handleMessageWithAgent(
     commandName: options.commandName,
   }
 
-  try {
-    await invokeAgentLambda(payload)
-  } catch (error) {
-    logger.error({ error }, 'Failed to invoke agent Lambda')
-  }
+  await invokeAgentLambda(payload)
 }
 
 export async function handleAgenticCommand(

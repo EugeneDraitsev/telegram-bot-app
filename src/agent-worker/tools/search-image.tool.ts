@@ -35,7 +35,7 @@ export const searchImageTool: AgentTool = {
     try {
       const query = (args.query as string).trim()
       if (!query) {
-        return 'Error searching image: Query cannot be empty'
+        throw new Error('Query cannot be empty')
       }
 
       const result = await searchImage(query)
@@ -48,7 +48,7 @@ export const searchImageTool: AgentTool = {
 
       return `Found image for: "${query}"`
     } catch (error) {
-      return `Error searching image: ${getErrorMessage(error)}`
+      throw new Error(`Error searching image: ${getErrorMessage(error)}`)
     }
   },
 }

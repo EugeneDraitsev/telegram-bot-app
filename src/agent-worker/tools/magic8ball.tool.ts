@@ -50,7 +50,7 @@ export const magic8BallTool: AgentTool = {
 
     const stickerId = sample(MAGIC_BALL_STICKERS)
     if (!stickerId) {
-      return 'Error: Could not get prediction'
+      throw new Error('Could not get prediction')
     }
 
     addResponse({

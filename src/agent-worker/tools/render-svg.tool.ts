@@ -81,11 +81,13 @@ export const renderSvgTool: AgentTool = {
 
     const svg = getString(args.svg)
     if (!svg) {
-      return 'Error rendering SVG: svg cannot be empty'
+      throw new Error('Error rendering SVG: svg cannot be empty')
     }
 
     if (svg.length > MAX_SVG_CHARS) {
-      return `Error rendering SVG: svg exceeds ${MAX_SVG_CHARS} characters`
+      throw new Error(
+        `Error rendering SVG: svg exceeds ${MAX_SVG_CHARS} characters`,
+      )
     }
 
     try {
@@ -101,7 +103,7 @@ export const renderSvgTool: AgentTool = {
       })
 
       if (sharpResponse.FunctionError) {
-        return `Error rendering SVG: ${sharpResponse.FunctionError}`
+        throw new Error(sharpResponse.FunctionError)
       }
 
       const payload = safeJSONParse(
@@ -109,16 +111,16 @@ export const renderSvgTool: AgentTool = {
       )
 
       if (payload?.statusCode !== 200) {
-        return `Error rendering SVG: ${getRendererError(payload)}`
+        throw new Error(getRendererError(payload))
       }
 
       if (typeof payload.body !== 'string') {
-        return 'Error rendering SVG: renderer returned no image body'
+        throw new Error('renderer returned no image body')
       }
 
       const image = Buffer.from(payload.body, 'base64')
       if (image.byteLength === 0) {
-        return 'Error rendering SVG: renderer returned an empty image'
+        throw new Error('renderer returned an empty image')
       }
 
       addResponse({
@@ -129,7 +131,7 @@ export const renderSvgTool: AgentTool = {
 
       return `Rendered SVG to PNG (${image.byteLength} bytes)`
     } catch (error) {
-      return `Error rendering SVG: ${getErrorMessage(error)}`
+      throw new Error(`Error rendering SVG: ${getErrorMessage(error)}`)
     }
   },
 }

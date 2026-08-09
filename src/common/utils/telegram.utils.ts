@@ -609,6 +609,7 @@ export interface MediaBuffer {
   buffer: Buffer
   mimeType: string
   mediaType: 'image' | 'audio' | 'video'
+  origin?: 'request' | 'history'
   fileId?: string
   fileUniqueId?: string
   label?: string

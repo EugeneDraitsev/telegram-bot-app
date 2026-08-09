@@ -1,7 +1,7 @@
 import type { Message } from 'grammy/types'
 import type { Bot, Context } from 'grammy/web'
 
-import { invokeReplyLambda, logger } from '@tg-bot/common'
+import { invokeReplyLambda } from '@tg-bot/common'
 import {
   handleMessageWithAgent,
   isAgentCommand,
@@ -112,11 +112,7 @@ async function deferRegisteredCommand(
     return true
   }
 
-  try {
-    await invokeReplyLambda(normalizeCommandUpdate(ctx.update, commandName))
-  } catch (error) {
-    logger.error({ error }, 'Failed to invoke reply worker')
-  }
+  await invokeReplyLambda(normalizeCommandUpdate(ctx.update, commandName))
   return true
 }
 

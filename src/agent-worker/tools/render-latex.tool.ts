@@ -71,11 +71,13 @@ export const renderLatexTool: AgentTool = {
 
     const latex = getString(args.latex)
     if (!latex) {
-      return 'Error rendering LaTeX: latex cannot be empty'
+      throw new Error('Error rendering LaTeX: latex cannot be empty')
     }
 
     if (latex.length > MAX_LATEX_CHARS) {
-      return `Error rendering LaTeX: latex exceeds ${MAX_LATEX_CHARS} characters`
+      throw new Error(
+        `Error rendering LaTeX: latex exceeds ${MAX_LATEX_CHARS} characters`,
+      )
     }
 
     const mode = normalizeMode(args.mode)
