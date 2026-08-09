@@ -37,9 +37,17 @@ functions:
     environment:
       TOKEN: ${env:TOKEN}
       TELEGRAM_WEBHOOK_SECRET: ${env:TELEGRAM_WEBHOOK_SECRET}
-      REPLY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-reply-worker
-      AGENT_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-agent-worker
-      ACTIVITY_WORKER_FUNCTION_NAME: ${self:service}-${sls:stage}-telegram-activity-worker
+      REPLY_WORKER_QUEUE_URL:
+        Ref: TelegramReplyWorkerQueue
+      REPLY_WORKER_QUEUE_NAME: ${self:custom.replyWorkerQueueName}
+      AGENT_WORKER_QUEUE_URL:
+        Ref: TelegramAgentWorkerQueue
+      AGENT_WORKER_QUEUE_NAME: ${self:custom.agentWorkerQueueName}
+      ACTIVITY_WORKER_QUEUE_URL:
+        Ref: TelegramActivityWorkerQueue
+      ACTIVITY_WORKER_QUEUE_NAME: ${self:custom.activityWorkerQueueName}
+      SQS_ENDPOINT: ${self:custom.sqsEndpointByStage.${sls:stage}, ''}
+      SQS_ACCOUNT_ID: ${self:custom.sqsAccountIdByStage.${sls:stage}, ''}
     events:
       - http:
           path: /
@@ -54,15 +62,14 @@ functions:
     timeout: 300
     memorySize: 1536
     reservedConcurrency: 5
-    maximumEventAge: 3600
-    maximumRetryAttempts: 2
-    destinations:
-      onFailure:
-        type: sqs
-        arn:
-          Fn::GetAtt:
-            - AsyncWorkerFailuresQueue
-            - Arn
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - TelegramReplyWorkerQueue
+              - Arn
+          batchSize: 1
+          functionResponseType: ReportBatchItemFailures
     environment:
       TOKEN: ${env:TOKEN}
       STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
@@ -88,15 +95,14 @@ functions:
     timeout: 300
     memorySize: 1536
     reservedConcurrency: 5
-    maximumEventAge: 3600
-    maximumRetryAttempts: 2
-    destinations:
-      onFailure:
-        type: sqs
-        arn:
-          Fn::GetAtt:
-            - AsyncWorkerFailuresQueue
-            - Arn
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - TelegramAgentWorkerQueue
+              - Arn
+          batchSize: 1
+          functionResponseType: ReportBatchItemFailures
     environment:
       TOKEN: ${env:TOKEN}
       GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
@@ -116,15 +122,14 @@ functions:
         - TelegramActivityWorkerRole
         - Arn
     reservedConcurrency: 10
-    maximumEventAge: 3600
-    maximumRetryAttempts: 2
-    destinations:
-      onFailure:
-        type: sqs
-        arn:
-          Fn::GetAtt:
-            - AsyncWorkerFailuresQueue
-            - Arn
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - TelegramActivityWorkerQueue
+              - Arn
+          batchSize: 1
+          functionResponseType: ReportBatchItemFailures
     environment:
       OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
@@ -217,6 +222,7 @@ functions:
 
 plugins:
   - serverless-esbuild
+  - serverless-offline-sqs
   - serverless-offline
 
 package:
@@ -234,6 +240,17 @@ build:
   esbuild: false
 
 custom:
+  replyWorkerQueueName: ${self:service}-${sls:stage}-reply-worker-jobs.fifo
+  agentWorkerQueueName: ${self:service}-${sls:stage}-agent-worker-jobs.fifo
+  activityWorkerQueueName: ${self:service}-${sls:stage}-activity-worker-jobs.fifo
+  replyWorkerDlqName: ${self:service}-${sls:stage}-reply-worker-dlq.fifo
+  agentWorkerDlqName: ${self:service}-${sls:stage}-agent-worker-dlq.fifo
+  activityWorkerDlqName: ${self:service}-${sls:stage}-activity-worker-dlq.fifo
+  workerFailureAlertEmail: ${env:WORKER_FAILURE_ALERT_EMAIL, 'ddrrai@gmail.com'}
+  sqsEndpointByStage:
+    local: http://localhost:9324
+  sqsAccountIdByStage:
+    local: '000000000000'
   runtimeByStage:
     local: nodejs24.x
   runtimeChatUserStatisticsTableNameByStage:
@@ -252,6 +269,11 @@ custom:
     reloadHandler: true
     useInProcess: false
     terminateIdleLambdaTime: 10
+  serverless-offline-sqs:
+    autoCreate: true
+    autoStart: true
+    region: ${self:provider.region}
+    accountId: '000000000000'
   esbuild:
     target: ${self:custom.esbuildTargetByStage.${sls:stage}, 'node24'}
     platform: node
@@ -264,6 +286,7 @@ custom:
       - "@aws-sdk/client-apigatewaymanagementapi"
       - "@aws-sdk/client-dynamodb"
       - "@aws-sdk/client-lambda"
+      - "@aws-sdk/client-sqs"
       - "@aws-sdk/lib-dynamodb"
 
 resources:

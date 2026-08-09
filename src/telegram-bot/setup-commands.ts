@@ -1,7 +1,7 @@
 import type { Message } from 'grammy/types'
 import type { Bot, Context } from 'grammy/web'
 
-import { invokeReplyLambda } from '@tg-bot/common'
+import { enqueueReplyWorker } from '@tg-bot/common'
 import {
   handleMessageWithAgent,
   isAgentCommand,
@@ -112,14 +112,14 @@ async function deferRegisteredCommand(
     return true
   }
 
-  await invokeReplyLambda(normalizeCommandUpdate(ctx.update, commandName))
+  await enqueueReplyWorker(normalizeCommandUpdate(ctx.update, commandName))
   return true
 }
 
 /**
  * Sets up all bot commands with unified configuration.
  * @param bot - The grammy Bot instance
- * @param deferredCommands - If true, long-running commands are executed asynchronously via Lambda
+ * @param deferredCommands - If true, long-running commands are enqueued in SQS
  */
 export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   const commandRegistry = installCommandRegistry(bot)

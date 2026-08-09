@@ -1,4 +1,4 @@
-import type { Handler } from 'aws-lambda'
+import type { Handler, Context as LambdaContext, SQSEvent } from 'aws-lambda'
 import type { Message } from 'grammy/types'
 import type { Context } from 'grammy/web'
 
@@ -8,6 +8,7 @@ import {
   getMediaGroupMessages,
   getMessageLogMeta,
   getMultimodalMediaData,
+  handleSqsWorkerEvent,
   isAgenticChatEnabled,
   logger,
 } from '@tg-bot/common'
@@ -78,7 +79,10 @@ function startLeaseHeartbeat(
   return heartbeat
 }
 
-const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
+export const processAgentWorker = async (
+  event: AgentWorkerPayload,
+  context: LambdaContext,
+) => {
   const startedAt = Date.now()
   let lease: AgentWorkerLease | undefined
   let heartbeat: ReturnType<typeof setInterval> | undefined
@@ -216,4 +220,9 @@ const agentWorker: Handler<AgentWorkerPayload> = async (event, context) => {
   }
 }
 
-export default agentWorker
+const agentWorker = (
+  event: AgentWorkerPayload | SQSEvent,
+  context: LambdaContext,
+) => handleSqsWorkerEvent('agent', event, context, processAgentWorker)
+
+export default agentWorker satisfies Handler<AgentWorkerPayload | SQSEvent>

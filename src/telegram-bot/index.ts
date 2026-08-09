@@ -2,7 +2,7 @@ import { webhookCallback } from 'grammy/web'
 import type { APIGatewayProxyHandler } from 'aws-lambda'
 import type { Message } from 'grammy/types'
 
-import { createBot, invokeActivityLambda, logger } from '@tg-bot/common'
+import { createBot, enqueueActivityWorker, logger } from '@tg-bot/common'
 import {
   type CommandRegistry,
   getRegisteredCommandName,
@@ -26,7 +26,7 @@ async function forwardActivity(message: Message, botUsername?: string) {
   )
   const command = commandName ? `/${commandName}` : ''
 
-  await invokeActivityLambda({ message, command })
+  await enqueueActivityWorker({ message, command })
 }
 
 bot.use(async (ctx, next) => {
@@ -52,7 +52,7 @@ bot.use(async (ctx, next) => {
   ])
 })
 
-// Setup all commands with deferred mode (async via Lambda)
+// Setup all commands with deferred mode (durable SQS jobs)
 commandRegistry = setupAllCommands(bot, true)
 
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {

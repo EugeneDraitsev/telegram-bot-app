@@ -3,8 +3,8 @@ import type { Bot, Context } from 'grammy/web'
 
 import {
   collectMessageImageFileIds,
+  enqueueAgentWorker,
   getParsedText,
-  invokeAgentLambda,
 } from '@tg-bot/common'
 
 export interface AgentPayload {
@@ -54,7 +54,7 @@ function stripCommandText(message: Message): Message {
 
 /**
  * Main entry point for handling messages with the agent.
- * Waits only for Lambda async invoke ACK, not for worker completion.
+ * Waits only for the SQS SendMessage ACK, not for worker completion.
  */
 export async function handleMessageWithAgent(
   message: Message,
@@ -69,8 +69,8 @@ export async function handleMessageWithAgent(
     ? stripCommandText(message)
     : message
 
-  // Invoke agent worker Lambda async and return immediately.
-  // Worker handles chat-enabled checks and quick filtering.
+  // Enqueue the agent job and return after SQS accepts it.
+  // The worker handles chat-enabled checks and quick filtering.
   const payload: AgentPayload = {
     message: agentMessage,
     imageFileIds: collectMessageImageFileIds(agentMessage),
@@ -78,7 +78,7 @@ export async function handleMessageWithAgent(
     commandName: options.commandName,
   }
 
-  await invokeAgentLambda(payload)
+  await enqueueAgentWorker(payload)
 }
 
 export async function handleAgenticCommand(

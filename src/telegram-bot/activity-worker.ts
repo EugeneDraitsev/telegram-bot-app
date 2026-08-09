@@ -1,7 +1,8 @@
-import type { Context, Handler } from 'aws-lambda'
+import type { Context, Handler, SQSEvent } from 'aws-lambda'
 import type { Message } from 'grammy/types'
 
 import {
+  handleSqsWorkerEvent,
   isAiEnabledChat,
   logger,
   runIdempotentWorkerTask,
@@ -15,7 +16,7 @@ export interface ActivityWorkerPayload {
   command?: string
 }
 
-const activityWorker = async (
+export const processActivityWorker = async (
   event: ActivityWorkerPayload,
   context: Pick<Context, 'awsRequestId'>,
 ) => {
@@ -82,4 +83,11 @@ const activityWorker = async (
   }
 }
 
-export default activityWorker satisfies Handler<ActivityWorkerPayload>
+const activityWorker = (
+  event: ActivityWorkerPayload | SQSEvent,
+  context: Pick<Context, 'awsRequestId'>,
+) => handleSqsWorkerEvent('activity', event, context, processActivityWorker)
+
+export default activityWorker satisfies Handler<
+  ActivityWorkerPayload | SQSEvent
+>

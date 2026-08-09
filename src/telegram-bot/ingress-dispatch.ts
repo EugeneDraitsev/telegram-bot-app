@@ -25,7 +25,7 @@ export async function respondToWebhookDispatch(
     return {
       body: '',
       // Let Telegram retry. Worker idempotency makes a repeated update safe when
-      // one async invoke succeeded and another dispatch failed.
+      // one SQS enqueue succeeded and another dispatch failed.
       statusCode: 503,
     }
   }

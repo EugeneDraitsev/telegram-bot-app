@@ -9,24 +9,24 @@ describe('handleMessageWithAgent', () => {
   })
 
   test('returns early when message has no chat id', async () => {
-    const invokeSpy = jest.spyOn(common, 'invokeAgentLambda')
+    const enqueueSpy = jest.spyOn(common, 'enqueueAgentWorker')
     const message = {} as Message
 
     await handleMessageWithAgent(message)
 
-    expect(invokeSpy).not.toHaveBeenCalled()
+    expect(enqueueSpy).not.toHaveBeenCalled()
   })
 
-  test('waits for invoke ACK before resolving', async () => {
-    let resolveInvoke: (() => void) | undefined
-    type InvokeAck = Awaited<ReturnType<typeof common.invokeAgentLambda>>
-    const invokePromise: Promise<InvokeAck> = new Promise((resolve) => {
-      resolveInvoke = () => resolve({} as InvokeAck)
+  test('waits for enqueue ACK before resolving', async () => {
+    let resolveEnqueue: (() => void) | undefined
+    type EnqueueAck = Awaited<ReturnType<typeof common.enqueueAgentWorker>>
+    const enqueuePromise: Promise<EnqueueAck> = new Promise((resolve) => {
+      resolveEnqueue = () => resolve({} as EnqueueAck)
     })
 
-    const invokeSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
-      .mockReturnValue(invokePromise)
+    const enqueueSpy = jest
+      .spyOn(common, 'enqueueAgentWorker')
+      .mockReturnValue(enqueuePromise)
 
     const message = { chat: { id: 123 } } as Message
 
@@ -37,20 +37,20 @@ describe('handleMessageWithAgent', () => {
 
     await Promise.resolve()
 
-    expect(invokeSpy).toHaveBeenCalledTimes(1)
+    expect(enqueueSpy).toHaveBeenCalledTimes(1)
     expect(isResolved).toBe(false)
 
-    resolveInvoke?.()
+    resolveEnqueue?.()
     await handlerPromise
 
     expect(isResolved).toBe(true)
   })
 
-  test('strips command text and bypasses reply gate for explicit command invokes', async () => {
-    const invokeSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
+  test('strips command text and bypasses reply gate for explicit command jobs', async () => {
+    const enqueueSpy = jest
+      .spyOn(common, 'enqueueAgentWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueAgentWorker>>,
       )
 
     const message = {
@@ -65,7 +65,7 @@ describe('handleMessageWithAgent', () => {
       commandName: 'q',
     })
 
-    expect(invokeSpy).toHaveBeenCalledWith(
+    expect(enqueueSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         bypassReplyGate: true,
         commandName: 'q',
@@ -77,9 +77,9 @@ describe('handleMessageWithAgent', () => {
     )
   })
 
-  test('propagates invoke failures so Telegram can retry the update', async () => {
-    const error = new Error('Lambda invoke failed')
-    jest.spyOn(common, 'invokeAgentLambda').mockRejectedValue(error)
+  test('propagates enqueue failures so Telegram can retry the update', async () => {
+    const error = new Error('SQS enqueue failed')
+    jest.spyOn(common, 'enqueueAgentWorker').mockRejectedValue(error)
 
     await expect(
       handleMessageWithAgent({ chat: { id: 123 } } as Message),

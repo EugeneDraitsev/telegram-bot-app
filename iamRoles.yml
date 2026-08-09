@@ -14,17 +14,23 @@ Resources:
       ManagedPolicyArns: &lambdaBasicExecution
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: invoke-ingress-workers
+        - PolicyName: enqueue-ingress-workers
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - lambda:InvokeFunction
+                  - sqs:SendMessage
                 Resource:
-                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-telegram-reply-worker
-                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-telegram-agent-worker
-                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-telegram-activity-worker
+                  - Fn::GetAtt:
+                      - TelegramReplyWorkerQueue
+                      - Arn
+                  - Fn::GetAtt:
+                      - TelegramAgentWorkerQueue
+                      - Arn
+                  - Fn::GetAtt:
+                      - TelegramActivityWorkerQueue
+                      - Arn
 
   TelegramReplyWorkerRole:
     Type: AWS::IAM::Role
@@ -55,10 +61,13 @@ Resources:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
               - Effect: Allow
                 Action:
-                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
                 Resource:
                   - Fn::GetAtt:
-                      - AsyncWorkerFailuresQueue
+                      - TelegramReplyWorkerQueue
                       - Arn
 
   TelegramAgentWorkerRole:
@@ -78,10 +87,13 @@ Resources:
                   - arn:aws:lambda:*:*:${self:service}-${sls:stage}-sharp-renderer
               - Effect: Allow
                 Action:
-                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
                 Resource:
                   - Fn::GetAtt:
-                      - AsyncWorkerFailuresQueue
+                      - TelegramAgentWorkerQueue
                       - Arn
 
   TelegramActivityWorkerRole:
@@ -113,10 +125,13 @@ Resources:
                   - arn:aws:lambda:*:*:${self:service}-${sls:stage}-websocket-broadcast-stats
               - Effect: Allow
                 Action:
-                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
                 Resource:
                   - Fn::GetAtt:
-                      - AsyncWorkerFailuresQueue
+                      - TelegramActivityWorkerQueue
                       - Arn
 
   CurrencySchedulerRole:

@@ -32,8 +32,8 @@ re-render both themes with `bun run diagram` after changing it.
 ## How It Works
 
 `src/telegram-bot` is the Telegram ingress layer. It handles the webhook,
-records no statistics directly and returns quickly. It only dispatches async
-Lambda `Event` invokes:
+records no statistics directly and returns quickly. It only dispatches durable
+FIFO SQS jobs:
 
 - every message payload goes to `telegram-activity-worker` for statistics,
   chat events, live stats broadcast and AI chat history persistence;
@@ -59,8 +59,18 @@ webhook lambda.
 
 `src/telegram-bot/activity-worker` owns the non-reply side effects that used to
 run in ingress: statistics updates, chat event writes, AI chat history writes
-and WebSocket stats broadcast fanout. The webhook waits only for the async invoke
-ACK, not for these tasks to complete.
+and WebSocket stats broadcast fanout. The webhook waits only for the SQS
+`SendMessage` ACK, not for these tasks to complete.
+
+Reply, agent and activity jobs have separate FIFO queues and DLQs. Telegram chat
+ids are used as message groups, so jobs stay ordered inside one chat while
+different chats can run concurrently. Workers still use Redis idempotency
+because SQS delivery is at least once.
+
+CloudWatch alarms watch all three worker DLQs. More than three visible messages
+sends an SNS email notification to
+`WORKER_FAILURE_ALERT_EMAIL` (defaults to `ddrrai@gmail.com`). The email
+subscription must be confirmed once after the first deployment.
 
 `src/websockets` owns only the WebSocket runtime for the stats UI: connection
 tracking, initial `stats` responses and live broadcast fanout when new chat
@@ -83,7 +93,25 @@ on weekday mornings and evenings. AI chat history is bounded and expires from
 Redis as messages are written, so it does not need a global key-scan cron.
 
 `src/common` contains shared runtime code: Telegram helpers, DynamoDB access,
-Lambda invocation, Upstash Redis access, logging, formatting and shared types.
+SQS job dispatch, Lambda invocation, Upstash Redis access, logging, formatting
+and shared types.
+
+## Local SQS development
+
+Docker Desktop (or another Docker daemon) must already be running. Serverless
+Offline starts and removes only the ElasticMQ container automatically and
+creates the queues from `resources.yml`.
+
+```sh
+bun run start
+```
+
+Stop it with a normal `Ctrl+C` so Serverless can clean up ElasticMQ. A hard stop
+from an IDE can bypass that cleanup and leave the container running on port
+`9324`; this is harmless, and the next `bun run start` automatically replaces
+the stale container. Stop it from Docker Desktop if you want to free the port
+and memory immediately. `bun test` uses synthetic SQS events and never starts
+Docker or Serverless.
 
 ## Related Projects
 

@@ -6,6 +6,13 @@ flowchart TB
 
     BOT@{ icon: "logos:aws-lambda", label: "telegram-bot<br/>webhook ingress", h: 42 }
 
+    subgraph QUEUES["FIFO job queues"]
+      direction LR
+      ACTQ@{ icon: "logos:aws-sqs", label: "activity jobs", h: 38 }
+      REPLYQ@{ icon: "logos:aws-sqs", label: "reply jobs", h: 38 }
+      AGENTQ@{ icon: "logos:aws-sqs", label: "agent jobs", h: 38 }
+    end
+
     subgraph WORKERS["async workers"]
       direction LR
       ACT@{ icon: "logos:aws-lambda", label: "activity-worker<br/>stats / events / history", h: 42 }
@@ -18,6 +25,8 @@ flowchart TB
     IMG@{ icon: "logos:aws-lambda", label: "sharp-renderer<br/>SVG → PNG", h: 42 }
 
     WSS@{ icon: "logos:aws-api-gateway", label: "WebSocket API", h: 40 }
+    DLQ@{ icon: "logos:aws-sqs", label: "3 worker DLQs", h: 38 }
+    ALERT["CloudWatch + SNS<br/>email at 4+ failures"]:::alert
   end
 
   TG@{ icon: "logos:telegram", label: "Telegram", h: 46 }
@@ -51,9 +60,11 @@ flowchart TB
   CRON1 -->|"currency digest"| TG
   TG <==>|"webhook"| BOT
 
-  BOT -.->|"every message"| ACT
-  BOT -.->|"registered cmds"| REPLY
-  BOT -.->|"AI commands / fallback"| AGENT
+  BOT -->|"every message"| ACTQ --> ACT
+  BOT -->|"registered cmds"| REPLYQ --> REPLY
+  BOT -->|"AI commands / fallback"| AGENTQ --> AGENT
+  ACTQ & REPLYQ & AGENTQ -.->|"5 failed receives"| DLQ
+  DLQ -.->|"> 3 visible"| ALERT
 
   REPLY -->|"reply"| TG
   AGENT -->|"reply"| TG
@@ -83,6 +94,8 @@ flowchart TB
   REPLY -.->|"signed stats link"| NEXT
 
   classDef ext fill:#059669,stroke:#064e3b,color:#ffffff,font-weight:bold
+  classDef alert fill:#dc2626,stroke:#7f1d1d,color:#ffffff,font-weight:bold
+  style QUEUES fill:transparent,stroke-dasharray:6 6
   style WORKERS fill:transparent,stroke-dasharray:6 6
   style THIRD fill:transparent,stroke-dasharray:6 6
   style DATA fill:transparent,stroke-dasharray:6 6

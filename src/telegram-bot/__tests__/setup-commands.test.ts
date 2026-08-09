@@ -115,9 +115,9 @@ describe('setupAllCommands', () => {
 
   test('message middleware defers agent commands to agent worker', async () => {
     const invokeSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
+      .spyOn(common, 'enqueueAgentWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueAgentWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 
@@ -149,9 +149,9 @@ describe('setupAllCommands', () => {
 
   test('message middleware defers newline agent commands to agent worker', async () => {
     const invokeSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
+      .spyOn(common, 'enqueueAgentWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueAgentWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 
@@ -180,11 +180,11 @@ describe('setupAllCommands', () => {
 
   test('message middleware sends legacy AI image commands to agent worker', async () => {
     const agentSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
+      .spyOn(common, 'enqueueAgentWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueAgentWorker>>,
       )
-    const replySpy = jest.spyOn(common, 'invokeReplyLambda')
+    const replySpy = jest.spyOn(common, 'enqueueReplyWorker')
     const { bot, getHandler } = createBotStub()
 
     setupAllCommands(bot, true)
@@ -213,9 +213,9 @@ describe('setupAllCommands', () => {
 
   test('message middleware defers non-agent commands to reply worker', async () => {
     const invokeSpy = jest
-      .spyOn(common, 'invokeReplyLambda')
+      .spyOn(common, 'enqueueReplyWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeReplyLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueReplyWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 
@@ -241,8 +241,8 @@ describe('setupAllCommands', () => {
   })
 
   test('registered command dispatch failures propagate to ingress', async () => {
-    const error = new Error('reply worker invoke failed')
-    jest.spyOn(common, 'invokeReplyLambda').mockRejectedValue(error)
+    const error = new Error('reply worker enqueue failed')
+    jest.spyOn(common, 'enqueueReplyWorker').mockRejectedValue(error)
     const { bot, getHandler } = createBotStub()
 
     setupAllCommands(bot, true)
@@ -268,9 +268,9 @@ describe('setupAllCommands', () => {
 
   test('message middleware normalizes uppercase commands for reply worker', async () => {
     const invokeSpy = jest
-      .spyOn(common, 'invokeReplyLambda')
+      .spyOn(common, 'enqueueReplyWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeReplyLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueReplyWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 
@@ -298,9 +298,9 @@ describe('setupAllCommands', () => {
 
   test('message middleware forwards caption commands as text commands', async () => {
     const invokeSpy = jest
-      .spyOn(common, 'invokeReplyLambda')
+      .spyOn(common, 'enqueueReplyWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeReplyLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueReplyWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 
@@ -332,14 +332,14 @@ describe('setupAllCommands', () => {
 
   test('message middleware ignores commands addressed to another bot', async () => {
     const agentSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
+      .spyOn(common, 'enqueueAgentWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueAgentWorker>>,
       )
     const replySpy = jest
-      .spyOn(common, 'invokeReplyLambda')
+      .spyOn(common, 'enqueueReplyWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeReplyLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueReplyWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 
@@ -367,9 +367,9 @@ describe('setupAllCommands', () => {
 
   test('message middleware lets unregistered slash commands reach agent worker', async () => {
     const invokeSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
+      .spyOn(common, 'enqueueAgentWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueAgentWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 
@@ -396,9 +396,9 @@ describe('setupAllCommands', () => {
 
   test('message middleware skips captionless album siblings', async () => {
     const invokeSpy = jest
-      .spyOn(common, 'invokeAgentLambda')
+      .spyOn(common, 'enqueueAgentWorker')
       .mockResolvedValue(
-        {} as Awaited<ReturnType<typeof common.invokeAgentLambda>>,
+        {} as Awaited<ReturnType<typeof common.enqueueAgentWorker>>,
       )
     const { bot, getHandler } = createBotStub()
 

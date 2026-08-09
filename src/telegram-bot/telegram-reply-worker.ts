@@ -1,9 +1,10 @@
 import { webhookCallback } from 'grammy/web'
-import type { Handler, Context as LambdaContext } from 'aws-lambda'
+import type { Handler, Context as LambdaContext, SQSEvent } from 'aws-lambda'
 import type { Update } from 'grammy/types'
 
 import {
   createBot,
+  handleSqsWorkerEvent,
   logger,
   runIdempotentWorkerTask,
   saveBotMessageMiddleware,
@@ -22,7 +23,10 @@ const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
   timeoutMilliseconds: 300_000,
 })
 
-const telegramReplyWorker = async (event: Update, context: LambdaContext) => {
+export const processTelegramReply = async (
+  event: Update,
+  context: LambdaContext,
+) => {
   const message = event.message
   if (!message?.chat.id || !message.message_id) {
     logger.warn({ updateId: event.update_id }, 'reply_worker.invalid_payload')
@@ -57,4 +61,9 @@ const telegramReplyWorker = async (event: Update, context: LambdaContext) => {
   }
 }
 
-export default telegramReplyWorker satisfies Handler<Update>
+const telegramReplyWorker = (
+  event: Update | SQSEvent,
+  context: LambdaContext,
+) => handleSqsWorkerEvent('reply', event, context, processTelegramReply)
+
+export default telegramReplyWorker satisfies Handler<Update | SQSEvent>

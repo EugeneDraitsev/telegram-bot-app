@@ -1,10 +1,149 @@
 Resources:
-  AsyncWorkerFailuresQueue:
+  TelegramReplyWorkerDlq:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: ${self:service}-${sls:stage}-async-worker-failures
+      QueueName: ${self:custom.replyWorkerDlqName}
+      FifoQueue: true
       MessageRetentionPeriod: 1209600
       SqsManagedSseEnabled: true
+
+  TelegramReplyWorkerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.replyWorkerQueueName}
+      FifoQueue: true
+      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 1800
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - TelegramReplyWorkerDlq
+            - Arn
+        maxReceiveCount: 5
+
+  TelegramAgentWorkerDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.agentWorkerDlqName}
+      FifoQueue: true
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  TelegramAgentWorkerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.agentWorkerQueueName}
+      FifoQueue: true
+      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 1800
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - TelegramAgentWorkerDlq
+            - Arn
+        maxReceiveCount: 5
+
+  TelegramActivityWorkerDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.activityWorkerDlqName}
+      FifoQueue: true
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  TelegramActivityWorkerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.activityWorkerQueueName}
+      FifoQueue: true
+      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 180
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - TelegramActivityWorkerDlq
+            - Arn
+        maxReceiveCount: 5
+
+  WorkerFailureAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ${self:service}-${sls:stage}-worker-failure-alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: ${self:custom.workerFailureAlertEmail}
+
+  TelegramReplyWorkerDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${sls:stage}-reply-worker-dlq-over-3
+      AlarmDescription: Reply worker DLQ contains more than 3 visible messages.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value:
+            Fn::GetAtt:
+              - TelegramReplyWorkerDlq
+              - QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: WorkerFailureAlertsTopic
+
+  TelegramAgentWorkerDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${sls:stage}-agent-worker-dlq-over-3
+      AlarmDescription: Agent worker DLQ contains more than 3 visible messages.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value:
+            Fn::GetAtt:
+              - TelegramAgentWorkerDlq
+              - QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: WorkerFailureAlertsTopic
+
+  TelegramActivityWorkerDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${sls:stage}-activity-worker-dlq-over-3
+      AlarmDescription: Activity worker DLQ contains more than 3 visible messages.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value:
+            Fn::GetAtt:
+              - TelegramActivityWorkerDlq
+              - QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: WorkerFailureAlertsTopic
 
   ChatWebsocketConnectionsTable:
     Type: AWS::DynamoDB::Table
@@ -119,3 +258,17 @@ Resources:
                   - dynamodb:DeleteItem
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
+
+Outputs:
+  WorkerFailureAlertsTopicArn:
+    Value:
+      Ref: WorkerFailureAlertsTopic
+  TelegramReplyWorkerQueueUrl:
+    Value:
+      Ref: TelegramReplyWorkerQueue
+  TelegramAgentWorkerQueueUrl:
+    Value:
+      Ref: TelegramAgentWorkerQueue
+  TelegramActivityWorkerQueueUrl:
+    Value:
+      Ref: TelegramActivityWorkerQueue
