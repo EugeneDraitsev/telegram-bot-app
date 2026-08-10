@@ -2,7 +2,10 @@ import { logger } from '../logger'
 import { getRedisClient } from './client'
 
 const LEASE_TTL_SECONDS = 45
-const COMPLETED_TTL_SECONDS = 60 * 60 * 24
+// Only has to outlive redelivery of the same SQS message. The agent and reply
+// queues cap that at VisibilityTimeout 1800s x maxReceiveCount 5 = 2.5h, after
+// which the message goes to its DLQ and is never handed to a worker again.
+const COMPLETED_TTL_SECONDS = 60 * 60 * 3
 
 const RENEW_LEASE_SCRIPT = `
 if redis.call("GET", KEYS[1]) == ARGV[1] then
