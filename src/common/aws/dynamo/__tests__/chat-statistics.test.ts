@@ -63,7 +63,7 @@ describe('per-user chat statistics storage', () => {
   test('creates one small item for a new user', async () => {
     querySpy.mockResolvedValue({ Items: [] } as never)
 
-    await updateStatistics(user, chat)
+    await updateStatistics(user, chat, 42)
 
     expect(putSpy).toHaveBeenCalledWith({
       TableName: 'chat-user-statistics',
@@ -74,6 +74,7 @@ describe('per-user chat statistics storage', () => {
         username: 'alice',
         chatInfo: chat,
         updatedAt: expect.any(Number),
+        lastMessageId: 42,
       },
       ConditionExpression:
         'attribute_not_exists(#chatId) AND attribute_not_exists(#userId)',
@@ -96,7 +97,7 @@ describe('per-user chat statistics storage', () => {
       ],
     } as never)
 
-    await updateStatistics(user, chat)
+    await updateStatistics(user, chat, 42)
 
     expect(querySpy).toHaveBeenCalledTimes(1)
     expect(putSpy).not.toHaveBeenCalled()
@@ -104,9 +105,9 @@ describe('per-user chat statistics storage', () => {
       TableName: 'chat-user-statistics',
       Key: { chatId: '-100', userId: 7 },
       UpdateExpression:
-        'SET #username = :username, #chatInfo = :chatInfo, #updatedAt = :updatedAt ADD #msgCount :one',
+        'SET #username = :username, #chatInfo = :chatInfo, #updatedAt = :updatedAt, #lastMessageId = :messageId ADD #msgCount :one',
       ConditionExpression:
-        'attribute_exists(#chatId) AND attribute_exists(#userId)',
+        'attribute_exists(#chatId) AND attribute_exists(#userId) AND (attribute_not_exists(#lastMessageId) OR #lastMessageId < :messageId)',
       ExpressionAttributeNames: {
         '#chatId': 'chatId',
         '#userId': 'userId',
@@ -114,14 +115,49 @@ describe('per-user chat statistics storage', () => {
         '#chatInfo': 'chatInfo',
         '#updatedAt': 'updatedAt',
         '#msgCount': 'msgCount',
+        '#lastMessageId': 'lastMessageId',
       },
       ExpressionAttributeValues: {
         ':username': 'alice',
         ':chatInfo': chat,
         ':updatedAt': expect.any(Number),
         ':one': 1,
+        ':messageId': 42,
       },
     })
+  })
+
+  test('drops a replayed message instead of counting it twice', async () => {
+    querySpy.mockResolvedValue({
+      Items: [
+        {
+          chatId: '-100',
+          userId: 7,
+          msgCount: 5,
+          username: 'alice',
+          lastMessageId: 42,
+        },
+      ],
+    } as never)
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('condition failed'), {
+        name: 'ConditionalCheckFailedException',
+      }),
+    )
+
+    await expect(updateStatistics(user, chat, 42)).resolves.toBeUndefined()
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+  })
+
+  test('propagates non-conditional increment failures', async () => {
+    querySpy.mockResolvedValue({
+      Items: [{ chatId: '-100', userId: 7, msgCount: 5, username: 'alice' }],
+    } as never)
+    updateSpy.mockRejectedValueOnce(new Error('dynamo exploded'))
+
+    await expect(updateStatistics(user, chat, 43)).rejects.toThrow(
+      'dynamo exploded',
+    )
   })
 
   test('falls back to atomic increment after a concurrent first write', async () => {
@@ -132,7 +168,7 @@ describe('per-user chat statistics storage', () => {
       }),
     )
 
-    await updateStatistics(user, chat)
+    await updateStatistics(user, chat, 42)
 
     expect(updateSpy).toHaveBeenCalledTimes(1)
     expect(updateSpy.mock.calls[0]?.[0]).toMatchObject({

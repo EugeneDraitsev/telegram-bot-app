@@ -9,10 +9,6 @@ const saveMessageMock = jest.spyOn(common, 'saveMessage')
 const isAiEnabledChatMock = jest.spyOn(common, 'isAiEnabledChat')
 const loggerErrorMock = jest.spyOn(common.logger, 'error')
 const loggerWarnMock = jest.spyOn(common.logger, 'warn')
-const runIdempotentWorkerTaskMock = jest.spyOn(
-  common,
-  'runIdempotentWorkerTask',
-)
 const lambdaContext = { awsRequestId: 'request-1' }
 
 describe('activity worker', () => {
@@ -25,12 +21,6 @@ describe('activity worker', () => {
       .mockImplementation((chatId) => chatId === 123)
     loggerErrorMock.mockReset().mockImplementation(() => {})
     loggerWarnMock.mockReset().mockImplementation(() => {})
-    runIdempotentWorkerTaskMock
-      .mockReset()
-      .mockImplementation(async ({ task }) => ({
-        duplicate: false,
-        value: await task(),
-      }))
   })
 
   afterAll(() => {
@@ -40,7 +30,6 @@ describe('activity worker', () => {
     isAiEnabledChatMock.mockRestore()
     loggerErrorMock.mockRestore()
     loggerWarnMock.mockRestore()
-    runIdempotentWorkerTaskMock.mockRestore()
   })
 
   test('tracks statistics, events and AI chat history outside ingress', async () => {
@@ -56,7 +45,7 @@ describe('activity worker', () => {
 
     await activityWorker({ message, command: '/x' }, lambdaContext)
 
-    expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
+    expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat, 10)
     expect(saveEventMock).toHaveBeenCalledWith(user, 123, '/x', 123456, 10)
     expect(saveMessageMock).toHaveBeenCalledWith(message, 123)
   })
@@ -87,7 +76,7 @@ describe('activity worker', () => {
 
     await activityWorker({ message, command: '' }, lambdaContext)
 
-    expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat)
+    expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat, 10)
     expect(saveEventMock).toHaveBeenCalledWith(user, 999, '', 123456, 10)
     expect(saveMessageMock).not.toHaveBeenCalled()
   })

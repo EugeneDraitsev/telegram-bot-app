@@ -5,7 +5,6 @@ import {
   handleSqsWorkerEvent,
   isAiEnabledChat,
   logger,
-  runIdempotentWorkerTask,
   saveEvent,
   saveMessage,
   updateStatistics,
@@ -16,10 +15,13 @@ export interface ActivityWorkerPayload {
   command?: string
 }
 
-export const processActivityWorker = async (
-  event: ActivityWorkerPayload,
-  context: Pick<Context, 'awsRequestId'>,
-) => {
+/**
+ * Every task here is safe to replay, so redelivery needs no idempotency
+ * markers: updateStatistics guards its own increment, saveEvent puts a
+ * deterministic chatId+date key, and saveMessage re-adds an identical
+ * sorted-set member.
+ */
+export const processActivityWorker = async (event: ActivityWorkerPayload) => {
   const message = event.message
   const chat = message?.chat
 
@@ -34,42 +36,22 @@ export const processActivityWorker = async (
     return
   }
 
-  const taskDefinitions = [
-    {
-      namespace: 'activity-statistics',
-      task: () => updateStatistics(message.from, chat),
-    },
-    {
-      namespace: 'activity-event',
-      task: () =>
-        saveEvent(
-          message.from,
-          chat.id,
-          event.command ?? '',
-          message.date,
-          message.message_id,
-        ),
-    },
+  const tasks = [
+    updateStatistics(message.from, chat, message.message_id),
+    saveEvent(
+      message.from,
+      chat.id,
+      event.command ?? '',
+      message.date,
+      message.message_id,
+    ),
   ]
 
   if (isAiEnabledChat(chat.id)) {
-    taskDefinitions.push({
-      namespace: 'activity-history',
-      task: () => saveMessage(message, chat.id),
-    })
+    tasks.push(saveMessage(message, chat.id))
   }
 
-  const results = await Promise.allSettled(
-    taskDefinitions.map(({ namespace, task }) =>
-      runIdempotentWorkerTask({
-        namespace,
-        chatId: chat.id,
-        messageId: message.message_id,
-        ownerToken: `${context.awsRequestId}:${namespace}`,
-        task,
-      }),
-    ),
-  )
+  const results = await Promise.allSettled(tasks)
   const failures: unknown[] = []
   for (const result of results) {
     if (result.status === 'rejected') {

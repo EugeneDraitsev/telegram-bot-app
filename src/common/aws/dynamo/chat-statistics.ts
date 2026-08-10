@@ -269,69 +269,95 @@ export const getFormattedChatStatisticsMessages = async (
   }
 }
 
-export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
+/**
+ * Count one message for a user.
+ *
+ * The increment carries `lastMessageId` and refuses to apply unless the id
+ * advances. Telegram message ids grow monotonically per chat and the activity
+ * queue is FIFO per chat, so replaying the same SQS message is a no-op — the
+ * write guards itself and needs no external idempotency marker.
+ */
+export const updateStatistics = async (
+  userInfo: User | undefined,
+  chat: Chat | undefined,
+  messageId: number,
+) => {
   const chat_id = chat?.id
+  if (!userInfo || !chat_id) {
+    return
+  }
 
-  if (userInfo && chat_id) {
-    const chatId = String(chat_id)
-    const username = getUserName(userInfo)
-    const updatedAt = Date.now()
-    const storedUser = await getStoredUserStatistic(chatId, userInfo.id)
+  const chatId = String(chat_id)
+  const username = getUserName(userInfo)
+  const updatedAt = Date.now()
+  const storedUser = await getStoredUserStatistic(chatId, userInfo.id)
 
-    const incrementUser = () =>
-      dynamoUpdateItem({
-        TableName: CHAT_USER_STATISTICS_TABLE_NAME,
-        Key: { chatId, userId: userInfo.id },
-        UpdateExpression:
-          'SET #username = :username, #chatInfo = :chatInfo, #updatedAt = :updatedAt ADD #msgCount :one',
-        ConditionExpression:
-          'attribute_exists(#chatId) AND attribute_exists(#userId)',
-        ExpressionAttributeNames: {
-          '#chatId': 'chatId',
-          '#userId': 'userId',
-          '#username': 'username',
-          '#chatInfo': 'chatInfo',
-          '#updatedAt': 'updatedAt',
-          '#msgCount': 'msgCount',
-        },
-        ExpressionAttributeValues: {
-          ':username': username,
-          ':chatInfo': chat,
-          ':updatedAt': updatedAt,
-          ':one': 1,
-        },
-      })
+  const incrementUser = () =>
+    dynamoUpdateItem({
+      TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+      Key: { chatId, userId: userInfo.id },
+      UpdateExpression:
+        'SET #username = :username, #chatInfo = :chatInfo, #updatedAt = :updatedAt, #lastMessageId = :messageId ADD #msgCount :one',
+      ConditionExpression:
+        'attribute_exists(#chatId) AND attribute_exists(#userId) AND (attribute_not_exists(#lastMessageId) OR #lastMessageId < :messageId)',
+      ExpressionAttributeNames: {
+        '#chatId': 'chatId',
+        '#userId': 'userId',
+        '#username': 'username',
+        '#chatInfo': 'chatInfo',
+        '#updatedAt': 'updatedAt',
+        '#msgCount': 'msgCount',
+        '#lastMessageId': 'lastMessageId',
+      },
+      ExpressionAttributeValues: {
+        ':username': username,
+        ':chatInfo': chat,
+        ':updatedAt': updatedAt,
+        ':one': 1,
+        ':messageId': messageId,
+      },
+    })
 
-    if (storedUser) {
-      await incrementUser()
-      return
-    }
-
+  // A failed condition on the increment means this message was already
+  // counted, so the replay is dropped instead of double counting.
+  const incrementUnlessAlreadyCounted = async () => {
     try {
-      await dynamoPutItem({
-        TableName: CHAT_USER_STATISTICS_TABLE_NAME,
-        Item: {
-          chatId,
-          userId: userInfo.id,
-          msgCount: 1,
-          username,
-          chatInfo: chat,
-          updatedAt,
-        },
-        ConditionExpression:
-          'attribute_not_exists(#chatId) AND attribute_not_exists(#userId)',
-        ExpressionAttributeNames: {
-          '#chatId': 'chatId',
-          '#userId': 'userId',
-        },
-      })
+      await incrementUser()
     } catch (error) {
       if (!isConditionalWriteConflict(error)) {
         throw error
       }
-      await incrementUser()
     }
   }
 
-  return Promise.resolve()
+  if (storedUser) {
+    await incrementUnlessAlreadyCounted()
+    return
+  }
+
+  try {
+    await dynamoPutItem({
+      TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+      Item: {
+        chatId,
+        userId: userInfo.id,
+        msgCount: 1,
+        username,
+        chatInfo: chat,
+        updatedAt,
+        lastMessageId: messageId,
+      },
+      ConditionExpression:
+        'attribute_not_exists(#chatId) AND attribute_not_exists(#userId)',
+      ExpressionAttributeNames: {
+        '#chatId': 'chatId',
+        '#userId': 'userId',
+      },
+    })
+  } catch (error) {
+    if (!isConditionalWriteConflict(error)) {
+      throw error
+    }
+    await incrementUnlessAlreadyCounted()
+  }
 }
