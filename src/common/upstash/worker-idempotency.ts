@@ -2,9 +2,13 @@ import { logger } from '../logger'
 import { getRedisClient } from './client'
 
 const LEASE_TTL_SECONDS = 45
-// Only has to outlive redelivery of the same SQS message. The agent and reply
-// queues cap that at VisibilityTimeout 1800s x maxReceiveCount 5 = 2.5h, after
-// which the message goes to its DLQ and is never handed to a worker again.
+// Deliberately generous rather than derived: nothing bounds redelivery lag to a
+// few hours. maxReceiveCount limits attempts, not the time between them, a
+// message can wait out the whole MessageRetentionPeriod behind a throttled or
+// backed up consumer, and ingress re-enqueues on Telegram webhook retries once
+// past the 5 minute SQS producer dedup window. Healthy redelivery lands within
+// minutes, so 3h is a wide margin on the normal case; a duplicate reply is the
+// cost if a pathological one ever exceeds it.
 const COMPLETED_TTL_SECONDS = 60 * 60 * 3
 
 const RENEW_LEASE_SCRIPT = `
