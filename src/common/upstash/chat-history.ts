@@ -98,6 +98,10 @@ function getHistoryLineText(message: Message): string {
  * Score a message by when Telegram says it was sent, not by when we happened to
  * process it, tie-broken by message id. Together with ZADD NX this makes a
  * replay a true no-op instead of moving an old message to the end of history.
+ *
+ * The tie-breaker mirrors getChatEventSortKey: any modulo inverts the pair that
+ * straddles its boundary, so it is kept wide enough that two messages one
+ * second apart can never land on opposite sides of one.
  */
 function getHistoryScore(message: Message): number {
   const dateMs = (message.date ?? 0) * 1000
@@ -105,7 +109,7 @@ function getHistoryScore(message: Message): number {
     return Date.now()
   }
 
-  return dateMs + ((message.message_id ?? 0) % 1000)
+  return dateMs + ((message.message_id ?? 0) % 1_000_000) / 1000
 }
 
 /**

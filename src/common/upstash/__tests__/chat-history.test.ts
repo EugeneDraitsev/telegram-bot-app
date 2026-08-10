@@ -175,7 +175,7 @@ describe('saveMessage', () => {
       'chat-history:777',
       { nx: true },
       {
-        score: (1_710_000_000 + 1) * 1000 + 1,
+        score: (1_710_000_000 + 1) * 1000 + 1 / 1000,
         member: JSON.stringify(message),
       },
     )
@@ -185,6 +185,17 @@ describe('saveMessage', () => {
       1_800_000_000_000 - 24 * 60 * 60 * 1000,
     )
     expect(mockExpire).toHaveBeenCalledWith('chat-history:777', 24 * 60 * 60)
+  })
+
+  test('keeps same-second messages ordered across a tie-breaker boundary', async () => {
+    const sameSecond = { date: 1_710_000_000 }
+    await saveMessage(createMessage(999, sameSecond), 777)
+    await saveMessage(createMessage(1000, sameSecond), 777)
+    await saveMessage(createMessage(1001, sameSecond), 777)
+
+    const scores = mockZadd.mock.calls.map((call) => call[2].score)
+    expect(scores).toEqual([...scores].sort((a, b) => a - b))
+    expect(new Set(scores).size).toBe(3)
   })
 
   test('replaying a message keeps its original place in history', async () => {
