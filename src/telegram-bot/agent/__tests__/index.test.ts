@@ -4,6 +4,10 @@ import * as common from '@tg-bot/common'
 import { handleMessageWithAgent } from '..'
 
 describe('handleMessageWithAgent', () => {
+  beforeEach(() => {
+    jest.spyOn(common, 'isAiEnabledChat').mockReturnValue(true)
+  })
+
   afterEach(() => {
     jest.restoreAllMocks()
   })
@@ -13,6 +17,15 @@ describe('handleMessageWithAgent', () => {
     const message = {} as Message
 
     await handleMessageWithAgent(message)
+
+    expect(enqueueSpy).not.toHaveBeenCalled()
+  })
+
+  test('does not enqueue for a chat outside the AI allowlist', async () => {
+    jest.spyOn(common, 'isAiEnabledChat').mockReturnValue(false)
+    const enqueueSpy = jest.spyOn(common, 'enqueueAgentWorker')
+
+    await handleMessageWithAgent({ chat: { id: 123 } } as Message)
 
     expect(enqueueSpy).not.toHaveBeenCalled()
   })

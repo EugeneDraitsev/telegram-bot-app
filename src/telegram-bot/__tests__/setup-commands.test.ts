@@ -93,6 +93,7 @@ describe('setupAllCommands', () => {
   beforeEach(() => {
     jest.restoreAllMocks()
     jest.clearAllMocks()
+    jest.spyOn(common, 'isAiEnabledChat').mockReturnValue(true)
   })
 
   test('message middleware calls next for non-command messages', async () => {

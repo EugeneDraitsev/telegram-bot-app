@@ -1,7 +1,11 @@
 import type { Message } from 'grammy/types'
 import type { Bot, Context } from 'grammy/web'
 
-import { enqueueAgentWorker, getParsedText } from '@tg-bot/common'
+import {
+  enqueueAgentWorker,
+  getParsedText,
+  isAiEnabledChat,
+} from '@tg-bot/common'
 
 export interface AgentPayload {
   message: Message
@@ -56,7 +60,11 @@ export async function handleMessageWithAgent(
   options: AgentInvokeOptions = {},
 ): Promise<void> {
   const chatId = message.chat?.id
-  if (!chatId) {
+  // isAgenticChatEnabled in the worker already requires isAiEnabledChat, so a
+  // chat outside the allowlist was always going to be dropped there. Checking
+  // the in-memory half of that gate here costs no I/O and saves the SQS message
+  // and the worker invocation entirely.
+  if (!chatId || !isAiEnabledChat(chatId)) {
     return
   }
 
@@ -64,9 +72,9 @@ export async function handleMessageWithAgent(
     ? stripCommandText(message)
     : message
 
-  // Enqueue the agent job and return after SQS accepts it.
-  // The worker handles chat-enabled checks and quick filtering, and re-fetches
-  // media from Telegram using the file_ids carried inside `message`.
+  // Enqueue the agent job and return after SQS accepts it. The worker still
+  // owns the /toggle check and quick filtering, and re-fetches media from
+  // Telegram using the file_ids carried inside `message`.
   const payload: AgentPayload = {
     message: agentMessage,
     bypassReplyGate: options.bypassReplyGate,
