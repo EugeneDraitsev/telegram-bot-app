@@ -152,6 +152,10 @@ function isImageDocument(
   return IMAGE_MIME_PREFIXES.some((prefix) => doc.mime_type?.startsWith(prefix))
 }
 
+/**
+ * Media carried by a single message, in a stable order:
+ * photo, sticker, document (image only), voice, video, video_note.
+ */
 function collectSingleMessageMediaFileRefs(
   message: Message | undefined,
 ): MediaFileRef[] {
@@ -169,6 +173,7 @@ function collectSingleMessageMediaFileRefs(
     })
   }
 
+  // Skip animated (.tgs/Lottie); handle video (.webm) and raster (.webp)
   const sticker = message.sticker as
     | (typeof message.sticker & { is_animated?: boolean; is_video?: boolean })
     | undefined
@@ -276,8 +281,8 @@ export function getCommandMediaRefs(
 }
 
 /**
- * Collect media file references from a message and its reply context.
- * Supports: photo, sticker, document (image), voice, video, video_note.
+ * Collect media file references from a message and its reply context,
+ * deduplicated against initialRefs.
  */
 export function collectMediaFileRefs(
   message: Message | undefined,
@@ -286,103 +291,18 @@ export function collectMediaFileRefs(
   if (!message) return initialRefs
 
   const refs: MediaFileRef[] = [...initialRefs]
-  const seenIds = new Set(initialRefs.map(getMediaKey))
+  const seen = new Set(initialRefs.map(getMediaKey))
 
-  function add(ref: MediaFileRef) {
+  for (const ref of [
+    ...collectSingleMessageMediaFileRefs(message),
+    ...collectSingleMessageMediaFileRefs(message.reply_to_message),
+  ]) {
     const key = getMediaKey(ref)
-    if (!seenIds.has(key)) {
-      seenIds.add(key)
-      refs.push(ref)
-    }
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    refs.push(ref)
   }
-
-  function collectFromMessage(m: Message | undefined) {
-    if (!m) return
-
-    // Photos
-    const photo = getLargestPhoto(m)
-    if (photo?.file_id) {
-      add({
-        fileId: photo.file_id,
-        fileUniqueId: photo.file_unique_id,
-        mimeType: 'image/jpeg',
-        mediaType: 'image',
-      })
-    }
-
-    // Stickers — skip animated (.tgs/Lottie), handle video (.webm) and raster (.webp)
-    const sticker = m.sticker as
-      | (typeof m.sticker & { is_animated?: boolean; is_video?: boolean })
-      | undefined
-    if (sticker?.file_id && !sticker.is_animated) {
-      if (sticker.is_video) {
-        add({
-          fileId: sticker.file_id,
-          fileUniqueId: sticker.file_unique_id,
-          mimeType: 'video/webm',
-          mediaType: 'video',
-        })
-      } else {
-        add({
-          fileId: sticker.file_id,
-          fileUniqueId: sticker.file_unique_id,
-          mimeType: 'image/webp',
-          mediaType: 'image',
-        })
-      }
-    }
-
-    // Documents — only image types
-    if (isImageDocument(m.document)) {
-      add({
-        fileId: m.document.file_id,
-        ...(m.document.file_unique_id
-          ? { fileUniqueId: m.document.file_unique_id }
-          : {}),
-        mimeType: m.document.mime_type,
-        mediaType: 'image',
-      })
-    }
-
-    // Voice messages
-    if (m.voice?.file_id) {
-      add({
-        fileId: m.voice.file_id,
-        ...(m.voice.file_unique_id
-          ? { fileUniqueId: m.voice.file_unique_id }
-          : {}),
-        mimeType: m.voice.mime_type || 'audio/ogg',
-        mediaType: 'audio',
-      })
-    }
-
-    // Videos
-    if (m.video?.file_id) {
-      add({
-        fileId: m.video.file_id,
-        ...(m.video.file_unique_id
-          ? { fileUniqueId: m.video.file_unique_id }
-          : {}),
-        mimeType: m.video.mime_type || 'video/mp4',
-        mediaType: 'video',
-      })
-    }
-
-    // Video notes (round videos)
-    if (m.video_note?.file_id) {
-      add({
-        fileId: m.video_note.file_id,
-        ...(m.video_note.file_unique_id
-          ? { fileUniqueId: m.video_note.file_unique_id }
-          : {}),
-        mimeType: 'video/mp4',
-        mediaType: 'video',
-      })
-    }
-  }
-
-  collectFromMessage(message)
-  collectFromMessage(message.reply_to_message)
 
   return refs
 }
