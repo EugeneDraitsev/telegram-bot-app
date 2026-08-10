@@ -45,6 +45,12 @@ FIFO SQS jobs:
   commands;
 - commands addressed to another bot are ignored.
 
+Agent dispatch is gated on `OPENAI_CHAT_IDS` in ingress. The worker rejects
+chats outside that list anyway, so checking the in-memory copy before enqueuing
+costs no I/O and keeps unrelated chats from spending a queue message and a
+worker invocation. Every function that runs this check must declare the
+variable; `serverless-env.test.ts` asserts that.
+
 Registered commands are detected from Telegram `bot_command` entities at offset
 0. Command names are normalized before worker dispatch so uppercase commands
 and caption commands still match the same worker-side grammY handlers.
@@ -62,10 +68,21 @@ run in ingress: statistics updates, chat event writes, AI chat history writes
 and WebSocket stats broadcast fanout. The webhook waits only for the SQS
 `SendMessage` ACK, not for these tasks to complete.
 
+The chat event and the message counter are written in one DynamoDB
+transaction. The event insert is conditional on its own key, which is derived
+from the message date and id, so replaying a message cancels the transaction
+and the counter cannot drift. The event item is the message's natural
+idempotency key, which is why this worker needs no marker keys.
+
 Reply, agent and activity jobs have separate FIFO queues and DLQs. Telegram chat
 ids are used as message groups, so jobs stay ordered inside one chat while
-different chats can run concurrently. Workers still use Redis idempotency
-because SQS delivery is at least once.
+different chats can run concurrently.
+
+SQS delivery is at least once, so every worker has to survive being handed the
+same message twice. Agent and reply jobs take a Redis lease first: they send
+Telegram messages, and a send can neither be undone nor deduplicated by
+Telegram. Activity jobs need no marker at all — each of their writes is replay
+safe on its own, so redelivery is simply harmless.
 
 CloudWatch alarms watch all three worker DLQs. More than three visible messages
 sends an SNS email notification to
@@ -74,7 +91,7 @@ subscription must be confirmed once after the first deployment.
 
 `src/websockets` owns only the WebSocket runtime for the stats UI: connection
 tracking, initial `stats` responses and live broadcast fanout when new chat
-events are written. `saveEvent` lives in `src/common`; any lambda that writes a
+events are written. `recordChatActivity` lives in `src/common`; any lambda that writes a
 chat event through it can trigger the broadcast lambda.
 
 Statistics pages are private. The reply worker creates a short-lived,

@@ -62,7 +62,7 @@ flowchart TB
 
   BOT -->|"every message"| ACTQ --> ACT
   BOT -->|"registered cmds"| REPLYQ --> REPLY
-  BOT -->|"AI commands / fallback"| AGENTQ --> AGENT
+  BOT -->|"AI chats: commands / fallback"| AGENTQ --> AGENT
   ACTQ & REPLYQ & AGENTQ -.->|"5 failed receives"| DLQ
   DLQ -.->|"> 3 visible"| ALERT
 
@@ -79,7 +79,7 @@ flowchart TB
   REPLY <-.->|"stats / currency / metrics PNG"| IMG
   AGENT <-.->|"SVG → PNG"| IMG
 
-  ACT --> USERSTATS & EVENTS
+  ACT -->|"one txn: event + count"| USERSTATS & EVENTS
   ACT -->|"AI history"| REDIS
   ACT -.->|"stats fanout"| BCAST
 
