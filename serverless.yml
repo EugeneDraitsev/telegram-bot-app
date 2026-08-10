@@ -37,6 +37,9 @@ functions:
     environment:
       TOKEN: ${env:TOKEN}
       TELEGRAM_WEBHOOK_SECRET: ${env:TELEGRAM_WEBHOOK_SECRET}
+      # Required: handleMessageWithAgent gates agent dispatch on this list.
+      # Without it ingress silently drops every agent message.
+      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       REPLY_WORKER_QUEUE_URL:
         Ref: TelegramReplyWorkerQueue
       REPLY_WORKER_QUEUE_NAME: ${self:custom.replyWorkerQueueName}
