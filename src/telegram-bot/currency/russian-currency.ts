@@ -1,5 +1,4 @@
 import { fetchBrentPrice } from './brent'
-import { buildCurrencyFallbackText } from './format'
 import type { CurrenciesResponse, CurrencyRateSection } from './types'
 
 const formatRate = (value: number) =>
@@ -36,10 +35,3 @@ export const getRussianCurrencySection = async (
     ],
   }
 }
-
-export const getRussianCurrency = async (
-  currenciesRatesPromise: Promise<CurrenciesResponse>,
-) =>
-  buildCurrencyFallbackText([
-    await getRussianCurrencySection(currenciesRatesPromise),
-  ])

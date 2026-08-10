@@ -7,8 +7,9 @@
  * - **global** (`memory:global`) — cross-chat knowledge: facts, policies,
  *   self-improvement notes, etc.
  *
- * Values are plain markdown strings. Chat-scoped memory is stored permanently;
- * global memory has a 90-day TTL refreshed on every write.
+ * Values are plain markdown strings. Chat-scoped memory is stored permanently.
+ * Global memory is read-only here — it is seeded out of band, and the
+ * `update_memory` tool deliberately only writes the chat scope.
  */
 
 import { logger } from '../logger'
@@ -16,7 +17,6 @@ import { getRedisClient } from './client'
 
 export const MEMORY_PREFIX = 'memory'
 export const MEMORY_GLOBAL_KEY = `${MEMORY_PREFIX}:global`
-export const MEMORY_TTL_SECONDS = 60 * 60 * 24 * 90 // 90 days
 export const MEMORY_MAX_LENGTH = 50_000 // ~50 KB
 
 export function chatMemoryKey(chatId: string | number): string {
@@ -76,28 +76,5 @@ export async function getGlobalMemory(): Promise<string> {
   } catch (error) {
     logger.error({ error }, 'Error getting global memory')
     return ''
-  }
-}
-
-/**
- * Write / overwrite global memory.
- * Returns false if content is empty or exceeds max length.
- */
-export async function setGlobalMemory(content: string): Promise<boolean> {
-  const trimmed = content.trim()
-  if (!trimmed) return false
-  if (trimmed.length > MEMORY_MAX_LENGTH) return false
-
-  const redis = getRedisClient()
-  if (!redis) return false
-
-  try {
-    await redis.set(MEMORY_GLOBAL_KEY, trimmed, {
-      ex: MEMORY_TTL_SECONDS,
-    })
-    return true
-  } catch (error) {
-    logger.error({ error }, 'Error saving global memory')
-    return false
   }
 }

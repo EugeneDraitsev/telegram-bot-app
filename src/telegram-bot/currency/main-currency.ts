@@ -1,4 +1,3 @@
-import { buildCurrencyFallbackText } from './format'
 import type { CurrenciesResponse, CurrencyRateSection } from './types'
 
 const formatRate = (value: number) => value.toFixed(2)
@@ -32,7 +31,3 @@ export const getMainCurrencySection = async (
     ],
   }
 }
-
-export const getMainCurrencies = async (
-  ratesPromise: Promise<CurrenciesResponse>,
-) => buildCurrencyFallbackText([await getMainCurrencySection(ratesPromise)])

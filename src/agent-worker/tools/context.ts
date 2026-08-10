@@ -36,7 +36,7 @@ export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
 }
 
-export function getToolCommandName(): string | undefined {
+function getToolCommandName(): string | undefined {
   return contextStorage.getStore()?.commandName
 }
 

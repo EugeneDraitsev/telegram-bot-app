@@ -106,7 +106,7 @@ const toUserStat = (item: StoredUserStat): UserStat => ({
   optedOut: item.optedOut,
 })
 
-const getChatStatistic = async (
+export const getStoredChatStatistics = async (
   chatId: number | string,
 ): Promise<ChatStat | undefined> => {
   const storedUsers = await getStoredUserStatistics(chatId)
@@ -130,27 +130,9 @@ const getChatStatistic = async (
   }
 }
 
-const readChatUsers = async (chatId: number | string): Promise<UserStat[]> =>
-  (await getChatStatistic(chatId))?.users ?? []
-
-export const getStoredChatStatistics = getChatStatistic
-
-export const getChatUsers = async (
-  chat_id: number | string,
-): Promise<UserStat[]> => {
-  try {
-    return await readChatUsers(chat_id)
-  } catch (error) {
-    logger.error(
-      { chatId: String(chat_id), error },
-      'Error while fetching chat users',
-    )
-    return []
-  }
-}
-
-export const getStoredChatUsers = (chat_id: number | string) =>
-  readChatUsers(chat_id)
+export const getStoredChatUsers = async (
+  chatId: number | string,
+): Promise<UserStat[]> => (await getStoredChatStatistics(chatId))?.users ?? []
 
 export const setUserOptOut = async (
   chat_id: number | string,
@@ -204,21 +186,6 @@ export const setUserOptOut = async (
     `Could not update user opt-out after ${MAX_WRITE_ATTEMPTS} attempts`,
     { cause: lastConflict },
   )
-}
-
-export const getUsersList = async (
-  chat_id: number | string,
-  query: string,
-): Promise<string> => {
-  try {
-    const users = await getStoredChatUsers(chat_id)
-    const mentions = users
-      .map((user: UserStat) => `@${user.username}`)
-      .join(' ')
-    return [mentions, query].filter(Boolean).join('\n')
-  } catch (_e) {
-    return 'Error while fetching users'
-  }
 }
 
 function getMessagePercentage(messageCount: number, allMessagesCount: number) {
@@ -291,7 +258,7 @@ export const getFormattedChatStatisticsMessages = async (
   chat_id: number | string,
 ): Promise<FormattedChatStatistics> => {
   try {
-    const result = await getChatStatistic(chat_id)
+    const result = await getStoredChatStatistics(chat_id)
     return buildFormattedChatStatisticsMessages(result?.users ?? [])
   } catch (e) {
     logger.error({ error: e }, 'Error while fetching statistic')
@@ -301,10 +268,6 @@ export const getFormattedChatStatisticsMessages = async (
     }
   }
 }
-
-export const getFormattedChatStatistics = async (
-  chat_id: number | string,
-): Promise<string> => (await getFormattedChatStatisticsMessages(chat_id)).text
 
 export const updateStatistics = async (userInfo?: User, chat?: Chat) => {
   const chat_id = chat?.id

@@ -1,11 +1,5 @@
 import type { Api } from 'grammy'
-import type {
-  Chat,
-  Message,
-  MessageEntity,
-  PhotoSize,
-  User,
-} from 'grammy/types'
+import type { Chat, Message, User } from 'grammy/types'
 import type { Context } from 'grammy/web'
 
 import { logger } from '../logger'
@@ -33,16 +27,11 @@ export function isTelegramReplyTargetMissingError(error: unknown): boolean {
   )
 }
 
-export const isLink = (text = '') => text.includes('https://')
-
 export const findCommand = (text = ''): string =>
   text
     .replace(/(\r\n|\n|\r)/gm, '')
     .replace(/ .*/, '')
     .replace(/@.*/, '')
-
-export const isBotCommand = (entities: MessageEntity[] = []): boolean =>
-  entities.some((entity) => entity.type === 'bot_command')
 
 export const getParsedText = (text = '') => {
   const trimmedText = text.trimStart()
@@ -111,20 +100,6 @@ export const getCommandData = (
 export const getLargestPhoto = (m?: Message) =>
   (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
 
-type CommandImageRef = {
-  image: Pick<PhotoSize, 'file_id'> & Partial<Pick<PhotoSize, 'file_unique_id'>>
-  label: string
-  mimeType: string
-}
-
-export type CommandImageInput = {
-  data: Buffer
-  label: string
-  mimeType: string
-  fileId: string
-  fileUniqueId?: string
-}
-
 function getShortMessageText(message: Message | undefined): string {
   return (message?.caption || message?.text || '').trim().slice(0, 180)
 }
@@ -138,124 +113,6 @@ function getMessageLabel(message: Message | undefined): string {
   ]
     .filter(Boolean)
     .join(' | ')
-}
-
-export function getCommandImageRefs(
-  message: Message | undefined,
-  extraMessages: Message[] = [],
-): CommandImageRef[] {
-  return getCommandMediaRefs(message, extraMessages)
-    .filter((ref) => ref.mediaType === 'image')
-    .map((ref) => ({
-      image: { file_id: ref.fileId, file_unique_id: ref.fileUniqueId },
-      label: ref.label || 'Image',
-      mimeType: ref.mimeType,
-    }))
-}
-
-export const getMultimodalCommandData = async (
-  ctx: Context,
-  extraMessages: Message[] = [],
-) => {
-  const { combinedText, replyId } = getCommandData(ctx.message, extraMessages)
-  const chatId = ctx?.chat?.id ?? ''
-  const imageRefs = getCommandImageRefs(ctx.message, extraMessages)
-
-  const fileResults = await Promise.allSettled(
-    imageRefs.map(({ image }) => ctx.api.getFile(image.file_id)),
-  )
-
-  const files: Array<{
-    file_path?: string
-    label: string
-    mimeType: string
-    fileId: string
-    fileUniqueId?: string
-  }> = []
-  for (let index = 0; index < fileResults.length; index++) {
-    const result = fileResults[index]
-    const imageRef = imageRefs[index]
-    if (result.status === 'fulfilled') {
-      files.push({
-        ...(result.value as { file_path?: string }),
-        label: imageRef?.label || 'Command image',
-        mimeType: imageRef?.mimeType || 'image/jpeg',
-        fileId: imageRef?.image.file_id || '',
-        fileUniqueId: imageRef?.image.file_unique_id,
-      })
-    } else {
-      logger.warn(
-        {
-          err:
-            result.reason instanceof Error
-              ? result.reason
-              : new Error(String(result.reason)),
-        },
-        'getFile error',
-      )
-    }
-  }
-
-  const imageInputs = (
-    await Promise.all(
-      files.map(async (file): Promise<CommandImageInput | undefined> => {
-        if (!file.file_path) return undefined
-
-        const token = process.env.TOKEN
-        if (!token) {
-          logger.warn('getCommandImageData: TOKEN is not set')
-          return undefined
-        }
-
-        const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`
-        const [data] = await getImageBuffers([url])
-
-        return data
-          ? {
-              data,
-              label: file.label,
-              mimeType: file.mimeType,
-              fileId: file.fileId,
-              fileUniqueId: file.fileUniqueId,
-            }
-          : undefined
-      }),
-    )
-  ).filter((input): input is CommandImageInput => Boolean(input))
-  const imagesData = imageInputs.map(({ data }) => data)
-
-  return {
-    combinedText,
-    imagesData,
-    imageInputs,
-    replyId,
-    chatId,
-    message: ctx.message,
-  }
-}
-
-export async function getImageBuffers(imagesUrls: string[]) {
-  const imagesData = await Promise.all(
-    imagesUrls.map(async (url) => {
-      const toError = (value: unknown) =>
-        value instanceof Error ? value : new Error(String(value))
-      try {
-        const res = await fetch(url)
-        const arrayBuffer = await res.arrayBuffer()
-        return Buffer.from(arrayBuffer)
-      } catch (error) {
-        logger.error(
-          {
-            errorType: toError(error).name,
-          },
-          'getImageBuffers fetch error',
-        )
-        return undefined
-      }
-    }),
-  )
-
-  return imagesData.filter((image) => image) as Buffer[]
 }
 
 export const getChatName = (chat?: Chat) => chat?.title || getUserName(chat)
@@ -581,23 +438,6 @@ export function collectHistoryMediaFileRefs(
   }
 
   return [...refsById.values()]
-}
-
-/**
- * Backwards-compatible: collect only image file IDs as flat strings.
- */
-export function collectMessageImageFileIds(
-  message: Message,
-  initialFileIds: string[] = [],
-): string[] {
-  const ids = [
-    ...initialFileIds,
-    getLargestPhoto(message)?.file_id,
-    getLargestPhoto(message.reply_to_message)?.file_id,
-    message.reply_to_message?.sticker?.file_id,
-  ].filter((id): id is string => Boolean(id))
-
-  return [...new Set(ids)]
 }
 
 // ── Multi-media support ──────────────────────────────────────

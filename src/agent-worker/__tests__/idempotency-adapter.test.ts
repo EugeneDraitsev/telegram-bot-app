@@ -1,6 +1,5 @@
 import {
   acquireAgentWorkerLease,
-  getAgentWorkerIdempotencyKey,
   isLocalAgentWorkerTestMessage,
   LOCAL_TEST_MESSAGE_ID,
 } from '../idempotency'
@@ -16,12 +15,6 @@ afterEach(() => {
 })
 
 describe('agent worker idempotency', () => {
-  test('uses the shared worker key namespace', () => {
-    expect(getAgentWorkerIdempotencyKey(-100, 42)).toBe(
-      'agent-worker:message:-100:42',
-    )
-  })
-
   test('does not cache the reserved local test message', async () => {
     process.env.IS_OFFLINE = 'true'
 

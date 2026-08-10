@@ -1,5 +1,4 @@
 import { logger, round } from '@tg-bot/common'
-import { buildCurrencyFallbackText } from './format'
 import type { CurrencyRateRow, CurrencyRateSection } from './types'
 
 export interface OkxResponse {
@@ -139,6 +138,3 @@ export const getCryptoCurrencySection =
       return getPoloniexData()
     }
   }
-
-export const getCryptoCurrency = async (): Promise<string> =>
-  buildCurrencyFallbackText([await getCryptoCurrencySection()])

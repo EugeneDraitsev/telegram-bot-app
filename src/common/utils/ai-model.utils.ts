@@ -44,24 +44,9 @@ export const DEFAULT_OPENAI_NANO_MODEL: AiModelConfig = {
 
 export const DEFAULT_WEB_SEARCH_MODEL = DEFAULT_OPENAI_LUNA_MODEL
 
-export const GEMINI_FLASH_IMAGE_MODEL: AiModelConfig = {
-  provider: 'google',
-  model: 'gemini-3.1-flash-image',
-}
-
 export const GEMINI_FLASH_LITE_IMAGE_MODEL: AiModelConfig = {
   provider: 'google',
   model: 'gemini-3.1-flash-lite-image',
-}
-
-export const GEMINI_PRO_IMAGE_MODEL: AiModelConfig = {
-  provider: 'google',
-  model: 'gemini-3-pro-image',
-}
-
-export const DEFAULT_EDITABLE_IMAGE_MODEL: AiModelConfig = {
-  provider: 'openai',
-  model: 'gpt-image-2',
 }
 
 const PROVIDER_PREFIX_REGEX = /^(google|openai)[:/](.+)$/i

@@ -446,8 +446,3 @@ export function formatMetricsReport(report: MetricsReport): string {
 
   return lines.join('\n')
 }
-
-/** Telegram HTML fallback used when the PNG dashboard cannot be rendered. */
-export async function getFormattedMetrics(hoursBack = 24): Promise<string> {
-  return formatMetricsReport(await getMetricsReport(hoursBack))
-}

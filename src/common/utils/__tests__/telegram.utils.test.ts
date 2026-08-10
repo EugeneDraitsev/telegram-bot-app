@@ -1,15 +1,12 @@
-import type { Chat, Message, MessageEntity, User } from 'grammy/types'
+import type { Chat, Message, User } from 'grammy/types'
 
 import {
   findCommand,
   getChatName,
   getCommandData,
-  getCommandImageRefs,
   getCommandMediaRefs,
   getParsedText,
   getUserName,
-  isBotCommand,
-  isLink,
   isTelegramReplyTargetMissingError,
 } from '..'
 
@@ -47,7 +44,7 @@ describe('findCommand', () => {
   })
 })
 
-describe('getCommandImageRefs', () => {
+describe('getCommandMediaRefs', () => {
   it('labels direct reply photos as reply message media', () => {
     const replyPhoto = [
       { file_id: 'reply_small', width: 100, height: 100, file_unique_id: 'r' },
@@ -59,7 +56,7 @@ describe('getCommandImageRefs', () => {
       },
     ]
 
-    const refs = getCommandImageRefs({
+    const refs = getCommandMediaRefs({
       text: '/o что на фото?',
       reply_to_message: {
         message_id: 321,
@@ -69,11 +66,13 @@ describe('getCommandImageRefs', () => {
     } as unknown as Message)
 
     expect(refs).toEqual([
-      {
-        image: { file_id: 'reply_big', file_unique_id: 'r' },
-        label: expect.stringContaining('Reply message image'),
+      expect.objectContaining({
+        fileId: 'reply_big',
+        fileUniqueId: 'r',
         mimeType: 'image/jpeg',
-      },
+        mediaType: 'image',
+        label: expect.stringContaining('Reply message image'),
+      }),
     ])
     expect(refs[0].label).toContain('message_id=321')
     expect(refs[0].label).toContain('дерево у дороги')
@@ -97,7 +96,7 @@ describe('getCommandImageRefs', () => {
       },
     ]
 
-    const refs = getCommandImageRefs(
+    const refs = getCommandMediaRefs(
       {
         text: '/o что за дерево?',
         reply_to_message: {
@@ -172,31 +171,6 @@ describe('getParsedText', () => {
     expect(getParsedText('/path/to/file')).toEqual('/path/to/file')
     expect(getParsedText('  /path/to/file')).toEqual('  /path/to/file')
     expect(getParsedText(undefined)).toEqual('')
-  })
-})
-
-describe('isLink', () => {
-  test('finds link in a message which contains only link', () => {
-    expect(isLink('https://music.yandex.by/')).toBeTruthy()
-  })
-  test('finds no link in an empty message', () => {
-    expect(isLink('')).toBeFalsy()
-    expect(isLink(undefined)).toBeFalsy()
-  })
-  test('finds link in a message with text and link', () => {
-    expect(
-      isLink('https://music.yandex.by/ masdasd aasdl;kqw ASqwead.'),
-    ).toBeTruthy()
-  })
-})
-
-describe('isBotCommand', () => {
-  test('checks that provided message contains bot command', () => {
-    expect(isBotCommand([{ type: 'bot_command' }] as MessageEntity[])).toEqual(
-      true,
-    )
-    expect(isBotCommand([])).toEqual(false)
-    expect(isBotCommand()).toEqual(false)
   })
 })
 

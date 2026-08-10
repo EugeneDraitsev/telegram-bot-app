@@ -61,7 +61,15 @@ jest.mock('../models', () => ({
   CHAT_MODEL_TIMEOUT_MS: 45_000,
 }))
 
-import { generateModelWithRetry, isRetryableModelError } from '../model-call'
+import {
+  generateModelWithRetryWithInfo,
+  isRetryableModelError,
+} from '../model-call'
+
+// Callers only need the response; keep assertions focused on it.
+const generateModelWithRetry = async (
+  ...args: Parameters<typeof generateModelWithRetryWithInfo>
+) => (await generateModelWithRetryWithInfo(...args)).response
 
 describe('model-call', () => {
   beforeEach(() => {

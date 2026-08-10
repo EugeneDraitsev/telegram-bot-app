@@ -6,7 +6,6 @@ const mockZremrangebyscore = jest.fn()
 
 const {
   buildMetricsReport,
-  getFormattedMetrics,
   getMetrics,
   recordMetric,
   setMetricsRedisClientForTests,
@@ -139,72 +138,6 @@ describe('getMetrics', () => {
   test('returns empty array on Redis errors', async () => {
     mockZrange.mockRejectedValue(new Error('redis down'))
     expect(await getMetrics(0)).toEqual([])
-  })
-})
-
-describe('getFormattedMetrics', () => {
-  test('returns empty message when no metrics', async () => {
-    mockZrange.mockResolvedValue([])
-    const result = await getFormattedMetrics(24)
-    expect(result).toContain('No v2 metrics')
-  })
-
-  test('formats timeout, error, and fallback breakdowns', async () => {
-    const now = Date.now()
-    mockZrange.mockResolvedValue([
-      {
-        type: 'model_call',
-        source: 'agentic',
-        name: 'routing',
-        model: 'gemini-2.5-flash',
-        fallbackFrom: 'gemini-3.5-flash-lite',
-        chatId: 1,
-        durationMs: 4000,
-        success: true,
-        status: 'success',
-        timestamp: now,
-      },
-      {
-        type: 'tool_call',
-        source: 'agentic',
-        name: 'web_search',
-        model: 'gemini-2.5-flash-lite',
-        chatId: 1,
-        durationMs: 3000,
-        success: false,
-        status: 'timeout',
-        timestamp: now,
-      },
-      {
-        type: 'model_call',
-        source: 'command',
-        name: '/q',
-        model: 'gemini-3-flash-preview',
-        chatId: 1,
-        durationMs: 1200,
-        success: false,
-        status: 'error',
-        timestamp: now,
-      },
-    ])
-
-    const result = await getFormattedMetrics(24)
-
-    expect(result).toContain('AI operations')
-    expect(result).toContain('33% healthy')
-    expect(result).toContain('timeout')
-    expect(result).toContain('fallback')
-    expect(result).toContain('routing')
-    expect(result).toContain('web_search')
-    expect(result).toContain('Models')
-    expect(result).toContain('2.5-flash')
-  })
-
-  test('clamps hoursBack to safe range', async () => {
-    mockZrange.mockResolvedValue([])
-    await getFormattedMetrics(-5)
-    await getFormattedMetrics(99999)
-    await getFormattedMetrics(0)
   })
 })
 

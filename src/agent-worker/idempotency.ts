@@ -1,6 +1,5 @@
 import {
   acquireWorkerLease,
-  getWorkerIdempotencyKey,
   WORKER_LEASE_HEARTBEAT_INTERVAL_MS,
   type WorkerLease,
 } from '@tg-bot/common'
@@ -25,13 +24,6 @@ export const AGENT_WORKER_HEARTBEAT_INTERVAL_MS =
   WORKER_LEASE_HEARTBEAT_INTERVAL_MS
 
 export type AgentWorkerLease = WorkerLease
-
-export function getAgentWorkerIdempotencyKey(
-  chatId: string | number,
-  messageId: number,
-): string {
-  return getWorkerIdempotencyKey(AGENT_WORKER_NAMESPACE, chatId, messageId)
-}
 
 export function isLocalAgentWorkerTestMessage(messageId: number): boolean {
   return (

@@ -4,7 +4,6 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   QueryCommand,
-  ScanCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb'
 import type {
@@ -14,15 +13,9 @@ import type {
   PutCommandOutput,
   QueryCommandInput,
   QueryCommandOutput,
-  ScanCommandInput,
   UpdateCommandInput,
   UpdateCommandOutput,
 } from '@aws-sdk/lib-dynamodb'
-
-interface DynamoScanOptions {
-  maxItems?: number
-  maxPages?: number
-}
 
 const client = new DynamoDBClient({ region: process.env.region })
 const docClient = DynamoDBDocumentClient.from(client, {
@@ -80,55 +73,4 @@ export const dynamoUpdateItem = (
 ): Promise<UpdateCommandOutput> => {
   const command = new UpdateCommand(params)
   return docClient.send(command)
-}
-
-export const dynamoScan = async <T = Record<string, unknown>>(
-  inputParams: ScanCommandInput,
-  options: DynamoScanOptions = {},
-): Promise<T[]> => {
-  const results: T[] = []
-  let exclusiveStartKey = inputParams.ExclusiveStartKey
-  let pages = 0
-
-  while (true) {
-    if (options.maxPages !== undefined && pages >= options.maxPages) {
-      return results
-    }
-
-    if (options.maxItems !== undefined && results.length >= options.maxItems) {
-      return results
-    }
-
-    const remainingCount =
-      options.maxItems === undefined
-        ? undefined
-        : options.maxItems - results.length
-    const limit =
-      remainingCount === undefined
-        ? inputParams.Limit
-        : Math.min(inputParams.Limit ?? remainingCount, remainingCount)
-
-    const scanResults = await docClient.send(
-      new ScanCommand({
-        ...inputParams,
-        ...(limit !== undefined ? { Limit: limit } : {}),
-        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
-      }),
-    )
-    pages += 1
-
-    const items = (scanResults.Items as T[]) || []
-    const remainingItems =
-      options.maxItems === undefined
-        ? items
-        : items.slice(0, Math.max(options.maxItems - results.length, 0))
-
-    results.push(...remainingItems)
-
-    if (typeof scanResults.LastEvaluatedKey === 'undefined') {
-      return results
-    }
-
-    exclusiveStartKey = scanResults.LastEvaluatedKey
-  }
 }

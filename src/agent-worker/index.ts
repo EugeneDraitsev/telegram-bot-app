@@ -28,8 +28,6 @@ const bot = createBot()
 
 export interface AgentWorkerPayload {
   message: Message
-  imagesData?: string[] // base64 encoded images
-  imageFileIds?: string[]
   botInfo?: BotIdentity
   bypassReplyGate?: boolean
   commandName?: string
@@ -90,8 +88,6 @@ export const processAgentWorker = async (
   try {
     const {
       message: incomingMessage,
-      imagesData,
-      imageFileIds,
       botInfo,
       bypassReplyGate,
       commandName,
@@ -140,8 +136,6 @@ export const processAgentWorker = async (
         model: chatModel.label,
         reasoningEffort: chatModel.reasoningEffort,
         replyGateModel: REPLY_GATE_MODEL,
-        hasInlineImages: Boolean(imagesData?.length),
-        imageFileIdsCount: imageFileIds?.length ?? 0,
         bypassReplyGate: Boolean(bypassReplyGate),
         commandName,
       },

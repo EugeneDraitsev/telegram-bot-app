@@ -4,9 +4,7 @@ import {
   DEFAULT_HELPER_TEXT_FALLBACK_MODEL,
   DEFAULT_HELPER_TEXT_MODEL,
   formatAiModelConfig,
-  GEMINI_FLASH_IMAGE_MODEL,
   GEMINI_FLASH_LITE_IMAGE_MODEL,
-  GEMINI_PRO_IMAGE_MODEL,
   parseAiModelConfig,
 } from './ai-model.utils'
 
@@ -66,17 +64,9 @@ describe('ai-model.utils', () => {
   })
 
   test('exports Gemini image generation models', () => {
-    expect(GEMINI_FLASH_IMAGE_MODEL).toEqual({
-      provider: 'google',
-      model: 'gemini-3.1-flash-image',
-    })
     expect(GEMINI_FLASH_LITE_IMAGE_MODEL).toEqual({
       provider: 'google',
       model: 'gemini-3.1-flash-lite-image',
-    })
-    expect(GEMINI_PRO_IMAGE_MODEL).toEqual({
-      provider: 'google',
-      model: 'gemini-3-pro-image',
     })
   })
 })

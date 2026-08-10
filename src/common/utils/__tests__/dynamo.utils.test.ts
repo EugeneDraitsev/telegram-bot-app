@@ -8,7 +8,6 @@ import {
   dynamoPutItem,
   dynamoQuery,
   dynamoQueryAll,
-  dynamoScan,
   dynamoUpdateItem,
 } from '..'
 
@@ -78,113 +77,5 @@ describe('dynamo utils', () => {
         UpdateExpression: 'SET #value = :value',
       }),
     ).toEqual('update response!!')
-  })
-
-  test('dynamoScan should collect all paginated scan results', async () => {
-    jest
-      .spyOn(DynamoDBDocumentClient.prototype, 'send')
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          Items: [{ id: 1 }],
-          LastEvaluatedKey: { id: 1 },
-        }),
-      )
-      .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 2 }] }))
-
-    expect(await dynamoScan({ TableName: 'table' })).toEqual([
-      { id: 1 },
-      { id: 2 },
-    ])
-  })
-
-  test('dynamoScan should honor the caller start key without mutating input params', async () => {
-    const params = {
-      TableName: 'table',
-      ExclusiveStartKey: { id: 'start' },
-    }
-    const sendSpy = jest
-      .spyOn(DynamoDBDocumentClient.prototype, 'send')
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          Items: [{ id: 1 }],
-          LastEvaluatedKey: { id: 1 },
-        }),
-      )
-      .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 2 }] }))
-
-    expect(await dynamoScan(params)).toEqual([{ id: 1 }, { id: 2 }])
-    expect(
-      (sendSpy.mock.calls[0][0].input as { ExclusiveStartKey?: unknown })
-        .ExclusiveStartKey,
-    ).toEqual({
-      id: 'start',
-    })
-    expect(
-      (sendSpy.mock.calls[1][0].input as { ExclusiveStartKey?: unknown })
-        .ExclusiveStartKey,
-    ).toEqual({ id: 1 })
-    expect(params.ExclusiveStartKey).toEqual({ id: 'start' })
-  })
-
-  test('dynamoScan should stop at maxPages', async () => {
-    const sendSpy = jest
-      .spyOn(DynamoDBDocumentClient.prototype, 'send')
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          Items: [{ id: 1 }],
-          LastEvaluatedKey: { id: 1 },
-        }),
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          Items: [{ id: 2 }],
-          LastEvaluatedKey: { id: 2 },
-        }),
-      )
-
-    expect(await dynamoScan({ TableName: 'table' }, { maxPages: 1 })).toEqual([
-      { id: 1 },
-    ])
-    expect(sendSpy).toHaveBeenCalledTimes(1)
-  })
-
-  test('dynamoScan should stop at maxItems', async () => {
-    const sendSpy = jest
-      .spyOn(DynamoDBDocumentClient.prototype, 'send')
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          Items: [{ id: 1 }, { id: 2 }],
-          LastEvaluatedKey: { id: 2 },
-        }),
-      )
-
-    expect(await dynamoScan({ TableName: 'table' }, { maxItems: 1 })).toEqual([
-      { id: 1 },
-    ])
-    expect((sendSpy.mock.calls[0][0].input as { Limit?: unknown }).Limit).toBe(
-      1,
-    )
-  })
-
-  test('dynamoScan should cap page limit to remaining maxItems', async () => {
-    const sendSpy = jest
-      .spyOn(DynamoDBDocumentClient.prototype, 'send')
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          Items: [{ id: 1 }, { id: 2 }],
-          LastEvaluatedKey: { id: 2 },
-        }),
-      )
-      .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 3 }] }))
-
-    expect(
-      await dynamoScan({ TableName: 'table', Limit: 2 }, { maxItems: 3 }),
-    ).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
-    expect((sendSpy.mock.calls[0][0].input as { Limit?: unknown }).Limit).toBe(
-      2,
-    )
-    expect((sendSpy.mock.calls[1][0].input as { Limit?: unknown }).Limit).toBe(
-      1,
-    )
   })
 })

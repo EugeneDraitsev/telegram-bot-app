@@ -5,9 +5,7 @@ import {
   getGlobalMemory,
   MEMORY_GLOBAL_KEY,
   MEMORY_MAX_LENGTH,
-  MEMORY_TTL_SECONDS,
   setChatMemory,
-  setGlobalMemory,
 } from '../memory'
 
 const mockGet = jest.fn()
@@ -112,46 +110,6 @@ describe('getGlobalMemory', () => {
   })
 })
 
-describe('setGlobalMemory', () => {
-  test('should save content with correct TTL', async () => {
-    mockSet.mockResolvedValue('OK')
-    const result = await setGlobalMemory('global knowledge')
-    expect(result).toBe(true)
-    expect(mockSet).toHaveBeenCalledWith(
-      MEMORY_GLOBAL_KEY,
-      'global knowledge',
-      { ex: MEMORY_TTL_SECONDS },
-    )
-  })
-
-  test('should reject empty content', async () => {
-    expect(await setGlobalMemory('')).toBe(false)
-    expect(await setGlobalMemory('   ')).toBe(false)
-    expect(mockSet).not.toHaveBeenCalled()
-  })
-
-  test('should reject content exceeding max length', async () => {
-    const hugeContent = 'x'.repeat(MEMORY_MAX_LENGTH + 1)
-    expect(await setGlobalMemory(hugeContent)).toBe(false)
-    expect(mockSet).not.toHaveBeenCalled()
-  })
-
-  test('should trim whitespace before saving', async () => {
-    mockSet.mockResolvedValue('OK')
-    await setGlobalMemory('  trimmed  ')
-    expect(mockSet).toHaveBeenCalledWith(MEMORY_GLOBAL_KEY, 'trimmed', {
-      ex: MEMORY_TTL_SECONDS,
-    })
-  })
-
-  test('should return false on redis error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-    mockSet.mockRejectedValue(new Error('redis down'))
-    expect(await setGlobalMemory('content')).toBe(false)
-    consoleSpy.mockRestore()
-  })
-})
-
 describe('no redis client', () => {
   beforeEach(() => {
     jest.spyOn(client, 'getRedisClient').mockReturnValue(null)
@@ -167,9 +125,5 @@ describe('no redis client', () => {
 
   test('getGlobalMemory returns empty string', async () => {
     expect(await getGlobalMemory()).toBe('')
-  })
-
-  test('setGlobalMemory returns false', async () => {
-    expect(await setGlobalMemory('content')).toBe(false)
   })
 })

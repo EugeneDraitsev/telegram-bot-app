@@ -162,37 +162,6 @@ export const getRecentRawHistory = async (
 ) => readRawHistory(chatId, limit)
 
 /**
- * Get formatted history for Gemini AI interactions
- */
-export const getHistory = async (chatId: string | number) => {
-  try {
-    const rawMessages = await getRawHistory(chatId)
-    return getFormattedHistory(rawMessages)
-  } catch (error) {
-    logger.error({ error }, 'Error getting chat history')
-    return []
-  }
-}
-
-/**
- * Format history for Gemini AI (used by telegram-bot)
- */
-function getFormattedHistory(chatHistory: Message[]) {
-  try {
-    return chatHistory?.map((message) => {
-      const role = message.from?.is_bot ? 'model' : 'user'
-      return {
-        role: role as 'user' | 'model',
-        content: [{ type: 'text' as const, text: JSON.stringify(message) }],
-      }
-    })
-  } catch (error) {
-    logger.error({ error }, 'Error parsing or formatting chat history')
-    return []
-  }
-}
-
-/**
  * Format history for display (human-readable)
  */
 export function formatHistoryForDisplay(

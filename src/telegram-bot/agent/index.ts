@@ -1,15 +1,10 @@
 import type { Message } from 'grammy/types'
 import type { Bot, Context } from 'grammy/web'
 
-import {
-  collectMessageImageFileIds,
-  enqueueAgentWorker,
-  getParsedText,
-} from '@tg-bot/common'
+import { enqueueAgentWorker, getParsedText } from '@tg-bot/common'
 
 export interface AgentPayload {
   message: Message
-  imageFileIds?: string[]
   bypassReplyGate?: boolean
   commandName?: AgentCommandName
 }
@@ -70,10 +65,10 @@ export async function handleMessageWithAgent(
     : message
 
   // Enqueue the agent job and return after SQS accepts it.
-  // The worker handles chat-enabled checks and quick filtering.
+  // The worker handles chat-enabled checks and quick filtering, and re-fetches
+  // media from Telegram using the file_ids carried inside `message`.
   const payload: AgentPayload = {
     message: agentMessage,
-    imageFileIds: collectMessageImageFileIds(agentMessage),
     bypassReplyGate: options.bypassReplyGate,
     commandName: options.commandName,
   }

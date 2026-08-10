@@ -33,38 +33,13 @@ import { webSearchTool } from './web-search.tool'
 export {
   addResponse,
   getCollectedResponses,
-  getToolCommandName,
   getToolMetricAttribution,
   requireToolContext,
   runWithToolContext,
   trackToolModelCall,
   withToolMediaBuffers,
 } from './context'
-// Individual tools
-export {
-  animateGifTool,
-  codeExecutionTool,
-  createDynamicToolTool,
-  dateTimeTool,
-  executeDynamicCommandFromMessage,
-  generateImageTool,
-  generateVoiceTool,
-  getHistoryTool,
-  getMemoryTool,
-  loadDynamicTools,
-  magic8BallTool,
-  randomChoiceTool,
-  randomNumberTool,
-  renderLatexTool,
-  renderSvgTool,
-  searchGifTool,
-  searchImageTool,
-  searchVideoTool,
-  telegramDiceTool,
-  updateMemoryTool,
-  weatherTool,
-  webSearchTool,
-}
+export { executeDynamicCommandFromMessage }
 
 const baseAgentTools: AgentTool[] = [
   webSearchTool,

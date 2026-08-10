@@ -288,24 +288,3 @@ export async function generateModelWithRetryWithInfo<
     }
   }
 }
-
-export async function generateModelWithRetry<TOOLS extends ToolSet = ToolSet>(
-  params: GenerateTextOptions<TOOLS>,
-  chatId: number,
-  metricName: string,
-  modelConfig: AiModelConfig = CHAT_MODEL_CONFIG,
-  timeoutMs: number = CHAT_MODEL_TIMEOUT_MS,
-  attribution: ModelMetricAttribution = { source: 'agentic' },
-  fallback?: ModelFallbackConfig,
-): Promise<GenerateTextResult<TOOLS>> {
-  const result = await generateModelWithRetryWithInfo(
-    params,
-    chatId,
-    metricName,
-    modelConfig,
-    timeoutMs,
-    attribution,
-    fallback,
-  )
-  return result.response
-}

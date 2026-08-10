@@ -53,11 +53,22 @@ describe('worker queue producers', () => {
       return Promise.resolve({ MessageId: 'sqs-1' })
     })
 
-    await enqueueAgentWorker({
-      message: { message_id: 456, chat: { id: -123 } },
-      imagesData: [Buffer.from('large image')],
-      imageInputs: [{ data: Buffer.from('another image') }],
-    })
+    // The worker re-downloads media from Telegram, so the payload must carry
+    // the message verbatim — every file_id has to survive the round trip.
+    const message = {
+      message_id: 456,
+      chat: { id: -123 },
+      photo: [
+        { file_id: 'small', file_unique_id: 'u', width: 100, height: 100 },
+        { file_id: 'big', file_unique_id: 'u', width: 1000, height: 1000 },
+      ],
+      reply_to_message: {
+        message_id: 455,
+        video: { file_id: 'reply_video', file_unique_id: 'rv' },
+      },
+    }
+
+    await enqueueAgentWorker({ message, commandName: 'q' })
 
     expect(capturedCommand?.input).toMatchObject({
       QueueUrl: 'https://sqs/agent.fifo',
@@ -65,7 +76,8 @@ describe('worker queue producers', () => {
       MessageDeduplicationId: 'agent:-123:456',
     })
     expect(JSON.parse(capturedCommand?.input.MessageBody ?? '')).toEqual({
-      message: { message_id: 456, chat: { id: -123 } },
+      message,
+      commandName: 'q',
     })
   })
 

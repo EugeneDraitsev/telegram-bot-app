@@ -120,13 +120,7 @@ function withEnqueueAckTimeout(
   })
 }
 
-// Workers re-fetch images from Telegram instead of putting large buffers on SQS.
-function stripLargeFields<T extends TelegramWorkerPayload>(payload: T) {
-  const { imagesData, imageInputs, ...rest } =
-    payload as TelegramWorkerPayload & Record<string, unknown>
-  return rest
-}
-
+// Payloads stay small: workers re-fetch media from Telegram by file_id.
 function enqueueWorker<T extends TelegramWorkerPayload>(
   worker: WorkerName,
   payload: T,
@@ -142,7 +136,7 @@ function enqueueWorker<T extends TelegramWorkerPayload>(
   const abortController = new AbortController()
   const command = new SendMessageCommand({
     QueueUrl: getQueueUrl(config),
-    MessageBody: JSON.stringify(stripLargeFields(payload)),
+    MessageBody: JSON.stringify(payload),
     MessageGroupId: String(chatId),
     MessageDeduplicationId: `${worker}:${chatId}:${messageId}`,
   })

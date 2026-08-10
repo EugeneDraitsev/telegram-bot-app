@@ -2,14 +2,6 @@
  * Shared AI utilities and constants
  */
 
-export const DEFAULT_ERROR_MESSAGE = 'Something went wrong'
-export const EMPTY_RESPONSE_ERROR =
-  'AI returned empty response, please try again'
-export const PROMPT_MISSING_ERROR = 'Prompt is required'
-export const NOT_ALLOWED_ERROR =
-  'AI is not allowed for this chat. Contact @drrrrrrrr for details'
-export const GEMINI_SERVICE_TIER = 'priority' as const
-
 const AI_ALLOWED_CHAT_IDS = (process.env.OPENAI_CHAT_IDS ?? '')
   .split(',')
   .map((id) => id.trim())
@@ -40,28 +32,6 @@ export const systemInstructions = `${baseSystemInstructions}
   - IMPORTANT: If there is any chance the answer depends on fresh, uncertain, ambiguous, newly released, or possibly misspelled real-world information, use search first. When in doubt, search.
   - IMPORTANT: For named products, models, companies, or people, search the exact user wording first. Do not silently replace it with a more familiar guess before searching.
   - IMPORTANT: After search, prefer search evidence over memory. If an official source confirms the exact entity, treat it as confirmed. If evidence is weak or conflicting, say so.
-`
-
-export const multimodalSystemInstructions = `
-  ${systemInstructions}
-
-  You will be provided with chat history for the last 24 hours (if available) from Telegram in JSON format. You should respond just with text.
-  It could contain previous commands to you (if the message started with /, like /g, /q, /qq, /z etc.) and your previous responses.
-  Try to rely mostly on more recent posts, please.
-  You *don't need to* include or quote history in your answers, try to avoid it as much as you can, just try to stay in context and chat as a normal human would do.
-  Make sure you answer in the same language as the prompt and answer only on the last request to you in the chat and try to be concise, you are a chatbot after all.
-`
-
-export const offlineMultimodalSystemInstructions = `
-  ${baseSystemInstructions}
-
-  You will be provided with chat history for the last 24 hours (if available) from Telegram in JSON format. You should respond just with text.
-  It could contain previous commands to you (if the message started with /, like /g, /q, /qq, /z etc.) and your previous responses.
-  Try to rely mostly on more recent posts, please.
-  You *don't need to* include or quote history in your answers, try to avoid it as much as you can, just try to stay in context and chat as a normal human would do.
-  Make sure you answer in the same language as the prompt and answer only on the last request to you in the chat and try to be concise, you are a chatbot after all.
-  IMPORTANT: You do not have access to web search or tools in this conversation. Never emit tool calls, JSON tool payloads, or pseudo-function-call syntax.
-  IMPORTANT: If the answer depends on fresh, uncertain, or real-time information, answer plainly that you cannot verify the latest data right now and suggest using /g for a web-backed lookup.
 `
 
 const USER_PREFIX_REGEX =

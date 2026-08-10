@@ -1,8 +1,6 @@
 import {
   cleanModelMessage,
   isAiEnabledChat,
-  multimodalSystemInstructions,
-  offlineMultimodalSystemInstructions,
   systemInstructions,
 } from './ai.utils'
 
@@ -33,12 +31,8 @@ describe('isAiEnabledChat', () => {
 })
 
 describe('systemInstructions', () => {
-  test('keeps rough group-chat style guidance in every shared prompt variant', () => {
-    for (const prompt of [
-      systemInstructions,
-      multimodalSystemInstructions,
-      offlineMultimodalSystemInstructions,
-    ]) {
+  test('keeps rough group-chat style guidance', () => {
+    for (const prompt of [systemInstructions]) {
       expect(prompt).toContain('informal Telegram group-chat voice')
       expect(prompt).toContain('Profanity is allowed and expected')
       expect(prompt).toContain('Do not neutralize rude nicknames')
