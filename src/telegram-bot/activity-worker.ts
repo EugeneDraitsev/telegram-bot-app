@@ -5,9 +5,8 @@ import {
   handleSqsWorkerEvent,
   isAiEnabledChat,
   logger,
-  saveEvent,
+  recordChatActivity,
   saveMessage,
-  updateStatistics,
 } from '@tg-bot/common'
 
 export interface ActivityWorkerPayload {
@@ -16,10 +15,10 @@ export interface ActivityWorkerPayload {
 }
 
 /**
- * Every task here is safe to replay, so redelivery needs no idempotency
- * markers: updateStatistics guards its own increment, saveEvent puts a
- * deterministic chatId+date key, and saveMessage re-adds an identical
- * sorted-set member.
+ * Both tasks are safe to replay, so redelivery needs no idempotency markers:
+ * recordChatActivity counts inside a transaction gated on a conditional insert
+ * of the message's own event item, and saveMessage adds an identical sorted-set
+ * member with NX and a score derived from the message.
  */
 export const processActivityWorker = async (event: ActivityWorkerPayload) => {
   const message = event.message
@@ -36,15 +35,14 @@ export const processActivityWorker = async (event: ActivityWorkerPayload) => {
     return
   }
 
-  const tasks = [
-    updateStatistics(message.from, chat, message.message_id),
-    saveEvent(
-      message.from,
-      chat.id,
-      event.command ?? '',
-      message.date,
-      message.message_id,
-    ),
+  const tasks: Promise<unknown>[] = [
+    recordChatActivity({
+      userInfo: message.from,
+      chat,
+      command: event.command ?? '',
+      date: message.date,
+      messageId: message.message_id,
+    }),
   ]
 
   if (isAiEnabledChat(chat.id)) {

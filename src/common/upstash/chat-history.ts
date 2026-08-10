@@ -95,6 +95,20 @@ function getHistoryLineText(message: Message): string {
 }
 
 /**
+ * Score a message by when Telegram says it was sent, not by when we happened to
+ * process it, tie-broken by message id. Together with ZADD NX this makes a
+ * replay a true no-op instead of moving an old message to the end of history.
+ */
+function getHistoryScore(message: Message): number {
+  const dateMs = (message.date ?? 0) * 1000
+  if (!dateMs) {
+    return Date.now()
+  }
+
+  return dateMs + ((message.message_id ?? 0) % 1000)
+}
+
+/**
  * Save a message to chat history
  */
 export const saveMessage = async (message: Message, chatId?: number) => {
@@ -107,10 +121,11 @@ export const saveMessage = async (message: Message, chatId?: number) => {
 
   const now = Date.now()
   await Promise.all([
-    redis.zadd(key, {
-      score: now,
-      member: JSON.stringify(message),
-    }),
+    redis.zadd(
+      key,
+      { nx: true },
+      { score: getHistoryScore(message), member: JSON.stringify(message) },
+    ),
     redis.zremrangebyscore(key, 0, now - TTL_MS),
     redis.expire(key, TTL_SECONDS),
   ])

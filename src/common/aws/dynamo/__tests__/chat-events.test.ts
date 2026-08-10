@@ -1,8 +1,15 @@
+import type { Chat, User } from 'grammy/types'
+
+import * as utils from '../../../utils'
 import {
   getChatEventSortKey,
   getChatEventTtl,
+  recordChatActivity,
   shouldSkipStatsBroadcast,
 } from '../chat-events'
+
+const transactSpy = jest.spyOn(utils, 'dynamoTransactWrite')
+const invokeLambdaSpy = jest.spyOn(utils, 'invokeLambda')
 
 describe('shouldSkipStatsBroadcast', () => {
   const originalEnv = process.env
@@ -63,5 +70,85 @@ describe('getChatEventTtl', () => {
     const dateSeconds = 1_750_000_000
 
     expect(getChatEventTtl(dateSeconds)).toBe(dateSeconds + 3 * 24 * 60 * 60)
+  })
+})
+
+describe('recordChatActivity', () => {
+  const user = { id: 7, username: 'alice' } as User
+  const chat = { id: -100, type: 'group', title: 'Test chat' } as Chat
+
+  beforeEach(() => {
+    transactSpy.mockReset().mockResolvedValue({} as never)
+    invokeLambdaSpy.mockReset().mockResolvedValue(undefined as never)
+    process.env.WEBSOCKET_BROADCAST_FUNCTION_NAME = 'broadcast-fn'
+  })
+
+  afterEach(() => {
+    delete process.env.WEBSOCKET_BROADCAST_FUNCTION_NAME
+  })
+
+  test('counts the message in the same transaction as its event insert', async () => {
+    await expect(
+      recordChatActivity({
+        userInfo: user,
+        chat,
+        command: '/x',
+        date: 1_750_000_000,
+        messageId: 42,
+      }),
+    ).resolves.toEqual({ recorded: true })
+
+    const items = transactSpy.mock.calls[0]?.[0]?.TransactItems ?? []
+    expect(items).toHaveLength(2)
+    expect(items[0]?.Put).toMatchObject({
+      TableName: 'chat-events',
+      ConditionExpression: 'attribute_not_exists(chatId)',
+      Item: { chatId: '-100', date: getChatEventSortKey(1_750_000_000, 42) },
+    })
+    expect(items[1]?.Update).toMatchObject({
+      TableName: 'chat-user-statistics',
+      Key: { chatId: '-100', userId: 7 },
+      ExpressionAttributeValues: expect.objectContaining({ ':one': 1 }),
+    })
+  })
+
+  test('does not count a replayed message and skips the broadcast', async () => {
+    transactSpy.mockRejectedValueOnce(
+      Object.assign(new Error('cancelled'), {
+        name: 'TransactionCanceledException',
+        CancellationReasons: [
+          { Code: 'ConditionalCheckFailed' },
+          { Code: 'None' },
+        ],
+      }),
+    )
+
+    await expect(
+      recordChatActivity({ userInfo: user, chat, messageId: 42 }),
+    ).resolves.toEqual({ recorded: false })
+    expect(invokeLambdaSpy).not.toHaveBeenCalled()
+  })
+
+  test('rethrows a transaction cancelled for any other reason', async () => {
+    transactSpy.mockRejectedValueOnce(
+      Object.assign(new Error('throttled'), {
+        name: 'TransactionCanceledException',
+        CancellationReasons: [{ Code: 'ThrottlingError' }],
+      }),
+    )
+
+    await expect(
+      recordChatActivity({ userInfo: user, chat, messageId: 42 }),
+    ).rejects.toThrow('throttled')
+  })
+
+  test('ignores messages without a sender or chat', async () => {
+    await expect(recordChatActivity({ chat })).resolves.toEqual({
+      recorded: false,
+    })
+    await expect(recordChatActivity({ userInfo: user })).resolves.toEqual({
+      recorded: false,
+    })
+    expect(transactSpy).not.toHaveBeenCalled()
   })
 })

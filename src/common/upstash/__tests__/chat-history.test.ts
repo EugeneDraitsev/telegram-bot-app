@@ -169,15 +169,37 @@ describe('saveMessage', () => {
     await saveMessage(message, 777)
     dateNowSpy.mockRestore()
 
-    expect(mockZadd).toHaveBeenCalledWith('chat-history:777', {
-      score: 1_800_000_000_000,
-      member: JSON.stringify(message),
-    })
+    // Scored by the message's own Telegram date, tie-broken by message id, so
+    // the entry lands in the same place no matter when we process it.
+    expect(mockZadd).toHaveBeenCalledWith(
+      'chat-history:777',
+      { nx: true },
+      {
+        score: (1_710_000_000 + 1) * 1000 + 1,
+        member: JSON.stringify(message),
+      },
+    )
     expect(mockZremrangebyscore).toHaveBeenCalledWith(
       'chat-history:777',
       0,
       1_800_000_000_000 - 24 * 60 * 60 * 1000,
     )
     expect(mockExpire).toHaveBeenCalledWith('chat-history:777', 24 * 60 * 60)
+  })
+
+  test('replaying a message keeps its original place in history', async () => {
+    const message = createMessage(5)
+
+    const dateNowSpy = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(1_800_000_000_000)
+    await saveMessage(message, 777)
+    dateNowSpy.mockReturnValue(1_800_000_999_000)
+    await saveMessage(message, 777)
+    dateNowSpy.mockRestore()
+
+    const [first, second] = mockZadd.mock.calls
+    expect(second?.[1]).toEqual({ nx: true })
+    expect(second?.[2]).toEqual(first?.[2])
   })
 })

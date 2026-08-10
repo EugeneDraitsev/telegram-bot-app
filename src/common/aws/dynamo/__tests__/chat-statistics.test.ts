@@ -1,11 +1,10 @@
-import type { Chat, User } from 'grammy/types'
+import type { Chat } from 'grammy/types'
 
 import * as utils from '../../../utils'
 import {
   buildFormattedChatStatisticsMessages,
   getStoredChatStatistics,
   setUserOptOut,
-  updateStatistics,
 } from '../chat-statistics'
 
 const querySpy = jest.spyOn(utils, 'dynamoQuery')
@@ -57,126 +56,7 @@ describe('buildFormattedChatStatisticsMessages', () => {
 })
 
 describe('per-user chat statistics storage', () => {
-  const user = { id: 7, username: 'alice' } as User
   const chat = { id: -100, type: 'group', title: 'Test chat' } as Chat
-
-  test('creates one small item for a new user', async () => {
-    querySpy.mockResolvedValue({ Items: [] } as never)
-
-    await updateStatistics(user, chat, 42)
-
-    expect(putSpy).toHaveBeenCalledWith({
-      TableName: 'chat-user-statistics',
-      Item: {
-        chatId: '-100',
-        userId: 7,
-        msgCount: 1,
-        username: 'alice',
-        chatInfo: chat,
-        updatedAt: expect.any(Number),
-        lastMessageId: 42,
-      },
-      ConditionExpression:
-        'attribute_not_exists(#chatId) AND attribute_not_exists(#userId)',
-      ExpressionAttributeNames: {
-        '#chatId': 'chatId',
-        '#userId': 'userId',
-      },
-    })
-  })
-
-  test('increments an existing user atomically without reading legacy data', async () => {
-    querySpy.mockResolvedValue({
-      Items: [
-        {
-          chatId: '-100',
-          userId: 7,
-          msgCount: 5,
-          username: 'alice',
-        },
-      ],
-    } as never)
-
-    await updateStatistics(user, chat, 42)
-
-    expect(querySpy).toHaveBeenCalledTimes(1)
-    expect(putSpy).not.toHaveBeenCalled()
-    expect(updateSpy).toHaveBeenCalledWith({
-      TableName: 'chat-user-statistics',
-      Key: { chatId: '-100', userId: 7 },
-      UpdateExpression:
-        'SET #username = :username, #chatInfo = :chatInfo, #updatedAt = :updatedAt, #lastMessageId = :messageId ADD #msgCount :one',
-      ConditionExpression:
-        'attribute_exists(#chatId) AND attribute_exists(#userId) AND (attribute_not_exists(#lastMessageId) OR #lastMessageId < :messageId)',
-      ExpressionAttributeNames: {
-        '#chatId': 'chatId',
-        '#userId': 'userId',
-        '#username': 'username',
-        '#chatInfo': 'chatInfo',
-        '#updatedAt': 'updatedAt',
-        '#msgCount': 'msgCount',
-        '#lastMessageId': 'lastMessageId',
-      },
-      ExpressionAttributeValues: {
-        ':username': 'alice',
-        ':chatInfo': chat,
-        ':updatedAt': expect.any(Number),
-        ':one': 1,
-        ':messageId': 42,
-      },
-    })
-  })
-
-  test('drops a replayed message instead of counting it twice', async () => {
-    querySpy.mockResolvedValue({
-      Items: [
-        {
-          chatId: '-100',
-          userId: 7,
-          msgCount: 5,
-          username: 'alice',
-          lastMessageId: 42,
-        },
-      ],
-    } as never)
-    updateSpy.mockRejectedValueOnce(
-      Object.assign(new Error('condition failed'), {
-        name: 'ConditionalCheckFailedException',
-      }),
-    )
-
-    await expect(updateStatistics(user, chat, 42)).resolves.toBeUndefined()
-    expect(updateSpy).toHaveBeenCalledTimes(1)
-  })
-
-  test('propagates non-conditional increment failures', async () => {
-    querySpy.mockResolvedValue({
-      Items: [{ chatId: '-100', userId: 7, msgCount: 5, username: 'alice' }],
-    } as never)
-    updateSpy.mockRejectedValueOnce(new Error('dynamo exploded'))
-
-    await expect(updateStatistics(user, chat, 43)).rejects.toThrow(
-      'dynamo exploded',
-    )
-  })
-
-  test('falls back to atomic increment after a concurrent first write', async () => {
-    querySpy.mockResolvedValue({ Items: [] } as never)
-    putSpy.mockRejectedValueOnce(
-      Object.assign(new Error('write conflict'), {
-        name: 'ConditionalCheckFailedException',
-      }),
-    )
-
-    await updateStatistics(user, chat, 42)
-
-    expect(updateSpy).toHaveBeenCalledTimes(1)
-    expect(updateSpy.mock.calls[0]?.[0]).toMatchObject({
-      TableName: 'chat-user-statistics',
-      Key: { chatId: '-100', userId: 7 },
-      ExpressionAttributeValues: expect.objectContaining({ ':one': 1 }),
-    })
-  })
 
   test('updates opt-out state on the per-user item', async () => {
     querySpy.mockResolvedValue({

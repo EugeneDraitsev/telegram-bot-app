@@ -4,6 +4,7 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   QueryCommand,
+  TransactWriteCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb'
 import type {
@@ -13,6 +14,8 @@ import type {
   PutCommandOutput,
   QueryCommandInput,
   QueryCommandOutput,
+  TransactWriteCommandInput,
+  TransactWriteCommandOutput,
   UpdateCommandInput,
   UpdateCommandOutput,
 } from '@aws-sdk/lib-dynamodb'
@@ -73,4 +76,34 @@ export const dynamoUpdateItem = (
 ): Promise<UpdateCommandOutput> => {
   const command = new UpdateCommand(params)
   return docClient.send(command)
+}
+
+export const dynamoTransactWrite = (
+  params: TransactWriteCommandInput,
+): Promise<TransactWriteCommandOutput> => {
+  const command = new TransactWriteCommand(params)
+  return docClient.send(command)
+}
+
+/**
+ * True only when a transaction was cancelled because one of its conditions
+ * failed. Cancellations from throttling or capacity must stay fatal so the
+ * message is retried instead of being mistaken for a duplicate.
+ */
+export const isTransactionConditionFailure = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const candidate = error as {
+    name?: unknown
+    CancellationReasons?: Array<{ Code?: unknown }>
+  }
+  if (candidate.name !== 'TransactionCanceledException') {
+    return false
+  }
+
+  return (candidate.CancellationReasons ?? []).some(
+    (reason) => reason?.Code === 'ConditionalCheckFailed',
+  )
 }

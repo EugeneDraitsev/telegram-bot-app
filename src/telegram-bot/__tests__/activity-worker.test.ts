@@ -3,8 +3,7 @@ import type { Chat, Message, User } from 'grammy/types'
 import * as common from '@tg-bot/common'
 import activityWorker from '../activity-worker'
 
-const updateStatisticsMock = jest.spyOn(common, 'updateStatistics')
-const saveEventMock = jest.spyOn(common, 'saveEvent')
+const recordChatActivityMock = jest.spyOn(common, 'recordChatActivity')
 const saveMessageMock = jest.spyOn(common, 'saveMessage')
 const isAiEnabledChatMock = jest.spyOn(common, 'isAiEnabledChat')
 const loggerErrorMock = jest.spyOn(common.logger, 'error')
@@ -13,8 +12,7 @@ const lambdaContext = { awsRequestId: 'request-1' }
 
 describe('activity worker', () => {
   beforeEach(() => {
-    updateStatisticsMock.mockReset().mockResolvedValue(undefined)
-    saveEventMock.mockReset().mockResolvedValue(undefined)
+    recordChatActivityMock.mockReset().mockResolvedValue({ recorded: true })
     saveMessageMock.mockReset().mockResolvedValue(undefined)
     isAiEnabledChatMock
       .mockReset()
@@ -24,8 +22,7 @@ describe('activity worker', () => {
   })
 
   afterAll(() => {
-    updateStatisticsMock.mockRestore()
-    saveEventMock.mockRestore()
+    recordChatActivityMock.mockRestore()
     saveMessageMock.mockRestore()
     isAiEnabledChatMock.mockRestore()
     loggerErrorMock.mockRestore()
@@ -45,8 +42,13 @@ describe('activity worker', () => {
 
     await activityWorker({ message, command: '/x' }, lambdaContext)
 
-    expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat, 10)
-    expect(saveEventMock).toHaveBeenCalledWith(user, 123, '/x', 123456, 10)
+    expect(recordChatActivityMock).toHaveBeenCalledWith({
+      userInfo: user,
+      chat,
+      command: '/x',
+      date: 123456,
+      messageId: 10,
+    })
     expect(saveMessageMock).toHaveBeenCalledWith(message, 123)
   })
 
@@ -58,8 +60,7 @@ describe('activity worker', () => {
       { hasMessage: false, chatId: undefined },
       'activity.invalid_payload',
     )
-    expect(updateStatisticsMock).not.toHaveBeenCalled()
-    expect(saveEventMock).not.toHaveBeenCalled()
+    expect(recordChatActivityMock).not.toHaveBeenCalled()
     expect(saveMessageMock).not.toHaveBeenCalled()
   })
 
@@ -76,14 +77,19 @@ describe('activity worker', () => {
 
     await activityWorker({ message, command: '' }, lambdaContext)
 
-    expect(updateStatisticsMock).toHaveBeenCalledWith(user, chat, 10)
-    expect(saveEventMock).toHaveBeenCalledWith(user, 999, '', 123456, 10)
+    expect(recordChatActivityMock).toHaveBeenCalledWith({
+      userInfo: user,
+      chat,
+      command: '',
+      date: 123456,
+      messageId: 10,
+    })
     expect(saveMessageMock).not.toHaveBeenCalled()
   })
 
   test('logs rejected activity tasks', async () => {
     const error = new Error('dynamo failed')
-    updateStatisticsMock.mockRejectedValueOnce(error)
+    recordChatActivityMock.mockRejectedValueOnce(error)
 
     const user = { id: 7, username: 'alice' } as User
     const chat = { id: 999, type: 'group', title: 'Test chat' } as Chat

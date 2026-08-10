@@ -1,14 +1,19 @@
-import type { User } from 'grammy/types'
+import type { Chat, User } from 'grammy/types'
 
 import { logger } from '../../logger'
 import type { ChatEvent } from '../../types'
 import {
-  dynamoPutItem,
   dynamoQueryAll,
+  dynamoTransactWrite,
   getOptionalEnv,
+  getUserName,
   invokeLambda,
+  isTransactionConditionFailure,
 } from '../../utils'
-import { CHAT_EVENTS_TABLE_NAME } from './table-names'
+import {
+  CHAT_EVENTS_TABLE_NAME,
+  CHAT_USER_STATISTICS_TABLE_NAME,
+} from './table-names'
 
 const TELEGRAM_EVENT_ID_SPACE = 1_000_000
 const CHAT_EVENT_TTL_SECONDS = 60 * 60 * 24 * 3
@@ -59,37 +64,83 @@ const invokeStatsBroadcast = (chatId: string) => {
   })
 }
 
-export const saveEvent = async (
-  userInfo?: User,
-  chat_id?: number,
-  command?: string,
-  date = Date.now(),
-  messageId?: number,
-): Promise<void> => {
-  if (userInfo && chat_id) {
-    const event = {
-      userInfo,
-      date: getChatEventSortKey(date, messageId),
-      chatId: String(chat_id),
-      command,
-      ttl: getChatEventTtl(date),
-    }
-
-    const params = {
-      TableName: CHAT_EVENTS_TABLE_NAME,
-      Item: event,
-    }
-
-    await Promise.all([
-      dynamoPutItem(params),
-      invokeStatsBroadcast(String(chat_id)).catch((error) =>
-        logger.error(
-          { chatId: String(chat_id), err: error },
-          'broadcast invoke error',
-        ),
-      ),
-    ])
+/**
+ * Record one message: store its chat event and count it for the sender.
+ *
+ * Both writes go in a single transaction, and the event insert is conditional
+ * on its own key being free. The event sort key is derived from the message
+ * date and id, so replaying the same SQS message cancels the whole transaction
+ * and the counter is left alone. The event item is therefore the natural
+ * idempotency key for the message — no marker keys, no extra table.
+ */
+export const recordChatActivity = async (params: {
+  userInfo?: User
+  chat?: Chat
+  command?: string
+  date?: number
+  messageId?: number
+}): Promise<{ recorded: boolean }> => {
+  const { userInfo, chat, command, date = Date.now(), messageId } = params
+  const chat_id = chat?.id
+  if (!userInfo || !chat_id) {
+    return { recorded: false }
   }
+
+  const chatId = String(chat_id)
+
+  try {
+    await dynamoTransactWrite({
+      TransactItems: [
+        {
+          Put: {
+            TableName: CHAT_EVENTS_TABLE_NAME,
+            Item: {
+              userInfo,
+              date: getChatEventSortKey(date, messageId),
+              chatId,
+              command,
+              ttl: getChatEventTtl(date),
+            },
+            ConditionExpression: 'attribute_not_exists(chatId)',
+          },
+        },
+        {
+          // ADD creates the item when the user has no row yet, so this needs
+          // no read-then-branch and no existence condition of its own.
+          Update: {
+            TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+            Key: { chatId, userId: userInfo.id },
+            UpdateExpression:
+              'SET #username = :username, #chatInfo = :chatInfo, #updatedAt = :updatedAt ADD #msgCount :one',
+            ExpressionAttributeNames: {
+              '#username': 'username',
+              '#chatInfo': 'chatInfo',
+              '#updatedAt': 'updatedAt',
+              '#msgCount': 'msgCount',
+            },
+            ExpressionAttributeValues: {
+              ':username': getUserName(userInfo),
+              ':chatInfo': chat,
+              ':updatedAt': Date.now(),
+              ':one': 1,
+            },
+          },
+        },
+      ],
+    })
+  } catch (error) {
+    if (isTransactionConditionFailure(error)) {
+      logger.info({ chatId, messageId }, 'activity.duplicate_skipped')
+      return { recorded: false }
+    }
+    throw error
+  }
+
+  await invokeStatsBroadcast(chatId).catch((error) =>
+    logger.error({ chatId, err: error }, 'broadcast invoke error'),
+  )
+
+  return { recorded: true }
 }
 
 const DAY = 1000 * 60 * 60 * 24
