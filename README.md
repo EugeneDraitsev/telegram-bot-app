@@ -22,13 +22,6 @@ The diagram source lives in
 [`.github/diagram/architecture.mmd`](.github/diagram/architecture.mmd);
 re-render both themes with `bun run diagram` after changing it.
 
-<details>
-<summary>Legacy architecture</summary>
-
-![architecture](.github/architecture.png)
-
-</details>
-
 ## How It Works
 
 `src/telegram-bot` is the Telegram ingress layer. It handles the webhook,
@@ -118,12 +111,6 @@ CloudFormation stack with on-demand billing, deletion protection, retention
 policies, and point-in-time recovery. It has one String partition key
 (`chatId`), no sort key, and no TTL. DynamoDB is the only runtime source of
 truth for both chat authorization flags.
-
-During the retained legacy rollback window, recover in two deployments: first
-revert this cleanup to restore `OPENAI_CHAT_IDS` wiring and verify it on the
-deployed Lambdas; only then revert the DynamoDB runtime cutover if needed. Keep
-the existing GitHub secret and legacy Redis key until that window is explicitly
-retired.
 
 `src/sharp-renderer` renders PNG images for Telegram messages, including
 chat activity charts and currency rate cards.

@@ -44,6 +44,7 @@ jobs:
           GEMINI_API_KEY: ci-placeholder
           AGENTIC_BOT_ENABLED: "false"
           BOT_OWNER_ID: "1"
+          WORKER_FAILURE_ALERT_EMAIL: ci@example.invalid
           UPSTASH_REDIS_URL: https://ci.invalid
           UPSTASH_REDIS_TOKEN: ci-placeholder
           TAVILY_API_KEY: ci-placeholder

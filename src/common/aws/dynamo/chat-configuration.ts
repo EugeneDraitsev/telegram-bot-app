@@ -148,8 +148,8 @@ export async function setChatAiAllowed(
       TableName: CHAT_CONFIGURATION_TABLE_NAME,
       Key: { chatId: cacheKey },
       UpdateExpression: aiAllowed
-        ? 'SET aiAllowed = :allowed, agenticEnabled = if_not_exists(agenticEnabled, :disabled), allowUpdatedAt = :now, allowUpdatedBy = :updatedBy, #version = if_not_exists(#version, :zero) + :one REMOVE migrationState'
-        : 'SET aiAllowed = :allowed, agenticEnabled = :disabled, allowUpdatedAt = :now, allowUpdatedBy = :updatedBy, #version = if_not_exists(#version, :zero) + :one REMOVE migrationState',
+        ? 'SET aiAllowed = :allowed, agenticEnabled = if_not_exists(agenticEnabled, :disabled), allowUpdatedAt = :now, allowUpdatedBy = :updatedBy, #version = if_not_exists(#version, :zero) + :one'
+        : 'SET aiAllowed = :allowed, agenticEnabled = :disabled, allowUpdatedAt = :now, allowUpdatedBy = :updatedBy, #version = if_not_exists(#version, :zero) + :one',
       ExpressionAttributeNames: { '#version': 'version' },
       ExpressionAttributeValues: {
         ':allowed': aiAllowed,
@@ -223,7 +223,7 @@ export async function toggleAgenticChat(
       await dynamoUpdateItem({
         TableName: CHAT_CONFIGURATION_TABLE_NAME,
         Key: { chatId: cacheKey },
-        UpdateExpression: `SET ${updateExpressionParts.join(', ')} REMOVE migrationState`,
+        UpdateExpression: `SET ${updateExpressionParts.join(', ')}`,
         ConditionExpression:
           'aiAllowed = :allowed AND (attribute_not_exists(#version) OR #version = :expectedVersion)',
         ExpressionAttributeNames: { '#version': 'version' },
