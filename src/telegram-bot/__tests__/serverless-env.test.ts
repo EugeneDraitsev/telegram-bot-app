@@ -34,8 +34,9 @@ describe('agentic chat configuration infrastructure', () => {
   test('alarms on fail-closed configuration reads without runtime metric calls', () => {
     expect(
       resources.match(/FilterPattern: '"chat_configuration\.read_failed"'/g),
-    ).toHaveLength(3)
+    ).toHaveLength(4)
     expect(resources).toContain('Ref: TelegramDashbotLogGroup')
+    expect(resources).toContain('Ref: TelegramDashreplyDashworkerLogGroup')
     expect(resources).toContain('Ref: TelegramDashagentDashworkerLogGroup')
     expect(resources).toContain('Ref: TelegramDashactivityDashworkerLogGroup')
 

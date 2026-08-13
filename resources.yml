@@ -87,6 +87,17 @@ Resources:
           MetricName: ReadFailures
           MetricValue: '1'
 
+  ChatConfigurationReplyReadFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Ref: TelegramDashreplyDashworkerLogGroup
+      FilterPattern: '"chat_configuration.read_failed"'
+      MetricTransformations:
+        - MetricNamespace: ${self:service}/${sls:stage}/chat-configuration
+          MetricName: ReadFailures
+          MetricValue: '1'
+
   ChatConfigurationAgentReadFailureMetricFilter:
     Type: AWS::Logs::MetricFilter
     Properties:

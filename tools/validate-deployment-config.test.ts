@@ -2,6 +2,7 @@ import { validateBotOwnerId } from './validate-deployment-config.mjs'
 
 describe('deployment configuration validation', () => {
   test('accepts a positive numeric Telegram user id', () => {
+    expect(validateBotOwnerId('1')).toBe('1')
     expect(validateBotOwnerId(' 42 ')).toBe('42')
   })
 

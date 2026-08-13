@@ -313,8 +313,8 @@ check:
 - Enabled checks use a short TTL cache, strongly consistent reads on cache
   misses, and fail closed. Ingress intentionally reads DynamoDB before enqueue
   so disabled chats do not consume SQS/Lambda; read failures feed an alarm.
-- Generated CloudFormation contains metric filters for ingress, agent, and
-  activity log groups, aggregating into one SNS-backed read-failure alarm.
+- Generated CloudFormation contains metric filters for ingress, reply, agent,
+  and activity log groups, aggregating into one SNS-backed read-failure alarm.
 - Internal DynamoDB errors stay in logs and Telegram receives only a generic
   operational error.
 - IAM is least privilege: ingress/agent/activity read configuration; reply can

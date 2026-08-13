@@ -1,6 +1,6 @@
 export function validateBotOwnerId(value: string | undefined): string {
   const normalized = value?.trim()
-  if (!normalized || !/^[1-9]\d+$/.test(normalized)) {
+  if (!normalized || !/^[1-9]\d*$/.test(normalized)) {
     throw new Error('BOT_OWNER_ID must be a positive numeric Telegram user id')
   }
   return normalized
