@@ -3,7 +3,7 @@ import type { Message } from 'grammy/types'
 
 import {
   handleSqsWorkerEvent,
-  isAiEnabledChat,
+  isAiAllowedChat,
   logger,
   recordChatActivity,
   saveMessage,
@@ -45,7 +45,8 @@ export const processActivityWorker = async (event: ActivityWorkerPayload) => {
     }),
   ]
 
-  if (isAiEnabledChat(chat.id)) {
+  // Keep context warm for every owner-allowed chat even while /toggle is off.
+  if (await isAiAllowedChat(chat.id)) {
     tasks.push(saveMessage(message, chat.id))
   }
 

@@ -31,6 +31,11 @@ Resources:
                   - Fn::GetAtt:
                       - TelegramActivityWorkerQueue
                       - Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatConfigurationTableName}
 
   TelegramReplyWorkerRole:
     Type: AWS::IAM::Role
@@ -59,6 +64,12 @@ Resources:
                   - dynamodb:UpdateItem
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatConfigurationTableName}
               - Effect: Allow
                 Action:
                   - sqs:ReceiveMessage
@@ -95,6 +106,11 @@ Resources:
                   - Fn::GetAtt:
                       - TelegramAgentWorkerQueue
                       - Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatConfigurationTableName}
 
   TelegramActivityWorkerRole:
     Type: AWS::IAM::Role
@@ -118,6 +134,11 @@ Resources:
                   - dynamodb:PutItem
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatConfigurationTableName}
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction

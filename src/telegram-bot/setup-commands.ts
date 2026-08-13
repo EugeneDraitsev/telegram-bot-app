@@ -171,7 +171,8 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /f <text?> - get weather forecast
   setupExternalApisCommands(bot)
 
-  // /toggle - enable/disable agentic bot for the chat
+  // /toggle - chat admins enable/disable agentic mode
+  // /allowai, /disallowai - bot owner controls the outer AI allowlist
   setupAgenticConfig(bot)
 
   // Smart agentic responses for non-command messages.

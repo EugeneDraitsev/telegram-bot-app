@@ -43,6 +43,8 @@ jobs:
           OPENAI_API_KEY: ci-placeholder
           GEMINI_API_KEY: ci-placeholder
           OPENAI_CHAT_IDS: "0"
+          AGENTIC_BOT_ENABLED: "false"
+          BOT_OWNER_ID: "1"
           UPSTASH_REDIS_URL: https://ci.invalid
           UPSTASH_REDIS_TOKEN: ci-placeholder
           TAVILY_API_KEY: ci-placeholder

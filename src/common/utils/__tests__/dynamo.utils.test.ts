@@ -1,10 +1,13 @@
 import {
   DynamoDBDocumentClient,
+  type GetCommandInput,
   type PutCommandInput,
 } from '@aws-sdk/lib-dynamodb'
 
 import {
+  DYNAMO_GET_TIMEOUT_MS,
   dynamoDeleteItem,
+  dynamoGetItem,
   dynamoPutItem,
   dynamoQuery,
   dynamoQueryAll,
@@ -23,6 +26,20 @@ describe('dynamo utils', () => {
 
     const options = {} as PutCommandInput
     expect(await dynamoPutItem(options)).toEqual('put response!!')
+  })
+
+  test('dynamoGetItem should call send on dynamo object and return promise with result', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => 'get response!!')
+
+    const options = {} as GetCommandInput
+    expect(await dynamoGetItem(options)).toEqual('get response!!')
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+    )
+    expect(DYNAMO_GET_TIMEOUT_MS).toBeLessThan(10_000)
   })
 
   test('dynamoQuery should call send on dynamo object and return promise with result', async () => {

@@ -4,7 +4,7 @@ import type { Bot, Context } from 'grammy/web'
 import {
   enqueueAgentWorker,
   getParsedText,
-  isAiEnabledChat,
+  isAgenticChatEnabled,
 } from '@tg-bot/common'
 
 export interface AgentPayload {
@@ -60,11 +60,10 @@ export async function handleMessageWithAgent(
   options: AgentInvokeOptions = {},
 ): Promise<void> {
   const chatId = message.chat?.id
-  // isAgenticChatEnabled in the worker already requires isAiEnabledChat, so a
-  // chat outside the allowlist was always going to be dropped there. Checking
-  // the in-memory half of that gate here costs no I/O and saves the SQS message
-  // and the worker invocation entirely.
-  if (!chatId || !isAiEnabledChat(chatId)) {
+  // A short cached DynamoDB read is cheaper than an SQS message plus a worker
+  // invocation. The worker repeats the check as a defense against stale cache
+  // entries and direct/retried queue deliveries.
+  if (!chatId || !(await isAgenticChatEnabled(chatId))) {
     return
   }
 

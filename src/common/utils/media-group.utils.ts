@@ -2,7 +2,6 @@ import type { Message } from 'grammy/types'
 import type { Context } from 'grammy/web'
 
 import { getRawHistory } from '../upstash'
-import { isAiEnabledChat } from './ai.utils'
 
 const ALBUM_WAIT_MS = 4_000
 
@@ -25,10 +24,6 @@ export const getMediaGroupMessages = async (
   }
 
   const chatId = ctx.chat?.id || 0
-  if (!isAiEnabledChat(chatId)) {
-    return []
-  }
-
   const getRelatedMessages = async () =>
     (await getRawHistory(chatId)).filter((m) => {
       if (m.message_id === message.message_id) {

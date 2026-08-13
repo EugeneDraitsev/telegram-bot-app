@@ -8,7 +8,7 @@ import {
   getFormattedChatStatisticsMessages,
   getMetricsReport,
   getStoredChatUsers,
-  isAiEnabledChat,
+  isAiAllowedChat,
   logger,
   saveBotReplyToHistory,
   sendRichMessageWithFallback,
@@ -219,7 +219,7 @@ const setupUsersCommands = (bot: Bot) => {
   })
 
   bot.command('x', async (ctx) => {
-    if (!isAiEnabledChat(ctx.chat?.id)) return
+    if (!(await isAiAllowedChat(ctx.chat?.id))) return
     const { text, replyId } = getCommandData(ctx.message)
     const rawHours = text.trim()
     const parsedHours = rawHours ? Number(rawHours) : Number.NaN
