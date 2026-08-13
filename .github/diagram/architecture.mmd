@@ -66,6 +66,7 @@ flowchart TB
   BOT -->|"enabled agent candidates"| AGENTQ --> AGENT
   ACTQ & REPLYQ & AGENTQ -.->|"5 failed receives"| DLQ
   DLQ -.->|"> 3 visible"| ALERT
+  CONFIG -.->|"read failure"| ALERT
 
   REPLY -->|"reply"| TG
   AGENT -->|"reply"| TG
@@ -76,9 +77,9 @@ flowchart TB
   AGENT <-->|"fallbacks / images"| GEM
   AGENT <-->|"state / history / metrics"| REDIS
   REPLY -->|"read metrics"| REDIS
-  BOT -->|"5s cached enabled check"| CONFIG
-  AGENT -->|"cached enabled check"| CONFIG
-  ACT -->|"cached enabled check"| CONFIG
+  BOT -->|"5s cache + strong miss"| CONFIG
+  AGENT -->|"cache + strong miss"| CONFIG
+  ACT -->|"cache + strong miss"| CONFIG
   REPLY -->|"/toggle + cached reads"| CONFIG
   CRON1 <-.->|"currency PNG"| IMG
   REPLY <-.->|"stats / currency / metrics PNG"| IMG

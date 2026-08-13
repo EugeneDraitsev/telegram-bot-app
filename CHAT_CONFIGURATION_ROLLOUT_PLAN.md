@@ -178,6 +178,8 @@ Commit B contains the runtime cutover:
 - cached DynamoDB enabled checks in ingress and workers;
 - a five-second ingress gate that prevents disabled chats from consuming SQS
   messages or agent-worker concurrency;
+- strongly consistent authorization reads on cache misses;
+- an SNS-backed alarm for fail-closed configuration read errors;
 - owner-only `/allowai` and `/disallowai`;
 - DynamoDB-backed admin `/toggle` with optimistic concurrency;
 - least-privilege Lambda IAM;
@@ -204,8 +206,9 @@ Verify in production:
 6. A regular member cannot use `/toggle`; a creator/administrator can.
 7. `/disallowai` also forces `agenticEnabled=false`.
 8. DynamoDB errors fail closed in Telegram ingress and enqueue nothing.
-9. WebSocket connection/event/statistics tables continue unchanged.
-10. Upstash `EVAL`, `GET`, `EXPIRE`, and retention-cleanup traffic falls as
+9. A fail-closed configuration read raises the chat-configuration alarm.
+10. WebSocket connection/event/statistics tables continue unchanged.
+11. Upstash `EVAL`, `GET`, `EXPIRE`, and retention-cleanup traffic falls as
     predicted; unit tests do not contact production Upstash.
 
 Observe Lambda errors, SQS retries/DLQs, DynamoDB throttles, and Upstash command
@@ -281,8 +284,9 @@ check:
   existing Telegram creator/admin check and cannot bypass aiAllowed.
 - Concurrent owner disallow and admin toggle cannot leave an enabled but
   disallowed chat or lose an update.
-- Enabled checks use a short TTL cache and fail closed. Ingress intentionally
-  reads DynamoDB on cache misses so disabled chats do not consume SQS/Lambda.
+- Enabled checks use a short TTL cache, strongly consistent reads on cache
+  misses, and fail closed. Ingress intentionally reads DynamoDB before enqueue
+  so disabled chats do not consume SQS/Lambda; read failures feed an alarm.
 - IAM is least privilege: ingress/agent/activity read configuration; reply can
   read and update it.
 - Rollback to commit A really works because legacy env/Redis remain untouched;

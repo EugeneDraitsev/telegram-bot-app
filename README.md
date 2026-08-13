@@ -46,11 +46,12 @@ FIFO SQS jobs:
 - commands addressed to another bot are ignored.
 
 Agent dispatch is gated by the permanent `chat-configuration` DynamoDB item in
-ingress. The five-second warm-instance cache keeps this to at most one
-eventually consistent `GetItem` per active chat/instance/window; disabled chats
-consume no agent SQS message or worker invocation. DynamoDB failures fail
-closed. The agent worker repeats the check before any AI work to cover stale,
-direct, and retried queue deliveries.
+ingress. The five-second warm-instance cache keeps this to at most one strongly
+consistent `GetItem` per active chat/instance/window; disabled chats consume no
+agent SQS message or worker invocation. DynamoDB failures fail closed and feed
+an alarm from the ingress, agent, and activity log groups. The agent worker
+repeats the check before any AI work to cover stale, direct, and retried queue
+deliveries.
 
 Effective access requires the global kill switch, owner-controlled `aiAllowed`,
 and administrator-controlled `agenticEnabled` to all be true. Only the numeric

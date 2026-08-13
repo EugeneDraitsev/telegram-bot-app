@@ -76,6 +76,56 @@ Resources:
         - Protocol: email
           Endpoint: ${self:custom.workerFailureAlertEmail}
 
+  ChatConfigurationIngressReadFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Ref: TelegramDashbotLogGroup
+      FilterPattern: '"chat_configuration.read_failed"'
+      MetricTransformations:
+        - MetricNamespace: ${self:service}/${sls:stage}/chat-configuration
+          MetricName: ReadFailures
+          MetricValue: '1'
+
+  ChatConfigurationAgentReadFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Ref: TelegramDashagentDashworkerLogGroup
+      FilterPattern: '"chat_configuration.read_failed"'
+      MetricTransformations:
+        - MetricNamespace: ${self:service}/${sls:stage}/chat-configuration
+          MetricName: ReadFailures
+          MetricValue: '1'
+
+  ChatConfigurationActivityReadFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Ref: TelegramDashactivityDashworkerLogGroup
+      FilterPattern: '"chat_configuration.read_failed"'
+      MetricTransformations:
+        - MetricNamespace: ${self:service}/${sls:stage}/chat-configuration
+          MetricName: ReadFailures
+          MetricValue: '1'
+
+  ChatConfigurationReadFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${sls:stage}-chat-configuration-read-failure
+      AlarmDescription: AI authorization failed closed because chat configuration could not be read.
+      Namespace: ${self:service}/${sls:stage}/chat-configuration
+      MetricName: ReadFailures
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: WorkerFailureAlertsTopic
+
   TelegramReplyWorkerDlqAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:

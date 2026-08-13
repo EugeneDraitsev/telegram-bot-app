@@ -7,6 +7,8 @@ import { CHAT_CONFIGURATION_TABLE_NAME } from './table-names'
 // across warm ingress and worker instances within a few seconds.
 export const CHAT_CONFIGURATION_CACHE_TTL_MS = 5_000
 const TOGGLE_MAX_ATTEMPTS = 3
+const CHAT_CONFIGURATION_UPDATE_ERROR =
+  'Could not update chat configuration; please try again'
 
 const configurationCache = new TtlCache<string, ChatConfiguration>(
   CHAT_CONFIGURATION_CACHE_TTL_MS,
@@ -63,12 +65,11 @@ function normalizeChatConfiguration(
 
 async function readChatConfiguration(
   chatId: string | number,
-  consistentRead = false,
 ): Promise<ChatConfiguration> {
   const result = await dynamoGetItem({
     TableName: CHAT_CONFIGURATION_TABLE_NAME,
     Key: { chatId: String(chatId) },
-    ConsistentRead: consistentRead,
+    ConsistentRead: true,
   })
   return normalizeChatConfiguration(
     chatId,
@@ -78,22 +79,21 @@ async function readChatConfiguration(
 
 export async function getChatConfiguration(
   chatId?: string | number,
-  consistentRead = false,
 ): Promise<ChatConfiguration | undefined> {
   if (chatId === undefined || chatId === null || String(chatId).trim() === '') {
     return undefined
   }
 
   const cacheKey = String(chatId)
-  if (!consistentRead) {
-    const cached = configurationCache.get(cacheKey)
-    if (cached !== undefined) {
-      return cached
-    }
+  const cached = configurationCache.get(cacheKey)
+  if (cached !== undefined) {
+    return cached
   }
 
   try {
-    const configuration = await readChatConfiguration(chatId, consistentRead)
+    // Authorization may be cached briefly, but every cache miss must observe
+    // the latest committed owner/admin decision in this region.
+    const configuration = await readChatConfiguration(chatId)
     configurationCache.set(cacheKey, configuration)
     return configuration
   } catch (error) {
@@ -168,12 +168,11 @@ export async function setChatAiAllowed(
     configurationCache.set(cacheKey, configuration)
     return { configuration }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
     logger.error(
       { chatId, aiAllowed, error },
       'chat_configuration.allow_failed',
     )
-    return { error: message }
+    return { error: CHAT_CONFIGURATION_UPDATE_ERROR }
   }
 }
 
@@ -193,7 +192,7 @@ export async function toggleAgenticChat(
   const cacheKey = String(chatId)
   for (let attempt = 0; attempt < TOGGLE_MAX_ATTEMPTS; attempt++) {
     try {
-      const current = await readChatConfiguration(chatId, true)
+      const current = await readChatConfiguration(chatId)
       if (!current.aiAllowed) {
         configurationCache.set(cacheKey, current)
         return {
@@ -244,9 +243,8 @@ export async function toggleAgenticChat(
         continue
       }
 
-      const message = error instanceof Error ? error.message : 'Unknown error'
       logger.error({ chatId, error }, 'chat_configuration.toggle_failed')
-      return { enabled: false, error: message }
+      return { enabled: false, error: CHAT_CONFIGURATION_UPDATE_ERROR }
     }
   }
 

@@ -78,7 +78,7 @@ describe('chat configuration reads', () => {
     expect(getSpy).toHaveBeenCalledWith({
       TableName: 'chat-configuration',
       Key: { chatId: '-100' },
-      ConsistentRead: false,
+      ConsistentRead: true,
     })
   })
 
@@ -118,6 +118,9 @@ describe('chat configuration reads', () => {
     await isAgenticChatEnabled(123)
 
     expect(getSpy).toHaveBeenCalledTimes(1)
+    expect(getSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ ConsistentRead: true }),
+    )
   })
 
   test('refreshes the cross-instance view after the five-second TTL', async () => {
@@ -210,6 +213,14 @@ describe('setChatAiAllowed', () => {
     await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
     expect(getSpy).not.toHaveBeenCalled()
   })
+
+  test('does not expose DynamoDB write errors', async () => {
+    updateSpy.mockRejectedValue(new Error('role arn and table details'))
+
+    await expect(setChatAiAllowed(123, true, 7)).resolves.toEqual({
+      error: 'Could not update chat configuration; please try again',
+    })
+  })
 })
 
 describe('toggleAgenticChat', () => {
@@ -293,7 +304,7 @@ describe('toggleAgenticChat', () => {
     expect(updateSpy).toHaveBeenCalledTimes(2)
   })
 
-  test('returns a useful write error', async () => {
+  test('does not expose DynamoDB write errors', async () => {
     getSpy.mockResolvedValue({
       Item: {
         chatId: '123',
@@ -306,7 +317,7 @@ describe('toggleAgenticChat', () => {
 
     await expect(toggleAgenticChat(123)).resolves.toEqual({
       enabled: false,
-      error: 'dynamo down',
+      error: 'Could not update chat configuration; please try again',
     })
   })
 })

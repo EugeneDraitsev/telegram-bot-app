@@ -32,8 +32,10 @@
 ## Reliability Rules
 - Webhook/incoming lambda must finish under 10 seconds.
 - Never block ingress on LLM calls.
-- Keep the ingress configuration cache short and the check bounded; DynamoDB
-  failure must skip agent enqueue rather than fail open.
+- Keep the ingress configuration cache short and the check bounded. Cache
+  misses use strongly consistent reads. DynamoDB failure must skip agent
+  enqueue rather than fail open and must remain observable through an alarmed
+  error log.
 - Ingress waits only for the bounded configuration check and SQS `SendMessage`
   ACKs, never for worker completion.
 - SQS worker event mappings use `batchSize: 1` and partial batch responses.
