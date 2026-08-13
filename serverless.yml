@@ -19,6 +19,7 @@ provider:
   timeout: 30
   runtime: ${self:custom.runtimeByStage.${sls:stage}, 'nodejs24.x'}
   architecture: arm64
+  versionFunctions: false
   environment:
     region: eu-central-1
     stage: ${sls:stage}

@@ -17,7 +17,7 @@ flowchart TB
       direction LR
       ACT@{ icon: "logos:aws-lambda", label: "activity-worker<br/>stats / events / history", h: 42 }
       REPLY@{ icon: "logos:aws-lambda", label: "reply-worker<br/>commands", h: 42 }
-      AGENT@{ icon: "logos:aws-lambda", label: "agent-worker<br/>reply gate + loop", h: 42 }
+      AGENT@{ icon: "logos:aws-lambda", label: "agent-worker<br/>gate / dynamic cmds / loop", h: 42 }
     end
 
     BCAST@{ icon: "logos:aws-lambda", label: "broadcast-stats", h: 42 }
@@ -62,7 +62,7 @@ flowchart TB
   TG <==>|"webhook"| BOT
 
   BOT -->|"every message"| ACTQ --> ACT
-  BOT -->|"registered cmds"| REPLYQ --> REPLY
+  BOT -->|"registered non-agent cmds"| REPLYQ --> REPLY
   BOT -->|"enabled agent candidates"| AGENTQ --> AGENT
   ACTQ & REPLYQ & AGENTQ -.->|"5 failed receives"| DLQ
   DLQ -.->|"> 3 visible"| ALERT
