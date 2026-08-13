@@ -283,7 +283,8 @@ check:
   disallowed chat or lose an update.
 - Enabled checks use a short TTL cache and fail closed. Ingress intentionally
   reads DynamoDB on cache misses so disabled chats do not consume SQS/Lambda.
-- IAM is least privilege for reply, agent, and activity workers.
+- IAM is least privilege: ingress/agent/activity read configuration; reply can
+  read and update it.
 - Rollback to commit A really works because legacy env/Redis remain untouched;
   call out changes made during the Dynamo soak that would not roll back.
 - Tests cannot access real Upstash when NODE_ENV=test.

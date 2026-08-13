@@ -44,7 +44,8 @@ flowchart TB
 
   subgraph DATA["data stores"]
     direction LR
-    REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>AI state / history / metrics", h: 40 }
+    REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>memory / tools / history / metrics / leases", h: 40 }
+    CONFIG@{ icon: "logos:aws-dynamodb", label: "chat-configuration<br/>owner allow + admin toggle", h: 40 }
     USERSTATS@{ icon: "logos:aws-dynamodb", label: "chat-user-statistics", h: 40 }
     EVENTS@{ icon: "logos:aws-dynamodb", label: "chat-events", h: 40 }
     CONNS@{ icon: "logos:aws-dynamodb", label: "websocket-connections", h: 40 }
@@ -62,7 +63,7 @@ flowchart TB
 
   BOT -->|"every message"| ACTQ --> ACT
   BOT -->|"registered cmds"| REPLYQ --> REPLY
-  BOT -->|"AI chats: commands / fallback"| AGENTQ --> AGENT
+  BOT -->|"enabled agent candidates"| AGENTQ --> AGENT
   ACTQ & REPLYQ & AGENTQ -.->|"5 failed receives"| DLQ
   DLQ -.->|"> 3 visible"| ALERT
 
@@ -75,6 +76,10 @@ flowchart TB
   AGENT <-->|"fallbacks / images"| GEM
   AGENT <-->|"state / history / metrics"| REDIS
   REPLY -->|"read metrics"| REDIS
+  BOT -->|"5s cached enabled check"| CONFIG
+  AGENT -->|"cached enabled check"| CONFIG
+  ACT -->|"cached enabled check"| CONFIG
+  REPLY -->|"/toggle + cached reads"| CONFIG
   CRON1 <-.->|"currency PNG"| IMG
   REPLY <-.->|"stats / currency / metrics PNG"| IMG
   AGENT <-.->|"SVG → PNG"| IMG
