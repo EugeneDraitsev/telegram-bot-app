@@ -18,6 +18,11 @@ and [Serverless Framework](https://github.com/serverless/serverless).
   </picture>
 </a>
 
+Open the full-size raw SVG for zooming:
+[light theme](https://raw.githubusercontent.com/EugeneDraitsev/telegram-bot-app/main/.github/architecture-sqs-light.svg)
+or
+[dark theme](https://raw.githubusercontent.com/EugeneDraitsev/telegram-bot-app/main/.github/architecture-sqs-dark.svg).
+
 The diagram source lives in
 [`.github/diagram/architecture.mmd`](.github/diagram/architecture.mmd);
 re-render both themes with `bun run diagram` after changing it.
