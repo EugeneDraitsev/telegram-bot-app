@@ -22,6 +22,13 @@ The diagram source lives in
 [`.github/diagram/architecture.mmd`](.github/diagram/architecture.mmd);
 re-render both themes with `bun run diagram` after changing it.
 
+<details>
+<summary>Legacy architecture</summary>
+
+![architecture](.github/architecture.png)
+
+</details>
+
 ## How It Works
 
 `src/telegram-bot` is the Telegram ingress layer. It handles the webhook,
