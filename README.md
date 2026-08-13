@@ -49,9 +49,9 @@ Agent dispatch is gated by the permanent `chat-configuration` DynamoDB item in
 ingress. The five-second warm-instance cache keeps this to at most one strongly
 consistent `GetItem` per active chat/instance/window; disabled chats consume no
 agent SQS message or worker invocation. DynamoDB failures fail closed and feed
-an alarm from the ingress, agent, and activity log groups. The agent worker
-repeats the check before any AI work to cover stale, direct, and retried queue
-deliveries.
+an alarm from the ingress, reply, agent, and activity log groups. The agent
+worker repeats the check before any AI work to cover stale, direct, and retried
+queue deliveries.
 
 Effective access requires the global kill switch, owner-controlled `aiAllowed`,
 and administrator-controlled `agenticEnabled` to all be true. Only the numeric
@@ -116,24 +116,14 @@ and chat. Every statistics read and update uses this per-user schema.
 The permanent `chat-configuration` table is provisioned by the application
 CloudFormation stack with on-demand billing, deletion protection, retention
 policies, and point-in-time recovery. It has one String partition key
-(`chatId`), no sort key, and no TTL.
+(`chatId`), no sort key, and no TTL. DynamoDB is the only runtime source of
+truth for both chat authorization flags.
 
-After the infrastructure-only deploy, set `BOT_OWNER_ID` in the operator
-environment and run the one-time migration in two explicit steps:
-
-```sh
-# Reads the deployed legacy Lambda + Redis, validates DynamoDB, writes only a
-# local gitignored report, and performs no DynamoDB writes.
-bun run migrate:chat-configuration
-
-# Synchronizes migration-owned rows and verifies every write strongly.
-bun run migrate:chat-configuration --apply
-```
-
-The migration never creates the table and never prints or records Redis
-credentials. `OPENAI_CHAT_IDS` remains in deployed Lambda configuration and the
-legacy Redis key remains untouched through the rollback window, even though the
-new runtime no longer uses either for authorization.
+During the retained legacy rollback window, recover in two deployments: first
+revert this cleanup to restore `OPENAI_CHAT_IDS` wiring and verify it on the
+deployed Lambdas; only then revert the DynamoDB runtime cutover if needed. Keep
+the existing GitHub secret and legacy Redis key until that window is explicitly
+retired.
 
 `src/sharp-renderer` renders PNG images for Telegram messages, including
 chat activity charts and currency rate cards.

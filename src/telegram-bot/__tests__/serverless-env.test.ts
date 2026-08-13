@@ -13,8 +13,8 @@ describe('agentic chat configuration infrastructure', () => {
     )
   })
 
-  test('retains the legacy environment allowlist through the rollback window', () => {
-    expect(serverlessConfig).toContain('OPENAI_CHAT_IDS')
+  test('uses DynamoDB as the only runtime chat authorization source', () => {
+    expect(serverlessConfig).not.toContain('OPENAI_CHAT_IDS')
   })
 
   test('still wires the Telegram token into ingress', () => {

@@ -5,7 +5,6 @@ import activityWorker from '../activity-worker'
 
 const recordChatActivityMock = jest.spyOn(common, 'recordChatActivity')
 const saveMessageMock = jest.spyOn(common, 'saveMessage')
-const isAiAllowedChatMock = jest.spyOn(common, 'isAiAllowedChat')
 const loggerErrorMock = jest.spyOn(common.logger, 'error')
 const loggerWarnMock = jest.spyOn(common.logger, 'warn')
 const lambdaContext = { awsRequestId: 'request-1' }
@@ -14,9 +13,6 @@ describe('activity worker', () => {
   beforeEach(() => {
     recordChatActivityMock.mockReset().mockResolvedValue({ recorded: true })
     saveMessageMock.mockReset().mockResolvedValue(undefined)
-    isAiAllowedChatMock
-      .mockReset()
-      .mockImplementation(async (chatId) => chatId === 123)
     loggerErrorMock.mockReset().mockImplementation(() => {})
     loggerWarnMock.mockReset().mockImplementation(() => {})
   })
@@ -24,7 +20,6 @@ describe('activity worker', () => {
   afterAll(() => {
     recordChatActivityMock.mockRestore()
     saveMessageMock.mockRestore()
-    isAiAllowedChatMock.mockRestore()
     loggerErrorMock.mockRestore()
     loggerWarnMock.mockRestore()
   })
@@ -64,7 +59,7 @@ describe('activity worker', () => {
     expect(saveMessageMock).not.toHaveBeenCalled()
   })
 
-  test('does not save AI chat history for non-AI chats', async () => {
+  test('delegates chat-history eligibility to saveMessage', async () => {
     const user = { id: 7, username: 'alice' } as User
     const chat = { id: 999, type: 'group', title: 'Test chat' } as Chat
     const message = {
@@ -84,7 +79,7 @@ describe('activity worker', () => {
       date: 123456,
       messageId: 10,
     })
-    expect(saveMessageMock).not.toHaveBeenCalled()
+    expect(saveMessageMock).toHaveBeenCalledWith(message, 999)
   })
 
   test('logs rejected activity tasks', async () => {

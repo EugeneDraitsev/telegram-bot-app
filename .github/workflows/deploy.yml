@@ -49,7 +49,6 @@ jobs:
           FIXER_API_KEY: ${{secrets.FIXER_API_KEY}}
           EXCHANGE_RATE_API_KEY: ${{secrets.EXCHANGE_RATE_API_KEY}}
           OPENAI_API_KEY: ${{secrets.OPENAI_API_KEY}}
-          OPENAI_CHAT_IDS: ${{secrets.OPENAI_CHAT_IDS}}
           AGENTIC_BOT_ENABLED: ${{vars.AGENTIC_BOT_ENABLED || 'true'}}
           BOT_OWNER_ID: ${{vars.BOT_OWNER_ID}}
           UPSTASH_REDIS_URL: ${{secrets.UPSTASH_REDIS_URL}}
