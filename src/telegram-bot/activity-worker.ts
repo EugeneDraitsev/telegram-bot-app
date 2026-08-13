@@ -3,7 +3,6 @@ import type { Message } from 'grammy/types'
 
 import {
   handleSqsWorkerEvent,
-  isAiAllowedChat,
   logger,
   recordChatActivity,
   saveMessage,
@@ -43,12 +42,10 @@ export const processActivityWorker = async (event: ActivityWorkerPayload) => {
       date: message.date,
       messageId: message.message_id,
     }),
+    // saveMessage owns the allowlist check, so activity tracking has one
+    // authorization boundary instead of checking the same flag twice.
+    saveMessage(message, chat.id),
   ]
-
-  // Keep context warm for every owner-allowed chat even while /toggle is off.
-  if (await isAiAllowedChat(chat.id)) {
-    tasks.push(saveMessage(message, chat.id))
-  }
 
   const results = await Promise.allSettled(tasks)
   const failures: unknown[] = []

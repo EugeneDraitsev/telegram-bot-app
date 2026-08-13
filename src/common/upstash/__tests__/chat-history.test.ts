@@ -163,6 +163,16 @@ describe('getRecentRawHistory', () => {
 })
 
 describe('saveMessage', () => {
+  test('does not persist history outside the owner allowlist', async () => {
+    mockIsAiAllowedChat.mockResolvedValue(false)
+
+    await saveMessage(createMessage(1), 777)
+
+    expect(mockZadd).not.toHaveBeenCalled()
+    expect(mockZremrangebyscore).not.toHaveBeenCalled()
+    expect(mockExpire).not.toHaveBeenCalled()
+  })
+
   test('adds every message but runs retention maintenance only once per hour', async () => {
     const dateNowSpy = jest
       .spyOn(Date, 'now')

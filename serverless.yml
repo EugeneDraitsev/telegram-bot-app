@@ -42,8 +42,6 @@ functions:
     environment:
       TOKEN: ${env:TOKEN}
       TELEGRAM_WEBHOOK_SECRET: ${env:TELEGRAM_WEBHOOK_SECRET}
-      # Legacy rollback source. Runtime authorization now uses DynamoDB.
-      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       REPLY_WORKER_QUEUE_URL:
         Ref: TelegramReplyWorkerQueue
       REPLY_WORKER_QUEUE_NAME: ${self:custom.replyWorkerQueueName}
@@ -88,7 +86,6 @@ functions:
       EXCHANGE_RATE_API_KEY: ${env:EXCHANGE_RATE_API_KEY}
       OPENAI_API_KEY: ${env:OPENAI_API_KEY}
       GEMINI_API_KEY: ${env:GEMINI_API_KEY}
-      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
       TAVILY_API_KEY: ${env:TAVILY_API_KEY}
@@ -116,7 +113,6 @@ functions:
       COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
       OPENAI_API_KEY: ${env:OPENAI_API_KEY}
-      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       GEMINI_API_KEY: ${env:GEMINI_API_KEY}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
@@ -138,7 +134,6 @@ functions:
           batchSize: 1
           functionResponseType: ReportBatchItemFailures
     environment:
-      OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
       WEBSOCKET_BROADCAST_FUNCTION_NAME: ${self:service}-${sls:stage}-websocket-broadcast-stats
