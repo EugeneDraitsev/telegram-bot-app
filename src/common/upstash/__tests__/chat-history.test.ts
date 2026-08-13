@@ -2,6 +2,8 @@ import type { Message } from 'grammy/types'
 
 import * as utils from '../../utils'
 import {
+  CHAT_HISTORY_PHYSICAL_TTL_SECONDS,
+  clearChatHistoryMaintenanceCache,
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
   getRecentRawHistory,
@@ -44,12 +46,12 @@ function createMessage(
 }
 
 beforeEach(() => {
+  clearChatHistoryMaintenanceCache()
   mockZrange.mockReset()
   mockZadd.mockReset().mockResolvedValue(1)
   mockZremrangebyscore.mockReset().mockResolvedValue(0)
   mockExpire.mockReset().mockResolvedValue(1)
-  mockIsAiEnabledChat.mockReset()
-  mockIsAiEnabledChat.mockReturnValue(true)
+  mockIsAiEnabledChat.mockReset().mockReturnValue(true)
 })
 
 afterAll(() => {
@@ -139,7 +141,7 @@ describe('formatHistoryForDisplay', () => {
 })
 
 describe('getRecentRawHistory', () => {
-  test('limits recent history in Redis and returns chronological messages', async () => {
+  test('limits the visible window without write-amplifying reads', async () => {
     mockZrange.mockResolvedValue([createMessage(3), createMessage(2)])
 
     const history = await getRecentRawHistory(777, 2)
@@ -155,18 +157,21 @@ describe('getRecentRawHistory', () => {
         count: 2,
       },
     )
+    expect(mockZremrangebyscore).not.toHaveBeenCalled()
     expect(history.map((message) => message.message_id)).toEqual([2, 3])
   })
 })
 
 describe('saveMessage', () => {
-  test('prunes and expires the chat key without scanning Redis', async () => {
+  test('adds every message but runs retention maintenance only once per hour', async () => {
     const dateNowSpy = jest
       .spyOn(Date, 'now')
       .mockReturnValue(1_800_000_000_000)
-    const message = createMessage(1)
+    const firstMessage = createMessage(1)
+    const secondMessage = createMessage(2)
 
-    await saveMessage(message, 777)
+    await saveMessage(firstMessage, 777)
+    await saveMessage(secondMessage, 777)
     dateNowSpy.mockRestore()
 
     // Scored by the message's own Telegram date, tie-broken by message id, so
@@ -176,15 +181,21 @@ describe('saveMessage', () => {
       { nx: true },
       {
         score: (1_710_000_000 + 1) * 1000 + 1 / 1000,
-        member: JSON.stringify(message),
+        member: JSON.stringify(firstMessage),
       },
     )
+    expect(mockZadd).toHaveBeenCalledTimes(2)
+    expect(mockZremrangebyscore).toHaveBeenCalledTimes(1)
     expect(mockZremrangebyscore).toHaveBeenCalledWith(
       'chat-history:777',
       0,
       1_800_000_000_000 - 24 * 60 * 60 * 1000,
     )
-    expect(mockExpire).toHaveBeenCalledWith('chat-history:777', 24 * 60 * 60)
+    expect(mockExpire).toHaveBeenCalledTimes(1)
+    expect(mockExpire).toHaveBeenCalledWith(
+      'chat-history:777',
+      CHAT_HISTORY_PHYSICAL_TTL_SECONDS,
+    )
   })
 
   test('keeps same-second messages ordered across a tie-breaker boundary', async () => {

@@ -6,6 +6,7 @@ const mockZremrangebyscore = jest.fn()
 
 const {
   buildMetricsReport,
+  clearMetricsMaintenanceCache,
   getMetrics,
   recordMetric,
   setMetricsRedisClientForTests,
@@ -21,13 +22,38 @@ function mockRedisClient(): Redis {
 }
 
 beforeEach(() => {
+  clearMetricsMaintenanceCache()
   mockZadd.mockReset()
   mockZrange.mockReset()
-  mockZremrangebyscore.mockReset()
+  mockZremrangebyscore.mockReset().mockResolvedValue(0)
   setMetricsRedisClientForTests(mockRedisClient())
 })
 
 describe('recordMetric', () => {
+  test('writes every metric but trims only once per maintenance window', async () => {
+    const dateNowSpy = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(1_800_000_000_000)
+    mockZadd.mockResolvedValue(1)
+
+    const entry = {
+      type: 'model_call',
+      source: 'agentic',
+      name: 'reply_gate',
+      chatId: 123,
+      durationMs: 250,
+      success: true,
+      timestamp: 1_800_000_000_000,
+    } as const
+
+    await recordMetric(entry)
+    await recordMetric(entry)
+    dateNowSpy.mockRestore()
+
+    expect(mockZadd).toHaveBeenCalledTimes(2)
+    expect(mockZremrangebyscore).toHaveBeenCalledTimes(1)
+  })
+
   test('keeps Redis errors non-fatal', async () => {
     mockZadd.mockRejectedValue(new Error('redis down'))
 
@@ -102,6 +128,7 @@ describe('getMetrics', () => {
     expect(entries).toHaveLength(1)
     expect(entries[0].name).toBe('routing')
     expect(entries[0].status).toBe('success')
+    expect(mockZremrangebyscore).toHaveBeenCalledTimes(1)
   })
 
   test('handles auto-deserialized objects from Upstash', async () => {

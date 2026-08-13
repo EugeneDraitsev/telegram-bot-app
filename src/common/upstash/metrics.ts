@@ -9,14 +9,19 @@
 import { randomUUID } from 'node:crypto'
 
 import { logger } from '../logger'
+import { TtlCache } from '../ttl-cache'
 import * as client from './client'
 
 const METRICS_SCHEMA_VERSION = 2
 const METRICS_KEY = `agent:metrics:v${METRICS_SCHEMA_VERSION}`
 /** Keep metrics for 30 days. */
 const METRICS_TTL_MS = 30 * 24 * 60 * 60 * 1000
+export const METRICS_MAINTENANCE_INTERVAL_MS = 60 * 60 * 1000
 const MAX_REPORT_GROUPS = 8
 let redisClientOverride: ReturnType<typeof client.getRedisClient> | undefined
+const metricsMaintenanceCache = new TtlCache<string, true>(
+  METRICS_MAINTENANCE_INTERVAL_MS,
+)
 
 export type MetricStatus = 'success' | 'error' | 'timeout'
 export type MetricSource = 'agentic' | 'command'
@@ -126,12 +131,35 @@ export function setMetricsRedisClientForTests(
   redisClientOverride = redis
 }
 
+export function clearMetricsMaintenanceCache(): void {
+  metricsMaintenanceCache.clear()
+}
+
 function getMetricsRedisClient(): ReturnType<typeof client.getRedisClient> {
   if (redisClientOverride !== undefined) {
     return redisClientOverride
   }
 
   return client.getRedisClient()
+}
+
+async function maintainMetricsRetention(
+  redis: NonNullable<ReturnType<typeof client.getRedisClient>>,
+  now = Date.now(),
+): Promise<void> {
+  if (metricsMaintenanceCache.get(METRICS_KEY, now)) {
+    return
+  }
+
+  // Claim the maintenance window before awaiting so concurrent model/tool
+  // completions in one invocation do not all issue the same trim command.
+  metricsMaintenanceCache.set(METRICS_KEY, true, now)
+  try {
+    await redis.zremrangebyscore(METRICS_KEY, 0, now - METRICS_TTL_MS)
+  } catch (error) {
+    metricsMaintenanceCache.delete(METRICS_KEY)
+    logger.warn({ error }, 'metrics.cleanup_failed')
+  }
 }
 
 export function getMetricStatusFromError(error: unknown): MetricStatus {
@@ -175,7 +203,7 @@ export async function recordMetric(entry: MetricEntry): Promise<void> {
         score: timestamp,
         member: JSON.stringify(metricEntry),
       }),
-      redis.zremrangebyscore(METRICS_KEY, 0, timestamp - METRICS_TTL_MS),
+      maintainMetricsRetention(redis),
     ])
   } catch (error) {
     logger.warn(
@@ -232,7 +260,11 @@ export async function getMetrics(
     const redis = getMetricsRedisClient()
     if (!redis) return []
 
-    const raw = await redis.zrange(METRICS_KEY, fromMs, toMs, { byScore: true })
+    // The range remains exact even if best-effort physical cleanup fails.
+    const [raw] = await Promise.all([
+      redis.zrange(METRICS_KEY, fromMs, toMs, { byScore: true }),
+      maintainMetricsRetention(redis),
+    ])
     return (raw as unknown[])
       .map((value) => {
         try {

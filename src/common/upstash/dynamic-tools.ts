@@ -1,8 +1,18 @@
 import { logger } from '../logger'
+import { TtlCache } from '../ttl-cache'
 import { getRedisClient } from './client'
 
 const DYNAMIC_TOOLS_PREFIX = 'agent-dynamic-tools'
 const DYNAMIC_TOOLS_GLOBAL_SCOPE = 'global'
+export const DYNAMIC_TOOLS_CACHE_TTL_MS = 60_000
+
+const dynamicToolsCache = new TtlCache<string, unknown[]>(
+  DYNAMIC_TOOLS_CACHE_TTL_MS,
+)
+
+export function clearDynamicToolsCache(): void {
+  dynamicToolsCache.clear()
+}
 
 type DynamicToolsScope = string | number | undefined
 
@@ -85,9 +95,17 @@ export async function getDynamicToolsRawByScope(
     return []
   }
 
+  const key = getDynamicToolsKey(scope)
+  const cached = dynamicToolsCache.get(key)
+  if (cached !== undefined) {
+    return [...cached]
+  }
+
   try {
-    const rawData = await redis.get<unknown>(getDynamicToolsKey(scope))
-    return parseDynamicToolsPayload(rawData)
+    const rawData = await redis.get<unknown>(key)
+    const tools = parseDynamicToolsPayload(rawData)
+    dynamicToolsCache.set(key, tools)
+    return [...tools]
   } catch (error) {
     logger.error({ error }, 'Error getting dynamic tools')
     return []
@@ -104,7 +122,9 @@ export async function saveDynamicToolsRaw(
   }
 
   try {
-    await redis.set(getDynamicToolsKey(chatId), JSON.stringify(tools))
+    const key = getDynamicToolsKey(chatId)
+    await redis.set(key, JSON.stringify(tools))
+    dynamicToolsCache.set(key, [...tools])
     return true
   } catch (error) {
     logger.error({ error }, 'Error saving dynamic tools')

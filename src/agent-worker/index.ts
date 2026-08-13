@@ -18,11 +18,7 @@ import {
   runAgenticLoop,
 } from './agent'
 import { prepareAgentCommandMessage } from './commands'
-import {
-  AGENT_WORKER_HEARTBEAT_INTERVAL_MS,
-  type AgentWorkerLease,
-  acquireAgentWorkerLease,
-} from './idempotency'
+import { type AgentWorkerLease, acquireAgentWorkerLease } from './idempotency'
 
 const bot = createBot()
 
@@ -57,33 +53,12 @@ async function resolveBotInfo(
   }
 }
 
-function startLeaseHeartbeat(
-  lease: AgentWorkerLease,
-  messageMeta: ReturnType<typeof getMessageLogMeta>,
-): ReturnType<typeof setInterval> {
-  const heartbeat = setInterval(() => {
-    void lease
-      .renew()
-      .then((renewed) => {
-        if (!renewed) {
-          logger.warn(messageMeta, 'worker.idempotency_lease_lost')
-        }
-      })
-      .catch((error) =>
-        logger.warn({ ...messageMeta, error }, 'worker.heartbeat_failed'),
-      )
-  }, AGENT_WORKER_HEARTBEAT_INTERVAL_MS)
-  heartbeat.unref()
-  return heartbeat
-}
-
 export const processAgentWorker = async (
   event: AgentWorkerPayload,
   context: LambdaContext,
 ) => {
   const startedAt = Date.now()
   let lease: AgentWorkerLease | undefined
-  let heartbeat: ReturnType<typeof setInterval> | undefined
   let chatModel = resolveAgentChatModel()
   try {
     const {
@@ -128,7 +103,6 @@ export const processAgentWorker = async (
       logger.info(messageMeta, 'worker.duplicate_skipped')
       return { statusCode: 200, body: 'Duplicate' }
     }
-    heartbeat = startLeaseHeartbeat(lease, messageMeta)
 
     logger.info(
       {
@@ -207,10 +181,6 @@ export const processAgentWorker = async (
       'worker.failed',
     )
     throw error
-  } finally {
-    if (heartbeat) {
-      clearInterval(heartbeat)
-    }
   }
 }
 

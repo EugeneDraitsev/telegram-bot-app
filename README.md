@@ -79,10 +79,13 @@ ids are used as message groups, so jobs stay ordered inside one chat while
 different chats can run concurrently.
 
 SQS delivery is at least once, so every worker has to survive being handed the
-same message twice. Agent and reply jobs take a Redis lease first: they send
-Telegram messages, and a send can neither be undone nor deduplicated by
-Telegram. Activity jobs need no marker at all — each of their writes is replay
-safe on its own, so redelivery is simply harmless.
+same message twice. Agent and reply jobs take a six-minute Redis lease first:
+they send Telegram messages, and a send can neither be undone nor deduplicated
+by Telegram. The lease is longer than the five-minute Lambda timeout, so it
+needs no heartbeat. Successful jobs replace it with a three-hour completed
+marker using one `SET`; failed jobs release it using one `GETDEL`. Activity jobs
+need no marker at all — each of their writes is replay safe on its own, so
+redelivery is simply harmless.
 
 CloudWatch alarms watch all three worker DLQs. More than three visible messages
 sends an SNS email notification to
@@ -106,8 +109,20 @@ and chat. Every statistics read and update uses this per-user schema.
 chat activity charts and currency rate cards.
 
 `src/telegram-bot/currency-scheduler` posts a currency digest to selected chats
-on weekday mornings and evenings. AI chat history is bounded and expires from
-Redis as messages are written, so it does not need a global key-scan cron.
+on weekday mornings and evenings. AI chat-history reads expose exactly the last
+24 hours. Every write uses `ZADD`; cleanup and a 25-hour physical key expiry are
+refreshed at most once per hour and warm Lambda instance. The extra physical
+hour prevents the visible window from expiring early between refreshes. AI
+metrics likewise use one `ZADD` per event and run 30-day cleanup at most hourly
+per warm instance (or when a report first needs it).
+
+Slow-changing Redis values (chat/global memory and dynamic tools) use a
+60-second per-Lambda-instance TTL cache. Successful writes refresh the local
+cache; other warm instances converge when their TTL expires.
+
+Unit tests fail closed before constructing the shared Upstash client when
+`NODE_ENV=test`. Bun can automatically load a developer's real `.env`, so this
+guard prevents local or CI test runs from consuming production Redis commands.
 
 `src/common` contains shared runtime code: Telegram helpers, DynamoDB access,
 SQS job dispatch, Lambda invocation, Upstash Redis access, logging, formatting
