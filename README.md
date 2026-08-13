@@ -37,8 +37,9 @@ FIFO SQS jobs:
 
 - every message payload goes to `telegram-activity-worker` for statistics,
   chat events, live stats broadcast and AI chat history persistence;
-- `/q` and `/qq` go directly to `telegram-agent-worker` with the reply gate
-  bypassed;
+- registered agent commands defined by
+  [`AGENT_COMMANDS`](src/telegram-bot/agent/index.ts) go directly to
+  `telegram-agent-worker` with the reply gate bypassed;
 - other registered commands go to `telegram-reply-worker`;
 - non-command messages fall through to `telegram-agent-worker`;
 - unregistered slash commands are allowed to reach the agent flow for dynamic
@@ -64,8 +65,8 @@ Registered commands are detected from Telegram `bot_command` entities at offset
 and caption commands still match the same worker-side grammY handlers.
 
 `src/telegram-bot/telegram-reply-worker` owns registered non-agent commands:
-text helpers, search/translate/weather/currency/user/stat commands, and direct
-image or multimodal commands.
+text helpers, search/translate/weather/currency/user/stat commands, and bot
+configuration commands.
 
 `src/agent-worker` owns the agentic flow: chat-enabled checks, reply gating,
 main response generation and tool execution. This keeps AI decisions out of the
