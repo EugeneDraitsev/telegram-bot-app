@@ -6,15 +6,26 @@
 import type { Message } from 'grammy/types'
 
 import { logger } from '../logger'
+import { TtlCache } from '../ttl-cache'
 import { isAiEnabledChat } from '../utils'
 import { getRedisClient } from './client'
 
 const ONE_HOUR = 60 * 60 * 1000
 const TTL_MS = 24 * ONE_HOUR
-const TTL_SECONDS = TTL_MS / 1000
+export const CHAT_HISTORY_MAINTENANCE_INTERVAL_MS = ONE_HOUR
+export const CHAT_HISTORY_PHYSICAL_TTL_SECONDS =
+  (TTL_MS + CHAT_HISTORY_MAINTENANCE_INTERVAL_MS) / 1000
 const CHAT_HISTORY_REDIS_KEY = 'chat-history'
 export const DEFAULT_AGENT_HISTORY_LIMIT = 40
 export const MAX_HISTORY_TOOL_LIMIT = 200
+
+const historyMaintenanceCache = new TtlCache<string, true>(
+  CHAT_HISTORY_MAINTENANCE_INTERVAL_MS,
+)
+
+export function clearChatHistoryMaintenanceCache(): void {
+  historyMaintenanceCache.clear()
+}
 
 interface FormatHistoryForDisplayOptions {
   limit?: number
@@ -122,17 +133,34 @@ export const saveMessage = async (message: Message, chatId?: number) => {
   }
 
   const key = `${CHAT_HISTORY_REDIS_KEY}:${chatId}`
-
   const now = Date.now()
-  await Promise.all([
-    redis.zadd(
-      key,
-      { nx: true },
-      { score: getHistoryScore(message), member: JSON.stringify(message) },
-    ),
-    redis.zremrangebyscore(key, 0, now - TTL_MS),
-    redis.expire(key, TTL_SECONDS),
-  ])
+
+  // ZADD must finish before EXPIRE: on a new chat key, concurrent HTTP calls
+  // could otherwise let EXPIRE run before Redis has created the sorted set.
+  await redis.zadd(
+    key,
+    { nx: true },
+    { score: getHistoryScore(message), member: JSON.stringify(message) },
+  )
+
+  if (historyMaintenanceCache.get(key, now)) {
+    return
+  }
+
+  // High-volume chats used to pay for cleanup + expiry on every message.
+  // Refresh both at most hourly per warm Lambda. The physical TTL includes the
+  // maintenance interval, so the visible 24-hour window can never expire
+  // early when the final write lands just before a refresh is due.
+  historyMaintenanceCache.set(key, true, now)
+  try {
+    await Promise.all([
+      redis.zremrangebyscore(key, 0, now - TTL_MS),
+      redis.expire(key, CHAT_HISTORY_PHYSICAL_TTL_SECONDS),
+    ])
+  } catch (error) {
+    historyMaintenanceCache.delete(key)
+    throw error
+  }
 }
 
 async function readRawHistory(
@@ -141,7 +169,7 @@ async function readRawHistory(
 ): Promise<Message[]> {
   const redis = getRedisClient()
   try {
-    if (!isAiEnabledChat(chatId) || !redis) {
+    if (!redis || !isAiEnabledChat(chatId)) {
       return []
     }
 
@@ -157,6 +185,8 @@ async function readRawHistory(
         ] as const)
       : ([since, now, { byScore: true }] as const)
 
+    // The score range enforces the exact visible 24-hour window. Physical
+    // retention is maintained periodically on writes.
     const rawMessages = await redis.zrange<Message[]>(key, from, to, options)
 
     return normalizedLimit ? rawMessages.reverse() : rawMessages

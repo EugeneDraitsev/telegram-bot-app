@@ -1,6 +1,7 @@
 import * as client from '../client'
 import {
   chatMemoryKey,
+  clearMemoryCache,
   getChatMemory,
   getGlobalMemory,
   MEMORY_GLOBAL_KEY,
@@ -17,6 +18,7 @@ jest.spyOn(client, 'getRedisClient').mockReturnValue({
 } as unknown as ReturnType<typeof client.getRedisClient>)
 
 beforeEach(() => {
+  clearMemoryCache()
   mockGet.mockReset()
   mockSet.mockReset()
 })
@@ -50,6 +52,15 @@ describe('getChatMemory', () => {
     expect(await getChatMemory(123)).toBe('')
     consoleSpy.mockRestore()
   })
+
+  test('caches chat memory inside a warm Lambda instance', async () => {
+    mockGet.mockResolvedValue('cached notes')
+
+    await expect(getChatMemory(123)).resolves.toBe('cached notes')
+    await expect(getChatMemory(123)).resolves.toBe('cached notes')
+
+    expect(mockGet).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('setChatMemory', () => {
@@ -81,6 +92,15 @@ describe('setChatMemory', () => {
     expect(mockSet).toHaveBeenCalledWith('memory:chat:456', 'hello')
   })
 
+  test('updates the local cache after saving', async () => {
+    mockSet.mockResolvedValue('OK')
+
+    await expect(setChatMemory(456, 'new notes')).resolves.toBe(true)
+    await expect(getChatMemory(456)).resolves.toBe('new notes')
+
+    expect(mockGet).not.toHaveBeenCalled()
+  })
+
   test('should return false on redis error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockSet.mockRejectedValue(new Error('redis down'))
@@ -107,6 +127,15 @@ describe('getGlobalMemory', () => {
     mockGet.mockRejectedValue(new Error('redis down'))
     expect(await getGlobalMemory()).toBe('')
     consoleSpy.mockRestore()
+  })
+
+  test('caches global memory inside a warm Lambda instance', async () => {
+    mockGet.mockResolvedValue('global notes')
+
+    await getGlobalMemory()
+    await getGlobalMemory()
+
+    expect(mockGet).toHaveBeenCalledTimes(1)
   })
 })
 

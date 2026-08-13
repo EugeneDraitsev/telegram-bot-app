@@ -1,17 +1,10 @@
-import {
-  acquireWorkerLease,
-  WORKER_LEASE_HEARTBEAT_INTERVAL_MS,
-  type WorkerLease,
-} from '@tg-bot/common'
+import { acquireWorkerLease, type WorkerLease } from '@tg-bot/common'
 
 const AGENT_WORKER_NAMESPACE = 'agent-worker'
 
 export const LOCAL_TEST_MESSAGE_ID = 900001
 
 const LOCAL_TEST_LEASE: WorkerLease = {
-  async renew() {
-    return true
-  },
   async complete() {
     return true
   },
@@ -19,9 +12,6 @@ const LOCAL_TEST_LEASE: WorkerLease = {
     return true
   },
 }
-
-export const AGENT_WORKER_HEARTBEAT_INTERVAL_MS =
-  WORKER_LEASE_HEARTBEAT_INTERVAL_MS
 
 export type AgentWorkerLease = WorkerLease
 

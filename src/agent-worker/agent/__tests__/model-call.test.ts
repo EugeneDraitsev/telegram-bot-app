@@ -1,46 +1,21 @@
+import * as common from '@tg-bot/common'
+
 const mockGenerateText = jest.fn()
-const mockRecordMetric = jest.fn()
-const mockLogger = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-}
+const mockRecordMetric = jest
+  .spyOn(common, 'recordMetric')
+  .mockResolvedValue(undefined)
+
+jest
+  .spyOn(common, 'getAiSdkLanguageModel')
+  .mockImplementation(
+    (config) =>
+      `${config.provider}/${config.model}` as unknown as ReturnType<
+        typeof common.getAiSdkLanguageModel
+      >,
+  )
 
 jest.mock('ai', () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
-}))
-
-jest.mock('@tg-bot/common', () => ({
-  formatAiModelConfig: (config: { provider: string; model: string }) =>
-    `${config.provider}/${config.model}`,
-  getAiSdkLanguageModel: (config: { provider: string; model: string }) =>
-    `${config.provider}/${config.model}`,
-  getAiSdkProviderOptions: (
-    config: { provider: string; model: string },
-    options: {
-      reasoningEffort?: string
-      chatId?: string | number
-      store?: boolean
-      serviceTier?: string
-    },
-  ) => {
-    if (config.provider === 'google') {
-      return {
-        google: options.serviceTier ? { serviceTier: options.serviceTier } : {},
-      }
-    }
-
-    return {
-      openai: {
-        reasoningEffort: options.reasoningEffort,
-        safetyIdentifier:
-          options.chatId === undefined ? undefined : String(options.chatId),
-        store: options.store,
-      },
-    }
-  },
-  logger: mockLogger,
-  recordMetric: mockRecordMetric,
 }))
 
 jest.mock('../config', () => ({
@@ -72,6 +47,10 @@ const generateModelWithRetry = async (
 ) => (await generateModelWithRetryWithInfo(...args)).response
 
 describe('model-call', () => {
+  afterAll(() => {
+    jest.restoreAllMocks()
+  })
+
   beforeEach(() => {
     jest.useRealTimers()
     mockGenerateText.mockReset()

@@ -24,7 +24,6 @@ describe('agent worker idempotency', () => {
       'request-id',
     )
 
-    expect(await lease?.renew()).toBe(true)
     expect(await lease?.complete()).toBe(true)
     expect(await lease?.release()).toBe(true)
   })

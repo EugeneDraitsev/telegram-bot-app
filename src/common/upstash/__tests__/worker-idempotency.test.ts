@@ -1,18 +1,21 @@
+import { readFileSync } from 'node:fs'
+
 import * as client from '../client'
 import {
   acquireWorkerLease,
   getWorkerIdempotencyKey,
   runIdempotentWorkerTask,
+  WORKER_LEASE_TTL_SECONDS,
 } from '../worker-idempotency'
 
 const mockSet = jest.fn()
-const mockEval = jest.fn()
-const redis = { set: mockSet, eval: mockEval }
+const mockGetdel = jest.fn()
+const redis = { set: mockSet, getdel: mockGetdel }
 const getRedisClientSpy = jest.spyOn(client, 'getRedisClient')
 
 beforeEach(() => {
   mockSet.mockReset()
-  mockEval.mockReset()
+  mockGetdel.mockReset()
   getRedisClientSpy.mockReturnValue(
     redis as unknown as ReturnType<typeof client.getRedisClient>,
   )
@@ -23,18 +26,33 @@ afterAll(() => {
 })
 
 describe('worker idempotency', () => {
+  test.each(['telegram-reply-worker', 'telegram-agent-worker'])(
+    'lease outlives the %s Lambda timeout',
+    (functionName) => {
+      const lines = readFileSync('serverless.yml', 'utf8').split('\n')
+      const start = lines.indexOf(`  ${functionName}:`)
+      const remaining = lines.slice(start + 1)
+      const end = remaining.findIndex((line) => /^ {2}\S/.test(line))
+      const block = end === -1 ? remaining : remaining.slice(0, end)
+      const timeout = Number(
+        block.find((line) => /^ {4}timeout:/.test(line))?.split(':')[1],
+      )
+
+      expect(start).toBeGreaterThanOrEqual(0)
+      expect(Number.isFinite(timeout)).toBe(true)
+      expect(WORKER_LEASE_TTL_SECONDS).toBeGreaterThan(timeout)
+    },
+  )
+
   test('builds a namespaced per-message key', () => {
     expect(getWorkerIdempotencyKey('reply-worker', -100, 42)).toBe(
       'reply-worker:message:-100:42',
     )
   })
 
-  test('acquires a lease and exposes atomic owner operations', async () => {
-    mockSet.mockResolvedValue('OK')
-    mockEval
-      .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce('OK')
-      .mockResolvedValueOnce(1)
+  test('acquires a bounded lease and exposes single-command operations', async () => {
+    mockSet.mockResolvedValueOnce('OK').mockResolvedValueOnce('request-1')
+    mockGetdel.mockResolvedValueOnce('request-1')
 
     const lease = await acquireWorkerLease(
       'reply-worker',
@@ -47,11 +65,16 @@ describe('worker idempotency', () => {
     expect(mockSet).toHaveBeenCalledWith(
       'reply-worker:message:-100:42',
       'request-1',
-      { ex: 45, nx: true },
+      { ex: 360, nx: true },
     )
-    expect(await lease?.renew()).toBe(true)
     expect(await lease?.complete()).toBe(true)
-    expect(await lease?.release()).toBe(true)
+    expect(mockSet).toHaveBeenLastCalledWith(
+      'reply-worker:message:-100:42',
+      'completed',
+      { ex: 3 * 60 * 60, get: true, xx: true },
+    )
+    expect(await lease?.release()).toBe(false)
+    expect(mockGetdel).not.toHaveBeenCalled()
   })
 
   test('skips a completed or in-flight task', async () => {
@@ -71,8 +94,7 @@ describe('worker idempotency', () => {
   })
 
   test('marks successful tasks as completed', async () => {
-    mockSet.mockResolvedValue('OK')
-    mockEval.mockResolvedValueOnce('OK')
+    mockSet.mockResolvedValueOnce('OK').mockResolvedValueOnce('request-3')
 
     await expect(
       runIdempotentWorkerTask({
@@ -88,7 +110,7 @@ describe('worker idempotency', () => {
   test('releases failed tasks so Lambda retries can run them', async () => {
     const error = new Error('write failed')
     mockSet.mockResolvedValue('OK')
-    mockEval.mockResolvedValueOnce(1)
+    mockGetdel.mockResolvedValueOnce('request-4')
 
     await expect(
       runIdempotentWorkerTask({
@@ -101,10 +123,8 @@ describe('worker idempotency', () => {
         },
       }),
     ).rejects.toBe(error)
-    expect(mockEval).toHaveBeenCalledWith(
-      expect.any(String),
-      ['activity-statistics:message:-100:42'],
-      ['request-4'],
+    expect(mockGetdel).toHaveBeenCalledWith(
+      'activity-statistics:message:-100:42',
     )
   })
 

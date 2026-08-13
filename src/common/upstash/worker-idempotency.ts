@@ -1,7 +1,11 @@
 import { logger } from '../logger'
 import { getRedisClient } from './client'
 
-const LEASE_TTL_SECONDS = 45
+// Both Redis-backed workers have a 300 second Lambda timeout. Keeping the
+// processing marker alive for one extra minute means it cannot expire while a
+// healthy invocation is still able to produce Telegram side effects. That
+// removes the need for command-heavy Lua heartbeats.
+export const WORKER_LEASE_TTL_SECONDS = 6 * 60
 // Deliberately generous rather than derived: nothing bounds redelivery lag to a
 // few hours. maxReceiveCount limits attempts, not the time between them, a
 // message can wait out the whole MessageRetentionPeriod behind a throttled or
@@ -11,31 +15,7 @@ const LEASE_TTL_SECONDS = 45
 // cost if a pathological one ever exceeds it.
 const COMPLETED_TTL_SECONDS = 60 * 60 * 3
 
-const RENEW_LEASE_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("EXPIRE", KEYS[1], ARGV[2])
-end
-return 0
-`
-
-const COMPLETE_LEASE_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("SET", KEYS[1], "completed", "EX", ARGV[2])
-end
-return nil
-`
-
-const RELEASE_LEASE_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("DEL", KEYS[1])
-end
-return 0
-`
-
-export const WORKER_LEASE_HEARTBEAT_INTERVAL_MS = 15_000
-
 export interface WorkerLease {
-  renew(): Promise<boolean>
   complete(): Promise<boolean>
   release(): Promise<boolean>
 }
@@ -61,60 +41,37 @@ export async function acquireWorkerLease(
 
   const key = getWorkerIdempotencyKey(namespace, chatId, messageId)
   const acquired = await redis.set(key, ownerToken, {
-    ex: LEASE_TTL_SECONDS,
+    ex: WORKER_LEASE_TTL_SECONDS,
     nx: true,
   })
   if (acquired !== 'OK') {
     return null
   }
 
+  // Production only ever settles once, but keep the lease object safe if a
+  // caller accidentally tries both paths. GETDEL is intentionally
+  // unconditional under the fixed-lease invariant, so calling it after a
+  // successful completion would otherwise remove the completed marker.
+  let settled = false
+
   return {
-    async renew() {
-      const result = await redis.eval(
-        RENEW_LEASE_SCRIPT,
-        [key],
-        [ownerToken, String(LEASE_TTL_SECONDS)],
-      )
-      return result === 1
-    },
     async complete() {
-      const result = await redis.eval(
-        COMPLETE_LEASE_SCRIPT,
-        [key],
-        [ownerToken, String(COMPLETED_TTL_SECONDS)],
-      )
-      return result === 'OK'
+      if (settled) return false
+      settled = true
+      const previousOwner = await redis.set(key, 'completed', {
+        ex: COMPLETED_TTL_SECONDS,
+        get: true,
+        xx: true,
+      })
+      return previousOwner === ownerToken
     },
     async release() {
-      const result = await redis.eval(RELEASE_LEASE_SCRIPT, [key], [ownerToken])
-      return result === 1
+      if (settled) return false
+      settled = true
+      const previousOwner = await redis.getdel<string>(key)
+      return previousOwner === ownerToken
     },
   }
-}
-
-function startLeaseHeartbeat(
-  lease: WorkerLease,
-  namespace: string,
-  chatId: string | number,
-  messageId: number,
-) {
-  const heartbeat = setInterval(() => {
-    void lease
-      .renew()
-      .then((renewed) => {
-        if (!renewed) {
-          logger.warn({ namespace, chatId, messageId }, 'worker.lease_lost')
-        }
-      })
-      .catch((error) =>
-        logger.warn(
-          { namespace, chatId, messageId, error },
-          'worker.heartbeat_failed',
-        ),
-      )
-  }, WORKER_LEASE_HEARTBEAT_INTERVAL_MS)
-  heartbeat.unref()
-  return heartbeat
 }
 
 export async function runIdempotentWorkerTask<T>({
@@ -140,7 +97,6 @@ export async function runIdempotentWorkerTask<T>({
     return { duplicate: true }
   }
 
-  const heartbeat = startLeaseHeartbeat(lease, namespace, chatId, messageId)
   try {
     const value = await task()
     try {
@@ -167,7 +123,5 @@ export async function runIdempotentWorkerTask<T>({
       )
     }
     throw error
-  } finally {
-    clearInterval(heartbeat)
   }
 }
