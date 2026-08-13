@@ -3,9 +3,11 @@ useDotenv: true
 
 params:
   default:
+    chatConfigurationTableName: ${self:service}-${sls:stage}-chat-configuration
     chatUserStatisticsTableName: ${self:service}-${sls:stage}-chat-user-statistics
     chatEventsTableName: ${self:service}-${sls:stage}-chat-events
   prod:
+    chatConfigurationTableName: chat-configuration
     chatUserStatisticsTableName: chat-user-statistics
     chatEventsTableName: chat-events
 
@@ -266,6 +268,7 @@ custom:
   websocketConnectionsChatIdIndexName: ${self:service}-${sls:stage}-websocket-connections-chat-id
   chatUserStatisticsTableName: ${param:chatUserStatisticsTableName}
   chatEventsTableName: ${param:chatEventsTableName}
+  chatConfigurationTableName: ${param:chatConfigurationTableName}
   frontendBaseUrl: ${env:FRONTEND_BASE_URL, 'https://telegram-bot-ui.vercel.app'}
   serverless-offline:
     httpPort: 4000

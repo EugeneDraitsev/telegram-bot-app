@@ -105,6 +105,27 @@ endpoint.
 User counters live only in `chat-user-statistics`, one DynamoDB item per user
 and chat. Every statistics read and update uses this per-user schema.
 
+The permanent `chat-configuration` table is provisioned by the application
+CloudFormation stack with on-demand billing, deletion protection, retention
+policies, and point-in-time recovery. Until the runtime cutover is deployed,
+the live bot still uses `OPENAI_CHAT_IDS` and Redis for chat configuration.
+
+After the infrastructure-only deploy, set `BOT_OWNER_ID` in the operator
+environment and run the one-time migration in two explicit steps:
+
+```sh
+# Reads the deployed legacy Lambda + Redis, validates DynamoDB, writes only a
+# local gitignored report, and performs no DynamoDB writes.
+bun run migrate:chat-configuration
+
+# Synchronizes migration-owned rows and verifies every write strongly.
+bun run migrate:chat-configuration --apply
+```
+
+The migration never creates the table and never prints or records Redis
+credentials. Keep `OPENAI_CHAT_IDS` and the legacy Redis key intact through the
+cutover rollback window.
+
 `src/sharp-renderer` renders PNG images for Telegram messages, including
 chat activity charts and currency rate cards.
 

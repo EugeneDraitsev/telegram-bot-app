@@ -209,6 +209,30 @@ Resources:
         AttributeName: ttl
         Enabled: true
 
+  ChatConfigurationTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: ${self:custom.chatConfigurationTableName}
+      AttributeDefinitions:
+        - AttributeName: chatId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: chatId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: application
+          Value: telegram
+        - Key: data-class
+          Value: permanent-configuration
+        - Key: managed-by
+          Value: cloudformation
+
   WebsocketBroadcastStatsRole:
     Type: AWS::IAM::Role
     Properties:
