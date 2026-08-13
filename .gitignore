@@ -25,6 +25,7 @@ node_modules
 
 *.iml
 .serverless
+chat-configuration-migration-report.json
 .layers
 .webpack
 yarn-error.log
