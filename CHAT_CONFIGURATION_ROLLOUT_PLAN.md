@@ -117,6 +117,18 @@ No records are migrated in this phase.
 Set the supplied numeric `BOT_OWNER_ID` only in the operator environment. Do
 not commit its value.
 
+The AWS principal running the migration needs only:
+
+- `lambda:GetFunctionConfiguration` on the deployed legacy Lambda used as the
+  source;
+- `dynamodb:DescribeTable` and `dynamodb:DescribeContinuousBackups` on the chat
+  configuration table;
+- `dynamodb:Scan`, `dynamodb:PutItem`, and `dynamodb:GetItem` on that table.
+
+It does not need table creation, deletion, CloudFormation, or application
+deployment permissions. If the Lambda environment uses a customer-managed KMS
+key, the operator may also need `kms:Decrypt` for that key.
+
 1. Run the migration in dry-run mode.
 2. Read `OPENAI_CHAT_IDS` and Upstash credentials from the currently deployed
    legacy Lambda configuration without printing secrets.
@@ -136,7 +148,10 @@ not commit its value.
 6. Run apply mode only after the dry-run counts are approved.
 7. Read every written item back with strongly consistent reads and compare both
    flags.
-8. Do not delete or mutate `OPENAI_CHAT_IDS` or the Redis key. They are required
+8. Treat any protected-row skip as a failed migration. The report is still
+   written for diagnosis, but the command must exit nonzero and runtime cutover
+   must not proceed until every skipped row is understood and resolved.
+9. Do not delete or mutate `OPENAI_CHAT_IDS` or the Redis key. They are required
    for rollback.
 
 Migration writes must be idempotent. Migration-owned rows may be updated by a

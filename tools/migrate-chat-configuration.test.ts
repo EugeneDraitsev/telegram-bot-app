@@ -6,6 +6,7 @@ import {
 } from '@aws-sdk/lib-dynamodb'
 
 import {
+  assertNoProtectedRowsSkipped,
   buildMigratedChatConfigurations,
   parseLegacyChatIds,
   writeAndVerify,
@@ -82,6 +83,13 @@ describe('chat configuration migration planning', () => {
       verifiedChatIds: ['1'],
     })
     expect(send).toHaveBeenCalledTimes(3)
+  })
+
+  test('blocks cutover when protected rows were skipped', () => {
+    expect(() => assertNoProtectedRowsSkipped([])).not.toThrow()
+    expect(() => assertNoProtectedRowsSkipped(['2', '-100'])).toThrow(
+      'Migration incomplete: protected rows were skipped for chat IDs 2, -100',
+    )
   })
 
   test('requires the CloudFormation table instead of creating one', () => {

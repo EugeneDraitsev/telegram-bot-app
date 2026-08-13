@@ -39,6 +39,16 @@ export type MigrationWriteSummary = {
   verifiedChatIds: string[]
 }
 
+export function assertNoProtectedRowsSkipped(
+  skippedProtectedChatIds: readonly string[],
+): void {
+  if (!skippedProtectedChatIds.length) return
+
+  throw new Error(
+    `Migration incomplete: protected rows were skipped for chat IDs ${skippedProtectedChatIds.join(', ')}. Review the migration report and resolve them before runtime cutover.`,
+  )
+}
+
 type MigrationOptions = {
   apply: boolean
   functionName: string
@@ -429,6 +439,7 @@ async function main(): Promise<void> {
   if (summary.skippedProtectedChatIds.length) {
     writeLine(`Skipped chat IDs: ${summary.skippedProtectedChatIds.join(', ')}`)
   }
+  assertNoProtectedRowsSkipped(summary.skippedProtectedChatIds)
   writeLine('No Lambda code or application deployment was changed.')
 }
 
