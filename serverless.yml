@@ -23,6 +23,9 @@ provider:
     region: eu-central-1
     stage: ${sls:stage}
     FRONTEND_BASE_URL: ${self:custom.frontendBaseUrl}
+    AGENTIC_BOT_ENABLED: ${env:AGENTIC_BOT_ENABLED, 'true'}
+    BOT_OWNER_ID: ${env:BOT_OWNER_ID}
+    CHAT_CONFIGURATION_TABLE_NAME: ${self:custom.chatConfigurationTableName}
     CHAT_USER_STATISTICS_TABLE_NAME: ${self:custom.runtimeChatUserStatisticsTableNameByStage.${sls:stage}, self:custom.chatUserStatisticsTableName}
     CHAT_EVENTS_TABLE_NAME: ${self:custom.runtimeChatEventsTableNameByStage.${sls:stage}, self:custom.chatEventsTableName}
     SHARP_RENDERER_FUNCTION_NAME: ${self:service}-${sls:stage}-sharp-renderer
@@ -39,8 +42,7 @@ functions:
     environment:
       TOKEN: ${env:TOKEN}
       TELEGRAM_WEBHOOK_SECRET: ${env:TELEGRAM_WEBHOOK_SECRET}
-      # Required: handleMessageWithAgent gates agent dispatch on this list.
-      # Without it ingress silently drops every agent message.
+      # Legacy rollback source. Runtime authorization now uses DynamoDB.
       OPENAI_CHAT_IDS: ${env:OPENAI_CHAT_IDS}
       REPLY_WORKER_QUEUE_URL:
         Ref: TelegramReplyWorkerQueue

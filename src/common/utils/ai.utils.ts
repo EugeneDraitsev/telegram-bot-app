@@ -2,14 +2,6 @@
  * Shared AI utilities and constants
  */
 
-const AI_ALLOWED_CHAT_IDS = (process.env.OPENAI_CHAT_IDS ?? '')
-  .split(',')
-  .map((id) => id.trim())
-  .filter(Boolean)
-
-export const isAiEnabledChat = (chatId?: string | number) =>
-  AI_ALLOWED_CHAT_IDS.includes(String(chatId))
-
 const baseSystemInstructions = `Instructions:
   - You are a helpful helper for people in the chat (4-20 people)
   - Default to an informal Telegram group-chat voice, not a polite assistant voice.

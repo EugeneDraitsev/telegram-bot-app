@@ -4,7 +4,9 @@
 
 Please review this change set for correctness, retry safety, AWS IAM/CloudFormation wiring, and whether the expected Upstash command reduction is real. The production symptom was roughly 252K of the 500K monthly free-tier commands by August 13, with `GET`, `SET`, `EVAL`, `ZADD`, and `EXPIRE` dominating.
 
-This local review branch has not been pushed or deployed.
+This brief describes commit R on `codex/redis-command-reduction`. The stacked
+DynamoDB branch intentionally changes chat configuration in later commits.
+Neither local branch has been pushed or deployed.
 
 ## What changed
 
@@ -112,7 +114,7 @@ These are code-path estimates, not production measurements. Validate with Upstas
 4. Check that no code path can call `release()` after ownership could legitimately transfer.
 5. Check the 60-second cross-instance staleness tradeoff after memory and dynamic-tool updates.
 6. Check that history reads keep an exact 24-hour window, metric cleanup failures stay non-fatal, and failed history maintenance is safe to retry through SQS/idempotent `ZADD NX`.
-7. Confirm `OPENAI_CHAT_IDS` and the Redis-backed `/toggle` behavior are unchanged in this branch.
+7. Confirm `OPENAI_CHAT_IDS` and Redis-backed `/toggle` behavior are unchanged in commit R.
 8. Look for any remaining Lua `EVAL` calls or heartbeat timers.
 9. Confirm the `NODE_ENV=test` Upstash guard cannot affect deployed Lambdas and that Redis unit tests use injected clients.
 

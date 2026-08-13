@@ -5,9 +5,9 @@
 
 import type { Message } from 'grammy/types'
 
+import { isAiAllowedChat } from '../aws/dynamo'
 import { logger } from '../logger'
 import { TtlCache } from '../ttl-cache'
-import { isAiEnabledChat } from '../utils'
 import { getRedisClient } from './client'
 
 const ONE_HOUR = 60 * 60 * 1000
@@ -128,7 +128,7 @@ function getHistoryScore(message: Message): number {
  */
 export const saveMessage = async (message: Message, chatId?: number) => {
   const redis = getRedisClient()
-  if (!redis || !chatId || !isAiEnabledChat(chatId)) {
+  if (!redis || !chatId || !(await isAiAllowedChat(chatId))) {
     return
   }
 
@@ -169,7 +169,7 @@ async function readRawHistory(
 ): Promise<Message[]> {
   const redis = getRedisClient()
   try {
-    if (!redis || !isAiEnabledChat(chatId)) {
+    if (!redis || !(await isAiAllowedChat(chatId))) {
       return []
     }
 

@@ -45,11 +45,19 @@ FIFO SQS jobs:
   commands;
 - commands addressed to another bot are ignored.
 
-Agent dispatch is gated on `OPENAI_CHAT_IDS` in ingress. The worker rejects
-chats outside that list anyway, so checking the in-memory copy before enqueuing
-costs no I/O and keeps unrelated chats from spending a queue message and a
-worker invocation. Every function that runs this check must declare the
-variable; `serverless-env.test.ts` asserts that.
+Agent dispatch is gated by the permanent `chat-configuration` DynamoDB item in
+ingress. The five-second warm-instance cache keeps this to at most one strongly
+consistent `GetItem` per active chat/instance/window; disabled chats consume no
+agent SQS message or worker invocation. DynamoDB failures fail closed and feed
+an alarm from the ingress, agent, and activity log groups. The agent worker
+repeats the check before any AI work to cover stale, direct, and retried queue
+deliveries.
+
+Effective access requires the global kill switch, owner-controlled `aiAllowed`,
+and administrator-controlled `agenticEnabled` to all be true. Only the numeric
+`BOT_OWNER_ID` can use `/allowai` and `/disallowai`; Telegram chat creators and
+administrators can use `/toggle` after the owner allows the chat. Configuration
+changes propagate across warm Lambda instances within about five seconds.
 
 Registered commands are detected from Telegram `bot_command` entities at offset
 0. Command names are normalized before worker dispatch so uppercase commands
@@ -107,8 +115,8 @@ and chat. Every statistics read and update uses this per-user schema.
 
 The permanent `chat-configuration` table is provisioned by the application
 CloudFormation stack with on-demand billing, deletion protection, retention
-policies, and point-in-time recovery. Until the runtime cutover is deployed,
-the live bot still uses `OPENAI_CHAT_IDS` and Redis for chat configuration.
+policies, and point-in-time recovery. It has one String partition key
+(`chatId`), no sort key, and no TTL.
 
 After the infrastructure-only deploy, set `BOT_OWNER_ID` in the operator
 environment and run the one-time migration in two explicit steps:
@@ -123,17 +131,19 @@ bun run migrate:chat-configuration --apply
 ```
 
 The migration never creates the table and never prints or records Redis
-credentials. Keep `OPENAI_CHAT_IDS` and the legacy Redis key intact through the
-cutover rollback window.
+credentials. `OPENAI_CHAT_IDS` remains in deployed Lambda configuration and the
+legacy Redis key remains untouched through the rollback window, even though the
+new runtime no longer uses either for authorization.
 
 `src/sharp-renderer` renders PNG images for Telegram messages, including
 chat activity charts and currency rate cards.
 
 `src/telegram-bot/currency-scheduler` posts a currency digest to selected chats
 on weekday mornings and evenings. AI chat-history reads expose exactly the last
-24 hours. Every write uses `ZADD`; cleanup and a 25-hour physical key expiry are
-refreshed at most once per hour and warm Lambda instance. The extra physical
-hour prevents the visible window from expiring early between refreshes. AI
+24 hours for every owner-allowed chat, including while `/toggle` is off. Every
+write uses `ZADD`; cleanup and a 25-hour physical key expiry are refreshed at
+most once per hour and warm Lambda instance. The extra physical hour prevents
+the visible window from expiring early between refreshes. AI
 metrics likewise use one `ZADD` per event and run 30-day cleanup at most hourly
 per warm instance (or when a report first needs it).
 

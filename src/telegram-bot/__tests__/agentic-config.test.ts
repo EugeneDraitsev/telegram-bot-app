@@ -5,25 +5,35 @@ import setupAgenticConfig from '../configuration-commands/agentic-config'
 
 type CommandHandler = (ctx: Context) => Promise<unknown>
 
-function setupHandler(): CommandHandler {
-  let handler: CommandHandler | undefined
+function setupHandlers(): Map<string, CommandHandler> {
+  const handlers = new Map<string, CommandHandler>()
   const bot = {
-    command(_command: string, value: CommandHandler) {
-      handler = value
+    command(command: string, value: CommandHandler) {
+      handlers.set(command, value)
       return bot
     },
   } as unknown as Bot
 
   setupAgenticConfig(bot)
-  if (!handler) throw new Error('toggle handler was not registered')
-  return handler
+  return handlers
 }
 
-function createContext(status: string) {
+function createContext({
+  status = 'administrator',
+  userId = 7,
+  chatId = -100,
+  text = '/toggle',
+}: {
+  status?: string
+  userId?: number
+  chatId?: number
+  text?: string
+} = {}) {
   const message = {
     message_id: 1,
-    chat: { id: -100, type: 'group' },
-    from: { id: 7 },
+    chat: { id: chatId, type: 'group' },
+    from: { id: userId },
+    text,
   }
   return {
     chat: message.chat,
@@ -36,18 +46,32 @@ function createContext(status: string) {
   } as unknown as Context
 }
 
-describe('/toggle authorization', () => {
+describe('agentic configuration command authorization', () => {
   const toggleSpy = jest.spyOn(common, 'toggleAgenticChat')
+  const allowSpy = jest.spyOn(common, 'setChatAiAllowed')
+  const originalOwnerId = process.env.BOT_OWNER_ID
 
   beforeEach(() => {
     toggleSpy.mockReset()
+    allowSpy.mockReset()
+    process.env.BOT_OWNER_ID = '42'
   })
 
-  test('rejects regular chat members', async () => {
-    const handler = setupHandler()
-    const ctx = createContext('member')
+  afterAll(() => {
+    toggleSpy.mockRestore()
+    allowSpy.mockRestore()
+    if (originalOwnerId === undefined) {
+      delete process.env.BOT_OWNER_ID
+    } else {
+      process.env.BOT_OWNER_ID = originalOwnerId
+    }
+  })
 
-    await handler(ctx)
+  test('/toggle rejects regular chat members', async () => {
+    const handler = setupHandlers().get('toggle')
+    const ctx = createContext({ status: 'member' })
+
+    await handler?.(ctx)
 
     expect(toggleSpy).not.toHaveBeenCalled()
     expect(ctx.reply).toHaveBeenCalledWith(
@@ -55,14 +79,89 @@ describe('/toggle authorization', () => {
     )
   })
 
-  test('allows chat administrators', async () => {
+  test('/toggle remains available to chat administrators', async () => {
     toggleSpy.mockResolvedValue({ enabled: true })
-    const handler = setupHandler()
-    const ctx = createContext('administrator')
+    const handler = setupHandlers().get('toggle')
+    const ctx = createContext()
 
-    await handler(ctx)
+    await handler?.(ctx)
 
-    expect(toggleSpy).toHaveBeenCalledWith(-100)
-    expect(ctx.reply).toHaveBeenCalledWith('Agentic bot: ✅ Enabled')
+    expect(toggleSpy).toHaveBeenCalledWith(-100, 7)
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.stringContaining('Agentic bot: ✅ Enabled'),
+    )
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.stringContaining('within ~5 seconds'),
+    )
+  })
+
+  test('/allowai rejects everybody except the configured bot owner', async () => {
+    const handler = setupHandlers().get('allowai')
+    const ctx = createContext({ userId: 7, text: '/allowai' })
+
+    await handler?.(ctx)
+
+    expect(allowSpy).not.toHaveBeenCalled()
+    expect(ctx.reply).toHaveBeenCalledWith(
+      '❌ Only the bot owner can change the AI allowlist',
+    )
+  })
+
+  test('/allowai lets the owner allow the current chat without enabling it', async () => {
+    allowSpy.mockResolvedValue({
+      configuration: {
+        chatId: '-100',
+        aiAllowed: true,
+        agenticEnabled: false,
+        version: 1,
+      },
+    })
+    const handler = setupHandlers().get('allowai')
+    const ctx = createContext({ userId: 42, text: '/allowai' })
+
+    await handler?.(ctx)
+
+    expect(allowSpy).toHaveBeenCalledWith(-100, true, 42)
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.stringContaining('✅ Allowed'),
+      { parse_mode: 'HTML' },
+    )
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.stringContaining('a chat administrator can run /toggle'),
+      { parse_mode: 'HTML' },
+    )
+  })
+
+  test('/disallowai accepts an explicit target chat id in the owner DM', async () => {
+    allowSpy.mockResolvedValue({
+      configuration: {
+        chatId: '-100777',
+        aiAllowed: false,
+        agenticEnabled: false,
+        version: 2,
+      },
+    })
+    const handler = setupHandlers().get('disallowai')
+    const ctx = createContext({
+      userId: 42,
+      chatId: 42,
+      text: '/disallowai -100777',
+    })
+
+    await handler?.(ctx)
+
+    expect(allowSpy).toHaveBeenCalledWith(-100777, false, 42)
+  })
+
+  test('owner commands reject an invalid explicit chat id', async () => {
+    const handler = setupHandlers().get('allowai')
+    const ctx = createContext({ userId: 42, text: '/allowai not-a-chat' })
+
+    await handler?.(ctx)
+
+    expect(allowSpy).not.toHaveBeenCalled()
+    expect(ctx.reply).toHaveBeenCalledWith(
+      '❌ Provide a valid numeric chat ID: /allowai -100123456',
+    )
   })
 })

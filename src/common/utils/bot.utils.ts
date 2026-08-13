@@ -8,7 +8,7 @@ import type { Message } from 'grammy/types'
 
 import { logger } from '../logger'
 import { saveMessage } from '../upstash'
-import { cleanModelMessage, isAiEnabledChat } from './ai.utils'
+import { cleanModelMessage } from './ai.utils'
 
 /**
  * Wrapper that sets `duplex: 'half'` whenever a request has a body
@@ -88,7 +88,7 @@ export async function saveBotReplyToHistory(messageLike: unknown) {
   }
 
   const chatId = parseChatId(message)
-  if (!chatId || !isAiEnabledChat(chatId)) {
+  if (!chatId) {
     return
   }
 

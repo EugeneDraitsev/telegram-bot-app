@@ -1,7 +1,7 @@
 # DynamoDB chat configuration rollout plan
 
-Status: implemented as local stacked commits for review. Nothing in this
-document authorizes a push, AWS mutation, migration, or deployment.
+Status: implemented as stacked draft pull requests for review. Nothing in this
+document authorizes a merge, AWS mutation, migration, or deployment.
 
 ## Decision
 
@@ -16,10 +16,20 @@ A Git commit alone does not create an AWS table. The infrastructure-only commit
 must be deployed before migration. Until that deployment succeeds, the old
 runtime remains the only source of truth.
 
-The local branch layout keeps the independently deployable boundaries intact:
+The branch and draft-PR layout keeps the independently deployable boundaries
+intact:
 
-- `codex/redis-command-reduction`: Redis-only commit R;
-- `codex/dynamo-chat-configuration`: commit A followed by runtime commit B.
+- PR #54, `codex/redis-command-reduction` -> `main`: Redis-only commit R;
+- PR #55, `codex/dynamo-chat-configuration-infra` -> R: infra-only commit A;
+- PR #56, `codex/dynamo-chat-configuration` -> A: runtime commit B and its
+  hardening/docs.
+
+All three PRs stay draft. After R merges and its production deployment is
+healthy, retarget A to `main` and let its PR checks run before merging it. After
+A deploys, migrate and verify the table. Only after the final sync and short
+`/toggle` freeze should B be retargeted to `main`, checked, and considered for
+merge. The PR workflow runs only when a PR targets `main`, so stacked A/B do not
+receive GitHub checks until their turn; local checks cover their current diffs.
 
 ## Identity and authorization
 
@@ -178,6 +188,8 @@ Commit B contains the runtime cutover:
 - cached DynamoDB enabled checks in ingress and workers;
 - a five-second ingress gate that prevents disabled chats from consuming SQS
   messages or agent-worker concurrency;
+- strongly consistent authorization reads on cache misses;
+- an SNS-backed alarm for fail-closed configuration read errors;
 - owner-only `/allowai` and `/disallowai`;
 - DynamoDB-backed admin `/toggle` with optimistic concurrency;
 - least-privilege Lambda IAM;
@@ -204,8 +216,9 @@ Verify in production:
 6. A regular member cannot use `/toggle`; a creator/administrator can.
 7. `/disallowai` also forces `agenticEnabled=false`.
 8. DynamoDB errors fail closed in Telegram ingress and enqueue nothing.
-9. WebSocket connection/event/statistics tables continue unchanged.
-10. Upstash `EVAL`, `GET`, `EXPIRE`, and retention-cleanup traffic falls as
+9. A fail-closed configuration read raises the chat-configuration alarm.
+10. WebSocket connection/event/statistics tables continue unchanged.
+11. Upstash `EVAL`, `GET`, `EXPIRE`, and retention-cleanup traffic falls as
     predicted; unit tests do not contact production Upstash.
 
 Observe Lambda errors, SQS retries/DLQs, DynamoDB throttles, and Upstash command
@@ -241,12 +254,17 @@ Only after the rollback window closes:
 ## Copy-paste review request for Claude
 
 ```text
-Review the local branches in D:\environment\telegram-bot-app. Do not edit
-files, stage, commit, push, deploy, run the migration, or mutate AWS/Redis.
+Review these stacked draft PRs and the local checkout at
+D:\environment\telegram-bot-app. Do not edit files, stage, commit, push, merge,
+retarget PRs, deploy, run the migration, or mutate AWS/Redis:
+
+- PR #54: Redis command reduction, base main
+- PR #55: infrastructure/migration A, base PR #54 branch
+- PR #56: DynamoDB runtime cutover B, base PR #55 branch
 
 First read AGENTS.md, CHAT_CONFIGURATION_ROLLOUT_PLAN.md, and
-REDIS_COMMAND_REDUCTION_REVIEW.md. Then inspect the actual git diff and verify
-whether it can be safely reshaped into the staged rollout below:
+REDIS_COMMAND_REDUCTION_REVIEW.md. Inspect each PR relative to its actual base,
+not every branch relative to main. Verify this staged rollout:
 
 0. Independent commit/deploy R if urgent: Redis command reductions only, with
    the legacy chat configuration behavior untouched.
@@ -258,7 +276,18 @@ whether it can be safely reshaped into the staged rollout below:
 5. Keep legacy sources for rollback, observe, then clean up later.
 
 The owner identity must be provided through BOT_OWNER_ID and must not be
-hardcoded in committed source or CloudFormation.
+hardcoded in committed source or CloudFormation. The repository variable is
+configured, but do not print its value.
+
+Corrections from the previous review:
+
+- Production deploy uses `bun run deploy`, which runs
+  `validate:deployment-config` before `sls deploy`; a blank BOT_OWNER_ID fails
+  this real path. Direct `npx sls package` bypasses the deploy guard.
+- telegram-activity-worker inherits the 30-second provider timeout, while its
+  SQS visibility timeout is 180 seconds.
+- "bounded" in AGENTS.md refers to the one-second DynamoDB request timeout,
+  not TtlCache cardinality.
 
 Review for concrete correctness and rollout risks, not style preferences. Give
 findings first, ordered P0-P3, with exact file and line references. Explicitly
@@ -281,9 +310,15 @@ check:
   existing Telegram creator/admin check and cannot bypass aiAllowed.
 - Concurrent owner disallow and admin toggle cannot leave an enabled but
   disallowed chat or lose an update.
-- Enabled checks use a short TTL cache and fail closed. Ingress intentionally
-  reads DynamoDB on cache misses so disabled chats do not consume SQS/Lambda.
-- IAM is least privilege for reply, agent, and activity workers.
+- Enabled checks use a short TTL cache, strongly consistent reads on cache
+  misses, and fail closed. Ingress intentionally reads DynamoDB before enqueue
+  so disabled chats do not consume SQS/Lambda; read failures feed an alarm.
+- Generated CloudFormation contains metric filters for ingress, reply, agent,
+  and activity log groups, aggregating into one SNS-backed read-failure alarm.
+- Internal DynamoDB errors stay in logs and Telegram receives only a generic
+  operational error.
+- IAM is least privilege: ingress/agent/activity read configuration; reply can
+  read and update it.
 - Rollback to commit A really works because legacy env/Redis remain untouched;
   call out changes made during the Dynamo soak that would not roll back.
 - Tests cannot access real Upstash when NODE_ENV=test.
@@ -292,8 +327,10 @@ check:
 - Redis reductions can be isolated into commit R without changing legacy
   allowlist or /toggle behavior.
 
-Also estimate DynamoDB requests on a cache miss, /toggle, and /allowai, and flag
-any assumption that needs an AWS integration test. End with a go/no-go verdict
-for each phase and the minimum fixes required before commit A. Do not suggest a
-commit or deployment yourself.
+Also estimate DynamoDB requests/RCUs on a cache miss, /toggle, and /allowai.
+Decide whether skippedProtectedChatIds should block the final cutover, whether
+the metric filter/alarm needs an AWS integration test, and whether any retained
+table recovery issue is relevant to this forward-only rollout. Separate true
+pre-deploy blockers from post-deploy hardening. End with GO/NO-GO for R, A,
+migration/final sync, and B. Do not suggest a commit or deployment yourself.
 ```

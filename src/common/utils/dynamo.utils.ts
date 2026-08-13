@@ -2,6 +2,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
+  GetCommand,
   PutCommand,
   QueryCommand,
   TransactWriteCommand,
@@ -10,6 +11,8 @@ import {
 import type {
   DeleteCommandInput,
   DeleteCommandOutput,
+  GetCommandInput,
+  GetCommandOutput,
   PutCommandInput,
   PutCommandOutput,
   QueryCommandInput,
@@ -21,17 +24,45 @@ import type {
 } from '@aws-sdk/lib-dynamodb'
 
 const client = new DynamoDBClient({ region: process.env.region })
+
+// Bun loads local credentials during tests. Keep an accidentally unmocked
+// DynamoDB call from ever reaching AWS; mocked DocumentClient.send calls still
+// bypass this client middleware normally.
+if (process.env.NODE_ENV === 'test') {
+  client.middlewareStack.add(
+    () => async () => {
+      throw new Error('DynamoDB network access is disabled during tests')
+    },
+    {
+      name: 'blockDynamoNetworkDuringTests',
+      step: 'initialize',
+      priority: 'high',
+    },
+  )
+}
+
 const docClient = DynamoDBDocumentClient.from(client, {
   marshallOptions: {
     removeUndefinedValues: true,
   },
 })
 
+export const DYNAMO_GET_TIMEOUT_MS = 1_000
+
 export const dynamoQuery = (
   params: QueryCommandInput,
 ): Promise<QueryCommandOutput> => {
   const command = new QueryCommand(params)
   return docClient.send(command)
+}
+
+export const dynamoGetItem = (
+  params: GetCommandInput,
+): Promise<GetCommandOutput> => {
+  const command = new GetCommand(params)
+  return docClient.send(command, {
+    abortSignal: AbortSignal.timeout(DYNAMO_GET_TIMEOUT_MS),
+  })
 }
 
 export const dynamoQueryAll = async <T = Record<string, unknown>>(

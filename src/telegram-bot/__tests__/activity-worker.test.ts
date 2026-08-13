@@ -5,7 +5,7 @@ import activityWorker from '../activity-worker'
 
 const recordChatActivityMock = jest.spyOn(common, 'recordChatActivity')
 const saveMessageMock = jest.spyOn(common, 'saveMessage')
-const isAiEnabledChatMock = jest.spyOn(common, 'isAiEnabledChat')
+const isAiAllowedChatMock = jest.spyOn(common, 'isAiAllowedChat')
 const loggerErrorMock = jest.spyOn(common.logger, 'error')
 const loggerWarnMock = jest.spyOn(common.logger, 'warn')
 const lambdaContext = { awsRequestId: 'request-1' }
@@ -14,9 +14,9 @@ describe('activity worker', () => {
   beforeEach(() => {
     recordChatActivityMock.mockReset().mockResolvedValue({ recorded: true })
     saveMessageMock.mockReset().mockResolvedValue(undefined)
-    isAiEnabledChatMock
+    isAiAllowedChatMock
       .mockReset()
-      .mockImplementation((chatId) => chatId === 123)
+      .mockImplementation(async (chatId) => chatId === 123)
     loggerErrorMock.mockReset().mockImplementation(() => {})
     loggerWarnMock.mockReset().mockImplementation(() => {})
   })
@@ -24,7 +24,7 @@ describe('activity worker', () => {
   afterAll(() => {
     recordChatActivityMock.mockRestore()
     saveMessageMock.mockRestore()
-    isAiEnabledChatMock.mockRestore()
+    isAiAllowedChatMock.mockRestore()
     loggerErrorMock.mockRestore()
     loggerWarnMock.mockRestore()
   })

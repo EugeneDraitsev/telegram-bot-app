@@ -1,6 +1,6 @@
 import type { Message } from 'grammy/types'
 
-import * as utils from '../../utils'
+import * as configuration from '../../aws/dynamo'
 import {
   CHAT_HISTORY_PHYSICAL_TTL_SECONDS,
   clearChatHistoryMaintenanceCache,
@@ -25,7 +25,7 @@ const mockGetRedisClient = jest
     expire: mockExpire,
   } as unknown as ReturnType<typeof client.getRedisClient>)
 
-const mockIsAiEnabledChat = jest.spyOn(utils, 'isAiEnabledChat')
+const mockIsAiAllowedChat = jest.spyOn(configuration, 'isAiAllowedChat')
 
 function createMessage(
   messageId: number,
@@ -51,12 +51,12 @@ beforeEach(() => {
   mockZadd.mockReset().mockResolvedValue(1)
   mockZremrangebyscore.mockReset().mockResolvedValue(0)
   mockExpire.mockReset().mockResolvedValue(1)
-  mockIsAiEnabledChat.mockReset().mockReturnValue(true)
+  mockIsAiAllowedChat.mockReset().mockResolvedValue(true)
 })
 
 afterAll(() => {
   mockGetRedisClient.mockRestore()
-  mockIsAiEnabledChat.mockRestore()
+  mockIsAiAllowedChat.mockRestore()
 })
 
 describe('formatHistoryForDisplay', () => {
