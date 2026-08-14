@@ -1,6 +1,7 @@
-import { sample } from '@tg-bot/common'
+import { sample } from './array.utils'
 
-const STICKERS_IDS = [
+/** file_id's from https://telegram.me/addstickers/magicBall */
+const STICKER_IDS: [string, ...string[]] = [
   'BQADAgADYgADt7A3BoDZ58u5GNyPAg',
   'BQADAgADZAADt7A3BhljKKZjgGXtAg',
   'BQADAgADZgADt7A3Bs9cj69gGlocAg',
@@ -23,5 +24,5 @@ const STICKERS_IDS = [
   'BQADAgADiAADt7A3Bi3iPt8F9H3aAg',
 ]
 
-// Collection of file_id's for stickers (https://telegram.me/addstickers/magicBall)
-export const getPrediction = () => sample(STICKERS_IDS) || ''
+export const getMagic8BallStickerId = () =>
+  sample(STICKER_IDS) ?? STICKER_IDS[0]

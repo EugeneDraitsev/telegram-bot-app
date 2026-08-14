@@ -89,9 +89,13 @@ export interface InteractionFunctionTool {
   parameters?: JSONSchema7
 }
 
+export type AgentToolExecutionPolicy = 'after-data' | 'serial' | 'terminal'
+
 export interface AgentTool {
   declaration: InteractionFunctionTool
   execute: (args: Record<string, unknown>) => Promise<string>
+  /** Runtime behavior kept beside the tool instead of in name-based registries. */
+  execution?: readonly AgentToolExecutionPolicy[]
   /** Override default tool timeout (ms). Used for slow tools like image generation. */
   timeoutMs?: number
   /** Internal tools can be executable without being exposed to the main model. */

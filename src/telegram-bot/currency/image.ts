@@ -1,12 +1,7 @@
 import { createRequire as createNodeRequire } from 'node:module'
 import path from 'node:path'
 
-import {
-  getRequiredEnv,
-  invokeLambda,
-  logger,
-  safeJSONParse,
-} from '@tg-bot/common'
+import { logger, renderSharpImage } from '@tg-bot/common'
 import type { CurrencyRateSection } from './types'
 
 const SHARP_RENDERER_PACKAGE_PATH = path.join(
@@ -63,34 +58,10 @@ export async function getCurrencyImage(
       return await renderCurrencyImageLocally(sections, backgroundImage)
     }
 
-    const sharpResponse = await invokeLambda({
-      name: getRequiredEnv('SHARP_RENDERER_FUNCTION_NAME'),
-      payload: {
-        currencySections: sections,
-        currencyBackgroundImage: backgroundImage?.toString('base64'),
-      },
+    return await renderSharpImage({
+      currencySections: sections,
+      currencyBackgroundImage: backgroundImage?.toString('base64'),
     })
-
-    if (sharpResponse.FunctionError) {
-      logger.warn(
-        { error: sharpResponse.FunctionError },
-        'currency.image_function_error',
-      )
-      return null
-    }
-
-    const payload = safeJSONParse(
-      new TextDecoder().decode(sharpResponse.Payload),
-    )
-    if (payload?.statusCode !== 200 || typeof payload.body !== 'string') {
-      logger.warn(
-        { statusCode: payload?.statusCode, error: payload?.body },
-        'currency.image_render_failed',
-      )
-      return null
-    }
-
-    return Buffer.from(payload.body, 'base64')
   } catch (error) {
     logger.warn({ error }, 'currency.image_failed')
     return null

@@ -6,6 +6,7 @@ import {
   formatAiModelConfig,
   getAiSdkLanguageModel,
   getAiSdkProviderOptions,
+  isSameAiModel,
   logger,
   type MetricSource,
   type MetricStatus,
@@ -84,24 +85,20 @@ function getModelErrorStatus(error: unknown): MetricStatus {
   return error instanceof ModelCallTimeoutError ? 'timeout' : 'error'
 }
 
-function isSameModelConfig(a: AiModelConfig, b: AiModelConfig): boolean {
-  return a.provider === b.provider && a.model === b.model
-}
-
 function resolveFallbackConfig(
   modelConfig: AiModelConfig,
   fallback?: ModelFallbackConfig,
 ): ModelFallbackConfig | undefined {
   const resolved =
     fallback ??
-    (isSameModelConfig(modelConfig, CHAT_MODEL_CONFIG)
+    (isSameAiModel(modelConfig, CHAT_MODEL_CONFIG)
       ? {
           modelConfig: CHAT_FALLBACK_MODEL_CONFIG,
           reasoningEffort: CHAT_FALLBACK_REASONING_EFFORT,
         }
       : undefined)
 
-  return resolved && !isSameModelConfig(modelConfig, resolved.modelConfig)
+  return resolved && !isSameAiModel(modelConfig, resolved.modelConfig)
     ? resolved
     : undefined
 }

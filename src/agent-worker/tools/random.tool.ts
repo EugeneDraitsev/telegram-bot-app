@@ -2,6 +2,7 @@
  * Tools for random numbers and choices
  */
 
+import { random, sample } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
 
@@ -40,12 +41,9 @@ export const randomNumberTool: AgentTool = {
       throw new Error(`min (${minVal}) cannot be greater than max (${maxVal})`)
     }
 
-    const results: number[] = []
-    for (let i = 0; i < countVal; i++) {
-      const randomNum =
-        Math.floor(Math.random() * (maxVal - minVal + 1)) + minVal
-      results.push(randomNum)
-    }
+    const results = Array.from({ length: countVal }, () =>
+      random(minVal, maxVal),
+    )
 
     if (countVal === 1) {
       return `Random number (${minVal}-${maxVal}): ${results[0]}`
@@ -87,8 +85,7 @@ export const randomChoiceTool: AgentTool = {
     const countVal = Math.min((args.count as number) ?? 1, options.length)
 
     if (countVal === 1) {
-      const randomIndex = Math.floor(Math.random() * options.length)
-      return `Random choice: ${options[randomIndex]}`
+      return `Random choice: ${sample(options)}`
     }
 
     const shuffled = [...options]

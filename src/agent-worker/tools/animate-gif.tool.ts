@@ -18,6 +18,7 @@ export async function animateGiphyText(text: string): Promise<string | null> {
 }
 
 export const animateGifTool: AgentTool = {
+  execution: ['after-data', 'terminal'],
   declaration: {
     type: 'function',
     name: 'animate_text',

@@ -1,7 +1,7 @@
 import {
-  type AiModelConfig,
   formatAiModelConfig,
   getErrorMessage,
+  isSameAiModel,
   logger,
   type MetricSource,
 } from '@tg-bot/common'
@@ -23,10 +23,6 @@ export interface WebSearchTrackingOptions {
 
 type SearchWebAttempt = typeof searchWebOpenAi
 
-function isSameModel(a: AiModelConfig, b: AiModelConfig): boolean {
-  return a.provider === b.provider && a.model === b.model
-}
-
 export async function searchWebWithFallback(
   query: string,
   format: WebSearchResponseFormat = 'brief',
@@ -44,7 +40,7 @@ export async function searchWebWithFallback(
     )
   } catch (error) {
     if (
-      isSameModel(WEB_SEARCH_MODEL_CONFIG, WEB_SEARCH_FALLBACK_MODEL_CONFIG)
+      isSameAiModel(WEB_SEARCH_MODEL_CONFIG, WEB_SEARCH_FALLBACK_MODEL_CONFIG)
     ) {
       throw error
     }

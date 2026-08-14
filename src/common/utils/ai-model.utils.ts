@@ -110,3 +110,7 @@ export function getAiModelConfig(
 export function formatAiModelConfig(config: AiModelConfig): string {
   return `${config.provider}/${config.model}`
 }
+
+export function isSameAiModel(a: AiModelConfig, b: AiModelConfig): boolean {
+  return a.provider === b.provider && a.model === b.model
+}

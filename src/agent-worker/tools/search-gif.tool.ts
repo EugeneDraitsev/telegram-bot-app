@@ -50,6 +50,7 @@ export async function searchGiphyGif(query: string): Promise<string | null> {
 }
 
 export const searchGifTool: AgentTool = {
+  execution: ['terminal'],
   declaration: {
     type: 'function',
     name: 'search_gif',

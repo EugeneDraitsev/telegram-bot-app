@@ -158,7 +158,7 @@ function isMetricsReport(value: unknown): value is MetricsReport {
   )
 }
 
-const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
+const sharpRendererHandler = (async (event) => {
   const metricsReport = (event as MetricsDashboardEvent).metricsReport
   if (isMetricsReport(metricsReport)) {
     const image = await renderSvgPng(getMetricsDashboardSvg(metricsReport))
@@ -219,6 +219,6 @@ const sharpRendererHandler: APIGatewayProxyHandler = async (event) => {
   })
 
   return pngResponse(image)
-}
+}) satisfies APIGatewayProxyHandler
 
 export default sharpRendererHandler

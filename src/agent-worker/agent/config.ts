@@ -7,27 +7,6 @@ export const MAX_TEXT_LENGTH = 4096
 // Tool execution
 export const MAX_TOOL_ITERATIONS = 3
 export const TOOL_CALL_TIMEOUT_MS = 25_000
-export const TERMINAL_TOOLS = new Set([
-  'telegram_dice',
-  'magic_8_ball',
-  'search_gif',
-  'animate_text',
-  'generate_voice',
-  'render_svg_to_png',
-  'render_latex',
-  'get_weather',
-])
-
-/** Tools that create content — must run AFTER data-gathering tools.
- *  If a round has both data + content tools, only data tools execute;
- *  content tools are deferred to the next round. */
-export const CONTENT_TOOLS = new Set([
-  'generate_voice',
-  'generate_or_edit_image',
-  'render_svg_to_png',
-  'render_latex',
-  'animate_text',
-])
 
 // Model retry
 export const MAX_RETRIES = 1

@@ -7,12 +7,18 @@ import {
 
 import type { AgentTool } from '../types'
 
-export function buildNativeTools(agentTools: AgentTool[]): ToolSet {
-  return Object.fromEntries(
-    agentTools
-      .filter((tool) => tool.exposeToModel !== false)
-      .map((tool) => [
-        tool.declaration.name,
+export function buildModelToolRegistry(agentTools: AgentTool[]): {
+  tools: ToolSet
+  toolByName: Map<string, AgentTool>
+} {
+  const entries = agentTools
+    .filter((tool) => tool.exposeToModel !== false)
+    .map((tool) => [tool.declaration.name, tool] as const)
+
+  return {
+    tools: Object.fromEntries(
+      entries.map(([name, tool]) => [
+        name,
         defineAiTool({
           description: tool.declaration.description,
           inputSchema: jsonSchema(
@@ -24,5 +30,7 @@ export function buildNativeTools(agentTools: AgentTool[]): ToolSet {
           ),
         }),
       ]),
-  )
+    ),
+    toolByName: new Map(entries),
+  }
 }

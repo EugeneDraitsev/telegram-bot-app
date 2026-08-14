@@ -1,6 +1,16 @@
 import sharp from 'sharp'
 
-import { renderSvgPng } from '../index'
+import sharpRendererHandler, { renderSvgPng } from '../index'
+
+const SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160"><rect width="320" height="160" fill="#ffffff"/></svg>'
+
+async function renderWithWidth(width: number) {
+  const response = await sharpRendererHandler({ svg: SVG, width } as never)
+
+  expect(response.statusCode).toBe(200)
+  return sharp(Buffer.from(response.body, 'base64')).metadata()
+}
 
 describe('renderSvgPng', () => {
   test('renders inline svg to png', async () => {
@@ -14,6 +24,14 @@ describe('renderSvgPng', () => {
     expect(metadata.format).toBe('png')
     expect(metadata.width).toBe(320)
     expect(metadata.height).toBe(160)
+  })
+
+  test('rounds and clamps dimensions at the lambda boundary', async () => {
+    const rounded = await renderWithWidth(640.4)
+    const clamped = await renderWithWidth(999_999)
+
+    expect(rounded.width).toBe(640)
+    expect(clamped.width).toBe(2_000)
   })
 
   test('rejects active svg content', async () => {

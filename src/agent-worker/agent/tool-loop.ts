@@ -8,13 +8,8 @@ import {
   recordMetric,
 } from '@tg-bot/common'
 import { getCollectedResponses, getToolMetricAttribution } from '../tools'
-import type { AgentTool } from '../types'
-import {
-  CONTENT_TOOLS,
-  MAX_TOOL_ITERATIONS,
-  TERMINAL_TOOLS,
-  TOOL_CALL_TIMEOUT_MS,
-} from './config'
+import type { AgentTool, AgentToolExecutionPolicy } from '../types'
+import { MAX_TOOL_ITERATIONS, TOOL_CALL_TIMEOUT_MS } from './config'
 import {
   type GenerateModelWithRetryResult,
   generateModelWithRetryWithInfo,
@@ -22,7 +17,6 @@ import {
 import { extractErrorInfo, getChatProviderOptions } from './runtime'
 import { withTimeout } from './utils'
 
-const RATE_LIMITED_TOOLS = new Set(['web_search', 'search_video'])
 const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
 const AGENT_ROUTING_MODEL_TIMEOUT_MS = 20_000
 
@@ -36,6 +30,14 @@ export type ToolExecutionResult = {
   name: string
   result: string
   status: MetricStatus
+}
+
+function hasExecutionPolicy(
+  call: ExecutableFunctionCall,
+  toolByName: Map<string, AgentTool>,
+  policy: AgentToolExecutionPolicy,
+): boolean {
+  return toolByName.get(call.name)?.execution?.includes(policy) ?? false
 }
 
 class ToolCallTimeoutError extends Error {
@@ -173,8 +175,7 @@ async function executeToolCalls(
       ...result,
     }))
 
-  // Run sequentially when search-backed tools are present (rate limiting).
-  if (calls.some((call) => RATE_LIMITED_TOOLS.has(call.name))) {
+  if (calls.some((call) => hasExecutionPolicy(call, toolByName, 'serial'))) {
     const results: Array<
       {
         call: ExecutableFunctionCall
@@ -280,10 +281,10 @@ export async function runToolLoop(
     // If a round has both data-gathering and content-creating tools, defer
     // content tools so they run after data is available in the next iteration.
     const dataCalls = functionCalls.filter(
-      (call) => !CONTENT_TOOLS.has(call.name),
+      (call) => !hasExecutionPolicy(call, toolByName, 'after-data'),
     )
     const contentCalls = functionCalls.filter((call) =>
-      CONTENT_TOOLS.has(call.name),
+      hasExecutionPolicy(call, toolByName, 'after-data'),
     )
     const hasDeferred = dataCalls.length > 0 && contentCalls.length > 0
     const callsToExecute = hasDeferred ? dataCalls : functionCalls
@@ -330,7 +331,7 @@ export async function runToolLoop(
     ]
 
     const allTerminal = callsToExecute.every((call) =>
-      TERMINAL_TOOLS.has(call.name),
+      hasExecutionPolicy(call, toolByName, 'terminal'),
     )
     if (allTerminal && getCollectedResponses().length > 0 && !hasDeferred) {
       logger.info(

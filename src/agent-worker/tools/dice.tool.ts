@@ -17,6 +17,7 @@ const DICE_TYPES = {
 type DiceType = keyof typeof DICE_TYPES
 
 export const telegramDiceTool: AgentTool = {
+  execution: ['terminal'],
   declaration: {
     type: 'function',
     name: 'telegram_dice',

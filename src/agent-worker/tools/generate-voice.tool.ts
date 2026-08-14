@@ -9,6 +9,7 @@ import type { AgentTool } from '../types'
 import { addResponse, requireToolContext, trackToolModelCall } from './context'
 
 export const generateVoiceTool: AgentTool = {
+  execution: ['after-data', 'terminal'],
   declaration: {
     type: 'function',
     name: 'generate_voice',
