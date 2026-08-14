@@ -1,0 +1,54 @@
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: true
+    nodePlacementStrategy: BRANDES_KOEPF
+---
+flowchart TB
+  TGIN@{ icon: "logos:telegram", label: "Telegram update", h: 42 }
+  BOT@{ icon: "logos:aws-lambda", label: "telegram-bot · webhook ingress<br/>routing only · never waits for AI", h: 40 }
+  CONFIG@{ icon: "logos:aws-dynamodb", label: "chat-configuration<br/>owner allow + admin toggle<br/>5s cache · strong miss · fails closed", h: 36 }
+
+  subgraph PIPE["durable FIFO pipeline · batchSize 1 · MessageGroupId = chatId"]
+    AGENTQ@{ icon: "logos:aws-sqs", label: "agent jobs", h: 28 }
+    REPLYQ@{ icon: "logos:aws-sqs", label: "reply jobs", h: 28 }
+    ACTQ@{ icon: "logos:aws-sqs", label: "activity jobs", h: 28 }
+    AGENT@{ icon: "logos:aws-lambda", label: "agent-worker<br/>reply gate · dynamic cmds<br/>AI loop · tools", h: 38 }
+    REPLY@{ icon: "logos:aws-lambda", label: "reply-worker<br/>registered commands", h: 38 }
+    ACT@{ icon: "logos:aws-lambda", label: "activity-worker<br/>stats · chat events · AI history", h: 38 }
+    AGENTQ --> AGENT
+    REPLYQ --> REPLY
+    ACTQ --> ACT
+  end
+
+  subgraph AI["AI providers + external APIs"]
+    GPT@{ icon: "simple-icons:openai", label: "GPT-5.6 Luna<br/>gate / loop / helpers", h: 32 }
+    GEM@{ icon: "logos:google-gemini", label: "Gemini<br/>fallback / images", h: 32 }
+    APIS["Search · YouTube · Weather<br/>Tavily · Giphy"]:::ext
+  end
+
+  REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>memory · history · metrics · leases", h: 36 }
+  STATS(["stats + live UI → second diagram"]):::note
+  TGOUT@{ icon: "logos:telegram", label: "Telegram reply", h: 42 }
+  ALERT["3 DLQs after 5 receives + config read failures<br/>→ CloudWatch + SNS email"]:::alert
+
+  TGIN ==>|"webhook"| BOT
+  BOT -->|"enabled check"| CONFIG
+  BOT ==>|"enabled candidates"| AGENTQ
+  BOT ==>|"registered cmds"| REPLYQ
+  BOT ==>|"every message"| ACTQ
+  PIPE -.->|"5 failed receives"| ALERT
+  CONFIG -.-> ALERT
+  PIPE -->|"recheck / toggle"| CONFIG
+  PIPE <-->|"history · metrics · leases"| REDIS
+  AGENT <==>|"gate + loop"| AI
+  REPLY <-->|"tools"| APIS
+  ACT ==> STATS
+  AGENT & REPLY ==>|"reply"| TGOUT
+
+  classDef ext fill:#059669,stroke:#064e3b,color:#ffffff,font-weight:bold
+  classDef alert fill:#8b4a52,stroke:#63343a,color:#ffffff,font-weight:bold
+  classDef note fill:transparent,stroke:#6e7681,stroke-dasharray:4 4,color:#8b949e
+  style PIPE fill:transparent,stroke-dasharray:6 6
+  style AI fill:transparent,stroke-dasharray:6 6

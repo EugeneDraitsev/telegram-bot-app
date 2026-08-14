@@ -1,0 +1,43 @@
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: true
+    nodePlacementStrategy: BRANDES_KOEPF
+---
+flowchart TB
+  TGIN@{ icon: "logos:telegram", label: "Telegram update", h: 48 }
+  CRON@{ icon: "logos:aws-eventbridge", label: "currency-scheduler<br/>Mon-Fri 9:00 / 17:00", h: 36 }
+
+  BOT@{ icon: "logos:aws-lambda", label: "webhook ingress<br/>routing only · returns in seconds", h: 44 }
+  CFG@{ icon: "logos:aws-dynamodb", label: "chat-configuration<br/>allow + toggle · fails closed<br/>re-checked in the agent worker", h: 40 }
+  Q@{ icon: "logos:aws-sqs", label: "3 FIFO queues + DLQs<br/>ordered per chat", h: 42 }
+  W@{ icon: "logos:aws-lambda", label: "3 async workers<br/>activity · reply · agent", h: 44 }
+
+  AIB@{ icon: "simple-icons:openai", label: "AI models + external APIs<br/>GPT-5.6 Luna · Gemini<br/>search · weather · media", h: 40 }
+  REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>memory · history · metrics · leases", h: 40 }
+  DDB@{ icon: "logos:aws-dynamodb", label: "DynamoDB<br/>stats · chat events<br/>ws connections", h: 40 }
+  IMG@{ icon: "logos:aws-lambda", label: "sharp-renderer<br/>SVG → PNG", h: 40 }
+
+  UI@{ icon: "simple-icons:nextdotjs", label: "private live-stats UI<br/>WebSocket API + Next.js", h: 40 }
+  ALERT["CloudWatch + SNS<br/>DLQ and config-read alarms"]:::alert
+  TGOUT@{ icon: "logos:telegram", label: "Telegram reply", h: 48 }
+
+  TGIN ==>|"webhook"| BOT
+  BOT -->|"enabled check"| CFG
+  BOT ==>|"every update"| Q
+  Q ==> W
+  Q -.-> ALERT
+  CFG -.-> ALERT
+  W <==>|"generate"| AIB
+  W <-->|"state"| REDIS
+  W <-->|"stats · events"| DDB
+  W <-.->|"render PNG"| IMG
+  W ==>|"reply"| TGOUT
+  W -.->|"stats fanout"| UI
+  UI <-->|"chat stats"| DDB
+  IMG ==>|"PNG"| TGOUT
+  CRON ==>|"currency digest"| TGOUT
+  CRON <-.-> IMG
+
+  classDef alert fill:#8b4a52,stroke:#63343a,color:#ffffff,font-weight:bold
