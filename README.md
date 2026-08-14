@@ -11,21 +11,48 @@ and [Serverless Framework](https://github.com/serverless/serverless).
 
 ## Architecture
 
-<a href=".github/architecture-sqs-light.svg">
+Everything at a glance:
+
+<a href=".github/architecture-overview-light.svg">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-sqs-dark.svg">
-    <img alt="Architecture diagram" src=".github/architecture-sqs-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-overview-dark.svg">
+    <img alt="Architecture overview" src=".github/architecture-overview-light.svg">
   </picture>
 </a>
 
-Open the full-size raw SVG for zooming:
-[light theme](https://raw.githubusercontent.com/EugeneDraitsev/telegram-bot-app/main/.github/architecture-sqs-light.svg)
-or
-[dark theme](https://raw.githubusercontent.com/EugeneDraitsev/telegram-bot-app/main/.github/architecture-sqs-dark.svg).
+### Message path
 
-The diagram source lives in
-[`.github/diagram/architecture.mmd`](.github/diagram/architecture.mmd);
-re-render both themes with `bun run diagram` after changing it.
+How one Telegram update becomes a reply:
+
+<a href=".github/architecture-message-path-light.svg">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-message-path-dark.svg">
+    <img alt="Message path diagram" src=".github/architecture-message-path-light.svg">
+  </picture>
+</a>
+
+### Statistics and live UI
+
+What the activity worker writes and how the stats page stays live:
+
+<a href=".github/architecture-stats-ui-light.svg">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-stats-ui-dark.svg">
+    <img alt="Statistics and live UI diagram" src=".github/architecture-stats-ui-light.svg">
+  </picture>
+</a>
+
+Open the full-size raw SVGs for zooming:
+[overview](https://raw.githubusercontent.com/EugeneDraitsev/telegram-bot-app/main/.github/architecture-overview-light.svg),
+[message path](https://raw.githubusercontent.com/EugeneDraitsev/telegram-bot-app/main/.github/architecture-message-path-light.svg),
+[statistics and live UI](https://raw.githubusercontent.com/EugeneDraitsev/telegram-bot-app/main/.github/architecture-stats-ui-light.svg)
+(swap `-light` for `-dark` for the dark theme).
+
+The sources live in [`.github/diagram`](.github/diagram)
+([`overview.mmd`](.github/diagram/overview.mmd),
+[`message-path.mmd`](.github/diagram/message-path.mmd),
+[`stats-ui.mmd`](.github/diagram/stats-ui.mmd)); re-render every diagram in both
+themes with `bun run diagram` after changing them.
 
 <details>
 <summary>Legacy architecture</summary>

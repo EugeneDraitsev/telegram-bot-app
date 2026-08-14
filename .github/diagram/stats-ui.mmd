@@ -1,0 +1,39 @@
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: true
+    nodePlacementStrategy: BRANDES_KOEPF
+---
+flowchart TB
+  ACT@{ icon: "logos:aws-lambda", label: "activity-worker", h: 38 }
+  REPLY@{ icon: "logos:aws-lambda", label: "reply-worker", h: 38 }
+  CRON@{ icon: "logos:aws-eventbridge", label: "currency-scheduler<br/>Mon-Fri 9:00 / 17:00", h: 34 }
+
+  subgraph STORE["DynamoDB"]
+    USERSTATS@{ icon: "logos:aws-dynamodb", label: "chat-user-statistics<br/>one item per user + chat", h: 34 }
+    EVENTS@{ icon: "logos:aws-dynamodb", label: "chat-events<br/>message id = idempotency key", h: 34 }
+    CONNS@{ icon: "logos:aws-dynamodb", label: "websocket-connections", h: 34 }
+  end
+
+  BCAST@{ icon: "logos:aws-lambda", label: "broadcast-stats<br/>fanout on new chat event", h: 36 }
+  WSS@{ icon: "logos:aws-api-gateway", label: "WebSocket API", h: 36 }
+  WSL@{ icon: "logos:aws-lambda", label: "websockets<br/>signed token check · initial stats", h: 36 }
+  NEXT@{ icon: "simple-icons:nextdotjs", label: "telegram-bot-ui<br/>Next.js / Vercel", h: 36 }
+  IMG@{ icon: "logos:aws-lambda", label: "sharp-renderer<br/>charts · currency cards", h: 36 }
+  TGOUT@{ icon: "logos:telegram", label: "Telegram", h: 40 }
+
+  ACT ==>|"one transaction: event + counter"| EVENTS
+  ACT ==> USERSTATS
+  ACT -.->|"stats fanout"| BCAST
+  BCAST --> USERSTATS & EVENTS & CONNS
+  BCAST ==>|"push live stats"| WSS
+  WSS <==> WSL
+  WSL --> USERSTATS & EVENTS & CONNS
+  NEXT <==>|"live stats"| WSS
+  REPLY -.->|"short-lived signed link"| NEXT
+  REPLY & CRON <-.->|"render PNG"| IMG
+  IMG -->|"read 24h stats"| EVENTS
+  IMG ==> TGOUT
+
+  style STORE fill:transparent,stroke-dasharray:6 6
