@@ -6,12 +6,7 @@ const SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160"><rect width="320" height="160" fill="#ffffff"/></svg>'
 
 async function renderWithWidth(width: number) {
-  const response = await sharpRendererHandler(
-    { svg: SVG, width } as never,
-    {} as never,
-    () => undefined,
-  )
-  if (!response) throw new Error('renderer returned no response')
+  const response = await sharpRendererHandler({ svg: SVG, width } as never)
 
   expect(response.statusCode).toBe(200)
   return sharp(Buffer.from(response.body, 'base64')).metadata()
