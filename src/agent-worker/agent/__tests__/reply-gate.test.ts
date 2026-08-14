@@ -69,6 +69,37 @@ describe('shouldEngageWithMessage', () => {
     expect(mockGenerateText).toHaveBeenCalled()
   })
 
+  test.each([
+    'Придумала тебе развлечение',
+    'хочу ландшафтный дизайн нагенерить',
+  ])(
+    'teaches the model to ignore ambiguous group statement: %s',
+    async (text) => {
+      const message = {
+        text,
+        chat: { id: 777, type: 'group' },
+      } as Message
+
+      await expect(
+        shouldEngageWithMessage({
+          message,
+          textContent: text,
+          hasMedia: false,
+          botInfo: OUR_BOT,
+        }),
+      ).resolves.toBe(false)
+
+      const [modelCall] = mockGenerateText.mock.calls.at(-1) ?? []
+      const system = String(modelCall.system ?? '')
+      expect(system).toContain(
+        'Second-person words such as "ты", "тебе", "тебя", or "you" do NOT mean the message is addressed to THIS bot.',
+      )
+      expect(system).toContain(`- "${text}" -> IGNORE`)
+      expect(system).toContain('Is reply to OUR bot: false')
+      expect(system).toContain('Mentions OUR bot: false')
+    },
+  )
+
   test('can engage with standalone questions without bot address words', async () => {
     mockGenerateText.mockResolvedValueOnce(aiSdkResponse('engage'))
 
