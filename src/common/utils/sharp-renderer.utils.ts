@@ -22,9 +22,7 @@ export async function renderSharpImage(
 
   const body = safeJSONParse(new TextDecoder().decode(response.Payload))
   if (body?.statusCode !== 200) {
-    const errorBody =
-      typeof body?.body === 'string' ? safeJSONParse(body.body) : null
-    const error = body?.error ?? errorBody?.error ?? body?.body
+    const error = safeJSONParse(body?.body)?.error
     throw new Error(
       typeof error === 'string' && error.trim()
         ? error.trim()
