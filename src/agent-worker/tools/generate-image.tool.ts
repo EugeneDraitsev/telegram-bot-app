@@ -140,6 +140,7 @@ function getImageEditCandidates(
 }
 
 export const generateImageTool: AgentTool = {
+  execution: ['after-data'],
   timeoutMs: 120_000,
   declaration: {
     type: 'function',

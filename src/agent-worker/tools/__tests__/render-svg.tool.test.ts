@@ -53,7 +53,7 @@ describe('renderSvgTool', () => {
     const { result, responses } = await executeTool({
       svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"></svg>',
       caption: 'chart',
-      width: 640.4,
+      width: 640,
       height: 320,
     })
 
@@ -62,6 +62,7 @@ describe('renderSvgTool', () => {
     )
 
     expect(result).toBe(`Rendered SVG to PNG (${image.byteLength} bytes)`)
+    // Dimensions are normalized by the renderer lambda, not here.
     expect(payload).toMatchObject({
       width: 640,
       height: 320,
@@ -89,7 +90,9 @@ describe('renderSvgTool', () => {
         Payload: Buffer.from(
           JSON.stringify({
             statusCode: 400,
-            error: 'SVG contains unsupported active content',
+            body: JSON.stringify({
+              error: 'SVG contains unsupported active content',
+            }),
           }),
         ),
       }),

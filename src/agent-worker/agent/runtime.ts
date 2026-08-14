@@ -1,5 +1,5 @@
 import type { AiModelConfig } from '@tg-bot/common'
-import { getAiSdkProviderOptions } from '@tg-bot/common'
+import { getAiSdkProviderOptions, isSameAiModel } from '@tg-bot/common'
 import {
   CHAT_FALLBACK_REASONING_EFFORT,
   CHAT_MODEL_CONFIG,
@@ -24,17 +24,10 @@ export function getChatProviderOptions(
   modelConfig: AiModelConfig,
   chatId: number,
 ) {
-  const isPrimaryChatModel =
-    modelConfig.provider === CHAT_MODEL_CONFIG.provider &&
-    modelConfig.model === CHAT_MODEL_CONFIG.model
-  const isHelperTextModel =
-    modelConfig.provider === HELPER_TEXT_MODEL_CONFIG.provider &&
-    modelConfig.model === HELPER_TEXT_MODEL_CONFIG.model
-
   return getAiSdkProviderOptions(modelConfig, {
-    reasoningEffort: isPrimaryChatModel
+    reasoningEffort: isSameAiModel(modelConfig, CHAT_MODEL_CONFIG)
       ? CHAT_MODEL_REASONING_EFFORT
-      : isHelperTextModel
+      : isSameAiModel(modelConfig, HELPER_TEXT_MODEL_CONFIG)
         ? HELPER_TEXT_MODEL_REASONING_EFFORT
         : CHAT_FALLBACK_REASONING_EFFORT,
     chatId,

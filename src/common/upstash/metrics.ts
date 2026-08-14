@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto'
 
 import { logger } from '../logger'
 import { TtlCache } from '../ttl-cache'
+import { escapeHtml } from '../utils/text.utils'
 import * as client from './client'
 
 const METRICS_SCHEMA_VERSION = 2
@@ -417,10 +418,6 @@ function shortModelName(model: string): string {
     .replace(/^(?:google|openai)\//, '')
     .replace(/^gemini-/, '')
     .replace(/-preview$/, '')
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 function formatOutcomeSummary(group: MetricGroupSummary): string {

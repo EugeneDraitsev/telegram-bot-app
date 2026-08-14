@@ -1,16 +1,8 @@
+import { escapeHtml } from '@tg-bot/common'
 import type { CurrencyMessages, CurrencyRateSection } from './types'
 
 const COLUMN_GAP = 3
 const LEADING_SPACE_GUARD = '-'
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-}
 
 function normalizeHtmlLine(value: string) {
   return value.replace(/\r?\n/g, ' ').trim()

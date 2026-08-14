@@ -188,8 +188,8 @@ describe('currency rich formatting', () => {
     ])
 
     expect(messages.richMessage.html).toContain(
-      '<i>Can&apos;t fetch currency from crypto</i>',
+      '<i>Can&#39;t fetch currency from crypto</i>',
     )
-    expect(messages.text).toContain('Can&apos;t fetch currency from crypto')
+    expect(messages.text).toContain('Can&#39;t fetch currency from crypto')
   })
 })

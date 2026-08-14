@@ -257,6 +257,7 @@ describe('runAgenticLoop integration', () => {
           name: 'web_search',
           description: 'Search',
         },
+        execution: ['serial'],
         execute: search,
       },
       {
@@ -265,6 +266,7 @@ describe('runAgenticLoop integration', () => {
           name: 'generate_voice',
           description: 'Generate voice',
         },
+        execution: ['after-data', 'terminal'],
         execute: generateVoice,
       },
     ]
@@ -384,6 +386,7 @@ describe('runAgenticLoop integration', () => {
         name: 'render_svg_to_png',
         description: 'Render SVG',
       },
+      execution: ['after-data', 'terminal'],
       execute: jest.fn(async () => {
         agentTools.addResponse({ type: 'image', buffer: Buffer.from('png') })
         return 'Rendered SVG to PNG (3 bytes)'

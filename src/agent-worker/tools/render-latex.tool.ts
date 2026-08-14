@@ -2,6 +2,7 @@
  * Tool for rendering LaTeX through Telegram Rich Message math blocks.
  */
 
+import { escapeHtml } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
@@ -10,15 +11,6 @@ const MAX_CONTEXT_TEXT_CHARS = 800
 
 function getString(value: unknown): string | undefined {
   return typeof value === 'string' ? value.trim() : undefined
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
 }
 
 function normalizeMode(value: unknown): 'block' | 'inline' {
@@ -38,6 +30,7 @@ function buildFallbackText(
 }
 
 export const renderLatexTool: AgentTool = {
+  execution: ['after-data', 'terminal'],
   declaration: {
     type: 'function',
     name: 'render_latex',

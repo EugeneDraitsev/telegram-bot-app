@@ -7,7 +7,7 @@ import {
   buildInitialInput,
   getAgentDeliveryReplyMessageId,
 } from '../agentic-loop'
-import { buildNativeTools } from '../model-tools'
+import { buildModelToolRegistry } from '../model-tools'
 import { CHAT_MODEL_CONFIG, resolveAgentChatModel } from '../models'
 import {
   extractFallbackTextFromToolResults,
@@ -28,28 +28,28 @@ describe('resolveAgentChatModel', () => {
   })
 })
 
-describe('buildNativeTools', () => {
+describe('buildModelToolRegistry', () => {
   test('wraps legacy JSON parameters as AI SDK schemas', async () => {
-    const tools = buildNativeTools([
-      {
-        declaration: {
-          type: 'function',
-          name: 'lookup',
-          description: 'Lookup something',
-          parameters: {
-            type: 'object',
-            properties: {
-              query: { type: 'string', description: 'Search query' },
-            },
-            required: ['query'],
+    const agentTool = {
+      declaration: {
+        type: 'function',
+        name: 'lookup',
+        description: 'Lookup something',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search query' },
           },
+          required: ['query'],
         },
-        execute: async () => 'ok',
-      } satisfies AgentTool,
-    ])
+      },
+      execute: async () => 'ok',
+    } satisfies AgentTool
+    const { tools, toolByName } = buildModelToolRegistry([agentTool])
 
     const lookupTool = tools.lookup
     expect(lookupTool).toBeDefined()
+    expect(toolByName.get('lookup')).toBe(agentTool)
     expect(asSchema(lookupTool?.inputSchema).jsonSchema).toMatchObject({
       type: 'object',
       properties: {

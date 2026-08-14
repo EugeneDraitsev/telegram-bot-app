@@ -4,8 +4,7 @@ const lambdaClients = new Map<string, LambdaClient>()
 
 interface InvokeLambdaOptions {
   name: string
-  // biome-ignore lint: we can pass any payload here
-  payload: Record<string, any>
+  payload: Record<string, unknown>
   customEndpoint?: boolean
   async?: boolean
 }

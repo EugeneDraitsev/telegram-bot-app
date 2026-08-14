@@ -2,42 +2,16 @@
  * Tool for rendering model-authored SVG into a Telegram-ready PNG.
  */
 
-import {
-  getErrorMessage,
-  getRequiredEnv,
-  invokeLambda,
-  safeJSONParse,
-} from '@tg-bot/common'
+import { getErrorMessage, renderSharpImage } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
-
-const MAX_SVG_CHARS = 250_000
-const MAX_RENDER_DIMENSION = 2_000
-
-function getDimension(value: unknown): number | undefined {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return undefined
-  }
-
-  return Math.max(1, Math.min(MAX_RENDER_DIMENSION, Math.round(value)))
-}
 
 function getString(value: unknown): string | undefined {
   return typeof value === 'string' ? value.trim() : undefined
 }
 
-function getRendererError(payload: unknown): string {
-  if (!payload || typeof payload !== 'object') {
-    return 'renderer returned an invalid response'
-  }
-
-  const error = (payload as { error?: unknown }).error
-  return typeof error === 'string' && error.trim()
-    ? error.trim()
-    : 'renderer failed'
-}
-
 export const renderSvgTool: AgentTool = {
+  execution: ['after-data', 'terminal'],
   timeoutMs: 30_000,
   declaration: {
     type: 'function',
@@ -84,44 +58,16 @@ export const renderSvgTool: AgentTool = {
       throw new Error('Error rendering SVG: svg cannot be empty')
     }
 
-    if (svg.length > MAX_SVG_CHARS) {
-      throw new Error(
-        `Error rendering SVG: svg exceeds ${MAX_SVG_CHARS} characters`,
-      )
-    }
-
     try {
-      const sharpResponse = await invokeLambda({
-        name: getRequiredEnv('SHARP_RENDERER_FUNCTION_NAME'),
-        customEndpoint: true,
-        payload: {
+      const image = await renderSharpImage(
+        {
           svg,
-          width: getDimension(args.width),
-          height: getDimension(args.height),
+          width: args.width,
+          height: args.height,
           backgroundColor: getString(args.backgroundColor),
         },
-      })
-
-      if (sharpResponse.FunctionError) {
-        throw new Error(sharpResponse.FunctionError)
-      }
-
-      const payload = safeJSONParse(
-        new TextDecoder().decode(sharpResponse.Payload),
+        { customEndpoint: true },
       )
-
-      if (payload?.statusCode !== 200) {
-        throw new Error(getRendererError(payload))
-      }
-
-      if (typeof payload.body !== 'string') {
-        throw new Error('renderer returned no image body')
-      }
-
-      const image = Buffer.from(payload.body, 'base64')
-      if (image.byteLength === 0) {
-        throw new Error('renderer returned an empty image')
-      }
 
       addResponse({
         type: 'image',

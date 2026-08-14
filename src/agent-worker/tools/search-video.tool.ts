@@ -32,6 +32,7 @@ function buildVideoSearchPrompt(query: string): string {
 }
 
 export const searchVideoTool: AgentTool = {
+  execution: ['serial'],
   declaration: {
     type: 'function',
     name: 'search_video',

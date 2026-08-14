@@ -28,11 +28,11 @@ import {
   runWithToolContext,
   withToolMediaBuffers,
 } from '../tools'
-import type { AgentResponse, AgentTool, TelegramApi } from '../types'
+import type { AgentResponse, TelegramApi } from '../types'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { isRetryableModelError, ModelCallTimeoutError } from './model-call'
-import { buildNativeTools } from './model-tools'
+import { buildModelToolRegistry } from './model-tools'
 import { REPLY_GATE_MODEL, resolveAgentChatModel } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { extractErrorInfo } from './runtime'
@@ -187,6 +187,83 @@ export function buildInitialInput(
   return [{ role: 'user', content: parts }]
 }
 
+/**
+ * Runs a chat-defined dynamic command if the message matches one.
+ * Returns false when no command matched and the normal flow should continue.
+ */
+async function runDynamicCommand(params: {
+  message: Message
+  chatId: number
+  api: TelegramApi
+  replyToMessageId?: number
+  messageMeta: Record<string, unknown>
+  startedAt: number
+}): Promise<boolean> {
+  const command = await executeDynamicCommandFromMessage(params.message)
+  if (!command.matched) return false
+
+  const responses: AgentResponse[] = [...getCollectedResponses()]
+  if (!responses.some((response) => response.type === 'text')) {
+    responses.push({
+      type: 'text',
+      text: cleanModelMessage(
+        command.result || `Команда /${command.name} ничего не вернула.`,
+      ),
+    })
+  }
+
+  const deliveryStart = Date.now()
+  await sendResponses({
+    responses,
+    chatId: params.chatId,
+    replyToMessageId: params.replyToMessageId,
+    api: params.api,
+  })
+
+  logger.info(
+    {
+      ...params.messageMeta,
+      durationMs: Date.now() - params.startedAt,
+      deliveryDurationMs: Date.now() - deliveryStart,
+      commandName: command.name,
+      responseCount: responses.length,
+    },
+    'loop.dynamic_command_done',
+  )
+  return true
+}
+
+/**
+ * Sends a best-effort failure notice, retrying without the reply target when
+ * the original message is gone.
+ */
+async function sendLoopFailureReply(
+  api: TelegramApi,
+  chatId: number,
+  text: string,
+  replyToMessageId?: number,
+): Promise<void> {
+  try {
+    await api.sendMessage(
+      chatId,
+      text,
+      replyToMessageId === undefined
+        ? undefined
+        : { reply_parameters: { message_id: replyToMessageId } },
+    )
+  } catch (error) {
+    if (
+      replyToMessageId === undefined ||
+      !isTelegramReplyTargetMissingError(error)
+    ) {
+      throw error
+    }
+
+    logger.warn({ chatId, replyToMessageId }, 'loop.error_reply_target_missing')
+    await api.sendMessage(chatId, text)
+  }
+}
+
 // ── Main entry ───────────────────────────────────────────────
 
 export async function runAgenticLoop(
@@ -241,42 +318,15 @@ export async function runAgenticLoop(
       const hasMedia =
         !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
 
-      const dynamicCommand = await executeDynamicCommandFromMessage(message)
-      if (dynamicCommand.matched) {
-        const responsesToSend: AgentResponse[] = [...getCollectedResponses()]
-        const hasTextResponse = responsesToSend.some(
-          (response) => response.type === 'text',
-        )
-        if (!hasTextResponse) {
-          responsesToSend.push({
-            type: 'text',
-            text: cleanModelMessage(
-              dynamicCommand.result ||
-                `Команда /${dynamicCommand.name} ничего не вернула.`,
-            ),
-          })
-        }
-
-        const deliveryStart = Date.now()
-        await sendResponses({
-          responses: responsesToSend,
-          chatId,
-          replyToMessageId: deliveryReplyMessageId,
-          api,
-        })
-
-        logger.info(
-          {
-            ...messageMeta,
-            durationMs: Date.now() - startedAt,
-            deliveryDurationMs: Date.now() - deliveryStart,
-            commandName: dynamicCommand.name,
-            responseCount: responsesToSend.length,
-          },
-          'loop.dynamic_command_done',
-        )
-        return
-      }
+      const handledByDynamicCommand = await runDynamicCommand({
+        message,
+        chatId,
+        api,
+        replyToMessageId: deliveryReplyMessageId,
+        messageMeta,
+        startedAt,
+      })
+      if (handledByDynamicCommand) return
 
       // Load memory first — needed by the reply gate
       const [chatMemory, globalMemory] = await Promise.all([
@@ -339,7 +389,7 @@ export async function runAgenticLoop(
       // Load tools + history in parallel (only after gate confirms we'll respond)
       const preloadStartedAt = Date.now()
       logger.info({ ...messageMeta }, 'loop.preload_start')
-      const [loadedAgentTools, rawHistory] = await Promise.all([
+      const [agentTools, rawHistory] = await Promise.all([
         preloadWithFallback({
           chatId,
           name: 'agent_tools',
@@ -354,7 +404,6 @@ export async function runAgenticLoop(
           fallback: [] as Message[],
         }),
       ])
-      const agentTools = loadedAgentTools
       logger.info(
         {
           ...messageMeta,
@@ -369,21 +418,17 @@ export async function runAgenticLoop(
         rawHistory,
         message.message_id,
       )
-      const requestMediaFileIds = new Set(
-        (mediaBuffers ?? [])
-          .map(({ fileId }) => fileId)
-          .filter((id): id is string => Boolean(id)),
-      )
-      const requestMediaFileUniqueIds = new Set(
-        (mediaBuffers ?? [])
-          .map(({ fileUniqueId }) => fileUniqueId)
-          .filter((id): id is string => Boolean(id)),
-      )
+      const requestMediaIds = (key: 'fileId' | 'fileUniqueId') =>
+        new Set(
+          (mediaBuffers ?? [])
+            .map((media) => media[key])
+            .filter((id): id is string => Boolean(id)),
+        )
 
       const historyImageRefs = collectHistoryMediaFileRefs(rawHistory, {
         excludeMessageId: message.message_id,
-        excludeFileIds: requestMediaFileIds,
-        excludeFileUniqueIds: requestMediaFileUniqueIds,
+        excludeFileIds: requestMediaIds('fileId'),
+        excludeFileUniqueIds: requestMediaIds('fileUniqueId'),
         limit: DEFAULT_AGENT_HISTORY_LIMIT,
         mediaTypes: ['image'],
       }).slice(-MAX_HISTORY_IMAGE_ATTACHMENTS)
@@ -419,14 +464,7 @@ export async function runAgenticLoop(
           contextBlock,
           memoryBlock,
         )
-        const tools = buildNativeTools(agentTools)
-        const toolByName = new Map<string, AgentTool>(
-          agentTools
-            .filter(
-              (t) => t.exposeToModel !== false && t.declaration.name != null,
-            )
-            .map((t) => [t.declaration.name ?? '', t]),
-        )
+        const { tools, toolByName } = buildModelToolRegistry(agentTools)
         logger.info(
           {
             chatId,
@@ -535,27 +573,12 @@ export async function runAgenticLoop(
       'loop.failed',
     )
     try {
-      const failureReply = getLoopFailureReply(error)
-      const replyOptions =
-        typeof deliveryReplyMessageId === 'number'
-          ? { reply_parameters: { message_id: deliveryReplyMessageId } }
-          : undefined
-      try {
-        await api.sendMessage(chatId, failureReply, replyOptions)
-      } catch (sendError) {
-        if (
-          deliveryReplyMessageId === undefined ||
-          !isTelegramReplyTargetMissingError(sendError)
-        ) {
-          throw sendError
-        }
-
-        logger.warn(
-          { chatId, replyToMessageId: deliveryReplyMessageId },
-          'loop.error_reply_target_missing',
-        )
-        await api.sendMessage(chatId, failureReply)
-      }
+      await sendLoopFailureReply(
+        api,
+        chatId,
+        getLoopFailureReply(error),
+        deliveryReplyMessageId,
+      )
     } catch (sendError) {
       logger.error({ chatId, sendError }, 'loop.error_reply_failed')
     }

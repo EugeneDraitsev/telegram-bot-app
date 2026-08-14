@@ -7,6 +7,7 @@ import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
 export const weatherTool: AgentTool = {
+  execution: ['terminal'],
   declaration: {
     type: 'function',
     name: 'get_weather',

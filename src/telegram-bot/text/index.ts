@@ -1,9 +1,8 @@
 import type { Bot } from 'grammy/web'
 
-import { getCommandData } from '@tg-bot/common'
+import { getCommandData, getMagic8BallStickerId } from '@tg-bot/common'
 import { throwDice } from './dice'
 import { huify } from './huiator'
-import { getPrediction } from './magic8ball'
 import { puntoSwitcher } from './punto-switcher'
 import { yasnyfy } from './yasno'
 
@@ -48,7 +47,7 @@ const setupTextCommands = (bot: Bot) => {
 
   bot.command('8', (ctx) => {
     const { replyId } = getCommandData(ctx.message)
-    return ctx.replyWithSticker(getPrediction(), {
+    return ctx.replyWithSticker(getMagic8BallStickerId(), {
       reply_parameters: { message_id: replyId },
     })
   })

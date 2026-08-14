@@ -2,6 +2,7 @@ import type { Api } from 'grammy'
 import type { Message } from 'grammy/types'
 
 import { logger } from '../logger'
+import { escapeHtml } from './text.utils'
 
 export const THINKING_DRAFT_REFRESH_INTERVAL_MS = 25_000
 
@@ -36,15 +37,6 @@ function getSendMessageMethod(api: RichCapableApi) {
   }
 
   return api.sendMessage.bind(api) as Api['sendMessage']
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
 }
 
 export async function sendRichMessage(
