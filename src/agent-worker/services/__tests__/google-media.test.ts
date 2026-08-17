@@ -4,7 +4,7 @@ jest.mock('ai', () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
 }))
 
-import { resetAiSdkProvidersForTests } from '@tg-bot/common'
+import { type MediaBuffer, resetAiSdkProvidersForTests } from '@tg-bot/common'
 import {
   GEMINI_OMNI_FLASH_MODEL,
   generateLyriaMusic,
@@ -101,7 +101,7 @@ describe('Google media through the AI SDK', () => {
         },
       ],
       maxRetries: 0,
-      timeout: 240_000,
+      timeout: 160_000,
     })
     expect(result).toEqual({
       buffer: Buffer.from('generated-video'),
@@ -145,6 +145,59 @@ describe('Google media through the AI SDK', () => {
           },
         ],
       }),
+    )
+  })
+
+  test('filters and bounds Omni inline media', async () => {
+    mockGenerateText.mockResolvedValue(generatedVideo('bounded-video'))
+    const largeImage: MediaBuffer = {
+      buffer: Buffer.alloc(10 * 1024 * 1024, 1),
+      mimeType: 'image/jpeg',
+      mediaType: 'image',
+      origin: 'request',
+    }
+    const excludedAudio: MediaBuffer = {
+      buffer: Buffer.from('audio'),
+      mimeType: 'audio/mpeg',
+      mediaType: 'audio',
+      origin: 'request',
+    }
+    const overBudgetVideo: MediaBuffer = {
+      buffer: Buffer.alloc(10 * 1024 * 1024, 2),
+      mimeType: 'video/mp4',
+      mediaType: 'video',
+      origin: 'request',
+    }
+    const smallImages: MediaBuffer[] = [1, 2, 3].map((index) => ({
+      buffer: Buffer.from(`small-${index}`),
+      mimeType: 'image/png',
+      mediaType: 'image',
+      origin: 'history',
+    }))
+
+    await generateOmniVideo({
+      prompt: 'Use the relevant visual references',
+      aspectRatio: '9:16',
+      durationSeconds: 5,
+      media: [largeImage, excludedAudio, overBudgetVideo, ...smallImages],
+    })
+
+    const call = mockGenerateText.mock.calls[0]?.[0] as {
+      prompt: Array<{
+        content: Array<{ type: string; data?: Buffer; mediaType?: string }>
+      }>
+    }
+    const files = call.prompt[0]?.content.filter((part) => part.type === 'file')
+    expect(files).toHaveLength(4)
+    expect(files?.[0]?.data).toBe(largeImage.buffer)
+    expect(files?.some((part) => part.data === excludedAudio.buffer)).toBe(
+      false,
+    )
+    expect(files?.some((part) => part.data === overBudgetVideo.buffer)).toBe(
+      false,
+    )
+    expect(files?.slice(1).map((part) => part.data)).toEqual(
+      smallImages.map((item) => item.buffer),
     )
   })
 
@@ -215,7 +268,7 @@ describe('Google media through the AI SDK', () => {
         },
       ],
       maxRetries: 0,
-      timeout: 240_000,
+      timeout: 160_000,
       include: { responseBody: true },
     })
     expect(result).toEqual({

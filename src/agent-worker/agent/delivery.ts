@@ -39,6 +39,15 @@ interface DeliveryBundle {
   rich: RichResponse | null
 }
 
+const PRIMARY_MEDIA_ORDER = [
+  'dice',
+  'sticker',
+  'animation',
+  'image',
+  'video',
+  'audio',
+] as const
+
 function getReplyOptions(replyToMessageId?: number) {
   if (replyToMessageId === undefined) {
     return {}
@@ -66,6 +75,40 @@ function getSentMessageId(messageLike: unknown): number | undefined {
 
   const { message_id } = messageLike as { message_id?: unknown }
   return typeof message_id === 'number' ? message_id : undefined
+}
+
+function isVoiceMessagesForbiddenError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const description = (error as { description?: unknown }).description
+  return (
+    typeof description === 'string' &&
+    /voice[_ ]messages[_ ]forbidden/i.test(description)
+  )
+}
+
+function warnDroppedMedia(bundle: DeliveryBundle, chatId: number): void {
+  const primaryMedia = PRIMARY_MEDIA_ORDER.filter(
+    (type) => bundle[type] !== null,
+  )
+  let deliveredResponseType: string | undefined
+  let droppedResponseTypes: string[] = []
+
+  if (bundle.rich) {
+    deliveredResponseType = 'rich'
+    droppedResponseTypes = [...primaryMedia, ...(bundle.voice ? ['voice'] : [])]
+  } else if (bundle.voice && bundle.text) {
+    deliveredResponseType = 'voice'
+    droppedResponseTypes = [...primaryMedia]
+  } else if (primaryMedia.length > 1) {
+    deliveredResponseType = primaryMedia[0]
+    droppedResponseTypes = primaryMedia.slice(1)
+  }
+
+  if (!deliveredResponseType || droppedResponseTypes.length === 0) return
+  logger.warn(
+    { chatId, deliveredResponseType, droppedResponseTypes },
+    'delivery.media_dropped',
+  )
 }
 
 function getTelegramMentions(text: string): string[] {
@@ -279,7 +322,7 @@ async function sendVideo(
   await sendText({ ...params, text: messageText })
 }
 
-async function sendAudioAsVoice(
+async function sendGeneratedAudio(
   params: DeliveryParams & { audio: AudioResponse; text: string },
 ) {
   const captionText = [params.audio.title, params.audio.caption]
@@ -291,14 +334,37 @@ async function sendAudioAsVoice(
     parse_mode: caption ? ('MarkdownV2' as const) : undefined,
     ...getReplyOptions(params.replyToMessageId),
   }
-  const sentMessage = await params.api.sendVoice(
-    params.chatId,
+  const inputFile = () =>
     new InputFile(
       params.audio.buffer,
       params.audio.fileName || 'generated-music.mp3',
-    ),
-    options,
-  )
+    )
+  let sentMessage:
+    | Awaited<ReturnType<TelegramApi['sendVoice']>>
+    | Awaited<ReturnType<TelegramApi['sendAudio']>>
+  try {
+    sentMessage = await params.api.sendVoice(
+      params.chatId,
+      inputFile(),
+      options,
+    )
+  } catch (error) {
+    if (!isVoiceMessagesForbiddenError(error)) throw error
+
+    logger.warn(
+      { chatId: params.chatId },
+      'delivery.voice_forbidden_audio_fallback',
+    )
+    const fallbackCaption = formatCaption(params.audio.caption)
+    sentMessage = await params.api.sendAudio(params.chatId, inputFile(), {
+      ...(params.audio.title?.trim()
+        ? { title: params.audio.title.trim().slice(0, 64) }
+        : {}),
+      caption: fallbackCaption,
+      parse_mode: fallbackCaption ? ('MarkdownV2' as const) : undefined,
+      ...getReplyOptions(params.replyToMessageId),
+    })
+  }
   await saveBotReplyToHistory(sentMessage)
 
   if (params.text) {
@@ -385,6 +451,7 @@ async function sendResponsesOnce(
   if (params.responses.length === 0) return
 
   const bundle = collectBundle(params.responses)
+  warnDroppedMedia(bundle, params.chatId)
   const base: DeliveryParams = {
     api: params.api,
     chatId: params.chatId,
@@ -443,7 +510,7 @@ async function sendResponsesOnce(
     } else if (bundle.video) {
       await sendVideo({ ...mediaParams, video: bundle.video })
     } else if (bundle.audio) {
-      await sendAudioAsVoice({ ...mediaParams, audio: bundle.audio })
+      await sendGeneratedAudio({ ...mediaParams, audio: bundle.audio })
     } else if (bundle.text) {
       await sendText(mediaParams)
     }

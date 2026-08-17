@@ -514,8 +514,8 @@ describe('runAgenticLoop integration', () => {
       expect.objectContaining({
         content: expect.arrayContaining([
           {
-            type: 'file',
-            data: historyBuffer,
+            type: 'image',
+            image: historyBuffer,
             mediaType: 'image/jpeg',
           },
         ]),

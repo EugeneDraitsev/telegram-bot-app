@@ -142,8 +142,8 @@ function pushImageContent(
 ) {
   parts.push({ type: 'text', text: label })
   parts.push({
-    type: 'file',
-    data: media.buffer,
+    type: 'image',
+    image: media.buffer,
     mediaType: media.mimeType,
   })
 }

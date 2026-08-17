@@ -1,8 +1,12 @@
 import type { Message } from 'grammy/types'
 
-const IMAGE_COMMANDS = new Set(['e', 'ee', 'ge', 'gp', 'de'])
 const IMAGE_INSTRUCTION = 'Generate or edit an image for this request'
 const COMMAND_INSTRUCTIONS = new Map<string, string>([
+  ['e', IMAGE_INSTRUCTION],
+  ['ee', IMAGE_INSTRUCTION],
+  ['ge', IMAGE_INSTRUCTION],
+  ['gp', IMAGE_INSTRUCTION],
+  ['de', IMAGE_INSTRUCTION],
   [
     'omni',
     'Generate or edit a video for this request with the generate_video_with_omni tool. Default to a 5-second vertical video with native audio unless the user specifies another 3-10 second duration or aspect ratio',
@@ -29,9 +33,7 @@ export function prepareAgentCommandMessage(
   commandName?: string,
 ): Message {
   const instruction = commandName
-    ? IMAGE_COMMANDS.has(commandName)
-      ? IMAGE_INSTRUCTION
-      : COMMAND_INSTRUCTIONS.get(commandName)
+    ? COMMAND_INSTRUCTIONS.get(commandName)
     : undefined
   if (!instruction) {
     return message

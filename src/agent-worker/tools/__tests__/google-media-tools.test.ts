@@ -51,6 +51,11 @@ describe('Google media agent tools', () => {
     })
   })
 
+  test('reserves Lambda time for routing and Telegram delivery', () => {
+    expect(generateVideoTool.timeoutMs).toBe(170_000)
+    expect(generateMusicTool.timeoutMs).toBe(170_000)
+  })
+
   test('forwards text and all media with cost-conscious Omni defaults', async () => {
     const responses = await runWithToolContext(
       message,
@@ -114,5 +119,23 @@ describe('Google media agent tools', () => {
       }),
       { type: 'text', text: '[Verse]\nhello' },
     ])
+  })
+
+  test('does not expose technical prompts as missing metadata', async () => {
+    const videoResponses = await runWithToolContext(message, [], async () => {
+      await generateVideoTool.execute({ prompt: 'technical video prompt' })
+      return getCollectedResponses()
+    })
+    const musicResponses = await runWithToolContext(message, [], async () => {
+      await generateMusicTool.execute({ prompt: 'technical music prompt' })
+      return getCollectedResponses()
+    })
+
+    expect(videoResponses[0]).toEqual(
+      expect.objectContaining({ caption: undefined }),
+    )
+    expect(musicResponses[0]).toEqual(
+      expect.objectContaining({ title: undefined, caption: undefined }),
+    )
   })
 })

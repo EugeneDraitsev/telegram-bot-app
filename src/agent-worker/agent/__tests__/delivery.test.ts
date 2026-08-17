@@ -239,6 +239,75 @@ describe('sendResponses', () => {
     )
   })
 
+  test('falls back to audio when Telegram forbids voice messages', async () => {
+    const api = createApi()
+    api.sendVoice.mockRejectedValueOnce(
+      Object.assign(new Error('voice forbidden'), {
+        error_code: 403,
+        description: 'Forbidden: VOICE_MESSAGES_FORBIDDEN',
+      }),
+    )
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          fileName: 'lyria.mp3',
+          title: 'Midnight Cats',
+          caption: 'An emo song about two cats',
+        },
+        { type: 'text', text: '[Verse]\nhello' },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendAudio).toHaveBeenCalledWith(123, expect.anything(), {
+      title: 'Midnight Cats',
+      caption: 'An emo song about two cats',
+      parse_mode: 'MarkdownV2',
+      reply_parameters: { message_id: 456 },
+    })
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: '[Verse]\nhello' },
+      { reply_parameters: { message_id: 9 } },
+      undefined,
+    )
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123 },
+      'delivery.voice_forbidden_audio_fallback',
+    )
+  })
+
+  test('warns when only the highest-priority generated media can be sent', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        { type: 'image', url: 'https://example.com/image.png' },
+        { type: 'audio', buffer: Buffer.from('music') },
+      ],
+    })
+
+    expect(api.sendPhoto).toHaveBeenCalledTimes(1)
+    expect(api.sendVoice).not.toHaveBeenCalled()
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      {
+        chatId: 123,
+        deliveredResponseType: 'image',
+        droppedResponseTypes: ['audio'],
+      },
+      'delivery.media_dropped',
+    )
+  })
+
   test('keeps sibling image when voice has no text', async () => {
     const api = createApi()
 

@@ -28,6 +28,7 @@ const OFFLINE_WORKER_LEASE: WorkerLease = {
     return true
   },
 }
+let offlineBypassWarned = false
 
 export function getWorkerIdempotencyKey(
   namespace: string,
@@ -44,6 +45,10 @@ export async function acquireWorkerLease(
   ownerToken: string,
 ): Promise<WorkerLease | null> {
   if (process.env.IS_OFFLINE === 'true') {
+    if (!offlineBypassWarned) {
+      offlineBypassWarned = true
+      logger.warn({ namespace }, 'worker.idempotency_offline_bypass')
+    }
     return OFFLINE_WORKER_LEASE
   }
 

@@ -1,6 +1,7 @@
 import { getErrorMessage } from '@tg-bot/common'
 import {
   GEMINI_OMNI_FLASH_MODEL,
+  GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateOmniVideo,
   type OmniAspectRatio,
 } from '../services/google-media'
@@ -28,7 +29,7 @@ function getAspectRatio(value: unknown): OmniAspectRatio {
 
 export const generateVideoTool: AgentTool = {
   execution: ['after-data', 'terminal'],
-  timeoutMs: 250_000,
+  timeoutMs: GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   declaration: {
     type: 'function',
     name: 'generate_video_with_omni',
@@ -70,7 +71,7 @@ export const generateVideoTool: AgentTool = {
     try {
       const prompt = typeof args.prompt === 'string' ? args.prompt.trim() : ''
       if (!prompt) throw new Error('Prompt cannot be empty')
-      const caption = getMediaCaption(args.caption, prompt)
+      const caption = getMediaCaption(args.caption)
 
       const durationSeconds = getDurationSeconds(args.durationSeconds)
       const aspectRatio = getAspectRatio(args.aspectRatio)
@@ -95,7 +96,7 @@ export const generateVideoTool: AgentTool = {
         fileName: 'omni-video.mp4',
         caption,
       })
-      return `Generated video: ${caption}`
+      return caption ? `Generated video: ${caption}` : 'Generated video'
     } catch (error) {
       throw new Error(`Error generating video: ${getErrorMessage(error)}`)
     }

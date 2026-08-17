@@ -1,5 +1,6 @@
 import { getErrorMessage } from '@tg-bot/common'
 import {
+  GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateLyriaMusic,
   LYRIA_3_CLIP_MODEL,
   LYRIA_3_PRO_MODEL,
@@ -26,7 +27,7 @@ function getLyriaModel(mode: LyriaMode): LyriaModel {
 
 export const generateMusicTool: AgentTool = {
   execution: ['after-data', 'terminal'],
-  timeoutMs: 250_000,
+  timeoutMs: GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   declaration: {
     type: 'function',
     name: 'generate_music_with_lyria',
@@ -71,8 +72,8 @@ export const generateMusicTool: AgentTool = {
     try {
       const prompt = typeof args.prompt === 'string' ? args.prompt.trim() : ''
       if (!prompt) throw new Error('Prompt cannot be empty')
-      const title = getTrackTitle(args.title, prompt)
-      const caption = getMediaCaption(args.caption, prompt)
+      const title = getTrackTitle(args.title)
+      const caption = getMediaCaption(args.caption)
 
       const mode = getLyriaMode(commandName, args.mode)
       const model = getLyriaModel(mode)
@@ -98,7 +99,7 @@ export const generateMusicTool: AgentTool = {
         addResponse({ type: 'text', text: result.text.slice(0, 3_800) })
       }
 
-      return `Generated track: ${title}`
+      return title ? `Generated track: ${title}` : 'Generated track'
     } catch (error) {
       throw new Error(`Error generating music: ${getErrorMessage(error)}`)
     }

@@ -196,8 +196,8 @@ describe('buildInitialInput', () => {
         content: [
           { type: 'text', text: 'Current image' },
           {
-            type: 'file',
-            data: requestImage.buffer,
+            type: 'image',
+            image: requestImage.buffer,
             mediaType: 'image/png',
           },
           {
@@ -209,8 +209,8 @@ describe('buildInitialInput', () => {
             text: 'Context image from recent chat history. Related message text: older photo',
           },
           {
-            type: 'file',
-            data: historyImage.buffer,
+            type: 'image',
+            image: historyImage.buffer,
             mediaType: 'image/jpeg',
           },
           { type: 'text', text: 'compare them' },
