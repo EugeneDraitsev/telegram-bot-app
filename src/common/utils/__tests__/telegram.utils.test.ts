@@ -72,6 +72,12 @@ describe('getCommandMediaRefs', () => {
         mimeType: 'image/jpeg',
         mediaType: 'image',
         label: expect.stringContaining('Reply message image'),
+        context: {
+          relation: 'reply-target',
+          messageId: 321,
+          text: 'дерево у дороги',
+          referencedByText: '/o что на фото?',
+        },
       }),
     ])
     expect(refs[0].label).toContain('message_id=321')
@@ -122,6 +128,11 @@ describe('getCommandMediaRefs', () => {
     ])
     expect(refs[1].label).toContain('message_id=322')
     expect(refs[1].label).toContain('альбом дерево 2')
+    expect(refs[1].context).toEqual({
+      relation: 'reply-album',
+      messageId: 322,
+      text: 'альбом дерево 2',
+    })
   })
 
   it('labels direct reply non-image media as reply message media', () => {

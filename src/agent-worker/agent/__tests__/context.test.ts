@@ -51,7 +51,7 @@ describe('buildContextBlock', () => {
     expect(contextBlock).toContain(
       'Telegram reply target (message_id=44): "reply photo"',
     )
-    expect(contextBlock).toContain('Reply message image')
+    expect(contextBlock).toContain('stable 1-based media_id')
     expect(contextBlock).toContain('Reply message media before history media')
   })
 })

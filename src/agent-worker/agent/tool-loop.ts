@@ -19,6 +19,19 @@ import { withTimeout } from './utils'
 
 const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
 const AGENT_ROUTING_MODEL_TIMEOUT_MS = 20_000
+const MODEL_DELIVERY_RESERVE_MS = 20_000
+
+function hasTimeForAnotherModelCall(
+  getRemainingTimeInMillis: (() => number) | undefined,
+): boolean {
+  const remainingTimeMs = getRemainingTimeInMillis?.()
+  return (
+    remainingTimeMs === undefined ||
+    !Number.isFinite(remainingTimeMs) ||
+    remainingTimeMs >=
+      AGENT_ROUTING_MODEL_TIMEOUT_MS + MODEL_DELIVERY_RESERVE_MS
+  )
+}
 
 export type ExecutableFunctionCall = {
   toolCallId: string
@@ -211,6 +224,7 @@ export async function runToolLoop(
   toolByName: Map<string, AgentTool>,
   chatId: number,
   initialModelConfig: AiModelConfig,
+  options: { getRemainingTimeInMillis?: () => number } = {},
 ): Promise<{ finalText: string; toolResults: ToolExecutionResult[] }> {
   let finalText = ''
   const toolResults: ToolExecutionResult[] = []
@@ -218,6 +232,11 @@ export async function runToolLoop(
   let activeModel = formatAiModelConfig(initialModelConfig)
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+    if (!hasTimeForAnotherModelCall(options.getRemainingTimeInMillis)) {
+      logger.warn({ chatId, iteration }, 'loop.remaining_time_guard')
+      break
+    }
+
     let modelResult: GenerateModelWithRetryResult<ToolSet>
     try {
       modelResult = await generateModelWithRetryWithInfo(
@@ -350,7 +369,11 @@ export async function runToolLoop(
 
   // If no user-facing response came out of the loop, force a final synthesis
   // pass without tools. Terminal tools already collected their own response.
-  if (!finalText.trim() && getCollectedResponses().length === 0) {
+  if (
+    !finalText.trim() &&
+    getCollectedResponses().length === 0 &&
+    hasTimeForAnotherModelCall(options.getRemainingTimeInMillis)
+  ) {
     try {
       const finalizeResult = await generateModelWithRetryWithInfo(
         {

@@ -1,0 +1,38 @@
+import { getRedisClient } from './client'
+
+export const PAID_MEDIA_COOLDOWN_SECONDS = 60
+
+type RedisClient = NonNullable<ReturnType<typeof getRedisClient>>
+
+let redisClientOverride: RedisClient | null | undefined
+
+export function getPaidMediaCooldownKey(userId: string | number): string {
+  return `agent:paid-media:user:${encodeURIComponent(String(userId))}`
+}
+
+export function setPaidMediaCooldownRedisClientForTests(
+  redis: RedisClient | null | undefined,
+): void {
+  redisClientOverride = redis
+}
+
+/**
+ * Claim a short per-user generation window before calling a billed provider.
+ * Offline development and deployments without Redis keep their existing
+ * behavior; production workers already require Redis for idempotency.
+ */
+export async function acquirePaidMediaCooldown(
+  userId: string | number,
+): Promise<boolean> {
+  if (process.env.IS_OFFLINE === 'true') return true
+
+  const redis =
+    redisClientOverride === undefined ? getRedisClient() : redisClientOverride
+  if (!redis) return true
+
+  const acquired = await redis.set(getPaidMediaCooldownKey(userId), '1', {
+    ex: PAID_MEDIA_COOLDOWN_SECONDS,
+    nx: true,
+  })
+  return acquired === 'OK'
+}

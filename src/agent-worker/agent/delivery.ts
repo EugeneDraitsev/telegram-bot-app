@@ -82,12 +82,19 @@ const MEDIA_FILE_EXTENSIONS: Record<string, string> = {
   'video/webm': 'webm',
 }
 
+const VOICE_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp4', 'audio/ogg'])
+const AUDIO_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp4'])
+
+function normalizeMimeType(mimeType?: string): string | undefined {
+  return mimeType?.split(';', 1)[0]?.trim().toLowerCase()
+}
+
 function getMediaFileName(
   fileName: string | undefined,
   fallback: string,
   mimeType?: string,
 ): string {
-  const normalizedMimeType = mimeType?.split(';', 1)[0]?.trim().toLowerCase()
+  const normalizedMimeType = normalizeMimeType(mimeType)
   const extension = normalizedMimeType
     ? MEDIA_FILE_EXTENSIONS[normalizedMimeType]
     : undefined
@@ -374,31 +381,64 @@ async function sendGeneratedAudio(
         params.audio.mimeType,
       ),
     )
+  const mimeType = normalizeMimeType(params.audio.mimeType) ?? 'audio/mpeg'
   let sentMessage:
     | Awaited<ReturnType<TelegramApi['sendVoice']>>
     | Awaited<ReturnType<TelegramApi['sendAudio']>>
-  try {
-    sentMessage = await params.api.sendVoice(
-      params.chatId,
-      inputFile(),
-      options,
-    )
-  } catch (error) {
-    if (!isVoiceMessagesForbiddenError(error)) throw error
+    | Awaited<ReturnType<TelegramApi['sendDocument']>>
+    | undefined
 
-    logger.warn(
-      { chatId: params.chatId },
-      'delivery.voice_forbidden_audio_fallback',
-    )
-    const fallbackCaption = formatCaption(params.audio.caption)
-    sentMessage = await params.api.sendAudio(params.chatId, inputFile(), {
-      ...(params.audio.title?.trim()
-        ? { title: params.audio.title.trim().slice(0, 64) }
-        : {}),
-      caption: fallbackCaption,
-      parse_mode: fallbackCaption ? ('MarkdownV2' as const) : undefined,
-      ...getReplyOptions(params.replyToMessageId),
-    })
+  if (VOICE_MIME_TYPES.has(mimeType)) {
+    try {
+      sentMessage = await params.api.sendVoice(
+        params.chatId,
+        inputFile(),
+        options,
+      )
+    } catch (error) {
+      logger.warn(
+        { chatId: params.chatId, error },
+        isVoiceMessagesForbiddenError(error)
+          ? 'delivery.voice_forbidden_fallback'
+          : 'delivery.voice_failed_fallback',
+      )
+    }
+  }
+
+  if (!sentMessage) {
+    if (AUDIO_MIME_TYPES.has(mimeType)) {
+      const fallbackCaption = formatCaption(params.audio.caption)
+      try {
+        sentMessage = await params.api.sendAudio(params.chatId, inputFile(), {
+          ...(params.audio.title?.trim()
+            ? { title: params.audio.title.trim().slice(0, 64) }
+            : {}),
+          caption: fallbackCaption,
+          parse_mode: fallbackCaption ? ('MarkdownV2' as const) : undefined,
+          ...getReplyOptions(params.replyToMessageId),
+        })
+      } catch (error) {
+        logger.warn(
+          { chatId: params.chatId, error, mimeType },
+          'delivery.audio_failed_document_fallback',
+        )
+        sentMessage = await params.api.sendDocument(
+          params.chatId,
+          inputFile(),
+          options,
+        )
+      }
+    } else {
+      logger.warn(
+        { chatId: params.chatId, mimeType },
+        'delivery.audio_document_fallback',
+      )
+      sentMessage = await params.api.sendDocument(
+        params.chatId,
+        inputFile(),
+        options,
+      )
+    }
   }
   await saveBotReplyToHistory(sentMessage)
 

@@ -8,10 +8,12 @@ import {
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  claimPaidMediaGeneration,
+  PAID_MEDIA_DELIVERY_RESERVE_MS,
+  preparePaidMediaGeneration,
   requireToolContext,
   trackToolModelCall,
 } from './context'
+import { getMediaIdsParameter, selectMediaForTool } from './media-selection'
 import { getMediaCaption } from './media-text'
 
 const DEFAULT_DURATION_SECONDS = 5
@@ -39,7 +41,7 @@ export const generateVideoTool: AgentTool = {
     type: 'function',
     name: 'generate_video_with_omni',
     description:
-      'Generate a new 720p video with native synchronized audio, animate images, or edit video using Gemini Omni Flash. Call only when the current user explicitly asks to create, generate, animate, or edit video; never call merely to explain video generation. This is a billed content-generation action. Default to a cheap 5-second result and use a longer 3-10 second duration only when the user requests it. The current text prompt and all media available in the agent context are forwarded to Omni together.',
+      'Generate a new 720p video with native synchronized audio, animate selected images, or edit selected video using Gemini Omni Flash. Call only for an explicit request to create, generate, animate, or edit video. This is billed. The structured MEDIA_CONTEXT ties media_id values to their source messages and visible content; select only media the user actually refers to.',
     parameters: {
       type: 'object',
       properties: {
@@ -66,6 +68,7 @@ export const generateVideoTool: AgentTool = {
           description:
             '9:16 for vertical/social video; 16:9 for landscape. Default: 9:16.',
         },
+        mediaIds: getMediaIdsParameter('image/video conditioning inputs'),
       },
       required: ['prompt', 'caption'],
     },
@@ -80,18 +83,25 @@ export const generateVideoTool: AgentTool = {
 
       const durationSeconds = getDurationSeconds(args.durationSeconds)
       const aspectRatio = getAspectRatio(args.aspectRatio)
-      claimPaidMediaGeneration()
+      const selectedMedia = selectMediaForTool(mediaBuffers, args.mediaIds, [
+        'image',
+        'video',
+      ])
+      await preparePaidMediaGeneration(
+        GOOGLE_MEDIA_TOOL_TIMEOUT_MS + PAID_MEDIA_DELIVERY_RESERVE_MS,
+      )
       const result = await trackToolModelCall(
         {
           name: 'video_generation',
           model: `google/${GEMINI_OMNI_FLASH_MODEL}`,
+          getOutputTokensByModality: (media) => media.outputTokensByModality,
         },
         () =>
           generateOmniVideo({
             prompt,
             durationSeconds,
             aspectRatio,
-            media: mediaBuffers,
+            media: selectedMedia,
           }),
       )
 

@@ -4,6 +4,7 @@ type TestTelegramApi = TelegramApi & {
   sendMessage: jest.Mock
   sendPhoto: jest.Mock
   sendAudio: jest.Mock
+  sendDocument: jest.Mock
   sendVoice: jest.Mock
   sendVideo: jest.Mock
   sendAnimation: jest.Mock
@@ -73,6 +74,7 @@ function createApi(): TestTelegramApi {
     sendRichMessageDraft: jest.fn().mockResolvedValue(true),
     sendPhoto: jest.fn().mockResolvedValue({ message_id: 2 }),
     sendAudio: jest.fn().mockResolvedValue({ message_id: 9 }),
+    sendDocument: jest.fn().mockResolvedValue({ message_id: 10 }),
     sendVoice: jest.fn().mockResolvedValue({ message_id: 3 }),
     sendVideo: jest.fn().mockResolvedValue({ message_id: 4 }),
     sendAnimation: jest.fn().mockResolvedValue({ message_id: 5 }),
@@ -221,7 +223,7 @@ describe('sendResponses', () => {
         {
           type: 'audio',
           buffer: Buffer.from('music'),
-          mimeType: 'audio/wav',
+          mimeType: 'audio/mpeg',
           fileName: 'lyria.mp3',
           title: 'Midnight Cats',
           caption: 'An emo song about two cats',
@@ -233,7 +235,7 @@ describe('sendResponses', () => {
     expect(api.sendVoice).toHaveBeenCalledTimes(1)
     expect(api.sendVoice).toHaveBeenCalledWith(
       123,
-      expect.objectContaining({ filename: 'lyria.wav' }),
+      expect.objectContaining({ filename: 'lyria.mp3' }),
       {
         caption: 'Midnight Cats\nAn emo song about two cats',
         parse_mode: 'MarkdownV2',
@@ -241,6 +243,7 @@ describe('sendResponses', () => {
       },
     )
     expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).not.toHaveBeenCalled()
     expect(api.sendRichMessage).toHaveBeenCalledWith(
       123,
       { markdown: '[Verse]\nhello' },
@@ -251,12 +254,11 @@ describe('sendResponses', () => {
 
   test('falls back to audio when Telegram forbids voice messages', async () => {
     const api = createApi()
-    api.sendVoice.mockRejectedValueOnce(
-      Object.assign(new Error('voice forbidden'), {
-        error_code: 403,
-        description: 'Forbidden: VOICE_MESSAGES_FORBIDDEN',
-      }),
-    )
+    const voiceError = Object.assign(new Error('voice forbidden'), {
+      error_code: 403,
+      description: 'Forbidden: VOICE_MESSAGES_FORBIDDEN',
+    })
+    api.sendVoice.mockRejectedValueOnce(voiceError)
 
     await sendResponses({
       api,
@@ -288,8 +290,92 @@ describe('sendResponses', () => {
       undefined,
     )
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      { chatId: 123 },
-      'delivery.voice_forbidden_audio_fallback',
+      { chatId: 123, error: voiceError },
+      'delivery.voice_forbidden_fallback',
+    )
+  })
+
+  test('falls back to audio after any voice delivery error', async () => {
+    const api = createApi()
+    const voiceError = new Error('voice upload failed')
+    api.sendVoice.mockRejectedValueOnce(voiceError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          mimeType: 'audio/mpeg',
+          title: 'Night Run',
+        },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendDocument).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: voiceError },
+      'delivery.voice_failed_fallback',
+    )
+  })
+
+  test('sends formats unsupported by Telegram players as documents', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          mimeType: 'audio/wav',
+          fileName: 'lyria.mp3',
+          title: 'Night Run',
+          caption: 'A cinematic track',
+        },
+      ],
+    })
+
+    expect(api.sendVoice).not.toHaveBeenCalled()
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'lyria.wav' }),
+      {
+        caption: 'Night Run\nA cinematic track',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+  })
+
+  test('preserves paid audio as a document when both players reject it', async () => {
+    const api = createApi()
+    const audioError = new Error('audio upload failed')
+    api.sendVoice.mockRejectedValueOnce(new Error('voice upload failed'))
+    api.sendAudio.mockRejectedValueOnce(audioError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          mimeType: 'audio/mpeg',
+          title: 'Night Run',
+        },
+      ],
+    })
+
+    expect(api.sendDocument).toHaveBeenCalledTimes(1)
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: audioError, mimeType: 'audio/mpeg' },
+      'delivery.audio_failed_document_fallback',
     )
   })
 
@@ -308,6 +394,7 @@ describe('sendResponses', () => {
     expect(api.sendPhoto).toHaveBeenCalledTimes(1)
     expect(api.sendVoice).not.toHaveBeenCalled()
     expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).not.toHaveBeenCalled()
     expect(mockLogger.warn).toHaveBeenCalledWith(
       {
         chatId: 123,

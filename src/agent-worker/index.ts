@@ -132,7 +132,11 @@ export const processAgentWorker = async (
       bot.api,
       mediaData.mediaBuffers,
       effectiveBotInfo,
-      { bypassReplyGate, commandName },
+      {
+        bypassReplyGate,
+        commandName,
+        getRemainingTimeInMillis: () => context.getRemainingTimeInMillis(),
+      },
     )
     logger.info(
       {

@@ -58,6 +58,11 @@ describe('media resolution from a raw Telegram message', () => {
     expect(buffers).toHaveLength(1)
     expect(buffers[0].mimeType).toBe('image/jpeg')
     expect(buffers[0].buffer.toString()).toBe('image-bytes')
+    expect(buffers[0].context).toEqual({
+      relation: 'current-message',
+      messageId: 10,
+      text: 'что на фото?',
+    })
   })
 
   test('covers reply and album media the same way', async () => {

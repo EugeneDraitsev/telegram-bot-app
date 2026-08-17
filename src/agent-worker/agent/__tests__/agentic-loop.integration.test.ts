@@ -29,6 +29,7 @@ function createApi(): TelegramApi {
     sendMessage: jest.fn().mockResolvedValue({ message_id: 11 }),
     sendPhoto: jest.fn(),
     sendAudio: jest.fn(),
+    sendDocument: jest.fn(),
     sendVoice: jest.fn(),
     sendVideo: jest.fn(),
     sendAnimation: jest.fn(),
@@ -146,6 +147,27 @@ describe('runAgenticLoop integration', () => {
     expect(api.setMessageReaction).toHaveBeenCalled()
     expect(stopThinking).toHaveBeenCalledTimes(1)
     expect(stopTyping).toHaveBeenCalledTimes(1)
+  })
+
+  test('does not start another model call without a delivery reserve', async () => {
+    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetryWithInfo')
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+      getRemainingTimeInMillis: () => 39_999,
+    })
+
+    expect(modelSpy).not.toHaveBeenCalled()
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [
+          {
+            type: 'text',
+            text: 'Не смог собрать ответ по этому запросу. Попробуй переформулировать.',
+          },
+        ],
+      }),
+    )
   })
 
   test('executes a tool and feeds its result into the next model round', async () => {

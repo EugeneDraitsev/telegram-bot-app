@@ -7,6 +7,7 @@ const mockGenerateLyriaMusic = jest.fn()
 
 jest.mock('../../services/google-media', () => ({
   GEMINI_OMNI_FLASH_MODEL: 'gemini-omni-flash-preview',
+  GOOGLE_MEDIA_TOOL_TIMEOUT_MS: 170_000,
   LYRIA_3_CLIP_MODEL: 'lyria-3-clip-preview',
   LYRIA_3_PRO_MODEL: 'lyria-3-pro-preview',
   generateOmniVideo: (...args: unknown[]) => mockGenerateOmniVideo(...args),
@@ -55,7 +56,7 @@ describe('Google media agent tools', () => {
     expect(generateMusicTool.timeoutMs).toBe(170_000)
   })
 
-  test('forwards text and all media with cost-conscious Omni defaults', async () => {
+  test('uses current media but not history media by default', async () => {
     const responses = await runWithToolContext(
       message,
       [requestImage, historyImage],
@@ -73,7 +74,7 @@ describe('Google media agent tools', () => {
       prompt: 'Neon fox',
       durationSeconds: 3,
       aspectRatio: '9:16',
-      media: [requestImage, historyImage],
+      media: [requestImage],
     })
     expect(responses).toEqual([
       expect.objectContaining({
@@ -106,7 +107,7 @@ describe('Google media agent tools', () => {
     expect(mockGenerateLyriaMusic).toHaveBeenCalledWith({
       prompt: 'A full synth-pop song',
       model: 'lyria-3-pro-preview',
-      media: [requestImage, historyImage],
+      media: [requestImage],
     })
     expect(responses).toEqual([
       expect.objectContaining({
@@ -118,6 +119,20 @@ describe('Google media agent tools', () => {
       }),
       { type: 'text', text: '[Verse]\nhello' },
     ])
+  })
+
+  test('uses exact history media only when the model selects its media_id', async () => {
+    await runWithToolContext(message, [requestImage, historyImage], () =>
+      generateVideoTool.execute({
+        prompt: 'Animate the older photo',
+        caption: 'Старая фотография оживает.',
+        mediaIds: [2],
+      }),
+    )
+
+    expect(mockGenerateOmniVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ media: [historyImage] }),
+    )
   })
 
   test('does not expose technical prompts as missing metadata', async () => {
@@ -173,5 +188,23 @@ describe('Google media agent tools', () => {
 
     expect(mockGenerateOmniVideo).toHaveBeenCalledTimes(1)
     expect(mockGenerateLyriaMusic).not.toHaveBeenCalled()
+  })
+
+  test('does not start billed generation without a delivery time reserve', async () => {
+    const result = runWithToolContext(
+      message,
+      [],
+      () =>
+        generateVideoTool.execute({
+          prompt: 'Neon fox',
+          caption: 'A running fox',
+        }),
+      undefined,
+      undefined,
+      () => 189_999,
+    )
+
+    await expect(result).rejects.toThrow('Not enough execution time remains')
+    expect(mockGenerateOmniVideo).not.toHaveBeenCalled()
   })
 })

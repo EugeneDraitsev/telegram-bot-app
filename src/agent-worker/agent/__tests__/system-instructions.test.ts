@@ -15,13 +15,13 @@ describe('agentSystemInstructions', () => {
       'Call generate_video_with_omni only when the current user explicitly asks',
     )
     expect(agentSystemInstructions).toContain(
-      'every media item available in the agent context',
+      'Each MEDIA has a stable media_id and belongs only to the message immediately above it',
     )
     expect(agentSystemInstructions).toContain(
       'Call generate_music_with_lyria only when the current user explicitly asks',
     )
     expect(agentSystemInstructions).toContain(
-      'Lyria supports text and images but cannot continue or edit audio from a reply',
+      'Lyria cannot continue or edit audio from a reply',
     )
     expect(agentSystemInstructions).toContain(
       'create a new full-length rendition from the current request and relevant visible text context',

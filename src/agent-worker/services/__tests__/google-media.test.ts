@@ -23,14 +23,24 @@ function generatedVideo(value: string) {
         uint8Array: new Uint8Array(Buffer.from(value)),
       },
     ],
-    providerMetadata: { google: { interactionId: 'interaction-1' } },
+    providerMetadata: {
+      google: {
+        interactionId: 'interaction-1',
+        outputTokensByModality: { video: 57_920 },
+      },
+    },
   }
 }
 
 function generatedMusic(value: string) {
   return {
     files: [],
-    providerMetadata: { google: { interactionId: 'interaction-3' } },
+    providerMetadata: {
+      google: {
+        interactionId: 'interaction-3',
+        outputTokensByModality: { audio: 12_345 },
+      },
+    },
     response: {
       body: {
         id: 'interaction-3',
@@ -121,12 +131,15 @@ describe('Google media through the AI SDK', () => {
       ],
       maxRetries: 0,
       timeout: 160_000,
-      providerOptions: { google: { store: false } },
+      providerOptions: {
+        google: { store: false, responseModalities: ['video'] },
+      },
     })
     expect(result).toEqual({
       buffer: Buffer.from('generated-video'),
       mimeType: 'video/mp4',
       interactionId: 'interaction-1',
+      outputTokensByModality: { video: 57_920 },
     })
   })
 
@@ -266,12 +279,15 @@ describe('Google media through the AI SDK', () => {
       maxRetries: 0,
       timeout: 160_000,
       include: { responseBody: true },
-      providerOptions: { google: { store: false } },
+      providerOptions: {
+        google: { store: false, responseModalities: ['audio'] },
+      },
     })
     expect(result).toEqual({
       buffer: Buffer.from('generated-music'),
       mimeType: 'audio/mpeg',
       interactionId: 'interaction-3',
+      outputTokensByModality: { audio: 12_345 },
       text: '[Verse]\nHello',
     })
   })

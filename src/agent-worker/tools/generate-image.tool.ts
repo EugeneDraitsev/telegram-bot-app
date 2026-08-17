@@ -8,21 +8,21 @@ import {
   GEMINI_FLASH_LITE_IMAGE_MODEL,
   getErrorMessage,
   logger,
-  type MediaBuffer,
 } from '@tg-bot/common'
 import { generateImage, generateImageOpenAi } from '../services'
 import { IMAGE_MODEL } from '../services/openai-image'
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  claimPaidMediaGeneration,
+  PAID_MEDIA_DELIVERY_RESERVE_MS,
+  preparePaidMediaGeneration,
   requireToolContext,
   trackToolModelCall,
 } from './context'
-
-type ImageMediaSource = 'none' | 'request' | 'history'
+import { getMediaIdsParameter, selectMediaForTool } from './media-selection'
 
 const OPENAI_IMAGE_COMMANDS = new Set(['e', 'ee', 'gp', 'de'])
+const IMAGE_TOOL_TIMEOUT_MS = 120_000
 const IMAGE_METRIC_NAME = 'image_generation'
 const GEMINI_IMAGE_MODEL = formatAiModelConfig(GEMINI_FLASH_LITE_IMAGE_MODEL)
 const OPENAI_IMAGE_MODEL = `openai/${IMAGE_MODEL}`
@@ -108,50 +108,14 @@ async function generateWithFallback(
   return generateTracked(fallback, prompt, inputImages, primary.model)
 }
 
-function isHistoryImage(media: MediaBuffer): boolean {
-  return media.origin === 'history'
-}
-
-function getMediaSource(args: Record<string, unknown>): ImageMediaSource {
-  if (
-    args.mediaSource === 'none' ||
-    args.mediaSource === 'request' ||
-    args.mediaSource === 'history'
-  ) {
-    return args.mediaSource
-  }
-
-  return ((args.useAttachedImage as boolean | undefined) ?? true)
-    ? 'request'
-    : 'none'
-}
-
-function getImageEditCandidates(
-  mediaBuffers: MediaBuffer[] | undefined,
-  mediaSource: ImageMediaSource,
-): MediaBuffer[] {
-  if (mediaSource === 'none') {
-    return []
-  }
-
-  const images = (mediaBuffers ?? []).filter(
-    (media) => media.mediaType === 'image',
-  )
-  if (mediaSource === 'history') {
-    return images.filter(isHistoryImage).slice(-1)
-  }
-
-  return images.filter((media) => !isHistoryImage(media))
-}
-
 export const generateImageTool: AgentTool = {
   execution: ['after-data'],
-  timeoutMs: 120_000,
+  timeoutMs: IMAGE_TOOL_TIMEOUT_MS,
   declaration: {
     type: 'function',
     name: 'generate_or_edit_image',
     description:
-      'Generate a NEW image using AI or EDIT an existing image immediately. Use when user wants to create/draw something new, or edit/modify an attached image. Infer missing aesthetic details and choose sensible defaults instead of asking follow-up style questions. Build the image prompt only from the current user message, reply target/quote, and tool results intentionally gathered for this request. Do not blend in unrelated recent chat history, emoji, stickers, or history images.',
+      'Generate a NEW image using AI or EDIT selected images immediately. Use when the user wants to create, draw, edit, or modify an image. The structured MEDIA_CONTEXT ties every media_id to its source message and visible content; select only the media the user actually refers to.',
     parameters: {
       type: 'object',
       properties: {
@@ -160,17 +124,7 @@ export const generateImageTool: AgentTool = {
           description:
             'Detailed description of the image to generate or edit instructions. Include only visual details directly requested now or present in the current reply target/quote. Do not include unrelated recent-history text, emoji, stickers, or images.',
         },
-        mediaSource: {
-          type: 'string',
-          enum: ['none', 'request', 'history'],
-          description:
-            'Which image media to use as edit/reference input. "request" uses only explicit current/reply/album media and is the default. "history" uses the newest recent-history image only when the user explicitly asks for the last/recent chat image. "none" generates from text only.',
-        },
-        useAttachedImage: {
-          type: 'boolean',
-          description:
-            'Deprecated compatibility flag. If true, behaves like mediaSource="request"; it never falls back to history images.',
-        },
+        mediaIds: getMediaIdsParameter('image edit/reference inputs'),
         includeTextResponse: {
           type: 'boolean',
           description:
@@ -189,9 +143,10 @@ export const generateImageTool: AgentTool = {
         throw new Error('Prompt cannot be empty')
       }
 
-      const mediaSource = getMediaSource(args)
       const includeTextResponse = args.includeTextResponse as boolean
-      const imageCandidates = getImageEditCandidates(mediaBuffers, mediaSource)
+      const imageCandidates = selectMediaForTool(mediaBuffers, args.mediaIds, [
+        'image',
+      ])
       const imagesToEdit =
         imageCandidates.length > 0 ? imageCandidates : undefined
       const imagePrompt = buildImageEditTargetPrompt(
@@ -200,7 +155,9 @@ export const generateImageTool: AgentTool = {
           (media) => media.label || 'Unlabeled image context',
         ) ?? [],
       )
-      claimPaidMediaGeneration()
+      await preparePaidMediaGeneration(
+        IMAGE_TOOL_TIMEOUT_MS + PAID_MEDIA_DELIVERY_RESERVE_MS,
+      )
       const result = await generateWithFallback(
         imagePrompt,
         imagesToEdit?.map((media) => media.buffer),

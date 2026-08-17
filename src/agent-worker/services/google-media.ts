@@ -29,6 +29,7 @@ interface GeneratedMedia {
   buffer: Buffer
   mimeType: string
   interactionId?: string
+  outputTokensByModality?: Record<string, number>
 }
 
 export interface GeneratedMusic extends GeneratedMedia {
@@ -100,6 +101,24 @@ function getInteractionId(metadata: unknown): string | undefined {
   return typeof interactionId === 'string' ? interactionId : undefined
 }
 
+function getOutputTokensByModality(
+  metadata: unknown,
+): Record<string, number> | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined
+  const google = (metadata as Record<string, unknown>).google
+  if (!google || typeof google !== 'object') return undefined
+  const raw = (google as Record<string, unknown>).outputTokensByModality
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+
+  const entries = Object.entries(raw).filter(
+    (entry): entry is [string, number] =>
+      typeof entry[1] === 'number' &&
+      Number.isFinite(entry[1]) &&
+      entry[1] >= 0,
+  )
+  return entries.length ? Object.fromEntries(entries) : undefined
+}
+
 function createOmniFetch(
   aspectRatio: OmniAspectRatio,
   durationSeconds: number,
@@ -144,7 +163,9 @@ export async function generateOmniVideo(options: {
       prompt: createPrompt(options.prompt.trim(), media),
       maxRetries: 0,
       timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
-      providerOptions: { google: { store: false } },
+      providerOptions: {
+        google: { store: false, responseModalities: ['video'] },
+      },
     }),
   )
   const video = response.files.find((file) =>
@@ -153,11 +174,15 @@ export async function generateOmniVideo(options: {
   if (!video?.uint8Array.byteLength) {
     throw new Error('Gemini Omni returned no video output')
   }
+  const outputTokensByModality = getOutputTokensByModality(
+    response.providerMetadata,
+  )
 
   return {
     buffer: Buffer.from(video.uint8Array),
     mimeType: video.mediaType,
     interactionId: getInteractionId(response.providerMetadata),
+    ...(outputTokensByModality ? { outputTokensByModality } : {}),
   }
 }
 
@@ -174,17 +199,23 @@ export async function generateLyriaMusic(options: {
       maxRetries: 0,
       timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
       include: { responseBody: true },
-      providerOptions: { google: { store: false } },
+      providerOptions: {
+        google: { store: false, responseModalities: ['audio'] },
+      },
     }),
   )
   const output = extractLyriaInteractionOutput(response.response.body)
   if (!output) throw new Error('Lyria returned no audio output')
+  const outputTokensByModality = getOutputTokensByModality(
+    response.providerMetadata,
+  )
 
   return {
     buffer: output.buffer,
     mimeType: output.mimeType,
     interactionId:
       getInteractionId(response.providerMetadata) ?? output.interactionId,
+    ...(outputTokensByModality ? { outputTokensByModality } : {}),
     text: response.text.trim() || output.text,
   }
 }

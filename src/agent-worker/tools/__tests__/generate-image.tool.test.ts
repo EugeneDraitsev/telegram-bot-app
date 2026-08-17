@@ -57,7 +57,6 @@ describe('generateImageTool', () => {
       async () => {
         await generateImageTool.execute({
           prompt: 'make it brighter',
-          useAttachedImage: true,
         })
       },
     )
@@ -87,7 +86,6 @@ describe('generateImageTool', () => {
       async () => {
         await generateImageTool.execute({
           prompt: 'turn the last photo into a poster',
-          useAttachedImage: true,
         })
       },
     )
@@ -117,7 +115,7 @@ describe('generateImageTool', () => {
       async () => {
         await generateImageTool.execute({
           prompt: 'turn the last photo into a poster',
-          mediaSource: 'history',
+          mediaIds: [2],
         })
       },
     )
@@ -133,7 +131,7 @@ describe('generateImageTool', () => {
     await runWithToolContext(message, undefined, () =>
       generateImageTool.execute({
         prompt: 'draw a fox',
-        mediaSource: 'none',
+        mediaIds: [],
       }),
     )
 
@@ -151,7 +149,7 @@ describe('generateImageTool', () => {
       () =>
         generateImageTool.execute({
           prompt: 'draw a fox',
-          mediaSource: 'none',
+          mediaIds: [],
         }),
       undefined,
       'ge',
@@ -173,7 +171,7 @@ describe('generateImageTool', () => {
       () =>
         generateImageTool.execute({
           prompt: 'draw a fox',
-          mediaSource: 'none',
+          mediaIds: [],
         }),
       undefined,
       'ge',
@@ -189,7 +187,7 @@ describe('generateImageTool', () => {
     const result = await runWithToolContext(message, undefined, () =>
       generateImageTool.execute({
         prompt: 'draw a fox',
-        mediaSource: 'none',
+        mediaIds: [],
       }),
     )
 
@@ -206,7 +204,7 @@ describe('generateImageTool', () => {
     await runWithToolContext(message, undefined, () =>
       generateImageTool.execute({
         prompt: 'draw a fox',
-        mediaSource: 'none',
+        mediaIds: [],
       }),
     )
 
@@ -225,7 +223,7 @@ describe('generateImageTool', () => {
         () =>
           generateImageTool.execute({
             prompt: 'draw a fox',
-            mediaSource: 'none',
+            mediaIds: [],
           }),
         undefined,
         commandName,

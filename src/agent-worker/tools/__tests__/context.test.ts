@@ -2,7 +2,7 @@ import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
 import {
-  claimPaidMediaGeneration,
+  preparePaidMediaGeneration,
   requireToolContext,
   runWithToolContext,
   withToolMediaBuffers,
@@ -25,15 +25,30 @@ function image(label: string): MediaBuffer {
 describe('tool context', () => {
   test('allows only one paid media generation attempt per context', async () => {
     await runWithToolContext(message, undefined, async () => {
-      claimPaidMediaGeneration()
-      expect(() => claimPaidMediaGeneration()).toThrow(
+      await preparePaidMediaGeneration(190_000)
+      await expect(preparePaidMediaGeneration(190_000)).rejects.toThrow(
         'A paid media generation was already attempted',
       )
     })
 
     await runWithToolContext(message, undefined, async () => {
-      expect(() => claimPaidMediaGeneration()).not.toThrow()
+      await expect(preparePaidMediaGeneration(190_000)).resolves.toBeUndefined()
     })
+  })
+
+  test('rejects paid generation before billing when Lambda time is low', async () => {
+    await runWithToolContext(
+      message,
+      undefined,
+      async () => {
+        await expect(preparePaidMediaGeneration(190_000)).rejects.toThrow(
+          'Not enough execution time remains',
+        )
+      },
+      undefined,
+      undefined,
+      () => 189_999,
+    )
   })
 
   test('scopes media buffer override and restores the previous context', async () => {

@@ -125,6 +125,7 @@ export interface MediaFileRef {
   mimeType: string
   mediaType: 'image' | 'audio' | 'video'
   label?: string
+  context?: MediaMessageContext
 }
 
 export interface HistoryMediaFileRef {
@@ -238,8 +239,30 @@ function appendMediaRefs(
   seen: Set<string>,
   sourceMessage: Message | undefined,
   sourceLabel: string,
+  relation: MediaMessageRelation,
+  referencedBy?: Message,
 ) {
   const messageLabel = getMessageLabel(sourceMessage) || `source=${sourceLabel}`
+  const referenceLabel = getMessageLabel(referencedBy)
+  const context: MediaMessageContext = {
+    relation,
+    ...(typeof sourceMessage?.message_id === 'number'
+      ? { messageId: sourceMessage.message_id }
+      : {}),
+    ...(getShortMessageText(sourceMessage)
+      ? { text: getShortMessageText(sourceMessage) }
+      : {}),
+    ...(sourceMessage?.from ? { author: getUserName(sourceMessage.from) } : {}),
+    ...(typeof referencedBy?.message_id === 'number'
+      ? { referencedByMessageId: referencedBy.message_id }
+      : {}),
+    ...(getShortMessageText(referencedBy)
+      ? { referencedByText: getShortMessageText(referencedBy) }
+      : {}),
+    ...(referencedBy?.from
+      ? { referencedByAuthor: getUserName(referencedBy.from) }
+      : {}),
+  }
 
   for (const ref of collectSingleMessageMediaFileRefs(sourceMessage)) {
     const key = getMediaKey(ref)
@@ -248,7 +271,13 @@ function appendMediaRefs(
     seen.add(key)
     refs.push({
       ...ref,
-      label: `${sourceLabel} ${getMediaKindLabel(ref)} (${messageLabel})`,
+      label: `${sourceLabel} ${getMediaKindLabel(ref)} (${[
+        messageLabel,
+        referenceLabel ? `referenced by ${referenceLabel}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(' | ')})`,
+      context,
     })
   }
 }
@@ -263,18 +292,25 @@ export function getCommandMediaRefs(
   const replyMessage = message?.reply_to_message
   const replyMediaGroupId = replyMessage?.media_group_id
 
-  appendMediaRefs(refs, seen, message, 'Current command')
-  appendMediaRefs(refs, seen, replyMessage, 'Reply message')
+  appendMediaRefs(refs, seen, message, 'Current command', 'current-message')
+  appendMediaRefs(
+    refs,
+    seen,
+    replyMessage,
+    'Reply message',
+    'reply-target',
+    message,
+  )
 
   for (const extraMessage of extraMessages) {
-    const source =
+    const [source, relation] =
       currentMediaGroupId && extraMessage.media_group_id === currentMediaGroupId
-        ? 'Current command album'
+        ? (['Current command album', 'current-album'] as const)
         : replyMediaGroupId && extraMessage.media_group_id === replyMediaGroupId
-          ? 'Reply message album'
-          : 'Related album'
+          ? (['Reply message album', 'reply-album'] as const)
+          : (['Related album', 'related-album'] as const)
 
-    appendMediaRefs(refs, seen, extraMessage, source)
+    appendMediaRefs(refs, seen, extraMessage, source, relation)
   }
 
   return refs
@@ -339,7 +375,18 @@ export function collectHistoryMediaFileRefs(
   const refsById = new Map<string, HistoryMediaFileRef>()
 
   for (const message of limitedMessages) {
-    const refs = collectMediaFileRefs(message)
+    const refs: MediaFileRef[] = []
+    const seen = new Set<string>()
+    appendMediaRefs(refs, seen, message, 'History message', 'history-message')
+    appendMediaRefs(
+      refs,
+      seen,
+      message.reply_to_message,
+      'History reply target',
+      'history-reply-target',
+      message,
+    )
+    const filteredRefs = refs
       .filter(
         (ref) => !allowedMediaTypes || allowedMediaTypes.has(ref.mediaType),
       )
@@ -349,7 +396,7 @@ export function collectHistoryMediaFileRefs(
           !(ref.fileUniqueId && excludedFileUniqueIds.has(ref.fileUniqueId)),
       )
 
-    for (const ref of refs) {
+    for (const ref of filteredRefs) {
       const key = getMediaKey(ref)
       if (!refsById.has(key)) {
         refsById.set(key, { ref, message })
@@ -373,6 +420,26 @@ export interface MediaBuffer {
   fileId?: string
   fileUniqueId?: string
   label?: string
+  context?: MediaMessageContext
+}
+
+export type MediaMessageRelation =
+  | 'current-message'
+  | 'reply-target'
+  | 'current-album'
+  | 'reply-album'
+  | 'related-album'
+  | 'history-message'
+  | 'history-reply-target'
+
+export interface MediaMessageContext {
+  relation: MediaMessageRelation
+  messageId?: number
+  text?: string
+  author?: string
+  referencedByMessageId?: number
+  referencedByText?: string
+  referencedByAuthor?: string
 }
 
 export interface HistoryMediaAttachment {
@@ -450,6 +517,7 @@ export async function resolveMediaBuffers(
         fileId: ref.fileId,
         fileUniqueId: ref.fileUniqueId,
         label: ref.label,
+        context: ref.context,
       }
     }),
   )

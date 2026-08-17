@@ -184,18 +184,25 @@ explicit Telegram commands and built-in agent tools:
 - `/omni <prompt>` uses `gemini-omni-flash-preview` for 720p video with native
   audio. It defaults to a five-second vertical clip; prompts can request 3-10
   seconds or 16:9. An attached/replied image becomes an animation/reference;
-  an attached/replied video becomes an edit source. The prompt and all media
-  already collected for the agent context, including recent images, are
-  considered together; Omni receives up to four supported visual items within
-  a 19 MiB inline budget.
+  an attached/replied video becomes an edit source. Omni receives up to four
+  selected visual items within a 19 MiB inline budget.
 - `/lyria <prompt>` uses `lyria-3-clip-preview` for a 30-second stereo MP3.
 - `/lyriapro <prompt>` uses `lyria-3-pro-preview` for a full-length structured
-  song. Both Lyria commands automatically receive all collected current, reply,
-  and recent-history images, up to 10 items within the same 19 MiB inline
-  budget. Replying with `/lyriapro` to a Clip can create a new full-length
-  rendition from the visible text context, but Google does not support exact
-  continuation of the replied audio. Generated audio is delivered through
-  Telegram's voice-message player; requested lyrics are sent separately.
+  song. Both Lyria commands accept up to 10 selected images within the same 19
+  MiB inline budget. Replying with `/lyriapro` to a Clip can create a new
+  full-length rendition from the visible text context, but Google does not
+  support exact continuation of the replied audio. Generated MP3/M4A/OGG is
+  attempted through Telegram's voice-message player, then falls back to audio
+  or document delivery so an already generated track is not discarded;
+  requested lyrics are sent separately.
+
+Every available media item is presented to the routing model inside a
+structured message block with its source relation (current message, reply
+target, album, or history), message id, author, text, and a stable `media_id`.
+Visible history images can therefore be matched by content or by phrases such
+as “the last cat photo”, while generation tools default safely to current,
+reply, and album media. History media reaches a billed provider only when the
+agent explicitly selects its id; an empty selection means text-only generation.
 
 The same capabilities are available to natural-language agent requests as
 `generate_video_with_omni` and `generate_music_with_lyria`. They run only after
@@ -203,6 +210,12 @@ an explicit generation request; Lyria Clip and a five-second Omni clip are the
 cost-conscious defaults. The agent generates a natural user-language caption
 for every result and a separate title for music instead of exposing model-name
 boilerplate.
+
+Billed media calls are limited to one attempt per agent request and one start
+per user per 60 seconds. Before starting, the worker verifies that enough
+Lambda time remains for the provider call plus Telegram delivery. Google output
+tokens by modality are stored with the existing model-call metrics for cost
+visibility.
 
 Media generation uses Vercel AI SDK's Google Interactions provider and the
 existing `GEMINI_API_KEY` secret (`GOOGLE_GENERATIVE_AI_API_KEY` also works

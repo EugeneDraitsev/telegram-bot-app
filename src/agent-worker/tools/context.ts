@@ -2,10 +2,12 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Message } from 'grammy/types'
 
 import {
+  acquirePaidMediaCooldown,
   type ChatAdminApi,
   type MediaBuffer,
   type MetricSource,
   type MetricStatus,
+  PAID_MEDIA_COOLDOWN_SECONDS,
   timedCall,
 } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
@@ -14,12 +16,15 @@ interface ToolContext {
   message: Message
   api?: ChatAdminApi
   commandName?: string
+  getRemainingTimeInMillis?: () => number
   mediaBuffers?: MediaBuffer[]
   paidMediaGenerationClaimed: boolean
   responses: AgentResponse[]
 }
 
 const contextStorage = new AsyncLocalStorage<ToolContext>()
+
+export const PAID_MEDIA_DELIVERY_RESERVE_MS = 20_000
 
 export function requireToolContext(): ToolContext {
   const context = contextStorage.getStore()
@@ -37,12 +42,35 @@ export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
 }
 
-export function claimPaidMediaGeneration(): void {
+export async function preparePaidMediaGeneration(
+  minimumRemainingTimeMs: number,
+): Promise<void> {
   const context = requireToolContext()
   if (context.paidMediaGenerationClaimed) {
     throw new Error('A paid media generation was already attempted')
   }
+
+  const remainingTimeMs = context.getRemainingTimeInMillis?.()
+  if (
+    typeof remainingTimeMs === 'number' &&
+    Number.isFinite(remainingTimeMs) &&
+    remainingTimeMs < minimumRemainingTimeMs
+  ) {
+    throw new Error(
+      'Not enough execution time remains to safely start paid media generation; ask the user to retry in a new message',
+    )
+  }
+
+  // Claim synchronously before awaiting Redis so parallel tool calls cannot
+  // both enter a billed provider request in the same model round.
   context.paidMediaGenerationClaimed = true
+
+  const userId = context.message.from?.id ?? context.message.chat.id
+  if (!(await acquirePaidMediaCooldown(userId))) {
+    throw new Error(
+      `Paid media generation is limited to once every ${PAID_MEDIA_COOLDOWN_SECONDS} seconds per user; ask the user to retry shortly`,
+    )
+  }
 }
 
 function getToolCommandName(): string | undefined {
@@ -64,6 +92,9 @@ export async function trackToolModelCall<T>(
     fallbackFrom?: string
     attribution?: { source: MetricSource; command?: string }
     classifyResult?: (result: T) => MetricStatus
+    getOutputTokensByModality?: (
+      result: T,
+    ) => Record<string, number> | undefined
   },
   fn: () => Promise<T>,
 ): Promise<T> {
@@ -101,12 +132,14 @@ export async function runWithToolContext<T>(
   callback: () => Promise<T>,
   api?: ChatAdminApi,
   commandName?: string,
+  getRemainingTimeInMillis?: () => number,
 ): Promise<T> {
   return contextStorage.run(
     {
       message,
       api,
       commandName,
+      getRemainingTimeInMillis,
       mediaBuffers,
       paidMediaGenerationClaimed: false,
       responses: [],

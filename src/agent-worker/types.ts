@@ -15,6 +15,7 @@ type TelegramApiMethods = Pick<
   | 'sendMessage'
   | 'sendPhoto'
   | 'sendAudio'
+  | 'sendDocument'
   | 'sendVoice'
   | 'sendVideo'
   | 'sendAnimation'

@@ -9,10 +9,12 @@ import {
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  claimPaidMediaGeneration,
+  PAID_MEDIA_DELIVERY_RESERVE_MS,
+  preparePaidMediaGeneration,
   requireToolContext,
   trackToolModelCall,
 } from './context'
+import { getMediaIdsParameter, selectMediaForTool } from './media-selection'
 import { getMediaCaption, getTrackTitle } from './media-text'
 
 type LyriaMode = 'clip' | 'pro'
@@ -37,7 +39,7 @@ export const generateMusicTool: AgentTool = {
     type: 'function',
     name: 'generate_music_with_lyria',
     description:
-      'Generate original high-fidelity stereo music with Google Lyria 3. Call only when the current user explicitly asks to create or generate music, a song, a loop, or a soundtrack; never call merely to discuss music. This is a billed content-generation action. Default to the faster, cheaper 30-second Clip model. Use Pro only when the user explicitly asks for a full-length song or multi-section composition. The current text prompt and all Google-supported media available in the agent context are forwarded automatically. Do not imitate a living artist or reproduce copyrighted lyrics.',
+      'Generate original high-fidelity stereo music with Google Lyria 3. Call only for an explicit request to create music, a song, loop, or soundtrack. This is billed. Default to the cheaper 30-second Clip model and use Pro only for an explicitly requested full-length or multi-section song. The structured MEDIA_CONTEXT ties media_id values to source messages and visible content; select only images the user actually refers to. Do not imitate a living artist or reproduce copyrighted lyrics.',
     parameters: {
       type: 'object',
       properties: {
@@ -67,6 +69,7 @@ export const generateMusicTool: AgentTool = {
           description:
             'Also send the generated lyrics/structure as text when the user asks to see them. Default: false.',
         },
+        mediaIds: getMediaIdsParameter('image conditioning inputs'),
       },
       required: ['prompt', 'title', 'caption'],
     },
@@ -82,14 +85,23 @@ export const generateMusicTool: AgentTool = {
 
       const mode = getLyriaMode(commandName, args.mode)
       const model = getLyriaModel(mode)
-      claimPaidMediaGeneration()
+      const selectedMedia = selectMediaForTool(mediaBuffers, args.mediaIds, [
+        'image',
+      ])
+      await preparePaidMediaGeneration(
+        GOOGLE_MEDIA_TOOL_TIMEOUT_MS + PAID_MEDIA_DELIVERY_RESERVE_MS,
+      )
       const result = await trackToolModelCall(
-        { name: 'music_generation', model: `google/${model}` },
+        {
+          name: 'music_generation',
+          model: `google/${model}`,
+          getOutputTokensByModality: (media) => media.outputTokensByModality,
+        },
         () =>
           generateLyriaMusic({
             prompt,
             model,
-            media: mediaBuffers,
+            media: selectedMedia,
           }),
       )
 
