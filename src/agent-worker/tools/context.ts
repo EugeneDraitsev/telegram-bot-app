@@ -15,6 +15,7 @@ interface ToolContext {
   api?: ChatAdminApi
   commandName?: string
   mediaBuffers?: MediaBuffer[]
+  paidMediaGenerationClaimed: boolean
   responses: AgentResponse[]
 }
 
@@ -34,6 +35,14 @@ export function addResponse(response: AgentResponse): void {
 
 export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
+}
+
+export function claimPaidMediaGeneration(): void {
+  const context = requireToolContext()
+  if (context.paidMediaGenerationClaimed) {
+    throw new Error('A paid media generation was already attempted')
+  }
+  context.paidMediaGenerationClaimed = true
 }
 
 function getToolCommandName(): string | undefined {
@@ -94,7 +103,14 @@ export async function runWithToolContext<T>(
   commandName?: string,
 ): Promise<T> {
   return contextStorage.run(
-    { message, api, commandName, mediaBuffers, responses: [] },
+    {
+      message,
+      api,
+      commandName,
+      mediaBuffers,
+      paidMediaGenerationClaimed: false,
+      responses: [],
+    },
     callback,
   )
 }

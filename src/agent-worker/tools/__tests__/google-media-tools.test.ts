@@ -26,7 +26,6 @@ const requestImage: MediaBuffer = {
   buffer: Buffer.from('image'),
   mimeType: 'image/jpeg',
   mediaType: 'image',
-  origin: 'request',
 }
 
 const historyImage: MediaBuffer = {
@@ -137,5 +136,42 @@ describe('Google media agent tools', () => {
     expect(musicResponses[0]).toEqual(
       expect.objectContaining({ title: undefined, caption: undefined }),
     )
+  })
+
+  test('rejects a second paid media tool while the first is running', async () => {
+    await runWithToolContext(message, [], async () => {
+      const videoPromise = generateVideoTool.execute({
+        prompt: 'Neon fox',
+        caption: 'A running fox',
+      })
+
+      await expect(
+        generateMusicTool.execute({
+          prompt: 'Neon fox soundtrack',
+          title: 'Night Run',
+          caption: 'A fast synth track',
+        }),
+      ).rejects.toThrow('A paid media generation was already attempted')
+      await videoPromise
+    })
+
+    expect(mockGenerateOmniVideo).toHaveBeenCalledTimes(1)
+    expect(mockGenerateLyriaMusic).not.toHaveBeenCalled()
+  })
+
+  test('does not start another paid media generation after a failure', async () => {
+    mockGenerateOmniVideo.mockRejectedValueOnce(new Error('Omni failed'))
+
+    await runWithToolContext(message, [], async () => {
+      await expect(
+        generateVideoTool.execute({ prompt: 'Failing video' }),
+      ).rejects.toThrow('Omni failed')
+      await expect(
+        generateMusicTool.execute({ prompt: 'Try music instead' }),
+      ).rejects.toThrow('A paid media generation was already attempted')
+    })
+
+    expect(mockGenerateOmniVideo).toHaveBeenCalledTimes(1)
+    expect(mockGenerateLyriaMusic).not.toHaveBeenCalled()
   })
 })

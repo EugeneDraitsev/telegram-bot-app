@@ -188,6 +188,7 @@ describe('sendResponses', () => {
         {
           type: 'video',
           buffer: Buffer.from('video'),
+          mimeType: 'video/webm',
           fileName: 'omni.mp4',
           caption: 'Omni with audio',
         },
@@ -196,12 +197,16 @@ describe('sendResponses', () => {
     })
 
     expect(api.sendVideo).toHaveBeenCalledTimes(1)
-    expect(api.sendVideo).toHaveBeenCalledWith(123, expect.anything(), {
-      caption: 'Omni with audio',
-      parse_mode: 'MarkdownV2',
-      supports_streaming: true,
-      reply_parameters: { message_id: 456 },
-    })
+    expect(api.sendVideo).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'omni.webm' }),
+      {
+        caption: 'Omni with audio',
+        parse_mode: 'MarkdownV2',
+        supports_streaming: true,
+        reply_parameters: { message_id: 456 },
+      },
+    )
     expect(api.sendMessage).not.toHaveBeenCalled()
   })
 
@@ -216,6 +221,7 @@ describe('sendResponses', () => {
         {
           type: 'audio',
           buffer: Buffer.from('music'),
+          mimeType: 'audio/wav',
           fileName: 'lyria.mp3',
           title: 'Midnight Cats',
           caption: 'An emo song about two cats',
@@ -225,11 +231,15 @@ describe('sendResponses', () => {
     })
 
     expect(api.sendVoice).toHaveBeenCalledTimes(1)
-    expect(api.sendVoice).toHaveBeenCalledWith(123, expect.anything(), {
-      caption: 'Midnight Cats\nAn emo song about two cats',
-      parse_mode: 'MarkdownV2',
-      reply_parameters: { message_id: 456 },
-    })
+    expect(api.sendVoice).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'lyria.wav' }),
+      {
+        caption: 'Midnight Cats\nAn emo song about two cats',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
     expect(api.sendAudio).not.toHaveBeenCalled()
     expect(api.sendRichMessage).toHaveBeenCalledWith(
       123,

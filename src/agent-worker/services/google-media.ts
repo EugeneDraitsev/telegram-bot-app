@@ -12,8 +12,9 @@ import {
 } from './google-interactions.adapter'
 
 const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
+const MAX_INLINE_MEDIA_BYTES = 19 * 1024 * 1024
 const MAX_OMNI_MEDIA_ITEMS = 4
-const MAX_OMNI_MEDIA_BYTES = 19 * 1024 * 1024
+const MAX_LYRIA_IMAGES = 10
 
 export const GOOGLE_MEDIA_TOOL_TIMEOUT_MS = 170_000
 
@@ -34,24 +35,40 @@ export interface GeneratedMusic extends GeneratedMedia {
   text?: string
 }
 
-function getLyriaImages(media: MediaBuffer[] | undefined): MediaBuffer[] {
-  return (media ?? []).filter((item) => item.mediaType === 'image').slice(0, 10)
-}
-
-function getOmniMedia(media: MediaBuffer[] | undefined): MediaBuffer[] {
+function selectInlineMedia(
+  media: MediaBuffer[] | undefined,
+  maxItems: number,
+  supports: (item: MediaBuffer) => boolean,
+): MediaBuffer[] {
   const selected: MediaBuffer[] = []
   let totalBytes = 0
 
   for (const item of media ?? []) {
-    if (item.mediaType !== 'image' && item.mediaType !== 'video') continue
-    if (selected.length >= MAX_OMNI_MEDIA_ITEMS) break
-    if (totalBytes + item.buffer.byteLength > MAX_OMNI_MEDIA_BYTES) continue
+    if (!supports(item)) continue
+    if (selected.length >= maxItems) break
+    if (totalBytes + item.buffer.byteLength > MAX_INLINE_MEDIA_BYTES) continue
 
     selected.push(item)
     totalBytes += item.buffer.byteLength
   }
 
   return selected
+}
+
+function getLyriaImages(media: MediaBuffer[] | undefined): MediaBuffer[] {
+  return selectInlineMedia(
+    media,
+    MAX_LYRIA_IMAGES,
+    (item) => item.mediaType === 'image',
+  )
+}
+
+function getOmniMedia(media: MediaBuffer[] | undefined): MediaBuffer[] {
+  return selectInlineMedia(
+    media,
+    MAX_OMNI_MEDIA_ITEMS,
+    (item) => item.mediaType === 'image' || item.mediaType === 'video',
+  )
 }
 
 function createPrompt(
@@ -83,9 +100,11 @@ function getInteractionId(metadata: unknown): string | undefined {
   return typeof interactionId === 'string' ? interactionId : undefined
 }
 
-function createOmniFetch(aspectRatio: OmniAspectRatio): typeof fetch {
-  // TODO: Remove this adapter when @ai-sdk/google exposes Interactions API
-  // video_config/response_format directly.
+function createOmniFetch(
+  aspectRatio: OmniAspectRatio,
+  durationSeconds: number,
+): typeof fetch {
+  // TODO: Remove this adapter when @ai-sdk/google supports video responseFormat.
   return async (input, init) => {
     if (typeof init?.body !== 'string') return fetch(input, init)
 
@@ -93,6 +112,7 @@ function createOmniFetch(aspectRatio: OmniAspectRatio): typeof fetch {
       const body = adaptOmniInteractionRequest(
         JSON.parse(init.body),
         aspectRatio,
+        durationSeconds,
       )
       return fetch(input, { ...init, body: JSON.stringify(body) })
     } catch {
@@ -115,16 +135,16 @@ export async function generateOmniVideo(options: {
   durationSeconds: number
   media?: MediaBuffer[]
 }): Promise<GeneratedMedia> {
-  const prompt = `${options.prompt.trim()}\n\nGenerate exactly ${options.durationSeconds} seconds of video in ${options.aspectRatio} aspect ratio.`
   const media = getOmniMedia(options.media)
   const response = await runGoogleInteraction(() =>
     generateText({
       model: createAiSdkGoogleProvider({
-        fetch: createOmniFetch(options.aspectRatio),
+        fetch: createOmniFetch(options.aspectRatio, options.durationSeconds),
       }).interactions(GEMINI_OMNI_FLASH_MODEL),
-      prompt: createPrompt(prompt, media),
+      prompt: createPrompt(options.prompt.trim(), media),
       maxRetries: 0,
       timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+      providerOptions: { google: { store: false } },
     }),
   )
   const video = response.files.find((file) =>
@@ -154,6 +174,7 @@ export async function generateLyriaMusic(options: {
       maxRetries: 0,
       timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
       include: { responseBody: true },
+      providerOptions: { google: { store: false } },
     }),
   )
   const output = extractLyriaInteractionOutput(response.response.body)

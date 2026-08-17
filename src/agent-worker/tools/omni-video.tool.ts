@@ -6,7 +6,12 @@ import {
   type OmniAspectRatio,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
-import { addResponse, requireToolContext, trackToolModelCall } from './context'
+import {
+  addResponse,
+  claimPaidMediaGeneration,
+  requireToolContext,
+  trackToolModelCall,
+} from './context'
 import { getMediaCaption } from './media-text'
 
 const DEFAULT_DURATION_SECONDS = 5
@@ -75,6 +80,7 @@ export const generateVideoTool: AgentTool = {
 
       const durationSeconds = getDurationSeconds(args.durationSeconds)
       const aspectRatio = getAspectRatio(args.aspectRatio)
+      claimPaidMediaGeneration()
       const result = await trackToolModelCall(
         {
           name: 'video_generation',

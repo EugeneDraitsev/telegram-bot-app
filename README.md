@@ -185,16 +185,17 @@ explicit Telegram commands and built-in agent tools:
   audio. It defaults to a five-second vertical clip; prompts can request 3-10
   seconds or 16:9. An attached/replied image becomes an animation/reference;
   an attached/replied video becomes an edit source. The prompt and all media
-  already collected for the agent context, including recent images, are sent to
-  Omni together.
+  already collected for the agent context, including recent images, are
+  considered together; Omni receives up to four supported visual items within
+  a 19 MiB inline budget.
 - `/lyria <prompt>` uses `lyria-3-clip-preview` for a 30-second stereo MP3.
 - `/lyriapro <prompt>` uses `lyria-3-pro-preview` for a full-length structured
   song. Both Lyria commands automatically receive all collected current, reply,
-  and recent-history images, up to Google's limit of 10. Replying with
-  `/lyriapro` to a Clip can create a new full-length rendition from the visible
-  text context, but Google does not support exact continuation of the replied
-  audio. Generated MP3s are delivered through Telegram's voice-message player;
-  requested lyrics are sent separately.
+  and recent-history images, up to 10 items within the same 19 MiB inline
+  budget. Replying with `/lyriapro` to a Clip can create a new full-length
+  rendition from the visible text context, but Google does not support exact
+  continuation of the replied audio. Generated audio is delivered through
+  Telegram's voice-message player; requested lyrics are sent separately.
 
 The same capabilities are available to natural-language agent requests as
 `generate_video_with_omni` and `generate_music_with_lyria`. They run only after

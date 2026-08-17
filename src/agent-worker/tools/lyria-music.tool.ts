@@ -7,7 +7,12 @@ import {
   type LyriaModel,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
-import { addResponse, requireToolContext, trackToolModelCall } from './context'
+import {
+  addResponse,
+  claimPaidMediaGeneration,
+  requireToolContext,
+  trackToolModelCall,
+} from './context'
 import { getMediaCaption, getTrackTitle } from './media-text'
 
 type LyriaMode = 'clip' | 'pro'
@@ -77,6 +82,7 @@ export const generateMusicTool: AgentTool = {
 
       const mode = getLyriaMode(commandName, args.mode)
       const model = getLyriaModel(mode)
+      claimPaidMediaGeneration()
       const result = await trackToolModelCall(
         { name: 'music_generation', model: `google/${model}` },
         () =>

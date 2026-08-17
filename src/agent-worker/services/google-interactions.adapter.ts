@@ -11,36 +11,25 @@ function isRecord(value: unknown): value is JsonRecord {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-function unwrapSingleUserInput(value: unknown): unknown {
-  if (!Array.isArray(value) || value.length !== 1) return value
-  const step = value[0]
-  return isRecord(step) &&
-    step.type === 'user_input' &&
-    Array.isArray(step.content)
-    ? step.content
-    : value
-}
-
 /**
  * The AI SDK Google provider does not yet expose Omni's video response format.
- * Keep using its Interactions model, but make the outgoing body match Google's
- * documented Omni request shape.
+ * Keep the provider request intact and add only the missing documented format.
  */
 export function adaptOmniInteractionRequest(
   value: unknown,
   aspectRatio: '9:16' | '16:9',
+  durationSeconds: number,
 ): unknown {
   if (!isRecord(value)) return value
 
   return {
     ...value,
-    input: unwrapSingleUserInput(value.input),
     response_format: {
       type: 'video',
       aspect_ratio: aspectRatio,
+      duration: `${durationSeconds}s`,
       delivery: 'inline',
     },
-    store: false,
   }
 }
 

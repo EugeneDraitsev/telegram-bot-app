@@ -21,19 +21,25 @@ describe('Google Interactions adapter', () => {
           ],
         },
         '9:16',
+        5,
       ),
     ).toEqual({
       model: 'gemini-omni-flash-preview',
       input: [
-        { type: 'image', data: 'base64', mime_type: 'image/jpeg' },
-        { type: 'text', text: 'Animate this' },
+        {
+          type: 'user_input',
+          content: [
+            { type: 'image', data: 'base64', mime_type: 'image/jpeg' },
+            { type: 'text', text: 'Animate this' },
+          ],
+        },
       ],
       response_format: {
         type: 'video',
         aspect_ratio: '9:16',
+        duration: '5s',
         delivery: 'inline',
       },
-      store: false,
     })
   })
 

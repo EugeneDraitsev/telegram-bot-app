@@ -27,6 +27,28 @@ function generatedVideo(value: string) {
   }
 }
 
+function generatedMusic(value: string) {
+  return {
+    files: [],
+    providerMetadata: { google: { interactionId: 'interaction-3' } },
+    response: {
+      body: {
+        id: 'interaction-3',
+        model: LYRIA_3_CLIP_MODEL,
+        outputs: [
+          { type: 'text', text: '[Verse]\nHello' },
+          {
+            type: 'audio',
+            mime_type: 'audio/mpeg',
+            data: Buffer.from(value).toString('base64'),
+          },
+        ],
+      },
+    },
+    text: '',
+  }
+}
+
 describe('Google media through the AI SDK', () => {
   beforeEach(() => {
     process.env.GEMINI_API_KEY = 'test-key'
@@ -61,7 +83,6 @@ describe('Google media through the AI SDK', () => {
           buffer: Buffer.from('image'),
           mimeType: 'image/png',
           mediaType: 'image',
-          origin: 'request',
         },
         {
           buffer: Buffer.from('history-image'),
@@ -93,15 +114,14 @@ describe('Google media through the AI SDK', () => {
             },
             {
               type: 'text',
-              text: expect.stringContaining(
-                'exactly 5 seconds of video in 9:16 aspect ratio',
-              ),
+              text: 'A fox runs through neon snow',
             },
           ],
         },
       ],
       maxRetries: 0,
       timeout: 160_000,
+      providerOptions: { google: { store: false } },
     })
     expect(result).toEqual({
       buffer: Buffer.from('generated-video'),
@@ -122,7 +142,6 @@ describe('Google media through the AI SDK', () => {
           buffer: Buffer.from('source-video'),
           mimeType: 'video/mp4',
           mediaType: 'video',
-          origin: 'request',
         },
       ],
     })
@@ -154,19 +173,16 @@ describe('Google media through the AI SDK', () => {
       buffer: Buffer.alloc(10 * 1024 * 1024, 1),
       mimeType: 'image/jpeg',
       mediaType: 'image',
-      origin: 'request',
     }
     const excludedAudio: MediaBuffer = {
       buffer: Buffer.from('audio'),
       mimeType: 'audio/mpeg',
       mediaType: 'audio',
-      origin: 'request',
     }
     const overBudgetVideo: MediaBuffer = {
       buffer: Buffer.alloc(10 * 1024 * 1024, 2),
       mimeType: 'video/mp4',
       mediaType: 'video',
-      origin: 'request',
     }
     const smallImages: MediaBuffer[] = [1, 2, 3].map((index) => ({
       buffer: Buffer.from(`small-${index}`),
@@ -202,25 +218,7 @@ describe('Google media through the AI SDK', () => {
   })
 
   test('forwards current and history images and extracts Lyria audio', async () => {
-    mockGenerateText.mockResolvedValue({
-      files: [],
-      providerMetadata: { google: { interactionId: 'interaction-3' } },
-      response: {
-        body: {
-          id: 'interaction-3',
-          model: LYRIA_3_CLIP_MODEL,
-          outputs: [
-            { type: 'text', text: '[Verse]\nHello' },
-            {
-              type: 'audio',
-              mime_type: 'audio/mpeg',
-              data: Buffer.from('generated-music').toString('base64'),
-            },
-          ],
-        },
-      },
-      text: '',
-    })
+    mockGenerateText.mockResolvedValue(generatedMusic('generated-music'))
 
     const result = await generateLyriaMusic({
       prompt: ' Cheerful synth pop ',
@@ -230,7 +228,6 @@ describe('Google media through the AI SDK', () => {
           buffer: Buffer.from('current-image'),
           mimeType: 'image/png',
           mediaType: 'image',
-          origin: 'request',
         },
         {
           buffer: Buffer.from('history-image'),
@@ -242,7 +239,6 @@ describe('Google media through the AI SDK', () => {
           buffer: Buffer.from('reply-audio'),
           mimeType: 'audio/mpeg',
           mediaType: 'audio',
-          origin: 'request',
         },
       ],
     })
@@ -270,6 +266,7 @@ describe('Google media through the AI SDK', () => {
       maxRetries: 0,
       timeout: 160_000,
       include: { responseBody: true },
+      providerOptions: { google: { store: false } },
     })
     expect(result).toEqual({
       buffer: Buffer.from('generated-music'),
@@ -277,6 +274,57 @@ describe('Google media through the AI SDK', () => {
       interactionId: 'interaction-3',
       text: '[Verse]\nHello',
     })
+  })
+
+  test('filters and bounds Lyria inline images by count and bytes', async () => {
+    mockGenerateText.mockResolvedValue(generatedMusic('bounded-music'))
+    const firstImage: MediaBuffer = {
+      buffer: Buffer.alloc(10 * 1024 * 1024, 1),
+      mimeType: 'image/jpeg',
+      mediaType: 'image',
+    }
+    const overBudgetImage: MediaBuffer = {
+      buffer: Buffer.alloc(10 * 1024 * 1024, 2),
+      mimeType: 'image/png',
+      mediaType: 'image',
+    }
+    const excludedAudio: MediaBuffer = {
+      buffer: Buffer.from('audio'),
+      mimeType: 'audio/mpeg',
+      mediaType: 'audio',
+    }
+    const smallImages: MediaBuffer[] = Array.from(
+      { length: 10 },
+      (_, index) => ({
+        buffer: Buffer.from(`small-${index}`),
+        mimeType: 'image/png',
+        mediaType: 'image',
+        origin: 'history',
+      }),
+    )
+
+    await generateLyriaMusic({
+      prompt: 'Use only bounded references',
+      model: LYRIA_3_CLIP_MODEL,
+      media: [firstImage, excludedAudio, overBudgetImage, ...smallImages],
+    })
+
+    const call = mockGenerateText.mock.calls[0]?.[0] as {
+      prompt: Array<{
+        content: Array<{ type: string; data?: Buffer }>
+      }>
+    }
+    const files = call.prompt[0]?.content.filter((part) => part.type === 'file')
+    expect(files?.map((part) => part.data)).toEqual([
+      firstImage.buffer,
+      ...smallImages.slice(0, 9).map((item) => item.buffer),
+    ])
+    expect(files?.some((part) => part.data === overBudgetImage.buffer)).toBe(
+      false,
+    )
+    expect(files?.some((part) => part.data === excludedAudio.buffer)).toBe(
+      false,
+    )
   })
 
   test('fails clearly without an API key or generated media', async () => {

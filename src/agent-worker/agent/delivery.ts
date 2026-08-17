@@ -68,6 +68,34 @@ function formatCaption(text?: string): string | undefined {
   return formatTelegramMarkdownV2(normalized.slice(0, MAX_CAPTION_LENGTH))
 }
 
+const MEDIA_FILE_EXTENSIONS: Record<string, string> = {
+  'audio/aac': 'aac',
+  'audio/flac': 'flac',
+  'audio/mp4': 'm4a',
+  'audio/mpeg': 'mp3',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'video/mp4': 'mp4',
+  'video/mpeg': 'mpeg',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
+}
+
+function getMediaFileName(
+  fileName: string | undefined,
+  fallback: string,
+  mimeType?: string,
+): string {
+  const normalizedMimeType = mimeType?.split(';', 1)[0]?.trim().toLowerCase()
+  const extension = normalizedMimeType
+    ? MEDIA_FILE_EXTENSIONS[normalizedMimeType]
+    : undefined
+  const selectedName = fileName || fallback
+  if (!extension) return selectedName
+  return `${selectedName.replace(/\.[^.]+$/, '')}.${extension}`
+}
+
 function getSentMessageId(messageLike: unknown): number | undefined {
   if (!messageLike || typeof messageLike !== 'object') {
     return undefined
@@ -287,22 +315,25 @@ async function sendVideo(
   params: DeliveryParams & { video: VideoResponse; text: string },
 ) {
   const rawCaption = params.video.caption || params.text || ''
-  const caption = formatCaption(rawCaption)
-  const options = {
-    caption,
-    parse_mode: caption ? ('MarkdownV2' as const) : undefined,
-    supports_streaming: true,
-    ...getReplyOptions(params.replyToMessageId),
-  }
 
   if (params.video.buffer) {
+    const caption = formatCaption(rawCaption)
     const sentMessage = await params.api.sendVideo(
       params.chatId,
       new InputFile(
         params.video.buffer,
-        params.video.fileName || 'generated-video.mp4',
+        getMediaFileName(
+          params.video.fileName,
+          'generated-video.mp4',
+          params.video.mimeType,
+        ),
       ),
-      options,
+      {
+        caption,
+        parse_mode: caption ? ('MarkdownV2' as const) : undefined,
+        supports_streaming: true,
+        ...getReplyOptions(params.replyToMessageId),
+      },
     )
     await saveBotReplyToHistory(sentMessage)
     return
@@ -337,7 +368,11 @@ async function sendGeneratedAudio(
   const inputFile = () =>
     new InputFile(
       params.audio.buffer,
-      params.audio.fileName || 'generated-music.mp3',
+      getMediaFileName(
+        params.audio.fileName,
+        'generated-music.mp3',
+        params.audio.mimeType,
+      ),
     )
   let sentMessage:
     | Awaited<ReturnType<TelegramApi['sendVoice']>>
