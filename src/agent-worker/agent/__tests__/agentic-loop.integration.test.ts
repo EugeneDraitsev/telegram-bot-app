@@ -28,6 +28,7 @@ function createApi(): TelegramApi {
     getChatMember: jest.fn(),
     sendMessage: jest.fn().mockResolvedValue({ message_id: 11 }),
     sendPhoto: jest.fn(),
+    sendAudio: jest.fn(),
     sendVoice: jest.fn(),
     sendVideo: jest.fn(),
     sendAnimation: jest.fn(),
@@ -513,8 +514,8 @@ describe('runAgenticLoop integration', () => {
       expect.objectContaining({
         content: expect.arrayContaining([
           {
-            type: 'image',
-            image: historyBuffer,
+            type: 'file',
+            data: historyBuffer,
             mediaType: 'image/jpeg',
           },
         ]),

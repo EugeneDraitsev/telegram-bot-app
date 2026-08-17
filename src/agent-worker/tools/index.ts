@@ -18,8 +18,10 @@ import {
 import { generateImageTool } from './generate-image.tool'
 import { generateVoiceTool } from './generate-voice.tool'
 import { getHistoryTool } from './get-history.tool'
+import { generateMusicTool } from './lyria-music.tool'
 import { magic8BallTool } from './magic8ball.tool'
 import { getMemoryTool, updateMemoryTool } from './memory.tool'
+import { generateVideoTool } from './omni-video.tool'
 import { randomChoiceTool, randomNumberTool } from './random.tool'
 import { renderLatexTool } from './render-latex.tool'
 import { renderSvgTool } from './render-svg.tool'
@@ -53,6 +55,8 @@ const baseAgentTools: AgentTool[] = [
   renderLatexTool,
   renderSvgTool,
   generateImageTool,
+  generateVideoTool,
+  generateMusicTool,
   searchVideoTool,
   searchGifTool,
   animateGifTool,

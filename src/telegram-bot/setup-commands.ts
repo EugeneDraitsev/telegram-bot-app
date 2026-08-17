@@ -135,6 +135,8 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
 
     // /q, /qq, /o, /gemma <text, image> - invoke the agent without reply gate
     // /e, /ee, /ge, /gp, /de <text, image> - generate or edit an image via the agent
+    // /omni <text, image, video> - generate or edit video with native audio
+    // /lyria, /lyriapro <text, image> - generate music with Lyria 3
     setupAgentCommands(bot)
   }
 

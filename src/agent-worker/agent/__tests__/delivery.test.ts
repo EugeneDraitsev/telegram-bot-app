@@ -3,6 +3,7 @@ import type { TelegramApi } from '../../types'
 type TestTelegramApi = TelegramApi & {
   sendMessage: jest.Mock
   sendPhoto: jest.Mock
+  sendAudio: jest.Mock
   sendVoice: jest.Mock
   sendVideo: jest.Mock
   sendAnimation: jest.Mock
@@ -71,6 +72,7 @@ function createApi(): TestTelegramApi {
     sendRichMessage: jest.fn().mockResolvedValue({ message_id: 8 }),
     sendRichMessageDraft: jest.fn().mockResolvedValue(true),
     sendPhoto: jest.fn().mockResolvedValue({ message_id: 2 }),
+    sendAudio: jest.fn().mockResolvedValue({ message_id: 9 }),
     sendVoice: jest.fn().mockResolvedValue({ message_id: 3 }),
     sendVideo: jest.fn().mockResolvedValue({ message_id: 4 }),
     sendAnimation: jest.fn().mockResolvedValue({ message_id: 5 }),
@@ -173,6 +175,68 @@ describe('sendResponses', () => {
     expect(api.sendRichMessage).not.toHaveBeenCalled()
     expect(api.sendMessage).not.toHaveBeenCalled()
     expect(api.sendPhoto).not.toHaveBeenCalled()
+  })
+
+  test('uploads generated video buffers through Telegram', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+          fileName: 'omni.mp4',
+          caption: 'Omni with audio',
+        },
+        { type: 'text', text: 'Generic generation status' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledTimes(1)
+    expect(api.sendVideo).toHaveBeenCalledWith(123, expect.anything(), {
+      caption: 'Omni with audio',
+      parse_mode: 'MarkdownV2',
+      supports_streaming: true,
+      reply_parameters: { message_id: 456 },
+    })
+    expect(api.sendMessage).not.toHaveBeenCalled()
+  })
+
+  test('uploads generated music as voice and sends requested lyrics separately', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          fileName: 'lyria.mp3',
+          title: 'Midnight Cats',
+          caption: 'An emo song about two cats',
+        },
+        { type: 'text', text: '[Verse]\nhello' },
+      ],
+    })
+
+    expect(api.sendVoice).toHaveBeenCalledTimes(1)
+    expect(api.sendVoice).toHaveBeenCalledWith(123, expect.anything(), {
+      caption: 'Midnight Cats\nAn emo song about two cats',
+      parse_mode: 'MarkdownV2',
+      reply_parameters: { message_id: 456 },
+    })
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: '[Verse]\nhello' },
+      { reply_parameters: { message_id: 3 } },
+      undefined,
+    )
   })
 
   test('keeps sibling image when voice has no text', async () => {

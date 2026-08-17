@@ -142,8 +142,8 @@ function pushImageContent(
 ) {
   parts.push({ type: 'text', text: label })
   parts.push({
-    type: 'image',
-    image: media.buffer,
+    type: 'file',
+    data: media.buffer,
     mediaType: media.mimeType,
   })
 }
@@ -157,7 +157,15 @@ export function buildInitialInput(
   const parts: UserContentPart[] = []
 
   for (const media of mediaBuffers ?? []) {
-    pushImageContent(parts, media.label || 'Request media', media)
+    const label = media.label || 'Request media'
+    if (media.mediaType === 'image') {
+      pushImageContent(parts, label, media)
+    } else {
+      parts.push({
+        type: 'text',
+        text: `${label}: attached ${media.mediaType} is available to media-generation tools.`,
+      })
+    }
   }
 
   if (message.reply_to_message) {

@@ -23,6 +23,9 @@ export const AGENT_COMMANDS = [
   'ge',
   'gp',
   'de',
+  'omni',
+  'lyria',
+  'lyriapro',
 ] as const
 
 export type AgentCommandName = (typeof AGENT_COMMANDS)[number]

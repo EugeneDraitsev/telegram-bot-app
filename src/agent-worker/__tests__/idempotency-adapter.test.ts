@@ -1,8 +1,4 @@
-import {
-  acquireAgentWorkerLease,
-  isLocalAgentWorkerTestMessage,
-  LOCAL_TEST_MESSAGE_ID,
-} from '../idempotency'
+import { acquireAgentWorkerLease } from '../idempotency'
 
 const originalIsOffline = process.env.IS_OFFLINE
 
@@ -15,26 +11,15 @@ afterEach(() => {
 })
 
 describe('agent worker idempotency', () => {
-  test('does not cache the reserved local test message', async () => {
-    process.env.IS_OFFLINE = 'true'
+  test.each([1, 42, 900_001])(
+    'does not cache local test message %i',
+    async (messageId) => {
+      process.env.IS_OFFLINE = 'true'
 
-    const lease = await acquireAgentWorkerLease(
-      -100,
-      LOCAL_TEST_MESSAGE_ID,
-      'request-id',
-    )
+      const lease = await acquireAgentWorkerLease(-100, messageId, 'request-id')
 
-    expect(await lease?.complete()).toBe(true)
-    expect(await lease?.release()).toBe(true)
-  })
-
-  test('only bypasses the reserved id in serverless offline', () => {
-    process.env.IS_OFFLINE = 'false'
-    expect(isLocalAgentWorkerTestMessage(LOCAL_TEST_MESSAGE_ID)).toBe(false)
-
-    process.env.IS_OFFLINE = 'true'
-    expect(isLocalAgentWorkerTestMessage(LOCAL_TEST_MESSAGE_ID + 1)).toBe(false)
-
-    expect(isLocalAgentWorkerTestMessage(LOCAL_TEST_MESSAGE_ID)).toBe(true)
-  })
+      expect(await lease?.complete()).toBe(true)
+      expect(await lease?.release()).toBe(true)
+    },
+  )
 })

@@ -11,6 +11,7 @@ import {
 import type {
   AgentResponse,
   AnimationResponse,
+  AudioResponse,
   DiceResponse,
   ImageResponse,
   RichResponse,
@@ -30,6 +31,7 @@ interface DeliveryBundle {
   text: string
   image: ImageResponse | null
   video: VideoResponse | null
+  audio: AudioResponse | null
   animation: AnimationResponse | null
   voice: Buffer | null
   sticker: StickerResponse | null
@@ -110,6 +112,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     text: '',
     image: null,
     video: null,
+    audio: null,
     animation: null,
     voice: null,
     sticker: null,
@@ -240,6 +243,33 @@ async function sendImage(
 async function sendVideo(
   params: DeliveryParams & { video: VideoResponse; text: string },
 ) {
+  const rawCaption = params.video.caption || params.text || ''
+  const caption = formatCaption(rawCaption)
+  const options = {
+    caption,
+    parse_mode: caption ? ('MarkdownV2' as const) : undefined,
+    supports_streaming: true,
+    ...getReplyOptions(params.replyToMessageId),
+  }
+
+  if (params.video.buffer) {
+    const sentMessage = await params.api.sendVideo(
+      params.chatId,
+      new InputFile(
+        params.video.buffer,
+        params.video.fileName || 'generated-video.mp4',
+      ),
+      options,
+    )
+    await saveBotReplyToHistory(sentMessage)
+    return
+  }
+
+  if (!params.video.url) {
+    if (rawCaption) await sendText({ ...params, text: rawCaption })
+    return
+  }
+
   const messageText = params.text
     ? `${params.text}\n\n${params.video.url}`
     : params.video.caption?.trim()
@@ -247,6 +277,38 @@ async function sendVideo(
       : params.video.url
 
   await sendText({ ...params, text: messageText })
+}
+
+async function sendAudioAsVoice(
+  params: DeliveryParams & { audio: AudioResponse; text: string },
+) {
+  const captionText = [params.audio.title, params.audio.caption]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+  const caption = formatCaption([...new Set(captionText)].join('\n'))
+  const options = {
+    caption,
+    parse_mode: caption ? ('MarkdownV2' as const) : undefined,
+    ...getReplyOptions(params.replyToMessageId),
+  }
+  const sentMessage = await params.api.sendVoice(
+    params.chatId,
+    new InputFile(
+      params.audio.buffer,
+      params.audio.fileName || 'generated-music.mp3',
+    ),
+    options,
+  )
+  await saveBotReplyToHistory(sentMessage)
+
+  if (params.text) {
+    await sendText({
+      ...params,
+      text: params.text,
+      replyToMessageId:
+        getSentMessageId(sentMessage) ?? params.replyToMessageId,
+    })
+  }
 }
 
 async function sendAnimation(
@@ -380,6 +442,8 @@ async function sendResponsesOnce(
       await sendImage({ ...mediaParams, image: bundle.image })
     } else if (bundle.video) {
       await sendVideo({ ...mediaParams, video: bundle.video })
+    } else if (bundle.audio) {
+      await sendAudioAsVoice({ ...mediaParams, audio: bundle.audio })
     } else if (bundle.text) {
       await sendText(mediaParams)
     }

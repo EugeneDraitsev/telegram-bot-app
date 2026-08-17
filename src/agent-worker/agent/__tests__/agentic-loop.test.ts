@@ -196,8 +196,8 @@ describe('buildInitialInput', () => {
         content: [
           { type: 'text', text: 'Current image' },
           {
-            type: 'image',
-            image: requestImage.buffer,
+            type: 'file',
+            data: requestImage.buffer,
             mediaType: 'image/png',
           },
           {
@@ -209,11 +209,40 @@ describe('buildInitialInput', () => {
             text: 'Context image from recent chat history. Related message text: older photo',
           },
           {
-            type: 'image',
-            image: historyImage.buffer,
+            type: 'file',
+            data: historyImage.buffer,
             mediaType: 'image/jpeg',
           },
           { type: 'text', text: 'compare them' },
+        ],
+      },
+    ])
+  })
+
+  test('keeps video bytes out of the routing model input', () => {
+    const requestVideo = {
+      buffer: Buffer.from('video'),
+      mimeType: 'video/mp4',
+      mediaType: 'video' as const,
+      label: 'Reply message video',
+    }
+
+    expect(
+      buildInitialInput(
+        { message_id: 10, text: 'edit this' } as Message,
+        'edit this',
+        [requestVideo],
+        [],
+      ),
+    ).toEqual([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Reply message video: attached video is available to media-generation tools.',
+          },
+          { type: 'text', text: 'edit this' },
         ],
       },
     ])

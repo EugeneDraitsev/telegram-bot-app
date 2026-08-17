@@ -14,6 +14,7 @@ type TelegramApiMethods = Pick<
   | 'getChatMember'
   | 'sendMessage'
   | 'sendPhoto'
+  | 'sendAudio'
   | 'sendVoice'
   | 'sendVideo'
   | 'sendAnimation'
@@ -48,7 +49,18 @@ export interface ImageResponse {
 }
 export interface VideoResponse {
   type: 'video'
-  url: string
+  buffer?: Buffer
+  url?: string
+  mimeType?: string
+  fileName?: string
+  caption?: string
+}
+export interface AudioResponse {
+  type: 'audio'
+  buffer: Buffer
+  mimeType?: string
+  fileName?: string
+  title?: string
   caption?: string
 }
 export interface AnimationResponse {
@@ -74,6 +86,7 @@ export type AgentResponse =
   | RichResponse
   | ImageResponse
   | VideoResponse
+  | AudioResponse
   | AnimationResponse
   | VoiceResponse
   | StickerResponse

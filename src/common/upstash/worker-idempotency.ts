@@ -20,6 +20,15 @@ export interface WorkerLease {
   release(): Promise<boolean>
 }
 
+const OFFLINE_WORKER_LEASE: WorkerLease = {
+  async complete() {
+    return true
+  },
+  async release() {
+    return true
+  },
+}
+
 export function getWorkerIdempotencyKey(
   namespace: string,
   chatId: string | number,
@@ -34,6 +43,10 @@ export async function acquireWorkerLease(
   messageId: number,
   ownerToken: string,
 ): Promise<WorkerLease | null> {
+  if (process.env.IS_OFFLINE === 'true') {
+    return OFFLINE_WORKER_LEASE
+  }
+
   const redis = getRedisClient()
   if (!redis) {
     throw new Error('Redis is required for worker idempotency')

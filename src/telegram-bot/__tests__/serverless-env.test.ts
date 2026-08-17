@@ -18,6 +18,15 @@ describe('agentic chat configuration infrastructure', () => {
     expect(serverlessConfig).not.toContain('OPENAI_CHAT_IDS')
   })
 
+  test('uses the deployed configuration table during local offline runs', () => {
+    expect(serverlessConfig).toContain(
+      'self:custom.runtimeChatConfigurationTableNameByStage.',
+    )
+    expect(serverlessConfig).toContain(
+      'runtimeChatConfigurationTableNameByStage:\n    local: chat-configuration',
+    )
+  })
+
   test('does not retain an immutable Lambda version after every deployment', () => {
     expect(serverlessConfig).toContain('versionFunctions: false')
   })

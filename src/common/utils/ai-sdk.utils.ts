@@ -1,16 +1,27 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGoogle, type GoogleProviderSettings } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { ImageModel, JSONValue, LanguageModel, SpeechModel } from 'ai'
 
 import type { AiModelConfig, AiReasoningEffort } from './ai-model.utils'
 
-let googleProvider: ReturnType<typeof createGoogleGenerativeAI> | undefined
+let googleProvider: ReturnType<typeof createGoogle> | undefined
 let googleProviderApiKey = ''
 let openAiProvider: ReturnType<typeof createOpenAI> | undefined
 let openAiProviderApiKey = ''
 
 function getGoogleApiKey(): string | undefined {
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+}
+
+export function createAiSdkGoogleProvider(
+  options: Omit<GoogleProviderSettings, 'apiKey'> = {},
+) {
+  const apiKey = getGoogleApiKey()
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY is not set')
+  }
+
+  return createGoogle({ ...options, apiKey })
 }
 
 export function getAiSdkGoogleProvider() {
@@ -20,7 +31,7 @@ export function getAiSdkGoogleProvider() {
   }
 
   if (!googleProvider || googleProviderApiKey !== apiKey) {
-    googleProvider = createGoogleGenerativeAI({ apiKey })
+    googleProvider = createGoogle({ apiKey })
     googleProviderApiKey = apiKey
   }
 

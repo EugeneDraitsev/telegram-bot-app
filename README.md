@@ -176,11 +176,49 @@ guard prevents local or CI test runs from consuming production Redis commands.
 SQS job dispatch, Lambda invocation, Upstash Redis access, logging, formatting
 and shared types.
 
+## Generative media commands
+
+The agent worker exposes Google's current preview media models through both
+explicit Telegram commands and built-in agent tools:
+
+- `/omni <prompt>` uses `gemini-omni-flash-preview` for 720p video with native
+  audio. It defaults to a five-second vertical clip; prompts can request 3-10
+  seconds or 16:9. An attached/replied image becomes an animation/reference;
+  an attached/replied video becomes an edit source. The prompt and all media
+  already collected for the agent context, including recent images, are sent to
+  Omni together.
+- `/lyria <prompt>` uses `lyria-3-clip-preview` for a 30-second stereo MP3.
+- `/lyriapro <prompt>` uses `lyria-3-pro-preview` for a full-length structured
+  song. Both Lyria commands automatically receive all collected current, reply,
+  and recent-history images, up to Google's limit of 10. Replying with
+  `/lyriapro` to a Clip can create a new full-length rendition from the visible
+  text context, but Google does not support exact continuation of the replied
+  audio. Generated MP3s are delivered through Telegram's voice-message player;
+  requested lyrics are sent separately.
+
+The same capabilities are available to natural-language agent requests as
+`generate_video_with_omni` and `generate_music_with_lyria`. They run only after
+an explicit generation request; Lyria Clip and a five-second Omni clip are the
+cost-conscious defaults. The agent generates a natural user-language caption
+for every result and a separate title for music instead of exposing model-name
+boilerplate.
+
+Media generation uses Vercel AI SDK's Google Interactions provider and the
+existing `GEMINI_API_KEY` secret (`GOOGLE_GENERATIVE_AI_API_KEY` also works
+locally). It calls the Gemini API directly, without Vertex AI or `@google/genai`.
+Uploaded-video editing is currently unavailable in the EEA, Switzerland, and
+the UK, while text- and image-to-video generation remain available.
+
 ## Local SQS development
 
 Docker Desktop (or another Docker daemon) must already be running. Serverless
 Offline starts and removes only the ElasticMQ container automatically and
-creates the queues from `resources.yml`.
+creates the queues from `resources.yml`. DynamoDB is not emulated locally;
+offline workers use the deployed `chat-configuration`, `chat-user-statistics`,
+and `chat-events` tables through your configured AWS credentials. Offline FIFO
+deduplication IDs include a nonce and worker Redis idempotency is disabled, so
+any valid `message_id` can be posted repeatedly without waiting five minutes;
+both protections remain enabled in production.
 
 ```sh
 bun run start

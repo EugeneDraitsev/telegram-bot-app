@@ -12,8 +12,10 @@ const mockSet = jest.fn()
 const mockGetdel = jest.fn()
 const redis = { set: mockSet, getdel: mockGetdel }
 const getRedisClientSpy = jest.spyOn(client, 'getRedisClient')
+const originalIsOffline = process.env.IS_OFFLINE
 
 beforeEach(() => {
+  delete process.env.IS_OFFLINE
   mockSet.mockReset()
   mockGetdel.mockReset()
   getRedisClientSpy.mockReturnValue(
@@ -23,6 +25,11 @@ beforeEach(() => {
 
 afterAll(() => {
   getRedisClientSpy.mockRestore()
+  if (originalIsOffline === undefined) {
+    delete process.env.IS_OFFLINE
+  } else {
+    process.env.IS_OFFLINE = originalIsOffline
+  }
 })
 
 describe('worker idempotency', () => {
@@ -48,6 +55,23 @@ describe('worker idempotency', () => {
     expect(getWorkerIdempotencyKey('reply-worker', -100, 42)).toBe(
       'reply-worker:message:-100:42',
     )
+  })
+
+  test('bypasses Redis for every message id offline', async () => {
+    process.env.IS_OFFLINE = 'true'
+    getRedisClientSpy.mockReturnValue(null)
+
+    const first = await acquireWorkerLease('reply-worker', -100, 1, 'first')
+    const second = await acquireWorkerLease(
+      'agent-worker',
+      -100,
+      900_001,
+      'second',
+    )
+
+    expect(await first?.complete()).toBe(true)
+    expect(await second?.release()).toBe(true)
+    expect(mockSet).not.toHaveBeenCalled()
   })
 
   test('acquires a bounded lease and exposes single-command operations', async () => {
