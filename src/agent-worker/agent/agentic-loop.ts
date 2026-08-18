@@ -136,6 +136,14 @@ function pushImageContent(parts: UserContentPart[], media: MediaBuffer) {
   })
 }
 
+function pushAudioContent(parts: UserContentPart[], media: MediaBuffer) {
+  parts.push({
+    type: 'file',
+    data: media.buffer,
+    mediaType: media.mimeType,
+  })
+}
+
 function getMediaGroupKey(media: MediaBuffer, index: number): string {
   return media.context
     ? JSON.stringify(media.context)
@@ -220,6 +228,8 @@ export function buildInitialInput(
       })
       if (media.mediaType === 'image') {
         pushImageContent(parts, media)
+      } else if (media.mediaType === 'audio') {
+        pushAudioContent(parts, media)
       } else {
         parts.push({
           type: 'text',

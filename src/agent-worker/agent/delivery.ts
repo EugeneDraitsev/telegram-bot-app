@@ -506,6 +506,7 @@ async function sendGeneratedAudio(
         options,
       )
     } catch (error) {
+      if (isTelegramReplyTargetMissingError(error)) throw error
       logger.warn(
         { chatId: params.chatId, error },
         isVoiceMessagesForbiddenError(error)
@@ -528,6 +529,7 @@ async function sendGeneratedAudio(
           ...getReplyOptions(params.replyToMessageId),
         })
       } catch (error) {
+        if (isTelegramReplyTargetMissingError(error)) throw error
         logger.warn(
           { chatId: params.chatId, error, mimeType },
           'delivery.audio_failed_document_fallback',

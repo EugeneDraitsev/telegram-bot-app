@@ -202,6 +202,9 @@ explicit Telegram commands and built-in agent tools:
 Every available media item is presented to the routing model inside a
 structured message block with its source relation (current message, reply
 target, album, or history), message id, author, text, and a stable `media_id`.
+Image and audio bytes accompany those blocks so the model can inspect them;
+video bytes stay out of the routing request and remain available to Omni by
+`media_id`, avoiding a second large inline upload.
 Visible history images can therefore be matched by content or by phrases such
 as “the last cat photo”, while generation tools default safely to current,
 reply, and album media. History media reaches a billed provider only when the
@@ -237,7 +240,10 @@ offline workers use the deployed `chat-configuration`, `chat-user-statistics`,
 and `chat-events` tables through your configured AWS credentials. Offline FIFO
 deduplication IDs include a nonce and worker Redis idempotency is disabled, so
 any valid `message_id` can be posted repeatedly without waiting five minutes;
-both protections remain enabled in production.
+the bypass intentionally covers every worker namespace and trusts the
+framework-owned `IS_OFFLINE` runtime signal rather than a stage name. A config
+test prevents deployed Lambdas from receiving that signal, so both protections
+remain enabled in production.
 
 ```sh
 bun run start

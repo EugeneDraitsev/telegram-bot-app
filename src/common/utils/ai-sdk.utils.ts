@@ -88,6 +88,7 @@ export function getAiSdkProviderOptions(
     serviceTier?: string
     store?: boolean
     truncation?: string
+    passThroughUnsupportedFiles?: boolean
   } = {},
 ): Record<string, Record<string, JSONValue>> {
   if (config.provider === 'google') {
@@ -113,6 +114,10 @@ export function getAiSdkProviderOptions(
   }
   if (options.truncation) {
     openaiOptions.truncation = options.truncation
+  }
+  if (options.passThroughUnsupportedFiles !== undefined) {
+    openaiOptions.passThroughUnsupportedFiles =
+      options.passThroughUnsupportedFiles
   }
 
   return { openai: openaiOptions }

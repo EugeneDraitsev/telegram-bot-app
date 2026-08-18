@@ -46,8 +46,10 @@ export async function acquireWorkerLease(
 ): Promise<WorkerLease | null> {
   // Intentionally bypass every worker namespace in serverless-offline. Local
   // webhook tests must be able to replay one Telegram update end-to-end with
-  // the same message id; deployed stages never set IS_OFFLINE. The warning is
-  // process-wide on purpose to keep local logs quiet after the first notice.
+  // the same message id; deployed stages never set IS_OFFLINE. Do not couple
+  // this to a stage name: IS_OFFLINE is the serverless-offline runtime signal
+  // and local runs may use any stage. The warning is process-wide on purpose
+  // to keep local logs quiet after the first notice.
   if (process.env.IS_OFFLINE === 'true') {
     if (!offlineBypassWarned) {
       offlineBypassWarned = true

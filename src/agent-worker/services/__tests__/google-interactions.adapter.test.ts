@@ -71,6 +71,19 @@ describe('Google Interactions adapter', () => {
     })
   })
 
+  test('rejects a changed SDK request casing instead of sending both keys', () => {
+    expect(() =>
+      adaptOmniInteractionRequest(
+        { responseFormat: [{ type: 'text' }] },
+        '9:16',
+        5,
+      ),
+    ).toThrow('unexpectedly used camelCase responseFormat')
+    expect(() =>
+      adaptOmniInteractionRequest('not-an-object', '9:16', 5),
+    ).toThrow('request body must be a JSON object')
+  })
+
   test('includes Google error details hidden by the generic message', () => {
     const error = Object.assign(new Error('Bad Request'), {
       responseBody: JSON.stringify({

@@ -9,6 +9,7 @@ import {
 } from '../agentic-loop'
 import { buildModelToolRegistry } from '../model-tools'
 import { CHAT_MODEL_CONFIG, resolveAgentChatModel } from '../models'
+import { getChatProviderOptions } from '../runtime'
 import {
   extractFallbackTextFromToolResults,
   getExecutableFunctionCalls,
@@ -25,6 +26,12 @@ describe('resolveAgentChatModel', () => {
 
   test('keeps other commands on the default chat model', () => {
     expect(resolveAgentChatModel('q').config).toBe(CHAT_MODEL_CONFIG)
+  })
+
+  test('lets the OpenAI routing model receive Telegram audio file parts', () => {
+    expect(getChatProviderOptions(CHAT_MODEL_CONFIG, 123)).toEqual({
+      openai: expect.objectContaining({ passThroughUnsupportedFiles: true }),
+    })
   })
 })
 
@@ -289,6 +296,39 @@ describe('buildInitialInput', () => {
         ],
       },
     ])
+  })
+
+  test('forwards audio bytes to the routing model as a file part', () => {
+    const requestAudio = {
+      buffer: Buffer.from('voice'),
+      mimeType: 'audio/ogg',
+      mediaType: 'audio' as const,
+      label: 'Current voice message',
+      origin: 'request' as const,
+      context: {
+        relation: 'current-message' as const,
+        messageId: 10,
+        text: 'what did I say?',
+      },
+    }
+
+    const [input] = buildInitialInput(
+      { message_id: 10, text: 'what did I say?' } as Message,
+      'what did I say?',
+      [requestAudio],
+    )
+
+    expect(input?.content).toContainEqual({
+      type: 'file',
+      data: requestAudio.buffer,
+      mediaType: 'audio/ogg',
+    })
+    expect(input?.content).not.toContainEqual(
+      expect.objectContaining({
+        type: 'text',
+        text: expect.stringContaining('Binary audio'),
+      }),
+    )
   })
 })
 

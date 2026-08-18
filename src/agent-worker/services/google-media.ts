@@ -3,6 +3,8 @@ import { generateText, type ModelMessage } from 'ai'
 import {
   createAiSdkGoogleProvider,
   getAiSdkGoogleProvider,
+  getErrorMessage,
+  logger,
   type MediaBuffer,
 } from '@tg-bot/common'
 import {
@@ -162,24 +164,42 @@ function getOutputTokensByModality(
   return entries.length ? Object.fromEntries(entries) : undefined
 }
 
-function createOmniFetch(
+export function createOmniFetch(
   aspectRatio: OmniAspectRatio,
   durationSeconds: number,
+  transport: typeof fetch = fetch,
 ): typeof fetch {
   // TODO: Remove this adapter when @ai-sdk/google supports video responseFormat.
   return async (input, init) => {
-    if (typeof init?.body !== 'string') return fetch(input, init)
+    if (typeof init?.body !== 'string') {
+      logger.warn(
+        { bodyType: typeof init?.body },
+        'google_media.omni_request_adapter_failed',
+      )
+      throw new Error(
+        'Gemini Omni request could not be adapted to the required video format',
+      )
+    }
 
+    let body: unknown
     try {
-      const body = adaptOmniInteractionRequest(
+      body = adaptOmniInteractionRequest(
         JSON.parse(init.body),
         aspectRatio,
         durationSeconds,
       )
-      return fetch(input, { ...init, body: JSON.stringify(body) })
-    } catch {
-      return fetch(input, init)
+    } catch (error) {
+      logger.warn(
+        { error: getErrorMessage(error) },
+        'google_media.omni_request_adapter_failed',
+      )
+      throw new Error(
+        'Gemini Omni request could not be adapted to the required video format',
+        { cause: error },
+      )
     }
+
+    return transport(input, { ...init, body: JSON.stringify(body) })
   }
 }
 

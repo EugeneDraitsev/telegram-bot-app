@@ -84,6 +84,13 @@ function createApi(): TestTelegramApi {
   }
 }
 
+function createMissingReplyError() {
+  return Object.assign(new Error('missing reply'), {
+    error_code: 400,
+    description: 'Bad Request: message to be replied not found',
+  })
+}
+
 describe('sendResponses', () => {
   beforeEach(() => {
     mockSaveBotReplyToHistory.mockClear()
@@ -378,6 +385,79 @@ describe('sendResponses', () => {
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 456 },
       },
+    )
+    expect(api.sendDocument).not.toHaveBeenCalled()
+  })
+
+  test('retries Lyria Clip once without a missing reply target', async () => {
+    const api = createApi()
+    api.sendVoice.mockRejectedValueOnce(createMissingReplyError())
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 900001,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('clip'),
+          mimeType: 'audio/mpeg',
+          delivery: 'voice',
+        },
+      ],
+    })
+
+    expect(api.sendVoice).toHaveBeenCalledTimes(2)
+    expect(api.sendVoice).toHaveBeenNthCalledWith(
+      1,
+      123,
+      expect.anything(),
+      expect.objectContaining({
+        reply_parameters: { message_id: 900001 },
+      }),
+    )
+    expect(api.sendVoice).toHaveBeenNthCalledWith(
+      2,
+      123,
+      expect.anything(),
+      expect.not.objectContaining({ reply_parameters: expect.anything() }),
+    )
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).not.toHaveBeenCalled()
+  })
+
+  test('retries Lyria Pro once without a missing reply target', async () => {
+    const api = createApi()
+    api.sendAudio.mockRejectedValueOnce(createMissingReplyError())
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 900001,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('full-song'),
+          mimeType: 'audio/mpeg',
+          delivery: 'audio',
+        },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(2)
+    expect(api.sendAudio).toHaveBeenNthCalledWith(
+      1,
+      123,
+      expect.anything(),
+      expect.objectContaining({
+        reply_parameters: { message_id: 900001 },
+      }),
+    )
+    expect(api.sendAudio).toHaveBeenNthCalledWith(
+      2,
+      123,
+      expect.anything(),
+      expect.not.objectContaining({ reply_parameters: expect.anything() }),
     )
     expect(api.sendDocument).not.toHaveBeenCalled()
   })
@@ -755,10 +835,7 @@ describe('sendResponses', () => {
 
   test('retries without reply parameters when the reply target is missing', async () => {
     const api = createApi()
-    const missingReplyError = Object.assign(new Error('missing reply'), {
-      error_code: 400,
-      description: 'Bad Request: message to be replied not found',
-    })
+    const missingReplyError = createMissingReplyError()
     api.sendRichMessage
       .mockRejectedValueOnce(missingReplyError)
       .mockResolvedValueOnce({ message_id: 13 })

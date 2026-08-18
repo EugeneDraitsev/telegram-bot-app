@@ -20,11 +20,18 @@ export function adaptOmniInteractionRequest(
   value: unknown,
   aspectRatio: '9:16' | '16:9',
   durationSeconds: number,
-): unknown {
-  if (!isRecord(value)) return value
+): JsonRecord {
+  if (!isRecord(value)) {
+    throw new Error('Google Interactions request body must be a JSON object')
+  }
+  if ('responseFormat' in value) {
+    throw new Error(
+      'Google Interactions request unexpectedly used camelCase responseFormat',
+    )
+  }
 
-  // The API accepts one format object or an array; the AI SDK builds an array.
-  // Normalize here so adding video never overwrites SDK-provided entries.
+  // The wire schema requires an array. Preserve the SDK array and normalize a
+  // single legacy entry defensively so adding video never overwrites it.
   const existingFormats = Array.isArray(value.response_format)
     ? value.response_format
     : value.response_format === undefined
