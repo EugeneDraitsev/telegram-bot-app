@@ -9,7 +9,6 @@ import {
 } from '../agentic-loop'
 import { buildModelToolRegistry } from '../model-tools'
 import { CHAT_MODEL_CONFIG, resolveAgentChatModel } from '../models'
-import { getChatProviderOptions } from '../runtime'
 import {
   extractFallbackTextFromToolResults,
   getExecutableFunctionCalls,
@@ -26,12 +25,6 @@ describe('resolveAgentChatModel', () => {
 
   test('keeps other commands on the default chat model', () => {
     expect(resolveAgentChatModel('q').config).toBe(CHAT_MODEL_CONFIG)
-  })
-
-  test('lets the OpenAI routing model receive Telegram audio file parts', () => {
-    expect(getChatProviderOptions(CHAT_MODEL_CONFIG, 123)).toEqual({
-      openai: expect.objectContaining({ passThroughUnsupportedFiles: true }),
-    })
   })
 })
 

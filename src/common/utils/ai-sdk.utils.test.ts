@@ -1,5 +1,6 @@
 import {
   getAiSdkGoogleProvider,
+  getAiSdkProviderOptions,
   resetAiSdkProvidersForTests,
 } from './ai-sdk.utils'
 
@@ -20,5 +21,14 @@ describe('ai-sdk.utils', () => {
     expect(() => getAiSdkGoogleProvider()).toThrow(
       'GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY is not set',
     )
+  })
+
+  test('passes unsupported OpenAI file types through when requested', () => {
+    expect(
+      getAiSdkProviderOptions(
+        { provider: 'openai', model: 'gpt-5.6-luna' },
+        { passThroughUnsupportedFiles: true },
+      ).openai?.passThroughUnsupportedFiles,
+    ).toBe(true)
   })
 })
