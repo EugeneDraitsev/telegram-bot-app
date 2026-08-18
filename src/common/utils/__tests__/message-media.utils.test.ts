@@ -227,11 +227,19 @@ describe('collectHistoryMediaFileRefs', () => {
           fileUniqueId: 'old',
           mimeType: 'image/jpeg',
           mediaType: 'image',
+          label: 'History message image (message_id=1)',
+          context: { relation: 'history-message', messageId: 1 },
         },
         message: messages[0],
       },
       {
-        ref: { fileId: 'doc_image', mimeType: 'image/png', mediaType: 'image' },
+        ref: {
+          fileId: 'doc_image',
+          mimeType: 'image/png',
+          mediaType: 'image',
+          label: 'History message image (message_id=3)',
+          context: { relation: 'history-message', messageId: 3 },
+        },
         message: messages[2],
       },
     ])
@@ -355,6 +363,15 @@ describe('collectHistoryMediaFileRefs', () => {
           fileUniqueId: 'reply-context',
           mimeType: 'image/jpeg',
           mediaType: 'image',
+          label:
+            'History reply target image (message_id=1 | text="look at this" | referenced by message_id=2 | text="what is happening on this image?")',
+          context: {
+            relation: 'history-reply-target',
+            messageId: 1,
+            text: 'look at this',
+            referencedByMessageId: 2,
+            referencedByText: 'what is happening on this image?',
+          },
         },
         message: recentReply,
       },

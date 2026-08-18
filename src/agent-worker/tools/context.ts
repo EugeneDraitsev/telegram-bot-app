@@ -14,6 +14,7 @@ interface ToolContext {
   message: Message
   api?: ChatAdminApi
   commandName?: string
+  generatedMediaClaimed: boolean
   mediaBuffers?: MediaBuffer[]
   responses: AgentResponse[]
 }
@@ -34,6 +35,17 @@ export function addResponse(response: AgentResponse): void {
 
 export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
+}
+
+export function claimGeneratedMedia(): void {
+  const context = requireToolContext()
+  if (context.generatedMediaClaimed) {
+    throw new Error(
+      'Only one generated media result can be created per request',
+    )
+  }
+
+  context.generatedMediaClaimed = true
 }
 
 function getToolCommandName(): string | undefined {
@@ -94,7 +106,14 @@ export async function runWithToolContext<T>(
   commandName?: string,
 ): Promise<T> {
   return contextStorage.run(
-    { message, api, commandName, mediaBuffers, responses: [] },
+    {
+      message,
+      api,
+      commandName,
+      generatedMediaClaimed: false,
+      mediaBuffers,
+      responses: [],
+    },
     callback,
   )
 }

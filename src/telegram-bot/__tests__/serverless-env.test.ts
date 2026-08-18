@@ -14,8 +14,12 @@ describe('agentic chat configuration infrastructure', () => {
     )
   })
 
-  test('uses DynamoDB as the only runtime chat authorization source', () => {
+  test('does not restore the legacy environment allowlist', () => {
     expect(serverlessConfig).not.toContain('OPENAI_CHAT_IDS')
+  })
+
+  test('never injects the offline idempotency bypass into deployed Lambdas', () => {
+    expect(serverlessConfig).not.toContain('IS_OFFLINE:')
   })
 
   test('does not retain an immutable Lambda version after every deployment', () => {

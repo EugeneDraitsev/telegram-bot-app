@@ -11,6 +11,7 @@ import {
 import type {
   AgentResponse,
   AnimationResponse,
+  AudioResponse,
   DiceResponse,
   ImageResponse,
   RichResponse,
@@ -30,11 +31,50 @@ interface DeliveryBundle {
   text: string
   image: ImageResponse | null
   video: VideoResponse | null
+  audio: AudioResponse | null
   animation: AnimationResponse | null
   voice: Buffer | null
   sticker: StickerResponse | null
   dice: DiceResponse | null
   rich: RichResponse | null
+  overwrittenMediaTypes: string[]
+}
+
+const PRIMARY_MEDIA_ORDER = [
+  'dice',
+  'sticker',
+  'animation',
+  'image',
+  'video',
+  'audio',
+] as const
+const BUFFERED_MEDIA_ORDER = ['video', 'audio', 'image'] as const
+
+type BufferedMediaResponse = ImageResponse | VideoResponse | AudioResponse
+
+function hasBuffer(response: BufferedMediaResponse | null): boolean {
+  return Boolean(response?.buffer)
+}
+
+function getPrimaryMediaOrder(bundle: DeliveryBundle) {
+  const buffered = BUFFERED_MEDIA_ORDER.filter((type) =>
+    hasBuffer(bundle[type]),
+  )
+  const bufferedSet = new Set<string>(buffered)
+  return [
+    ...buffered,
+    ...PRIMARY_MEDIA_ORDER.filter((type) => !bufferedSet.has(type)),
+  ]
+}
+
+function preferBufferedResponse<T extends BufferedMediaResponse>(
+  current: T | null,
+  candidate: T,
+): T {
+  if (!current || (!hasBuffer(current) && hasBuffer(candidate))) {
+    return candidate
+  }
+  return current
 }
 
 function getReplyOptions(replyToMessageId?: number) {
@@ -57,6 +97,41 @@ function formatCaption(text?: string): string | undefined {
   return formatTelegramMarkdownV2(normalized.slice(0, MAX_CAPTION_LENGTH))
 }
 
+const MEDIA_FILE_EXTENSIONS: Record<string, string> = {
+  'audio/aac': 'aac',
+  'audio/flac': 'flac',
+  'audio/mp4': 'm4a',
+  'audio/mpeg': 'mp3',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'video/mp4': 'mp4',
+  'video/mpeg': 'mpeg',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
+}
+
+const VOICE_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp4', 'audio/ogg'])
+const AUDIO_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp4'])
+
+function normalizeMimeType(mimeType?: string): string | undefined {
+  return mimeType?.split(';', 1)[0]?.trim().toLowerCase()
+}
+
+function getMediaFileName(
+  fileName: string | undefined,
+  fallback: string,
+  mimeType?: string,
+): string {
+  const normalizedMimeType = normalizeMimeType(mimeType)
+  const extension = normalizedMimeType
+    ? MEDIA_FILE_EXTENSIONS[normalizedMimeType]
+    : undefined
+  const selectedName = fileName || fallback
+  if (!extension) return selectedName
+  return `${selectedName.replace(/\.[^.]+$/, '')}.${extension}`
+}
+
 function getSentMessageId(messageLike: unknown): number | undefined {
   if (!messageLike || typeof messageLike !== 'object') {
     return undefined
@@ -64,6 +139,56 @@ function getSentMessageId(messageLike: unknown): number | undefined {
 
   const { message_id } = messageLike as { message_id?: unknown }
   return typeof message_id === 'number' ? message_id : undefined
+}
+
+function isVoiceMessagesForbiddenError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const description = (error as { description?: unknown }).description
+  return (
+    typeof description === 'string' &&
+    /voice[_ ]messages[_ ]forbidden/i.test(description)
+  )
+}
+
+function warnDroppedMedia(bundle: DeliveryBundle, chatId: number): void {
+  const primaryMedia = getPrimaryMediaOrder(bundle).filter(
+    (type) => bundle[type] !== null,
+  )
+  const bufferedMedia = BUFFERED_MEDIA_ORDER.filter((type) =>
+    hasBuffer(bundle[type]),
+  )
+  let deliveredResponseType: string | undefined
+  let droppedResponseTypes = [...bundle.overwrittenMediaTypes]
+
+  if (bufferedMedia.length > 0) {
+    deliveredResponseType = bufferedMedia[0]
+    droppedResponseTypes = [
+      ...droppedResponseTypes,
+      ...(bundle.rich ? ['rich'] : []),
+      ...primaryMedia.slice(1),
+    ]
+  } else if (bundle.rich) {
+    deliveredResponseType = 'rich'
+    droppedResponseTypes = [
+      ...droppedResponseTypes,
+      ...primaryMedia,
+      ...(bundle.voice ? ['voice'] : []),
+    ]
+  } else if (bundle.voice && bundle.text) {
+    deliveredResponseType = 'voice'
+    droppedResponseTypes = [...droppedResponseTypes, ...primaryMedia]
+  } else if (primaryMedia.length > 1) {
+    deliveredResponseType = primaryMedia[0]
+    droppedResponseTypes = [...droppedResponseTypes, ...primaryMedia.slice(1)]
+  } else if (droppedResponseTypes.length > 0) {
+    deliveredResponseType = primaryMedia[0]
+  }
+
+  if (!deliveredResponseType || droppedResponseTypes.length === 0) return
+  logger.warn(
+    { chatId, deliveredResponseType, droppedResponseTypes },
+    'delivery.media_dropped',
+  )
 }
 
 function getTelegramMentions(text: string): string[] {
@@ -110,11 +235,13 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     text: '',
     image: null,
     video: null,
+    audio: null,
     animation: null,
     voice: null,
     sticker: null,
     dice: null,
     rich: null,
+    overwrittenMediaTypes: [],
   }
   const textParts: string[] = []
 
@@ -122,8 +249,18 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     if (r.type === 'text') textParts.push(cleanModelMessage(r.text))
     else if (r.type === 'rich') bundle.rich = r
     else if (r.type === 'voice') bundle[r.type] = r.buffer
-    // biome-ignore lint/suspicious/noExplicitAny: generic mapping
-    else bundle[r.type] = r as any
+    else if (r.type === 'image') {
+      if (bundle.image) bundle.overwrittenMediaTypes.push(r.type)
+      bundle.image = preferBufferedResponse(bundle.image, r)
+    } else if (r.type === 'video') {
+      if (bundle.video) bundle.overwrittenMediaTypes.push(r.type)
+      bundle.video = preferBufferedResponse(bundle.video, r)
+    } else if (r.type === 'audio') {
+      if (bundle.audio) bundle.overwrittenMediaTypes.push(r.type)
+      bundle.audio = preferBufferedResponse(bundle.audio, r)
+    } else if (r.type === 'animation') bundle.animation = r
+    else if (r.type === 'sticker') bundle.sticker = r
+    else if (r.type === 'dice') bundle.dice = r
   }
 
   bundle.text = textParts.join('\n\n').trim()
@@ -205,12 +342,31 @@ async function sendImage(
     ...getReplyOptions(params.replyToMessageId),
   }
 
-  if (params.image.buffer) {
-    const sentMessage = await params.api.sendPhoto(
-      params.chatId,
-      new InputFile(params.image.buffer),
-      options,
-    )
+  const imageBuffer = params.image.buffer
+  if (imageBuffer) {
+    const inputFile = () => new InputFile(imageBuffer, 'generated-image.png')
+    let sentMessage:
+      | Awaited<ReturnType<TelegramApi['sendPhoto']>>
+      | Awaited<ReturnType<TelegramApi['sendDocument']>>
+
+    try {
+      sentMessage = await params.api.sendPhoto(
+        params.chatId,
+        inputFile(),
+        options,
+      )
+    } catch (error) {
+      if (isTelegramReplyTargetMissingError(error)) throw error
+      logger.warn(
+        { chatId: params.chatId, error },
+        'delivery.image_failed_document_fallback',
+      )
+      sentMessage = await params.api.sendDocument(
+        params.chatId,
+        inputFile(),
+        options,
+      )
+    }
     await saveBotReplyToHistory(sentMessage)
     return
   }
@@ -240,6 +396,68 @@ async function sendImage(
 async function sendVideo(
   params: DeliveryParams & { video: VideoResponse; text: string },
 ) {
+  const rawCaption = params.video.caption || params.text || ''
+
+  const videoBuffer = params.video.buffer
+  if (videoBuffer) {
+    const caption = formatCaption(rawCaption)
+    const inputFile = () =>
+      new InputFile(
+        videoBuffer,
+        getMediaFileName(
+          params.video.fileName,
+          'generated-video.mp4',
+          params.video.mimeType,
+        ),
+      )
+    const options = {
+      caption,
+      parse_mode: caption ? ('MarkdownV2' as const) : undefined,
+      ...getReplyOptions(params.replyToMessageId),
+    }
+    let sentMessage:
+      | Awaited<ReturnType<TelegramApi['sendVideo']>>
+      | Awaited<ReturnType<TelegramApi['sendDocument']>>
+
+    try {
+      sentMessage = await params.api.sendVideo(params.chatId, inputFile(), {
+        ...options,
+        supports_streaming: true,
+      })
+    } catch (error) {
+      if (isTelegramReplyTargetMissingError(error)) throw error
+      logger.warn(
+        {
+          chatId: params.chatId,
+          error,
+          mimeType: normalizeMimeType(params.video.mimeType),
+        },
+        'delivery.video_failed_document_fallback',
+      )
+      sentMessage = await params.api.sendDocument(
+        params.chatId,
+        inputFile(),
+        options,
+      )
+    }
+    await saveBotReplyToHistory(sentMessage)
+    const extraText = params.text.trim()
+    if (extraText && extraText !== rawCaption.trim()) {
+      await sendText({
+        ...params,
+        text: extraText,
+        replyToMessageId:
+          getSentMessageId(sentMessage) ?? params.replyToMessageId,
+      })
+    }
+    return
+  }
+
+  if (!params.video.url) {
+    if (rawCaption) await sendText({ ...params, text: rawCaption })
+    return
+  }
+
   const messageText = params.text
     ? `${params.text}\n\n${params.video.url}`
     : params.video.caption?.trim()
@@ -247,6 +465,106 @@ async function sendVideo(
       : params.video.url
 
   await sendText({ ...params, text: messageText })
+}
+
+async function sendGeneratedAudio(
+  params: DeliveryParams & { audio: AudioResponse; text: string },
+) {
+  const captionText = [params.audio.title, params.audio.caption]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+  const uniqueCaptionText = [...new Set(captionText)]
+  const caption = formatCaption(uniqueCaptionText.join('\n'))
+  const options = {
+    caption,
+    parse_mode: caption ? ('MarkdownV2' as const) : undefined,
+    ...getReplyOptions(params.replyToMessageId),
+  }
+  const inputFile = () =>
+    new InputFile(
+      params.audio.buffer,
+      getMediaFileName(
+        params.audio.fileName,
+        'generated-music.mp3',
+        params.audio.mimeType,
+      ),
+    )
+  const mimeType = normalizeMimeType(params.audio.mimeType) ?? 'audio/mpeg'
+  let sentMessage:
+    | Awaited<ReturnType<TelegramApi['sendVoice']>>
+    | Awaited<ReturnType<TelegramApi['sendAudio']>>
+    | Awaited<ReturnType<TelegramApi['sendDocument']>>
+    | undefined
+
+  if (params.audio.delivery !== 'audio' && VOICE_MIME_TYPES.has(mimeType)) {
+    try {
+      sentMessage = await params.api.sendVoice(
+        params.chatId,
+        inputFile(),
+        options,
+      )
+    } catch (error) {
+      if (isTelegramReplyTargetMissingError(error)) throw error
+      logger.warn(
+        { chatId: params.chatId, error },
+        isVoiceMessagesForbiddenError(error)
+          ? 'delivery.voice_forbidden_fallback'
+          : 'delivery.voice_failed_fallback',
+      )
+    }
+  }
+
+  if (!sentMessage) {
+    if (AUDIO_MIME_TYPES.has(mimeType)) {
+      const fallbackCaption = formatCaption(params.audio.caption)
+      try {
+        sentMessage = await params.api.sendAudio(params.chatId, inputFile(), {
+          ...(params.audio.title?.trim()
+            ? { title: params.audio.title.trim() }
+            : {}),
+          caption: fallbackCaption,
+          parse_mode: fallbackCaption ? ('MarkdownV2' as const) : undefined,
+          ...getReplyOptions(params.replyToMessageId),
+        })
+      } catch (error) {
+        if (isTelegramReplyTargetMissingError(error)) throw error
+        logger.warn(
+          { chatId: params.chatId, error, mimeType },
+          'delivery.audio_failed_document_fallback',
+        )
+        sentMessage = await params.api.sendDocument(
+          params.chatId,
+          inputFile(),
+          options,
+        )
+      }
+    } else {
+      logger.warn(
+        { chatId: params.chatId, mimeType },
+        'delivery.audio_document_fallback',
+      )
+      sentMessage = await params.api.sendDocument(
+        params.chatId,
+        inputFile(),
+        options,
+      )
+    }
+  }
+  await saveBotReplyToHistory(sentMessage)
+
+  const extraText = params.text.trim()
+  const deliveredMetadata = new Set([
+    ...uniqueCaptionText,
+    uniqueCaptionText.join('\n'),
+  ])
+  if (extraText && !deliveredMetadata.has(extraText)) {
+    await sendText({
+      ...params,
+      text: extraText,
+      replyToMessageId:
+        getSentMessageId(sentMessage) ?? params.replyToMessageId,
+    })
+  }
 }
 
 async function sendAnimation(
@@ -323,16 +641,25 @@ async function sendResponsesOnce(
   if (params.responses.length === 0) return
 
   const bundle = collectBundle(params.responses)
+  warnDroppedMedia(bundle, params.chatId)
   const base: DeliveryParams = {
     api: params.api,
     chatId: params.chatId,
     replyToMessageId: params.replyToMessageId,
   }
+  const mediaParams = { ...base, text: bundle.text }
+  const bufferedMediaType = BUFFERED_MEDIA_ORDER.find((type) =>
+    hasBuffer(bundle[type]),
+  )
 
   try {
-    // Keep voice+text as a single message, but preserve legacy voice-only
-    // behavior for mixed bundles (e.g. image + voice).
-    if (bundle.rich) {
+    if (bufferedMediaType === 'video' && bundle.video) {
+      await sendVideo({ ...mediaParams, video: bundle.video })
+    } else if (bufferedMediaType === 'audio' && bundle.audio) {
+      await sendGeneratedAudio({ ...mediaParams, audio: bundle.audio })
+    } else if (bufferedMediaType === 'image' && bundle.image) {
+      await sendImage({ ...mediaParams, image: bundle.image })
+    } else if (bundle.rich) {
       const sentMessage = await sendRichResponse({
         ...base,
         rich: bundle.rich,
@@ -348,7 +675,9 @@ async function sendResponsesOnce(
       return
     }
 
-    if (bundle.voice && bundle.text) {
+    // Keep voice+text as a single message, but preserve legacy voice-only
+    // behavior for mixed bundles (e.g. image + voice).
+    if (!bufferedMediaType && bundle.voice && bundle.text) {
       await sendVoice({
         ...base,
         voice: bundle.voice,
@@ -357,31 +686,37 @@ async function sendResponsesOnce(
       return
     }
 
-    const mediaParams = { ...base, text: bundle.text }
-    if (bundle.dice) {
-      await sendDice({ ...base, dice: bundle.dice })
-      if (bundle.text) await sendText(mediaParams)
-    } else if (bundle.sticker) {
-      try {
-        await sendSticker({ ...base, sticker: bundle.sticker })
-      } catch (error) {
-        if (
-          base.replyToMessageId !== undefined &&
-          isTelegramReplyTargetMissingError(error)
-        ) {
-          throw error
+    if (!bufferedMediaType) {
+      if (bundle.dice) {
+        await sendDice({ ...base, dice: bundle.dice })
+        if (bundle.text) await sendText(mediaParams)
+      } else if (bundle.sticker) {
+        try {
+          await sendSticker({ ...base, sticker: bundle.sticker })
+        } catch (error) {
+          if (
+            base.replyToMessageId !== undefined &&
+            isTelegramReplyTargetMissingError(error)
+          ) {
+            throw error
+          }
+          logger.warn(
+            { error, chatId: params.chatId },
+            'delivery.sticker_failed',
+          )
         }
-        logger.warn({ error, chatId: params.chatId }, 'delivery.sticker_failed')
+        if (bundle.text) await sendText(mediaParams)
+      } else if (bundle.animation) {
+        await sendAnimation({ ...mediaParams, animation: bundle.animation })
+      } else if (bundle.image) {
+        await sendImage({ ...mediaParams, image: bundle.image })
+      } else if (bundle.video) {
+        await sendVideo({ ...mediaParams, video: bundle.video })
+      } else if (bundle.audio) {
+        await sendGeneratedAudio({ ...mediaParams, audio: bundle.audio })
+      } else if (bundle.text) {
+        await sendText(mediaParams)
       }
-      if (bundle.text) await sendText(mediaParams)
-    } else if (bundle.animation) {
-      await sendAnimation({ ...mediaParams, animation: bundle.animation })
-    } else if (bundle.image) {
-      await sendImage({ ...mediaParams, image: bundle.image })
-    } else if (bundle.video) {
-      await sendVideo({ ...mediaParams, video: bundle.video })
-    } else if (bundle.text) {
-      await sendText(mediaParams)
     }
   } catch (error) {
     if (

@@ -166,35 +166,55 @@ describe('buildInitialInput', () => {
       mimeType: 'image/png',
       mediaType: 'image' as const,
       label: 'Current image',
+      origin: 'request' as const,
+      context: {
+        relation: 'current-message' as const,
+        messageId: 10,
+        text: 'compare them',
+        author: 'Eugene',
+      },
     }
     const historyImage = {
       buffer: Buffer.from('history'),
       mimeType: 'image/jpeg',
       mediaType: 'image' as const,
+      origin: 'history' as const,
+      label: 'History message image',
+      context: {
+        relation: 'history-message' as const,
+        messageId: 8,
+        text: 'older photo',
+        author: 'Alice',
+      },
     }
     const message = {
       message_id: 10,
       text: 'compare them',
+      from: { id: 7, is_bot: false, first_name: 'Eugene' },
       reply_to_message: { message_id: 9, text: 'reply text' },
     } as Message
 
     expect(
-      buildInitialInput(
-        message,
-        message.text ?? '',
-        [requestImage],
-        [
-          {
-            media: historyImage,
-            message: { message_id: 8, caption: 'older photo' } as Message,
-          },
-        ],
-      ),
+      buildInitialInput(message, message.text ?? '', [
+        requestImage,
+        historyImage,
+      ]),
     ).toEqual([
       {
         role: 'user',
         content: [
-          { type: 'text', text: 'Current image' },
+          {
+            type: 'text',
+            text: 'MEDIA_CONTEXT: each MEDIA belongs to the MESSAGE_CONTEXT immediately above it. Use media_id when a generation tool asks which media to use.',
+          },
+          {
+            type: 'text',
+            text: 'MESSAGE_CONTEXT relation=current-message\nmessage_id=10\ntext="compare them"\nauthor="Eugene"',
+          },
+          {
+            type: 'text',
+            text: 'MEDIA media_id=1 type=image mime_type=image/png\nlabel="Current image"',
+          },
           {
             type: 'image',
             image: requestImage.buffer,
@@ -202,21 +222,106 @@ describe('buildInitialInput', () => {
           },
           {
             type: 'text',
-            text: 'Telegram reply target message_id=9: reply text',
+            text: 'MESSAGE_CONTEXT relation=history-message\nmessage_id=8\ntext="older photo"\nauthor="Alice"',
           },
           {
             type: 'text',
-            text: 'Context image from recent chat history. Related message text: older photo',
+            text: 'MEDIA media_id=2 type=image mime_type=image/jpeg\nlabel="History message image"',
           },
           {
             type: 'image',
             image: historyImage.buffer,
             mediaType: 'image/jpeg',
           },
-          { type: 'text', text: 'compare them' },
+          {
+            type: 'text',
+            text: 'Telegram reply target message_id=9: reply text',
+          },
+          { type: 'text', text: 'CURRENT_USER_REQUEST:\ncompare them' },
         ],
       },
     ])
+  })
+
+  test('keeps video bytes out of the routing model input', () => {
+    const requestVideo = {
+      buffer: Buffer.from('video'),
+      mimeType: 'video/mp4',
+      mediaType: 'video' as const,
+      label: 'Reply message video',
+      origin: 'request' as const,
+      context: {
+        relation: 'reply-target' as const,
+        messageId: 9,
+        text: 'source clip',
+        referencedByMessageId: 10,
+        referencedByText: 'edit this',
+      },
+    }
+
+    expect(
+      buildInitialInput(
+        { message_id: 10, text: 'edit this' } as Message,
+        'edit this',
+        [requestVideo],
+      ),
+    ).toEqual([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'MEDIA_CONTEXT: each MEDIA belongs to the MESSAGE_CONTEXT immediately above it. Use media_id when a generation tool asks which media to use.',
+          },
+          {
+            type: 'text',
+            text: 'MESSAGE_CONTEXT relation=reply-target\nmessage_id=9\ntext="source clip"\nreferenced_by_message_id=10\nreferenced_by_text="edit this"',
+          },
+          {
+            type: 'text',
+            text: 'MEDIA media_id=1 type=video mime_type=video/mp4\nlabel="Reply message video"',
+          },
+          {
+            type: 'text',
+            text: 'Binary video media_id=1 is available to media-generation tools.',
+          },
+          { type: 'text', text: 'CURRENT_USER_REQUEST:\nedit this' },
+        ],
+      },
+    ])
+  })
+
+  test('forwards audio bytes to the routing model as a file part', () => {
+    const requestAudio = {
+      buffer: Buffer.from('voice'),
+      mimeType: 'audio/ogg',
+      mediaType: 'audio' as const,
+      label: 'Current voice message',
+      origin: 'request' as const,
+      context: {
+        relation: 'current-message' as const,
+        messageId: 10,
+        text: 'what did I say?',
+      },
+    }
+
+    const [input] = buildInitialInput(
+      { message_id: 10, text: 'what did I say?' } as Message,
+      'what did I say?',
+      [requestAudio],
+    )
+
+    expect(input?.content).toContainEqual({
+      type: 'file',
+      data: requestAudio.buffer,
+      mediaType: 'audio/ogg',
+    })
+    expect(input?.content).not.toContainEqual(
+      expect.objectContaining({
+        type: 'text',
+        text: expect.stringContaining('Binary audio'),
+      }),
+    )
   })
 })
 

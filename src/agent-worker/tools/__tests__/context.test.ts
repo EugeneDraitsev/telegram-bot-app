@@ -2,6 +2,7 @@ import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
 import {
+  claimGeneratedMedia,
   requireToolContext,
   runWithToolContext,
   withToolMediaBuffers,
@@ -22,6 +23,19 @@ function image(label: string): MediaBuffer {
 }
 
 describe('tool context', () => {
+  test('allows only one generated media result per context', async () => {
+    await runWithToolContext(message, undefined, async () => {
+      claimGeneratedMedia()
+      expect(() => claimGeneratedMedia()).toThrow(
+        'Only one generated media result can be created per request',
+      )
+    })
+
+    await runWithToolContext(message, undefined, async () => {
+      expect(() => claimGeneratedMedia()).not.toThrow()
+    })
+  })
+
   test('scopes media buffer override and restores the previous context', async () => {
     const initialMedia = [image('initial')]
     const scopedMedia = [image('scoped')]

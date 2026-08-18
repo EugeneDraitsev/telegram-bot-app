@@ -116,6 +116,7 @@ function getFallbackParams<TOOLS extends ToolSet>(
       store: false,
       serviceTier:
         fallback.modelConfig.provider === 'google' ? 'priority' : undefined,
+      passThroughUnsupportedFiles: true,
     }),
   }
 }

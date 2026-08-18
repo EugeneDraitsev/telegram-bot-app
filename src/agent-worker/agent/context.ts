@@ -29,10 +29,6 @@ export function buildContextBlock(
       .map(([type, count]) => `${type}: ${count}`)
       .join(', ')
   }
-  const mediaLabels = mediaBuffers?.map(
-    (media, index) => media.label || `Media ${index + 1}`,
-  )
-
   const lines = [
     'CONTEXT:',
     `- Current date (Europe/Stockholm): ${currentDate}`,
@@ -42,8 +38,10 @@ export function buildContextBlock(
     `- Has attached media: ${mediaSummary}`,
   ]
 
-  if (mediaLabels?.length) {
-    lines.push(`- Attached media labels:\n${mediaLabels.join('\n')}`)
+  if (mediaBuffers?.length) {
+    lines.push(
+      '- Media formatting: the user input contains ordered MESSAGE_CONTEXT blocks followed by their MEDIA items. Each MEDIA has a stable 1-based media_id for generation tools.',
+    )
   }
 
   if (message.reply_to_message) {

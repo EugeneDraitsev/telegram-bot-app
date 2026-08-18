@@ -15,6 +15,7 @@ const getSpy = jest.spyOn(utils, 'dynamoGetItem')
 const updateSpy = jest.spyOn(utils, 'dynamoUpdateItem')
 const originalSwitch = process.env.AGENTIC_BOT_ENABLED
 const originalOwnerId = process.env.BOT_OWNER_ID
+const originalOffline = process.env.IS_OFFLINE
 
 beforeEach(() => {
   clearChatConfigurationCache()
@@ -24,6 +25,7 @@ beforeEach(() => {
   updateSpy.mockResolvedValue({} as never)
   delete process.env.AGENTIC_BOT_ENABLED
   delete process.env.BOT_OWNER_ID
+  delete process.env.IS_OFFLINE
 })
 
 afterAll(() => {
@@ -38,6 +40,11 @@ afterAll(() => {
     delete process.env.BOT_OWNER_ID
   } else {
     process.env.BOT_OWNER_ID = originalOwnerId
+  }
+  if (originalOffline === undefined) {
+    delete process.env.IS_OFFLINE
+  } else {
+    process.env.IS_OFFLINE = originalOffline
   }
 })
 
@@ -148,6 +155,22 @@ describe('chat configuration reads', () => {
   })
 
   test('fails closed without reading DynamoDB when globally disabled', async () => {
+    process.env.AGENTIC_BOT_ENABLED = 'false'
+
+    await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
+    expect(getSpy).not.toHaveBeenCalled()
+  })
+
+  test('allows local offline requests without reading DynamoDB', async () => {
+    process.env.IS_OFFLINE = 'true'
+
+    await expect(isAiAllowedChat(123)).resolves.toBe(true)
+    await expect(isAgenticChatEnabled(123)).resolves.toBe(true)
+    expect(getSpy).not.toHaveBeenCalled()
+  })
+
+  test('keeps the global switch effective during local offline runs', async () => {
+    process.env.IS_OFFLINE = 'true'
     process.env.AGENTIC_BOT_ENABLED = 'false'
 
     await expect(isAgenticChatEnabled(123)).resolves.toBe(false)

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import {
   SendMessageCommand,
   type SendMessageCommandOutput,
@@ -134,11 +135,15 @@ function enqueueWorker<T extends TelegramWorkerPayload>(
 
   const config = queueConfig[worker]
   const abortController = new AbortController()
+  const deduplicationId = `${worker}:${chatId}:${messageId}`
   const command = new SendMessageCommand({
     QueueUrl: getQueueUrl(config),
     MessageBody: JSON.stringify(payload),
     MessageGroupId: String(chatId),
-    MessageDeduplicationId: `${worker}:${chatId}:${messageId}`,
+    MessageDeduplicationId:
+      process.env.IS_OFFLINE === 'true'
+        ? `${deduplicationId}:${randomUUID()}`
+        : deduplicationId,
   })
   const send = getSqsClient().send(command, {
     abortSignal: abortController.signal,

@@ -11,14 +11,24 @@ export const WORKER_LEASE_TTL_SECONDS = 6 * 60
 // message can wait out the whole MessageRetentionPeriod behind a throttled or
 // backed up consumer, and ingress re-enqueues on Telegram webhook retries once
 // past the 5 minute SQS producer dedup window. Healthy redelivery lands within
-// minutes, so 3h is a wide margin on the normal case; a duplicate reply is the
-// cost if a pathological one ever exceeds it.
+// minutes, so 3h is a wide margin on the normal case; a duplicate reply can
+// still occur if a pathological delay ever exceeds it.
 const COMPLETED_TTL_SECONDS = 60 * 60 * 3
 
 export interface WorkerLease {
   complete(): Promise<boolean>
   release(): Promise<boolean>
 }
+
+const OFFLINE_WORKER_LEASE: WorkerLease = {
+  async complete() {
+    return true
+  },
+  async release() {
+    return true
+  },
+}
+let offlineBypassWarned = false
 
 export function getWorkerIdempotencyKey(
   namespace: string,
@@ -34,6 +44,20 @@ export async function acquireWorkerLease(
   messageId: number,
   ownerToken: string,
 ): Promise<WorkerLease | null> {
+  // Intentionally bypass every worker namespace in serverless-offline. Local
+  // webhook tests must be able to replay one Telegram update end-to-end with
+  // the same message id; deployed stages never set IS_OFFLINE. Do not couple
+  // this to a stage name: IS_OFFLINE is the serverless-offline runtime signal
+  // and local runs may use any stage. The warning is process-wide on purpose
+  // to keep local logs quiet after the first notice.
+  if (process.env.IS_OFFLINE === 'true') {
+    if (!offlineBypassWarned) {
+      offlineBypassWarned = true
+      logger.warn({ namespace }, 'worker.idempotency_offline_bypass')
+    }
+    return OFFLINE_WORKER_LEASE
+  }
+
   const redis = getRedisClient()
   if (!redis) {
     throw new Error('Redis is required for worker idempotency')

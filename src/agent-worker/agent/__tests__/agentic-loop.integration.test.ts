@@ -28,6 +28,8 @@ function createApi(): TelegramApi {
     getChatMember: jest.fn(),
     sendMessage: jest.fn().mockResolvedValue({ message_id: 11 }),
     sendPhoto: jest.fn(),
+    sendAudio: jest.fn(),
+    sendDocument: jest.fn(),
     sendVoice: jest.fn(),
     sendVideo: jest.fn(),
     sendAnimation: jest.fn(),

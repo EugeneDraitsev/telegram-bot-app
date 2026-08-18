@@ -33,5 +33,8 @@ export function getChatProviderOptions(
     chatId,
     store: false,
     serviceTier: modelConfig.provider === 'google' ? 'priority' : undefined,
+    // Telegram audio is a file part. Let OpenAI Responses forward media types
+    // beyond the provider's conservative allowlist; Gemini accepts them natively.
+    passThroughUnsupportedFiles: true,
   })
 }

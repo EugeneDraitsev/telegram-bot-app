@@ -3,6 +3,8 @@ import type { TelegramApi } from '../../types'
 type TestTelegramApi = TelegramApi & {
   sendMessage: jest.Mock
   sendPhoto: jest.Mock
+  sendAudio: jest.Mock
+  sendDocument: jest.Mock
   sendVoice: jest.Mock
   sendVideo: jest.Mock
   sendAnimation: jest.Mock
@@ -71,6 +73,8 @@ function createApi(): TestTelegramApi {
     sendRichMessage: jest.fn().mockResolvedValue({ message_id: 8 }),
     sendRichMessageDraft: jest.fn().mockResolvedValue(true),
     sendPhoto: jest.fn().mockResolvedValue({ message_id: 2 }),
+    sendAudio: jest.fn().mockResolvedValue({ message_id: 9 }),
+    sendDocument: jest.fn().mockResolvedValue({ message_id: 10 }),
     sendVoice: jest.fn().mockResolvedValue({ message_id: 3 }),
     sendVideo: jest.fn().mockResolvedValue({ message_id: 4 }),
     sendAnimation: jest.fn().mockResolvedValue({ message_id: 5 }),
@@ -78,6 +82,13 @@ function createApi(): TestTelegramApi {
     sendDice: jest.fn().mockResolvedValue({ message_id: 7 }),
     sendChatAction: jest.fn(),
   }
+}
+
+function createMissingReplyError() {
+  return Object.assign(new Error('missing reply'), {
+    error_code: 400,
+    description: 'Bad Request: message to be replied not found',
+  })
 }
 
 describe('sendResponses', () => {
@@ -173,6 +184,551 @@ describe('sendResponses', () => {
     expect(api.sendRichMessage).not.toHaveBeenCalled()
     expect(api.sendMessage).not.toHaveBeenCalled()
     expect(api.sendPhoto).not.toHaveBeenCalled()
+  })
+
+  test('uploads generated video buffers through Telegram', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+          mimeType: 'video/webm',
+          fileName: 'omni.mp4',
+          caption: 'Omni with audio',
+        },
+        { type: 'text', text: 'Generic generation status' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledTimes(1)
+    expect(api.sendVideo).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'omni.webm' }),
+      {
+        caption: 'Omni with audio',
+        parse_mode: 'MarkdownV2',
+        supports_streaming: true,
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: 'Generic generation status' },
+      { reply_parameters: { message_id: 4 } },
+      undefined,
+    )
+    expect(api.sendMessage).not.toHaveBeenCalled()
+  })
+
+  test('preserves generated video as a document when Telegram rejects video', async () => {
+    const api = createApi()
+    const videoError = new Error('unsupported video')
+    api.sendVideo.mockRejectedValueOnce(videoError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+          mimeType: 'video/webm',
+          caption: 'A running fox',
+        },
+      ],
+    })
+
+    expect(api.sendDocument).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'generated-video.webm' }),
+      {
+        caption: 'A running fox',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: videoError, mimeType: 'video/webm' },
+      'delivery.video_failed_document_fallback',
+    )
+  })
+
+  test('does not duplicate a video caption as a separate message', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+          caption: 'A running fox',
+        },
+        { type: 'text', text: 'A running fox' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+  })
+
+  test('does not repeat fallback video caption as a separate message', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+        },
+        { type: 'text', text: 'Generated video is ready' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledWith(
+      123,
+      expect.anything(),
+      expect.objectContaining({ caption: 'Generated video is ready' }),
+    )
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(api.sendMessage).not.toHaveBeenCalled()
+  })
+
+  test('keeps a generated video buffer over a search video URL', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('generated-video'),
+          mimeType: 'video/mp4',
+          caption: 'Generated result',
+        },
+        { type: 'video', url: 'https://example.com/search.mp4' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'generated-video.mp4' }),
+      expect.objectContaining({ caption: 'Generated result' }),
+    )
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      {
+        chatId: 123,
+        deliveredResponseType: 'video',
+        droppedResponseTypes: ['video'],
+      },
+      'delivery.media_dropped',
+    )
+  })
+
+  test('uploads generated music as voice and sends requested lyrics separately', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          mimeType: 'audio/mpeg',
+          fileName: 'lyria.mp3',
+          title: 'Midnight Cats',
+          caption: 'An emo song about two cats',
+          delivery: 'voice',
+        },
+        { type: 'text', text: '[Verse]\nhello' },
+      ],
+    })
+
+    expect(api.sendVoice).toHaveBeenCalledTimes(1)
+    expect(api.sendVoice).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'lyria.mp3' }),
+      {
+        caption: 'Midnight Cats\nAn emo song about two cats',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).not.toHaveBeenCalled()
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: '[Verse]\nhello' },
+      { reply_parameters: { message_id: 3 } },
+      undefined,
+    )
+  })
+
+  test('uploads full-length music as audio with its track title', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('full-song'),
+          mimeType: 'audio/mpeg',
+          fileName: 'lyria-song.mp3',
+          title: 'Midnight Cats',
+          caption: 'A full-length emo song',
+          delivery: 'audio',
+        },
+      ],
+    })
+
+    expect(api.sendVoice).not.toHaveBeenCalled()
+    expect(api.sendAudio).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'lyria-song.mp3' }),
+      {
+        title: 'Midnight Cats',
+        caption: 'A full-length emo song',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(api.sendDocument).not.toHaveBeenCalled()
+  })
+
+  test('retries Lyria Clip once without a missing reply target', async () => {
+    const api = createApi()
+    api.sendVoice.mockRejectedValueOnce(createMissingReplyError())
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 900001,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('clip'),
+          mimeType: 'audio/mpeg',
+          delivery: 'voice',
+        },
+      ],
+    })
+
+    expect(api.sendVoice).toHaveBeenCalledTimes(2)
+    expect(api.sendVoice).toHaveBeenNthCalledWith(
+      1,
+      123,
+      expect.anything(),
+      expect.objectContaining({
+        reply_parameters: { message_id: 900001 },
+      }),
+    )
+    expect(api.sendVoice).toHaveBeenNthCalledWith(
+      2,
+      123,
+      expect.anything(),
+      expect.not.objectContaining({ reply_parameters: expect.anything() }),
+    )
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).not.toHaveBeenCalled()
+  })
+
+  test('retries Lyria Pro once without a missing reply target', async () => {
+    const api = createApi()
+    api.sendAudio.mockRejectedValueOnce(createMissingReplyError())
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 900001,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('full-song'),
+          mimeType: 'audio/mpeg',
+          delivery: 'audio',
+        },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(2)
+    expect(api.sendAudio).toHaveBeenNthCalledWith(
+      1,
+      123,
+      expect.anything(),
+      expect.objectContaining({
+        reply_parameters: { message_id: 900001 },
+      }),
+    )
+    expect(api.sendAudio).toHaveBeenNthCalledWith(
+      2,
+      123,
+      expect.anything(),
+      expect.not.objectContaining({ reply_parameters: expect.anything() }),
+    )
+    expect(api.sendDocument).not.toHaveBeenCalled()
+  })
+
+  test('does not duplicate generated audio metadata as a text message', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('full-song'),
+          mimeType: 'audio/mpeg',
+          title: 'Midnight Cats',
+          caption: 'A full-length emo song',
+          delivery: 'audio',
+        },
+        { type: 'text', text: 'A full-length emo song' },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(api.sendMessage).not.toHaveBeenCalled()
+  })
+
+  test('falls back to audio when Telegram forbids voice messages', async () => {
+    const api = createApi()
+    const voiceError = Object.assign(new Error('voice forbidden'), {
+      error_code: 403,
+      description: 'Forbidden: VOICE_MESSAGES_FORBIDDEN',
+    })
+    api.sendVoice.mockRejectedValueOnce(voiceError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          fileName: 'lyria.mp3',
+          title: 'Midnight Cats',
+          caption: 'An emo song about two cats',
+        },
+        { type: 'text', text: '[Verse]\nhello' },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendAudio).toHaveBeenCalledWith(123, expect.anything(), {
+      title: 'Midnight Cats',
+      caption: 'An emo song about two cats',
+      parse_mode: 'MarkdownV2',
+      reply_parameters: { message_id: 456 },
+    })
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: '[Verse]\nhello' },
+      { reply_parameters: { message_id: 9 } },
+      undefined,
+    )
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: voiceError },
+      'delivery.voice_forbidden_fallback',
+    )
+  })
+
+  test('falls back to audio after any voice delivery error', async () => {
+    const api = createApi()
+    const voiceError = new Error('voice upload failed')
+    api.sendVoice.mockRejectedValueOnce(voiceError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          mimeType: 'audio/mpeg',
+          title: 'Night Run',
+        },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendDocument).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: voiceError },
+      'delivery.voice_failed_fallback',
+    )
+  })
+
+  test('sends formats unsupported by Telegram players as documents', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          mimeType: 'audio/wav',
+          fileName: 'lyria.mp3',
+          title: 'Night Run',
+          caption: 'A cinematic track',
+        },
+      ],
+    })
+
+    expect(api.sendVoice).not.toHaveBeenCalled()
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'lyria.wav' }),
+      {
+        caption: 'Night Run\nA cinematic track',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+  })
+
+  test('preserves generated audio as a document when both players reject it', async () => {
+    const api = createApi()
+    const audioError = new Error('audio upload failed')
+    api.sendVoice.mockRejectedValueOnce(new Error('voice upload failed'))
+    api.sendAudio.mockRejectedValueOnce(audioError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('music'),
+          mimeType: 'audio/mpeg',
+          title: 'Night Run',
+        },
+      ],
+    })
+
+    expect(api.sendDocument).toHaveBeenCalledTimes(1)
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: audioError, mimeType: 'audio/mpeg' },
+      'delivery.audio_failed_document_fallback',
+    )
+  })
+
+  test('prioritizes a generated audio buffer over a search image URL', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        { type: 'image', url: 'https://example.com/image.png' },
+        { type: 'audio', buffer: Buffer.from('music') },
+      ],
+    })
+
+    expect(api.sendPhoto).not.toHaveBeenCalled()
+    expect(api.sendVoice).toHaveBeenCalledTimes(1)
+    expect(api.sendAudio).not.toHaveBeenCalled()
+    expect(api.sendDocument).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      {
+        chatId: 123,
+        deliveredResponseType: 'audio',
+        droppedResponseTypes: ['image'],
+      },
+      'delivery.media_dropped',
+    )
+  })
+
+  test('prioritizes a generated media buffer over a rich response', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'rich',
+          richMessage: { html: '<b>search result</b>' },
+          fallbackText: 'search result',
+        },
+        {
+          type: 'audio',
+          buffer: Buffer.from('generated-audio'),
+          mimeType: 'audio/mpeg',
+          delivery: 'audio',
+        },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      {
+        chatId: 123,
+        deliveredResponseType: 'audio',
+        droppedResponseTypes: ['rich'],
+      },
+      'delivery.media_dropped',
+    )
+  })
+
+  test('preserves generated images as documents when Telegram rejects photos', async () => {
+    const api = createApi()
+    const imageError = new Error('unsupported photo')
+    api.sendPhoto.mockRejectedValueOnce(imageError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'image',
+          buffer: Buffer.from('image'),
+          caption: 'Generated image',
+        },
+      ],
+    })
+
+    expect(api.sendDocument).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'generated-image.png' }),
+      {
+        caption: 'Generated image',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: imageError },
+      'delivery.image_failed_document_fallback',
+    )
   })
 
   test('keeps sibling image when voice has no text', async () => {
@@ -304,10 +860,7 @@ describe('sendResponses', () => {
 
   test('retries without reply parameters when the reply target is missing', async () => {
     const api = createApi()
-    const missingReplyError = Object.assign(new Error('missing reply'), {
-      error_code: 400,
-      description: 'Bad Request: message to be replied not found',
-    })
+    const missingReplyError = createMissingReplyError()
     api.sendRichMessage
       .mockRejectedValueOnce(missingReplyError)
       .mockResolvedValueOnce({ message_id: 13 })

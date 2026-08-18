@@ -89,19 +89,26 @@ describe('worker queue producers', () => {
       SQS_ACCOUNT_ID: '000000000000',
       REPLY_WORKER_QUEUE_NAME: 'telegram-local-reply-worker-jobs.fifo',
     }
-    let capturedCommand: SendMessageCommand | undefined
+    const capturedCommands: SendMessageCommand[] = []
     mockSqsSend((command) => {
-      capturedCommand = command
+      capturedCommands.push(command)
       return Promise.resolve({})
     })
 
-    await enqueueReplyWorker({
-      message: { message_id: 8, chat: { id: 7 } },
-    })
+    const payload = { message: { message_id: 8, chat: { id: 7 } } }
+    await enqueueReplyWorker(payload)
+    await enqueueReplyWorker(payload)
 
-    expect(capturedCommand?.input.QueueUrl).toBe(
+    expect(capturedCommands[0]?.input.QueueUrl).toBe(
       'http://localhost:9324/000000000000/telegram-local-reply-worker-jobs.fifo',
     )
+    const firstDeduplicationId =
+      capturedCommands[0]?.input.MessageDeduplicationId
+    const secondDeduplicationId =
+      capturedCommands[1]?.input.MessageDeduplicationId
+    expect(firstDeduplicationId?.startsWith('reply:7:8:')).toBe(true)
+    expect(secondDeduplicationId?.startsWith('reply:7:8:')).toBe(true)
+    expect(secondDeduplicationId).not.toBe(firstDeduplicationId)
   })
 
   test('rejects a job without chat and message ids', () => {

@@ -1,7 +1,7 @@
 import type { ModelMessage, UserModelMessage } from 'ai'
 import type { Message } from 'grammy/types'
 
-import type { HistoryMediaAttachment, MediaBuffer } from '@tg-bot/common'
+import type { MediaBuffer, MediaMessageContext } from '@tg-bot/common'
 import {
   AGENT_REACTION,
   type BotIdentity,
@@ -66,13 +66,6 @@ function getRecentHistoryContext(
 const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
 const AGENT_PRELOAD_TIMEOUT_MS = 3_000
 
-function getHistoryMediaPrompt(message: Message): string {
-  const sourceText = (message.caption || message.text || '').trim()
-  return sourceText
-    ? `Context image from recent chat history. Related message text: ${sourceText.slice(0, 200)}`
-    : 'Context image from recent chat history.'
-}
-
 async function preloadWithFallback<T>(params: {
   chatId: number
   name: string
@@ -135,12 +128,7 @@ export function getAgentDeliveryReplyMessageId(
 
 type UserContentPart = Exclude<UserModelMessage['content'], string>[number]
 
-function pushImageContent(
-  parts: UserContentPart[],
-  label: string,
-  media: MediaBuffer,
-) {
-  parts.push({ type: 'text', text: label })
+function pushImageContent(parts: UserContentPart[], media: MediaBuffer) {
   parts.push({
     type: 'image',
     image: media.buffer,
@@ -148,19 +136,115 @@ function pushImageContent(
   })
 }
 
+function pushAudioContent(parts: UserContentPart[], media: MediaBuffer) {
+  parts.push({
+    type: 'file',
+    data: media.buffer,
+    mediaType: media.mimeType,
+  })
+}
+
+function getMediaGroupKey(media: MediaBuffer, index: number): string {
+  const context = media.context
+  if (context?.messageId !== undefined) {
+    return `${context.relation}:${context.messageId}`
+  }
+  return `media-${index}-${media.label || media.origin || 'request'}`
+}
+
+function formatMessageContext(
+  context: MediaMessageContext | undefined,
+  media: MediaBuffer,
+): string {
+  if (!context) {
+    return [
+      `MESSAGE_CONTEXT relation=${media.origin === 'history' ? 'history-message' : 'request-media'}`,
+      media.label ? `label=${JSON.stringify(media.label)}` : undefined,
+    ]
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  return [
+    `MESSAGE_CONTEXT relation=${context.relation}`,
+    context.messageId === undefined
+      ? undefined
+      : `message_id=${context.messageId}`,
+    context.text ? `text=${JSON.stringify(context.text)}` : undefined,
+    context.author ? `author=${JSON.stringify(context.author)}` : undefined,
+    context.referencedByMessageId === undefined
+      ? undefined
+      : `referenced_by_message_id=${context.referencedByMessageId}`,
+    context.referencedByText
+      ? `referenced_by_text=${JSON.stringify(context.referencedByText)}`
+      : undefined,
+    context.referencedByAuthor
+      ? `referenced_by_author=${JSON.stringify(context.referencedByAuthor)}`
+      : undefined,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
 export function buildInitialInput(
   message: Message,
   textContent: string,
   mediaBuffers: MediaBuffer[] | undefined,
-  historyMediaAttachments: HistoryMediaAttachment[],
 ): ModelMessage[] {
   const parts: UserContentPart[] = []
-
-  for (const media of mediaBuffers ?? []) {
-    pushImageContent(parts, media.label || 'Request media', media)
+  const indexedMedia = (mediaBuffers ?? []).map((media, index) => ({
+    media,
+    mediaId: index + 1,
+    index,
+  }))
+  const mediaGroups = new Map<string, typeof indexedMedia>()
+  for (const item of indexedMedia) {
+    const key = getMediaGroupKey(item.media, item.index)
+    mediaGroups.set(key, [...(mediaGroups.get(key) ?? []), item])
   }
 
-  if (message.reply_to_message) {
+  if (indexedMedia.length) {
+    parts.push({
+      type: 'text',
+      text: 'MEDIA_CONTEXT: each MEDIA belongs to the MESSAGE_CONTEXT immediately above it. Use media_id when a generation tool asks which media to use.',
+    })
+  }
+
+  for (const group of mediaGroups.values()) {
+    const first = group[0]
+    if (!first) continue
+    parts.push({
+      type: 'text',
+      text: formatMessageContext(first.media.context, first.media),
+    })
+
+    for (const { media, mediaId } of group) {
+      parts.push({
+        type: 'text',
+        text: [
+          `MEDIA media_id=${mediaId} type=${media.mediaType} mime_type=${media.mimeType}`,
+          media.label ? `label=${JSON.stringify(media.label)}` : undefined,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      })
+      if (media.mediaType === 'image') {
+        pushImageContent(parts, media)
+      } else if (media.mediaType === 'audio') {
+        pushAudioContent(parts, media)
+      } else {
+        parts.push({
+          type: 'text',
+          text: `Binary ${media.mediaType} media_id=${mediaId} is available to media-generation tools.`,
+        })
+      }
+    }
+  }
+
+  const hasReplyMedia = indexedMedia.some(
+    ({ media }) => media.context?.relation === 'reply-target',
+  )
+  if (message.reply_to_message && !hasReplyMedia) {
     const replyText =
       message.reply_to_message.text || message.reply_to_message.caption
     const replyId = message.reply_to_message.message_id
@@ -175,13 +259,9 @@ export function buildInitialInput(
     })
   }
 
-  for (const { media, message: srcMsg } of historyMediaAttachments) {
-    pushImageContent(parts, getHistoryMediaPrompt(srcMsg), media)
-  }
-
   parts.push({
     type: 'text',
-    text: textContent || '[User sent media without text]',
+    text: `CURRENT_USER_REQUEST:\n${textContent || '[User sent media without text]'}`,
   })
 
   return [{ role: 'user', content: parts }]
@@ -271,7 +351,10 @@ export async function runAgenticLoop(
   api: TelegramApi,
   mediaBuffers?: MediaBuffer[],
   botInfo?: BotIdentity,
-  options: { bypassReplyGate?: boolean; commandName?: string } = {},
+  options: {
+    bypassReplyGate?: boolean
+    commandName?: string
+  } = {},
 ): Promise<void> {
   const startedAt = Date.now()
   const chatId = message.chat?.id
@@ -437,18 +520,15 @@ export async function runAgenticLoop(
         ? await resolveHistoryMediaAttachments(historyImageRefs, api).catch(
             (error) => {
               logger.warn({ chatId, error }, 'history.media_preload_failed')
-              return [] as HistoryMediaAttachment[]
+              return []
             },
           )
         : []
 
-      const historyMediaBuffers = historyMediaAttachments.map(
-        ({ media, message: sourceMessage }) => ({
-          ...media,
-          origin: 'history' as const,
-          label: getHistoryMediaPrompt(sourceMessage),
-        }),
-      )
+      const historyMediaBuffers = historyMediaAttachments.map(({ media }) => ({
+        ...media,
+        origin: 'history' as const,
+      }))
       const allMediaBuffers = [...(mediaBuffers ?? []), ...historyMediaBuffers]
       await withToolMediaBuffers(allMediaBuffers, async () => {
         const contextBlock = buildContextBlock(
@@ -478,12 +558,7 @@ export async function runAgenticLoop(
           'loop.tools_ready',
         )
 
-        const input = buildInitialInput(
-          message,
-          textContent,
-          mediaBuffers,
-          historyMediaAttachments,
-        )
+        const input = buildInitialInput(message, textContent, allMediaBuffers)
 
         const { finalText, toolResults } = await runToolLoop(
           input,
