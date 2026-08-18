@@ -21,6 +21,9 @@ describe('agentSystemInstructions', () => {
       'Call generate_music_with_lyria only when the current user explicitly asks',
     )
     expect(agentSystemInstructions).toContain(
+      'Natural-language and /lyria requests always create a 30-second Clip',
+    )
+    expect(agentSystemInstructions).toContain(
       'Lyria cannot continue or edit audio from a reply',
     )
     expect(agentSystemInstructions).toContain(

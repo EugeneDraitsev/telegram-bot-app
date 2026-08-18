@@ -34,11 +34,11 @@ describe('prepareAgentCommandMessage', () => {
     ],
     [
       'lyria',
-      'Generate a 30-second music clip for this request with the generate_music_with_lyria tool using mode="clip"',
+      'Generate a 30-second music clip for this request with the generate_music_with_lyria tool',
     ],
     [
       'lyriapro',
-      'Generate a full-length structured song for this request with the generate_music_with_lyria tool using mode="pro"',
+      'Generate a full-length structured song for this request with the generate_music_with_lyria tool',
     ],
   ])('turns /%s into an explicit media request', (commandName, instruction) => {
     const message = { text: 'neon cats' } as never

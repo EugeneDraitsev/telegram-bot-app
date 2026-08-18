@@ -19,13 +19,9 @@ import { getMediaCaption, getTrackTitle } from './media-text'
 
 type LyriaMode = 'clip' | 'pro'
 
-function getLyriaMode(
-  commandName: string | undefined,
-  value: unknown,
-): LyriaMode {
+function getLyriaMode(commandName: string | undefined): LyriaMode {
   if (commandName === 'lyriapro') return 'pro'
-  if (commandName === 'lyria') return 'clip'
-  return value === 'pro' ? 'pro' : 'clip'
+  return 'clip'
 }
 
 function getLyriaModel(mode: LyriaMode): LyriaModel {
@@ -39,7 +35,7 @@ export const generateMusicTool: AgentTool = {
     type: 'function',
     name: 'generate_music_with_lyria',
     description:
-      'Generate original high-fidelity stereo music with Google Lyria 3. Call only for an explicit request to create music, a song, loop, or soundtrack. Only one generated media result can be created per request. Default to the 30-second Clip model and use Pro only for an explicitly requested full-length or multi-section song. The structured MEDIA_CONTEXT ties media_id values to source messages and visible content; select only images the user actually refers to. Do not imitate a living artist or reproduce copyrighted lyrics.',
+      'Generate an original 30-second high-fidelity stereo music clip with Google Lyria 3. Call only for an explicit request to create music, a song, loop, or soundtrack. Only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to source messages and visible content; select only images the user actually refers to. Do not imitate a living artist or reproduce copyrighted lyrics.',
     parameters: {
       type: 'object',
       properties: {
@@ -57,12 +53,6 @@ export const generateMusicTool: AgentTool = {
           type: 'string',
           description:
             'A short natural caption for the track in the user language. Describe its story, mood, or sound in one sentence. Do not mention model names, providers, duration, generation status, or technical details.',
-        },
-        mode: {
-          type: 'string',
-          enum: ['clip', 'pro'],
-          description:
-            'clip creates a 30-second MP3. pro creates a full-length structured song. Default: clip.',
         },
         includeLyrics: {
           type: 'boolean',
@@ -83,7 +73,7 @@ export const generateMusicTool: AgentTool = {
       const title = getTrackTitle(args.title)
       const caption = getMediaCaption(args.caption)
 
-      const mode = getLyriaMode(commandName, args.mode)
+      const mode = getLyriaMode(commandName)
       const model = getLyriaModel(mode)
       const mediaSelection = selectMediaForTool(mediaBuffers, args.mediaIds, [
         'image',

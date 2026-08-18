@@ -101,7 +101,7 @@ describe('Google media agent tools', () => {
     ])
   })
 
-  test('/lyriapro overrides a conflicting clip argument and can include lyrics', async () => {
+  test('keeps Pro restricted to the explicit /lyriapro command', async () => {
     const responses = await runWithToolContext(
       message,
       [requestImage, historyImage],
@@ -110,7 +110,6 @@ describe('Google media agent tools', () => {
           prompt: 'A full synth-pop song',
           title: 'Город после полуночи',
           caption: 'Меланхоличный синти-поп о ночном городе.',
-          mode: 'clip',
           includeLyrics: true,
         })
         return getCollectedResponses()
@@ -134,6 +133,31 @@ describe('Google media agent tools', () => {
         delivery: 'audio',
       }),
       { type: 'text', text: '[Verse]\nhello' },
+    ])
+  })
+
+  test('always uses the 30-second Clip model for agentic requests', async () => {
+    const responses = await runWithToolContext(message, [], async () => {
+      await generateMusicTool.execute({
+        prompt: 'A full-length multi-section synth-pop song',
+        title: 'Neon Night',
+        caption: 'A sweeping synth-pop track.',
+        mode: 'pro',
+      })
+      return getCollectedResponses()
+    })
+
+    expect(mockGenerateLyriaMusic).toHaveBeenCalledWith({
+      prompt: 'A full-length multi-section synth-pop song',
+      model: 'lyria-3-clip-preview',
+      media: [],
+    })
+    expect(responses).toEqual([
+      expect.objectContaining({
+        type: 'audio',
+        fileName: 'lyria-clip.mp3',
+        delivery: 'voice',
+      }),
     ])
   })
 
