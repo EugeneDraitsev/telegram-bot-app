@@ -27,6 +27,10 @@ describe('agentic chat configuration infrastructure', () => {
     )
   })
 
+  test('never injects the offline idempotency bypass into deployed Lambdas', () => {
+    expect(serverlessConfig).not.toContain('IS_OFFLINE:')
+  })
+
   test('does not retain an immutable Lambda version after every deployment', () => {
     expect(serverlessConfig).toContain('versionFunctions: false')
   })

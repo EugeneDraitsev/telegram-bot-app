@@ -114,7 +114,7 @@ export const generateImageTool: AgentTool = {
     type: 'function',
     name: 'generate_or_edit_image',
     description:
-      'Generate a NEW image using AI or EDIT selected images immediately. Use when the user wants to create, draw, edit, or modify an image. The structured MEDIA_CONTEXT ties every media_id to its source message and visible content; select only the media the user actually refers to.',
+      'Generate a NEW image using AI or EDIT selected images immediately. Use when the user wants to create, draw, edit, or modify an image. The structured MEDIA_CONTEXT ties every media_id to its source message and visible content; select only the media the user actually refers to. Only one generated media result can be created per request.',
     parameters: {
       type: 'object',
       properties: {

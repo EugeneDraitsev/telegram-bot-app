@@ -1,6 +1,9 @@
 import type { Message } from 'grammy/types'
 
-import type { MediaBuffer } from '@tg-bot/common'
+import {
+  type MediaBuffer,
+  setPaidMediaCooldownRedisClientForTests,
+} from '@tg-bot/common'
 import {
   claimPaidMediaGeneration,
   preparePaidMediaGeneration,
@@ -82,6 +85,33 @@ describe('tool context', () => {
       undefined,
       () => 79_999,
     )
+  })
+
+  test('releases the request slot when the user cooldown refuses a start', async () => {
+    const originalIsOffline = process.env.IS_OFFLINE
+    process.env.IS_OFFLINE = 'false'
+    const set = jest.fn().mockResolvedValue(null)
+    setPaidMediaCooldownRedisClientForTests({
+      set,
+    } as unknown as Parameters<
+      typeof setPaidMediaCooldownRedisClientForTests
+    >[0])
+
+    try {
+      await runWithToolContext(message, undefined, async () => {
+        await expect(
+          preparePaidMediaGeneration({
+            maximumRequestTimeoutMs: 160_000,
+            minimumRequestTimeoutMs: 60_000,
+          }),
+        ).rejects.toThrow('limited to once every 60 seconds')
+        expect(() => claimPaidMediaGeneration()).not.toThrow()
+      })
+    } finally {
+      setPaidMediaCooldownRedisClientForTests(undefined)
+      if (originalIsOffline === undefined) delete process.env.IS_OFFLINE
+      else process.env.IS_OFFLINE = originalIsOffline
+    }
   })
 
   test('scopes media buffer override and restores the previous context', async () => {

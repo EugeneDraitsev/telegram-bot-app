@@ -1,4 +1,5 @@
 type JsonRecord = Record<string, unknown>
+const MAX_ERROR_DETAIL_LENGTH = 300
 
 export interface LyriaInteractionOutput {
   buffer: Buffer
@@ -57,7 +58,7 @@ function getResponseErrorDetail(responseBody: string): string | undefined {
 
   try {
     const parsed = JSON.parse(trimmed) as unknown
-    if (!isRecord(parsed)) return trimmed.slice(0, 1_000)
+    if (!isRecord(parsed)) return trimmed.slice(0, MAX_ERROR_DETAIL_LENGTH)
     const apiError = isRecord(parsed.error) ? parsed.error : undefined
     const message =
       apiError && typeof apiError.message === 'string'
@@ -68,9 +69,9 @@ function getResponseErrorDetail(responseBody: string): string | undefined {
     return [message, detailsText]
       .filter((part): part is string => Boolean(part))
       .join(' | ')
-      .slice(0, 1_000)
+      .slice(0, MAX_ERROR_DETAIL_LENGTH)
   } catch {
-    return trimmed.slice(0, 1_000)
+    return trimmed.slice(0, MAX_ERROR_DETAIL_LENGTH)
   }
 }
 

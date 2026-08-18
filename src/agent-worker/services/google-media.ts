@@ -261,6 +261,6 @@ export async function generateLyriaMusic(options: {
     interactionId:
       getInteractionId(response.providerMetadata) ?? output.interactionId,
     ...(outputTokensByModality ? { outputTokensByModality } : {}),
-    text: response.text.trim() || output.text,
+    text: response.text?.trim() || output.text,
   }
 }

@@ -43,7 +43,7 @@ export const generateVideoTool: AgentTool = {
     type: 'function',
     name: 'generate_video_with_omni',
     description:
-      'Generate a new 720p video with native synchronized audio, animate selected images, or edit selected video using Gemini Omni Flash. Call only for an explicit request to create, generate, animate, or edit video. This is billed. The structured MEDIA_CONTEXT ties media_id values to their source messages and visible content; select only media the user actually refers to.',
+      'Generate a new 720p video with native synchronized audio, animate selected images, or edit selected video using Gemini Omni Flash. Call only for an explicit request to create, generate, animate, or edit video. This is billed, and only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to their source messages and visible content; select only media the user actually refers to.',
     parameters: {
       type: 'object',
       properties: {

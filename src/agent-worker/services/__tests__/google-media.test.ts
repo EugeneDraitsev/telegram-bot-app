@@ -57,7 +57,7 @@ function generatedMusic(value: string) {
         ],
       },
     },
-    text: '',
+    text: undefined,
   }
 }
 

@@ -81,15 +81,21 @@ export async function preparePaidMediaGeneration(
     )
   }
 
-  // Claim synchronously before awaiting Redis so parallel tool calls cannot
-  // both enter a billed provider request in the same model round.
+  // Reserve synchronously before awaiting Redis so parallel tool calls cannot
+  // both enter a billed provider request in the same model round. A cooldown
+  // refusal has not started paid work, so release this request-local slot.
   claimPaidMediaGeneration()
 
   const userId = context.message.from?.id ?? context.message.chat.id
-  if (!(await acquirePaidMediaCooldown(userId))) {
-    throw new Error(
-      `Paid media generation is limited to once every ${PAID_MEDIA_COOLDOWN_SECONDS} seconds per user; ask the user to retry shortly`,
-    )
+  try {
+    if (!(await acquirePaidMediaCooldown(userId))) {
+      throw new Error(
+        `Paid media generation is limited to once every ${PAID_MEDIA_COOLDOWN_SECONDS} seconds per user; ask the user to retry shortly`,
+      )
+    }
+  } catch (error) {
+    context.paidMediaGenerationClaimed = false
+    throw error
   }
 
   return requestTimeoutMs

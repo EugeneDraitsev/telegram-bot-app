@@ -41,7 +41,7 @@ export const generateMusicTool: AgentTool = {
     type: 'function',
     name: 'generate_music_with_lyria',
     description:
-      'Generate original high-fidelity stereo music with Google Lyria 3. Call only for an explicit request to create music, a song, loop, or soundtrack. This is billed. Default to the cheaper 30-second Clip model and use Pro only for an explicitly requested full-length or multi-section song. The structured MEDIA_CONTEXT ties media_id values to source messages and visible content; select only images the user actually refers to. Do not imitate a living artist or reproduce copyrighted lyrics.',
+      'Generate original high-fidelity stereo music with Google Lyria 3. Call only for an explicit request to create music, a song, loop, or soundtrack. This is billed, and only one generated media result can be created per request. Default to the cheaper 30-second Clip model and use Pro only for an explicitly requested full-length or multi-section song. The structured MEDIA_CONTEXT ties media_id values to source messages and visible content; select only images the user actually refers to. Do not imitate a living artist or reproduce copyrighted lyrics.',
     parameters: {
       type: 'object',
       properties: {

@@ -218,6 +218,41 @@ describe('sendResponses', () => {
     expect(api.sendMessage).not.toHaveBeenCalled()
   })
 
+  test('preserves generated video as a document when Telegram rejects video', async () => {
+    const api = createApi()
+    const videoError = new Error('unsupported video')
+    api.sendVideo.mockRejectedValueOnce(videoError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+          mimeType: 'video/webm',
+          caption: 'A running fox',
+        },
+      ],
+    })
+
+    expect(api.sendDocument).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'generated-video.webm' }),
+      {
+        caption: 'A running fox',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: videoError, mimeType: 'video/webm' },
+      'delivery.video_failed_document_fallback',
+    )
+  })
+
   test('does not duplicate a video caption as a separate message', async () => {
     const api = createApi()
 
@@ -237,6 +272,39 @@ describe('sendResponses', () => {
 
     expect(api.sendVideo).toHaveBeenCalledTimes(1)
     expect(api.sendRichMessage).not.toHaveBeenCalled()
+  })
+
+  test('keeps a generated video buffer over a search video URL', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('paid-video'),
+          mimeType: 'video/mp4',
+          caption: 'Generated result',
+        },
+        { type: 'video', url: 'https://example.com/search.mp4' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'generated-video.mp4' }),
+      expect.objectContaining({ caption: 'Generated result' }),
+    )
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      {
+        chatId: 123,
+        deliveredResponseType: 'video',
+        droppedResponseTypes: ['video'],
+      },
+      'delivery.media_dropped',
+    )
   })
 
   test('uploads generated music as voice and sends requested lyrics separately', async () => {
@@ -312,6 +380,30 @@ describe('sendResponses', () => {
       },
     )
     expect(api.sendDocument).not.toHaveBeenCalled()
+  })
+
+  test('does not duplicate generated audio metadata as a text message', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('full-song'),
+          mimeType: 'audio/mpeg',
+          title: 'Midnight Cats',
+          caption: 'A full-length emo song',
+          delivery: 'audio',
+        },
+        { type: 'text', text: 'A full-length emo song' },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(api.sendMessage).not.toHaveBeenCalled()
   })
 
   test('falls back to audio when Telegram forbids voice messages', async () => {
@@ -441,7 +533,7 @@ describe('sendResponses', () => {
     )
   })
 
-  test('warns when only the highest-priority generated media can be sent', async () => {
+  test('prioritizes a paid audio buffer over a search image URL', async () => {
     const api = createApi()
 
     await sendResponses({
@@ -453,17 +545,84 @@ describe('sendResponses', () => {
       ],
     })
 
-    expect(api.sendPhoto).toHaveBeenCalledTimes(1)
-    expect(api.sendVoice).not.toHaveBeenCalled()
+    expect(api.sendPhoto).not.toHaveBeenCalled()
+    expect(api.sendVoice).toHaveBeenCalledTimes(1)
     expect(api.sendAudio).not.toHaveBeenCalled()
     expect(api.sendDocument).not.toHaveBeenCalled()
     expect(mockLogger.warn).toHaveBeenCalledWith(
       {
         chatId: 123,
-        deliveredResponseType: 'image',
-        droppedResponseTypes: ['audio'],
+        deliveredResponseType: 'audio',
+        droppedResponseTypes: ['image'],
       },
       'delivery.media_dropped',
+    )
+  })
+
+  test('prioritizes a paid media buffer over a rich response', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        {
+          type: 'rich',
+          richMessage: { html: '<b>search result</b>' },
+          fallbackText: 'search result',
+        },
+        {
+          type: 'audio',
+          buffer: Buffer.from('paid-audio'),
+          mimeType: 'audio/mpeg',
+          delivery: 'audio',
+        },
+      ],
+    })
+
+    expect(api.sendAudio).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      {
+        chatId: 123,
+        deliveredResponseType: 'audio',
+        droppedResponseTypes: ['rich'],
+      },
+      'delivery.media_dropped',
+    )
+  })
+
+  test('preserves generated images as documents when Telegram rejects photos', async () => {
+    const api = createApi()
+    const imageError = new Error('unsupported photo')
+    api.sendPhoto.mockRejectedValueOnce(imageError)
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'image',
+          buffer: Buffer.from('image'),
+          caption: 'Generated image',
+        },
+      ],
+    })
+
+    expect(api.sendDocument).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'generated-image.png' }),
+      {
+        caption: 'Generated image',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { chatId: 123, error: imageError },
+      'delivery.image_failed_document_fallback',
     )
   })
 
