@@ -150,6 +150,7 @@ describe('Google media through the AI SDK', () => {
       prompt: 'Make it snow',
       aspectRatio: '16:9',
       durationSeconds: 3,
+      timeoutMs: 120_000,
       media: [
         {
           buffer: Buffer.from('source-video'),
@@ -161,6 +162,7 @@ describe('Google media through the AI SDK', () => {
 
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
+        timeout: 120_000,
         prompt: [
           {
             role: 'user',
@@ -180,8 +182,7 @@ describe('Google media through the AI SDK', () => {
     )
   })
 
-  test('filters and bounds Omni inline media', async () => {
-    mockGenerateText.mockResolvedValue(generatedVideo('bounded-video'))
+  test('rejects unsupported or oversized Omni media before the provider call', async () => {
     const largeImage: MediaBuffer = {
       buffer: Buffer.alloc(10 * 1024 * 1024, 1),
       mimeType: 'image/jpeg',
@@ -192,45 +193,39 @@ describe('Google media through the AI SDK', () => {
       mimeType: 'audio/mpeg',
       mediaType: 'audio',
     }
-    const overBudgetVideo: MediaBuffer = {
+    const largeVideo: MediaBuffer = {
       buffer: Buffer.alloc(10 * 1024 * 1024, 2),
       mimeType: 'video/mp4',
       mediaType: 'video',
     }
-    const smallImages: MediaBuffer[] = [1, 2, 3].map((index) => ({
+    const fiveImages: MediaBuffer[] = [1, 2, 3, 4, 5].map((index) => ({
       buffer: Buffer.from(`small-${index}`),
       mimeType: 'image/png',
       mediaType: 'image',
       origin: 'history',
     }))
 
-    await generateOmniVideo({
-      prompt: 'Use the relevant visual references',
-      aspectRatio: '9:16',
-      durationSeconds: 5,
-      media: [largeImage, excludedAudio, overBudgetVideo, ...smallImages],
-    })
+    const generate = (media: MediaBuffer[]) =>
+      generateOmniVideo({
+        prompt: 'Use these exact visual references',
+        aspectRatio: '9:16',
+        durationSeconds: 5,
+        media,
+      })
 
-    const call = mockGenerateText.mock.calls[0]?.[0] as {
-      prompt: Array<{
-        content: Array<{ type: string; data?: Buffer; mediaType?: string }>
-      }>
-    }
-    const files = call.prompt[0]?.content.filter((part) => part.type === 'file')
-    expect(files).toHaveLength(4)
-    expect(files?.[0]?.data).toBe(largeImage.buffer)
-    expect(files?.some((part) => part.data === excludedAudio.buffer)).toBe(
-      false,
+    await expect(generate([excludedAudio])).rejects.toThrow(
+      'does not support selected audio media',
     )
-    expect(files?.some((part) => part.data === overBudgetVideo.buffer)).toBe(
-      false,
+    await expect(generate(fiveImages)).rejects.toThrow(
+      'accepts at most 4 selected media items',
     )
-    expect(files?.slice(1).map((part) => part.data)).toEqual(
-      smallImages.map((item) => item.buffer),
+    await expect(generate([largeImage, largeVideo])).rejects.toThrow(
+      'selected media exceeds the 19 MiB inline limit',
     )
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
-  test('forwards current and history images and extracts Lyria audio', async () => {
+  test('forwards selected current and history images and extracts Lyria audio', async () => {
     mockGenerateText.mockResolvedValue(generatedMusic('generated-music'))
 
     const result = await generateLyriaMusic({
@@ -247,11 +242,6 @@ describe('Google media through the AI SDK', () => {
           mimeType: 'image/jpeg',
           mediaType: 'image',
           origin: 'history',
-        },
-        {
-          buffer: Buffer.from('reply-audio'),
-          mimeType: 'audio/mpeg',
-          mediaType: 'audio',
         },
       ],
     })
@@ -292,14 +282,13 @@ describe('Google media through the AI SDK', () => {
     })
   })
 
-  test('filters and bounds Lyria inline images by count and bytes', async () => {
-    mockGenerateText.mockResolvedValue(generatedMusic('bounded-music'))
+  test('rejects unsupported or oversized Lyria media before the provider call', async () => {
     const firstImage: MediaBuffer = {
       buffer: Buffer.alloc(10 * 1024 * 1024, 1),
       mimeType: 'image/jpeg',
       mediaType: 'image',
     }
-    const overBudgetImage: MediaBuffer = {
+    const secondLargeImage: MediaBuffer = {
       buffer: Buffer.alloc(10 * 1024 * 1024, 2),
       mimeType: 'image/png',
       mediaType: 'image',
@@ -309,8 +298,8 @@ describe('Google media through the AI SDK', () => {
       mimeType: 'audio/mpeg',
       mediaType: 'audio',
     }
-    const smallImages: MediaBuffer[] = Array.from(
-      { length: 10 },
+    const elevenImages: MediaBuffer[] = Array.from(
+      { length: 11 },
       (_, index) => ({
         buffer: Buffer.from(`small-${index}`),
         mimeType: 'image/png',
@@ -319,28 +308,23 @@ describe('Google media through the AI SDK', () => {
       }),
     )
 
-    await generateLyriaMusic({
-      prompt: 'Use only bounded references',
-      model: LYRIA_3_CLIP_MODEL,
-      media: [firstImage, excludedAudio, overBudgetImage, ...smallImages],
-    })
+    const generate = (media: MediaBuffer[]) =>
+      generateLyriaMusic({
+        prompt: 'Use these exact image references',
+        model: LYRIA_3_CLIP_MODEL,
+        media,
+      })
 
-    const call = mockGenerateText.mock.calls[0]?.[0] as {
-      prompt: Array<{
-        content: Array<{ type: string; data?: Buffer }>
-      }>
-    }
-    const files = call.prompt[0]?.content.filter((part) => part.type === 'file')
-    expect(files?.map((part) => part.data)).toEqual([
-      firstImage.buffer,
-      ...smallImages.slice(0, 9).map((item) => item.buffer),
-    ])
-    expect(files?.some((part) => part.data === overBudgetImage.buffer)).toBe(
-      false,
+    await expect(generate([excludedAudio])).rejects.toThrow(
+      'does not support selected audio media',
     )
-    expect(files?.some((part) => part.data === excludedAudio.buffer)).toBe(
-      false,
+    await expect(generate(elevenImages)).rejects.toThrow(
+      'accepts at most 10 selected media items',
     )
+    await expect(generate([firstImage, secondLargeImage])).rejects.toThrow(
+      'selected media exceeds the 19 MiB inline limit',
+    )
+    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
   test('fails clearly without an API key or generated media', async () => {

@@ -11,7 +11,8 @@ import {
   getGoogleInteractionErrorMessage,
 } from './google-interactions.adapter'
 
-const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
+export const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
+export const GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS = 60_000
 const MAX_INLINE_MEDIA_BYTES = 19 * 1024 * 1024
 const MAX_OMNI_MEDIA_ITEMS = 4
 const MAX_LYRIA_IMAGES = 10
@@ -36,39 +37,57 @@ export interface GeneratedMusic extends GeneratedMedia {
   text?: string
 }
 
-function selectInlineMedia(
+function validateInlineMedia(
   media: MediaBuffer[] | undefined,
   maxItems: number,
   supports: (item: MediaBuffer) => boolean,
+  modelLabel: string,
 ): MediaBuffer[] {
-  const selected: MediaBuffer[] = []
-  let totalBytes = 0
+  const selected = media ?? []
+  const unsupported = selected.find((item) => !supports(item))
+  if (unsupported) {
+    throw new Error(
+      `${modelLabel} does not support selected ${unsupported.mediaType} media`,
+    )
+  }
+  if (selected.length > maxItems) {
+    throw new Error(
+      `${modelLabel} accepts at most ${maxItems} selected media items`,
+    )
+  }
 
-  for (const item of media ?? []) {
-    if (!supports(item)) continue
-    if (selected.length >= maxItems) break
-    if (totalBytes + item.buffer.byteLength > MAX_INLINE_MEDIA_BYTES) continue
-
-    selected.push(item)
-    totalBytes += item.buffer.byteLength
+  const totalBytes = selected.reduce(
+    (total, item) => total + item.buffer.byteLength,
+    0,
+  )
+  if (totalBytes > MAX_INLINE_MEDIA_BYTES) {
+    throw new Error(
+      `${modelLabel} selected media exceeds the 19 MiB inline limit`,
+    )
   }
 
   return selected
 }
 
-function getLyriaImages(media: MediaBuffer[] | undefined): MediaBuffer[] {
-  return selectInlineMedia(
+export function validateLyriaMedia(
+  media: MediaBuffer[] | undefined,
+): MediaBuffer[] {
+  return validateInlineMedia(
     media,
     MAX_LYRIA_IMAGES,
     (item) => item.mediaType === 'image',
+    'Lyria',
   )
 }
 
-function getOmniMedia(media: MediaBuffer[] | undefined): MediaBuffer[] {
-  return selectInlineMedia(
+export function validateOmniMedia(
+  media: MediaBuffer[] | undefined,
+): MediaBuffer[] {
+  return validateInlineMedia(
     media,
     MAX_OMNI_MEDIA_ITEMS,
     (item) => item.mediaType === 'image' || item.mediaType === 'video',
+    'Gemini Omni',
   )
 }
 
@@ -153,8 +172,9 @@ export async function generateOmniVideo(options: {
   aspectRatio: OmniAspectRatio
   durationSeconds: number
   media?: MediaBuffer[]
+  timeoutMs?: number
 }): Promise<GeneratedMedia> {
-  const media = getOmniMedia(options.media)
+  const media = validateOmniMedia(options.media)
   const response = await runGoogleInteraction(() =>
     generateText({
       model: createAiSdkGoogleProvider({
@@ -162,7 +182,7 @@ export async function generateOmniVideo(options: {
       }).interactions(GEMINI_OMNI_FLASH_MODEL),
       prompt: createPrompt(options.prompt.trim(), media),
       maxRetries: 0,
-      timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+      timeout: options.timeoutMs ?? GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
       providerOptions: {
         google: { store: false, responseModalities: ['video'] },
       },
@@ -190,14 +210,15 @@ export async function generateLyriaMusic(options: {
   prompt: string
   model: LyriaModel
   media?: MediaBuffer[]
+  timeoutMs?: number
 }): Promise<GeneratedMusic> {
-  const images = getLyriaImages(options.media)
+  const images = validateLyriaMedia(options.media)
   const response = await runGoogleInteraction(() =>
     generateText({
       model: getAiSdkGoogleProvider().interactions(options.model),
       prompt: createPrompt(options.prompt.trim(), images),
       maxRetries: 0,
-      timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+      timeout: options.timeoutMs ?? GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
       include: { responseBody: true },
       providerOptions: {
         google: { store: false, responseModalities: ['audio'] },

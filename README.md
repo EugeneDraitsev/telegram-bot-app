@@ -185,7 +185,9 @@ explicit Telegram commands and built-in agent tools:
   audio. It defaults to a five-second vertical clip; prompts can request 3-10
   seconds or 16:9. An attached/replied image becomes an animation/reference;
   an attached/replied video becomes an edit source. Omni receives up to four
-  selected visual items within a 19 MiB inline budget.
+  selected visual items within a 19 MiB inline budget. A selected item set that
+  exceeds either limit is rejected before the billed provider call instead of
+  silently falling back to text-only generation.
 - `/lyria <prompt>` uses `lyria-3-clip-preview` for a 30-second stereo MP3.
 - `/lyriapro <prompt>` uses `lyria-3-pro-preview` for a full-length structured
   song. Both Lyria commands accept up to 10 selected images within the same 19
@@ -211,11 +213,13 @@ cost-conscious defaults. The agent generates a natural user-language caption
 for every result and a separate title for music instead of exposing model-name
 boilerplate.
 
-Billed media calls are limited to one attempt per agent request and one start
-per user per 60 seconds. Before starting, the worker verifies that enough
-Lambda time remains for the provider call plus Telegram delivery. Google output
-tokens by modality are stored with the existing model-call metrics for cost
-visibility.
+All billed media calls are limited to one attempt per agent request. Google
+video and music generation additionally use a per-user 60-second start-rate
+limit; image generation is not subject to that new per-user cooldown. The
+Google request timeout automatically shrinks to the remaining Lambda budget
+while preserving 20 seconds for Telegram delivery, and generation starts only
+when at least 60 seconds remain for Google. Google output tokens by modality are
+stored with the existing model-call metrics for cost visibility.
 
 Media generation uses Vercel AI SDK's Google Interactions provider and the
 existing `GEMINI_API_KEY` secret (`GOOGLE_GENERATIVE_AI_API_KEY` also works

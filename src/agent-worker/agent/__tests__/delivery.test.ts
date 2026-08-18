@@ -209,7 +209,34 @@ describe('sendResponses', () => {
         reply_parameters: { message_id: 456 },
       },
     )
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: 'Generic generation status' },
+      { reply_parameters: { message_id: 4 } },
+      undefined,
+    )
     expect(api.sendMessage).not.toHaveBeenCalled()
+  })
+
+  test('does not duplicate a video caption as a separate message', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+          caption: 'A running fox',
+        },
+        { type: 'text', text: 'A running fox' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
   })
 
   test('uploads generated music as voice and sends requested lyrics separately', async () => {

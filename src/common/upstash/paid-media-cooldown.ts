@@ -18,6 +18,8 @@ export function setPaidMediaCooldownRedisClientForTests(
 
 /**
  * Claim a short per-user generation window before calling a billed provider.
+ * This intentionally limits start frequency; it is not a long-held mutex for
+ * the full provider call. Same-request concurrency is guarded in tool context.
  * Offline development and deployments without Redis keep their existing
  * behavior; production workers already require Redis for idempotency.
  */

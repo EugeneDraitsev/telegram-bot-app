@@ -1,15 +1,17 @@
 import { getErrorMessage } from '@tg-bot/common'
 import {
+  GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS,
+  GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateLyriaMusic,
   LYRIA_3_CLIP_MODEL,
   LYRIA_3_PRO_MODEL,
   type LyriaModel,
+  validateLyriaMedia,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  PAID_MEDIA_DELIVERY_RESERVE_MS,
   preparePaidMediaGeneration,
   requireToolContext,
   trackToolModelCall,
@@ -85,12 +87,13 @@ export const generateMusicTool: AgentTool = {
 
       const mode = getLyriaMode(commandName, args.mode)
       const model = getLyriaModel(mode)
-      const selectedMedia = selectMediaForTool(mediaBuffers, args.mediaIds, [
-        'image',
-      ])
-      await preparePaidMediaGeneration(
-        GOOGLE_MEDIA_TOOL_TIMEOUT_MS + PAID_MEDIA_DELIVERY_RESERVE_MS,
+      const selectedMedia = validateLyriaMedia(
+        selectMediaForTool(mediaBuffers, args.mediaIds, ['image']),
       )
+      const timeoutMs = await preparePaidMediaGeneration({
+        maximumRequestTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+        minimumRequestTimeoutMs: GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS,
+      })
       const result = await trackToolModelCall(
         {
           name: 'music_generation',
@@ -102,6 +105,7 @@ export const generateMusicTool: AgentTool = {
             prompt,
             model,
             media: selectedMedia,
+            timeoutMs,
           }),
       )
 

@@ -14,8 +14,7 @@ import { IMAGE_MODEL } from '../services/openai-image'
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  PAID_MEDIA_DELIVERY_RESERVE_MS,
-  preparePaidMediaGeneration,
+  claimPaidMediaGeneration,
   requireToolContext,
   trackToolModelCall,
 } from './context'
@@ -155,9 +154,7 @@ export const generateImageTool: AgentTool = {
           (media) => media.label || 'Unlabeled image context',
         ) ?? [],
       )
-      await preparePaidMediaGeneration(
-        IMAGE_TOOL_TIMEOUT_MS + PAID_MEDIA_DELIVERY_RESERVE_MS,
-      )
+      claimPaidMediaGeneration()
       const result = await generateWithFallback(
         imagePrompt,
         imagesToEdit?.map((media) => media.buffer),

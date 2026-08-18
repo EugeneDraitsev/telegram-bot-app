@@ -26,6 +26,11 @@ const contextStorage = new AsyncLocalStorage<ToolContext>()
 
 export const PAID_MEDIA_DELIVERY_RESERVE_MS = 20_000
 
+interface PaidMediaGenerationOptions {
+  maximumRequestTimeoutMs: number
+  minimumRequestTimeoutMs: number
+}
+
 export function requireToolContext(): ToolContext {
   const context = contextStorage.getStore()
   if (!context) {
@@ -42,20 +47,33 @@ export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
 }
 
-export async function preparePaidMediaGeneration(
-  minimumRemainingTimeMs: number,
-): Promise<void> {
+export function claimPaidMediaGeneration(): void {
   const context = requireToolContext()
   if (context.paidMediaGenerationClaimed) {
     throw new Error('A paid media generation was already attempted')
   }
 
+  context.paidMediaGenerationClaimed = true
+}
+
+export async function preparePaidMediaGeneration(
+  options: PaidMediaGenerationOptions,
+): Promise<number> {
+  const context = requireToolContext()
+
   const remainingTimeMs = context.getRemainingTimeInMillis?.()
-  if (
-    typeof remainingTimeMs === 'number' &&
-    Number.isFinite(remainingTimeMs) &&
-    remainingTimeMs < minimumRemainingTimeMs
-  ) {
+  const requestTimeoutMs =
+    typeof remainingTimeMs === 'number' && Number.isFinite(remainingTimeMs)
+      ? Math.min(
+          options.maximumRequestTimeoutMs,
+          Math.max(
+            0,
+            Math.trunc(remainingTimeMs - PAID_MEDIA_DELIVERY_RESERVE_MS),
+          ),
+        )
+      : options.maximumRequestTimeoutMs
+
+  if (requestTimeoutMs < options.minimumRequestTimeoutMs) {
     throw new Error(
       'Not enough execution time remains to safely start paid media generation; ask the user to retry in a new message',
     )
@@ -63,7 +81,7 @@ export async function preparePaidMediaGeneration(
 
   // Claim synchronously before awaiting Redis so parallel tool calls cannot
   // both enter a billed provider request in the same model round.
-  context.paidMediaGenerationClaimed = true
+  claimPaidMediaGeneration()
 
   const userId = context.message.from?.id ?? context.message.chat.id
   if (!(await acquirePaidMediaCooldown(userId))) {
@@ -71,6 +89,8 @@ export async function preparePaidMediaGeneration(
       `Paid media generation is limited to once every ${PAID_MEDIA_COOLDOWN_SECONDS} seconds per user; ask the user to retry shortly`,
     )
   }
+
+  return requestTimeoutMs
 }
 
 function getToolCommandName(): string | undefined {

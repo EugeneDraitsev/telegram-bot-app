@@ -1,14 +1,16 @@
 import { getErrorMessage } from '@tg-bot/common'
 import {
   GEMINI_OMNI_FLASH_MODEL,
+  GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS,
+  GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateOmniVideo,
   type OmniAspectRatio,
+  validateOmniMedia,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  PAID_MEDIA_DELIVERY_RESERVE_MS,
   preparePaidMediaGeneration,
   requireToolContext,
   trackToolModelCall,
@@ -83,13 +85,13 @@ export const generateVideoTool: AgentTool = {
 
       const durationSeconds = getDurationSeconds(args.durationSeconds)
       const aspectRatio = getAspectRatio(args.aspectRatio)
-      const selectedMedia = selectMediaForTool(mediaBuffers, args.mediaIds, [
-        'image',
-        'video',
-      ])
-      await preparePaidMediaGeneration(
-        GOOGLE_MEDIA_TOOL_TIMEOUT_MS + PAID_MEDIA_DELIVERY_RESERVE_MS,
+      const selectedMedia = validateOmniMedia(
+        selectMediaForTool(mediaBuffers, args.mediaIds, ['image', 'video']),
       )
+      const timeoutMs = await preparePaidMediaGeneration({
+        maximumRequestTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+        minimumRequestTimeoutMs: GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS,
+      })
       const result = await trackToolModelCall(
         {
           name: 'video_generation',
@@ -102,6 +104,7 @@ export const generateVideoTool: AgentTool = {
             durationSeconds,
             aspectRatio,
             media: selectedMedia,
+            timeoutMs,
           }),
       )
 
