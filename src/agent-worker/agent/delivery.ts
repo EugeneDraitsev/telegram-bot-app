@@ -421,10 +421,8 @@ async function sendVideo(
 
     try {
       sentMessage = await params.api.sendVideo(params.chatId, inputFile(), {
-        caption,
-        parse_mode: caption ? ('MarkdownV2' as const) : undefined,
+        ...options,
         supports_streaming: true,
-        ...getReplyOptions(params.replyToMessageId),
       })
     } catch (error) {
       if (isTelegramReplyTargetMissingError(error)) throw error

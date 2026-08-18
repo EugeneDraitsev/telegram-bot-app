@@ -25,24 +25,14 @@ function generatedVideo(value: string) {
         uint8Array: new Uint8Array(Buffer.from(value)),
       },
     ],
-    providerMetadata: {
-      google: {
-        interactionId: 'interaction-1',
-        outputTokensByModality: { video: 57_920 },
-      },
-    },
+    providerMetadata: {},
   }
 }
 
 function generatedMusic(value: string) {
   return {
     files: [],
-    providerMetadata: {
-      google: {
-        interactionId: 'interaction-3',
-        outputTokensByModality: { audio: 12_345 },
-      },
-    },
+    providerMetadata: {},
     response: {
       body: {
         id: 'interaction-3',
@@ -140,8 +130,6 @@ describe('Google media through the AI SDK', () => {
     expect(result).toEqual({
       buffer: Buffer.from('generated-video'),
       mimeType: 'video/mp4',
-      interactionId: 'interaction-1',
-      outputTokensByModality: { video: 57_920 },
     })
   })
 
@@ -152,7 +140,6 @@ describe('Google media through the AI SDK', () => {
       prompt: 'Make it snow',
       aspectRatio: '16:9',
       durationSeconds: 3,
-      timeoutMs: 120_000,
       media: [
         {
           buffer: Buffer.from('source-video'),
@@ -164,7 +151,7 @@ describe('Google media through the AI SDK', () => {
 
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        timeout: 120_000,
+        timeout: 160_000,
         prompt: [
           {
             role: 'user',
@@ -293,8 +280,6 @@ describe('Google media through the AI SDK', () => {
     expect(result).toEqual({
       buffer: Buffer.from('generated-music'),
       mimeType: 'audio/mpeg',
-      interactionId: 'interaction-3',
-      outputTokensByModality: { audio: 12_345 },
       text: '[Verse]\nHello',
     })
   })
@@ -348,9 +333,7 @@ describe('Google media through the AI SDK', () => {
         prompt: 'Ambient loop',
         model: LYRIA_3_CLIP_MODEL,
       }),
-    ).rejects.toThrow(
-      'GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY is not set',
-    )
+    ).rejects.toThrow('Google media generation failed')
 
     process.env.GEMINI_API_KEY = 'test-key'
     mockGenerateText.mockResolvedValue({ files: [], providerMetadata: {} })

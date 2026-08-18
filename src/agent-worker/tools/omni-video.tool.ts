@@ -1,8 +1,6 @@
 import { getErrorMessage } from '@tg-bot/common'
 import {
   GEMINI_OMNI_FLASH_MODEL,
-  GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS,
-  GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateOmniVideo,
   type OmniAspectRatio,
@@ -11,7 +9,7 @@ import {
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  preparePaidMediaGeneration,
+  claimGeneratedMedia,
   requireToolContext,
   trackToolModelCall,
 } from './context'
@@ -43,7 +41,7 @@ export const generateVideoTool: AgentTool = {
     type: 'function',
     name: 'generate_video_with_omni',
     description:
-      'Generate a new 720p video with native synchronized audio, animate selected images, or edit selected video using Gemini Omni Flash. Call only for an explicit request to create, generate, animate, or edit video. This is billed, and only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to their source messages and visible content; select only media the user actually refers to.',
+      'Generate a new 720p video with native synchronized audio, animate selected images, or edit selected video using Gemini Omni Flash. Call only for an explicit request to create, generate, animate, or edit video. Only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to their source messages and visible content; select only media the user actually refers to.',
     parameters: {
       type: 'object',
       properties: {
@@ -93,15 +91,11 @@ export const generateVideoTool: AgentTool = {
         mediaSelection.media,
         mediaSelection.explicit,
       )
-      const timeoutMs = await preparePaidMediaGeneration({
-        maximumRequestTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
-        minimumRequestTimeoutMs: GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS,
-      })
+      claimGeneratedMedia()
       const result = await trackToolModelCall(
         {
           name: 'video_generation',
           model: `google/${GEMINI_OMNI_FLASH_MODEL}`,
-          getOutputTokensByModality: (media) => media.outputTokensByModality,
         },
         () =>
           generateOmniVideo({
@@ -109,7 +103,6 @@ export const generateVideoTool: AgentTool = {
             durationSeconds,
             aspectRatio,
             media: selectedMedia,
-            timeoutMs,
           }),
       )
 

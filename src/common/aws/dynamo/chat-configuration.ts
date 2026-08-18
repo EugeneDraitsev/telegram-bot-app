@@ -102,9 +102,16 @@ export async function getChatConfiguration(
   }
 }
 
+// Serverless Offline intentionally opens only the read gates so webhook
+// fixtures work without a production chat-configuration table. Configuration
+// update functions below still use DynamoDB.
 export async function isAiAllowedChat(
   chatId?: string | number,
 ): Promise<boolean> {
+  if (process.env.IS_OFFLINE === 'true') {
+    return true
+  }
+
   return (await getChatConfiguration(chatId))?.aiAllowed === true
 }
 
@@ -113,6 +120,9 @@ export async function isAgenticChatEnabled(
 ): Promise<boolean> {
   if (!isAgenticBotGloballyEnabled()) {
     return false
+  }
+  if (process.env.IS_OFFLINE === 'true') {
+    return true
   }
 
   const configuration = await getChatConfiguration(chatId)

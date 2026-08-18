@@ -25,7 +25,7 @@ function addInstruction(instruction: string, text: string | undefined): string {
   const request = text?.trim()
   return request
     ? `${instruction}:\n${request}`
-    : `${instruction} using the attached or replied-to content.`
+    : `${instruction}. Use attached or replied-to media when available.`
 }
 
 export function prepareAgentCommandMessage(

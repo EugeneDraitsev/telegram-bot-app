@@ -1,10 +1,8 @@
 type JsonRecord = Record<string, unknown>
-const MAX_ERROR_DETAIL_LENGTH = 300
 
-export interface LyriaInteractionOutput {
+interface LyriaInteractionOutput {
   buffer: Buffer
   mimeType: string
-  interactionId?: string
   text?: string
 }
 
@@ -59,39 +57,6 @@ export function adaptOmniInteractionRequest(
   }
 }
 
-function getResponseErrorDetail(responseBody: string): string | undefined {
-  const trimmed = responseBody.trim()
-  if (!trimmed) return undefined
-
-  try {
-    const parsed = JSON.parse(trimmed) as unknown
-    if (!isRecord(parsed)) return trimmed.slice(0, MAX_ERROR_DETAIL_LENGTH)
-    const apiError = isRecord(parsed.error) ? parsed.error : undefined
-    const message =
-      apiError && typeof apiError.message === 'string'
-        ? apiError.message
-        : undefined
-    const details = apiError?.details ?? parsed.errors
-    const detailsText = details === undefined ? '' : JSON.stringify(details)
-    return [message, detailsText]
-      .filter((part): part is string => Boolean(part))
-      .join(' | ')
-      .slice(0, MAX_ERROR_DETAIL_LENGTH)
-  } catch {
-    return trimmed.slice(0, MAX_ERROR_DETAIL_LENGTH)
-  }
-}
-
-export function getGoogleInteractionErrorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error)
-  if (!isRecord(error) || typeof error.responseBody !== 'string') {
-    return message
-  }
-
-  const detail = getResponseErrorDetail(error.responseBody)
-  return detail && detail !== message ? `${message}: ${detail}` : message
-}
-
 function getOutputBlocks(body: JsonRecord): JsonRecord[] {
   if (Array.isArray(body.outputs)) return body.outputs.filter(isRecord)
   if (!Array.isArray(body.steps)) return []
@@ -124,7 +89,6 @@ export function extractLyriaInteractionOutput(
     buffer,
     mimeType:
       typeof audio.mime_type === 'string' ? audio.mime_type : 'audio/mpeg',
-    interactionId: typeof value.id === 'string' ? value.id : undefined,
     text: text || undefined,
   }
 }

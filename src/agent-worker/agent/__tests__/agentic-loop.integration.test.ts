@@ -149,27 +149,6 @@ describe('runAgenticLoop integration', () => {
     expect(stopTyping).toHaveBeenCalledTimes(1)
   })
 
-  test('does not start another model call without a delivery reserve', async () => {
-    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetryWithInfo')
-
-    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
-      bypassReplyGate: true,
-      getRemainingTimeInMillis: () => 39_999,
-    })
-
-    expect(modelSpy).not.toHaveBeenCalled()
-    expect(delivery.sendResponses).toHaveBeenCalledWith(
-      expect.objectContaining({
-        responses: [
-          {
-            type: 'text',
-            text: 'Не смог собрать ответ по этому запросу. Попробуй переформулировать.',
-          },
-        ],
-      }),
-    )
-  })
-
   test('executes a tool and feeds its result into the next model round', async () => {
     const execute = jest.fn().mockResolvedValue('lookup result: 42')
     const lookupTool: AgentTool = {

@@ -1,7 +1,6 @@
 import {
   adaptOmniInteractionRequest,
   extractLyriaInteractionOutput,
-  getGoogleInteractionErrorMessage,
 } from '../google-interactions.adapter'
 
 describe('Google Interactions adapter', () => {
@@ -84,21 +83,6 @@ describe('Google Interactions adapter', () => {
     ).toThrow('request body must be a JSON object')
   })
 
-  test('includes Google error details hidden by the generic message', () => {
-    const error = Object.assign(new Error('Bad Request'), {
-      responseBody: JSON.stringify({
-        error: {
-          message: 'Bad Request',
-          details: [{ reason: 'MODEL_NOT_AVAILABLE' }],
-        },
-      }),
-    })
-
-    expect(getGoogleInteractionErrorMessage(error)).toContain(
-      'MODEL_NOT_AVAILABLE',
-    )
-  })
-
   test('reads the legacy outputs envelope', () => {
     expect(
       extractLyriaInteractionOutput({
@@ -115,7 +99,6 @@ describe('Google Interactions adapter', () => {
     ).toEqual({
       buffer: Buffer.from('music'),
       mimeType: 'audio/mpeg',
-      interactionId: 'interaction-1',
       text: 'Lyrics',
     })
   })
@@ -138,7 +121,6 @@ describe('Google Interactions adapter', () => {
     ).toEqual({
       buffer: Buffer.from('music'),
       mimeType: 'audio/mpeg',
-      interactionId: undefined,
       text: undefined,
     })
   })

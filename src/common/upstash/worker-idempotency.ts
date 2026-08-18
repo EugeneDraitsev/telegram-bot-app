@@ -11,8 +11,8 @@ export const WORKER_LEASE_TTL_SECONDS = 6 * 60
 // message can wait out the whole MessageRetentionPeriod behind a throttled or
 // backed up consumer, and ingress re-enqueues on Telegram webhook retries once
 // past the 5 minute SQS producer dedup window. Healthy redelivery lands within
-// minutes, so 3h is a wide margin on the normal case; a duplicate reply is the
-// cost if a pathological one ever exceeds it.
+// minutes, so 3h is a wide margin on the normal case; a duplicate reply can
+// still occur if a pathological delay ever exceeds it.
 const COMPLETED_TTL_SECONDS = 60 * 60 * 3
 
 export interface WorkerLease {

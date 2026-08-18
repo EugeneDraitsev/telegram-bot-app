@@ -44,7 +44,6 @@ describe('recordMetric', () => {
       durationMs: 250,
       success: true,
       timestamp: 1_800_000_000_000,
-      outputTokensByModality: { video: 57_920 },
     } as const
 
     await recordMetric(entry)
@@ -53,12 +52,6 @@ describe('recordMetric', () => {
 
     expect(mockZadd).toHaveBeenCalledTimes(2)
     expect(mockZremrangebyscore).toHaveBeenCalledTimes(1)
-    const write = mockZadd.mock.calls[0]?.[1] as { member: string }
-    expect(JSON.parse(write.member)).toEqual(
-      expect.objectContaining({
-        outputTokensByModality: { video: 57_920 },
-      }),
-    )
   })
 
   test('keeps Redis errors non-fatal', async () => {

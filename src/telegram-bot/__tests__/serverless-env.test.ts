@@ -14,17 +14,8 @@ describe('agentic chat configuration infrastructure', () => {
     )
   })
 
-  test('uses DynamoDB as the only runtime chat authorization source', () => {
+  test('does not restore the legacy environment allowlist', () => {
     expect(serverlessConfig).not.toContain('OPENAI_CHAT_IDS')
-  })
-
-  test('uses the deployed configuration table during local offline runs', () => {
-    expect(serverlessConfig).toContain(
-      'self:custom.runtimeChatConfigurationTableNameByStage.',
-    )
-    expect(serverlessConfig).toContain(
-      'runtimeChatConfigurationTableNameByStage:\n    local: chat-configuration',
-    )
   })
 
   test('never injects the offline idempotency bypass into deployed Lambdas', () => {

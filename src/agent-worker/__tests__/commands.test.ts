@@ -52,7 +52,9 @@ describe('prepareAgentCommandMessage', () => {
     const message = { text: '' } as never
 
     expect(prepareAgentCommandMessage(message, 'omni')).toEqual({
-      text: expect.stringContaining('using the attached or replied-to content'),
+      text: expect.stringContaining(
+        'Use attached or replied-to media when available',
+      ),
     })
   })
 })

@@ -315,7 +315,7 @@ describe('sendResponses', () => {
       responses: [
         {
           type: 'video',
-          buffer: Buffer.from('paid-video'),
+          buffer: Buffer.from('generated-video'),
           mimeType: 'video/mp4',
           caption: 'Generated result',
         },
@@ -612,7 +612,7 @@ describe('sendResponses', () => {
     )
   })
 
-  test('preserves paid audio as a document when both players reject it', async () => {
+  test('preserves generated audio as a document when both players reject it', async () => {
     const api = createApi()
     const audioError = new Error('audio upload failed')
     api.sendVoice.mockRejectedValueOnce(new Error('voice upload failed'))
@@ -638,7 +638,7 @@ describe('sendResponses', () => {
     )
   })
 
-  test('prioritizes a paid audio buffer over a search image URL', async () => {
+  test('prioritizes a generated audio buffer over a search image URL', async () => {
     const api = createApi()
 
     await sendResponses({
@@ -664,7 +664,7 @@ describe('sendResponses', () => {
     )
   })
 
-  test('prioritizes a paid media buffer over a rich response', async () => {
+  test('prioritizes a generated media buffer over a rich response', async () => {
     const api = createApi()
 
     await sendResponses({
@@ -678,7 +678,7 @@ describe('sendResponses', () => {
         },
         {
           type: 'audio',
-          buffer: Buffer.from('paid-audio'),
+          buffer: Buffer.from('generated-audio'),
           mimeType: 'audio/mpeg',
           delivery: 'audio',
         },

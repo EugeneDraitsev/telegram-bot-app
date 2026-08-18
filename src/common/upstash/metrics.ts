@@ -39,8 +39,6 @@ export interface MetricEntry {
   /** Exact provider/model label for model_call entries only. */
   model?: string
   fallbackFrom?: string
-  /** Provider-reported billed output tokens split by modality. */
-  outputTokensByModality?: Record<string, number>
   /** Explicit command attribution, without the leading slash. */
   command?: string
   chatId: number
@@ -99,7 +97,6 @@ type TimedCallOptions<T> = {
   command?: string
   chatId: number
   classifyResult?: (result: T) => MetricStatus
-  getOutputTokensByModality?: (result: T) => Record<string, number> | undefined
 }
 
 function normalizeMetricEntry(entry: MetricEntry): MetricEntry {
@@ -222,18 +219,16 @@ export async function timedCall<T>(
   opts: TimedCallOptions<T>,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const { classifyResult, getOutputTokensByModality, ...metricOpts } = opts
+  const { classifyResult, ...metricOpts } = opts
   const start = Date.now()
 
   try {
     const result = await fn()
     const end = Date.now()
     const status = classifyResult?.(result) ?? 'success'
-    const outputTokensByModality = getOutputTokensByModality?.(result)
 
     await recordMetric({
       ...metricOpts,
-      ...(outputTokensByModality ? { outputTokensByModality } : {}),
       durationMs: end - start,
       success: status === 'success',
       status,

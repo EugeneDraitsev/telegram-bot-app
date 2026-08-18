@@ -13,8 +13,6 @@ const mockPrepareLyriaMedia = jest.fn(
 
 jest.mock('../../services/google-media', () => ({
   GEMINI_OMNI_FLASH_MODEL: 'gemini-omni-flash-preview',
-  GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS: 60_000,
-  GOOGLE_MEDIA_REQUEST_TIMEOUT_MS: 160_000,
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS: 170_000,
   LYRIA_3_CLIP_MODEL: 'lyria-3-clip-preview',
   LYRIA_3_PRO_MODEL: 'lyria-3-pro-preview',
@@ -67,7 +65,7 @@ describe('Google media agent tools', () => {
     mockPrepareLyriaMedia.mockImplementation((media) => media ?? [])
   })
 
-  test('reserves Lambda time for routing and Telegram delivery', () => {
+  test('uses the Google media tool timeout', () => {
     expect(generateVideoTool.timeoutMs).toBe(170_000)
     expect(generateMusicTool.timeoutMs).toBe(170_000)
   })
@@ -91,7 +89,6 @@ describe('Google media agent tools', () => {
       durationSeconds: 3,
       aspectRatio: '9:16',
       media: [requestImage],
-      timeoutMs: 160_000,
     })
     expect(mockPrepareOmniMedia).toHaveBeenCalledWith([requestImage], false)
     expect(responses).toEqual([
@@ -126,7 +123,6 @@ describe('Google media agent tools', () => {
       prompt: 'A full synth-pop song',
       model: 'lyria-3-pro-preview',
       media: [requestImage],
-      timeoutMs: 160_000,
     })
     expect(responses).toEqual([
       expect.objectContaining({
@@ -178,7 +174,7 @@ describe('Google media agent tools', () => {
     )
   })
 
-  test('rejects a second paid media tool while the first is running', async () => {
+  test('rejects a second generated media tool while the first is running', async () => {
     await runWithToolContext(message, [], async () => {
       const videoPromise = generateVideoTool.execute({
         prompt: 'Neon fox',
@@ -201,7 +197,7 @@ describe('Google media agent tools', () => {
     expect(mockGenerateLyriaMusic).not.toHaveBeenCalled()
   })
 
-  test('does not start another paid media generation after a failure', async () => {
+  test('does not start another generated media tool after a failure', async () => {
     mockGenerateOmniVideo.mockRejectedValueOnce(new Error('Omni failed'))
 
     await runWithToolContext(message, [], async () => {
@@ -219,44 +215,7 @@ describe('Google media agent tools', () => {
     expect(mockGenerateLyriaMusic).not.toHaveBeenCalled()
   })
 
-  test('does not start billed generation without a delivery time reserve', async () => {
-    const result = runWithToolContext(
-      message,
-      [],
-      () =>
-        generateVideoTool.execute({
-          prompt: 'Neon fox',
-          caption: 'A running fox',
-        }),
-      undefined,
-      undefined,
-      () => 79_999,
-    )
-
-    await expect(result).rejects.toThrow('Not enough execution time remains')
-    expect(mockGenerateOmniVideo).not.toHaveBeenCalled()
-  })
-
-  test('shrinks the provider timeout to the current Lambda budget', async () => {
-    await runWithToolContext(
-      message,
-      [],
-      () =>
-        generateVideoTool.execute({
-          prompt: 'Neon fox',
-          caption: 'A running fox',
-        }),
-      undefined,
-      undefined,
-      () => 140_000,
-    )
-
-    expect(mockGenerateOmniVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ timeoutMs: 120_000 }),
-    )
-  })
-
-  test('rejects invalid selected media before claiming paid generation', async () => {
+  test('rejects invalid selected media before claiming the result slot', async () => {
     mockPrepareOmniMedia.mockImplementationOnce(() => {
       throw new Error(
         'Gemini Omni selected media exceeds the 14 MiB raw inline limit',

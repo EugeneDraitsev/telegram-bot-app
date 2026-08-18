@@ -145,9 +145,11 @@ function pushAudioContent(parts: UserContentPart[], media: MediaBuffer) {
 }
 
 function getMediaGroupKey(media: MediaBuffer, index: number): string {
-  return media.context
-    ? JSON.stringify(media.context)
-    : `media-${index}-${media.label || media.origin || 'request'}`
+  const context = media.context
+  if (context?.messageId !== undefined) {
+    return `${context.relation}:${context.messageId}`
+  }
+  return `media-${index}-${media.label || media.origin || 'request'}`
 }
 
 function formatMessageContext(
@@ -352,7 +354,6 @@ export async function runAgenticLoop(
   options: {
     bypassReplyGate?: boolean
     commandName?: string
-    getRemainingTimeInMillis?: () => number
   } = {},
 ): Promise<void> {
   const startedAt = Date.now()
@@ -392,7 +393,6 @@ export async function runAgenticLoop(
       callback,
       api,
       options.commandName,
-      options.getRemainingTimeInMillis,
     )
 
   try {
@@ -567,9 +567,6 @@ export async function runAgenticLoop(
           toolByName,
           chatId,
           chatModel.config,
-          {
-            getRemainingTimeInMillis: options.getRemainingTimeInMillis,
-          },
         )
 
         // Collect any responses produced by tools (media, text drafts, etc.)

@@ -14,7 +14,7 @@ import { IMAGE_MODEL } from '../services/openai-image'
 import type { AgentTool } from '../types'
 import {
   addResponse,
-  claimPaidMediaGeneration,
+  claimGeneratedMedia,
   requireToolContext,
   trackToolModelCall,
 } from './context'
@@ -156,7 +156,7 @@ export const generateImageTool: AgentTool = {
           (media) => media.label || 'Unlabeled image context',
         ) ?? [],
       )
-      claimPaidMediaGeneration()
+      claimGeneratedMedia()
       const result = await generateWithFallback(
         imagePrompt,
         imagesToEdit?.map((media) => media.buffer),

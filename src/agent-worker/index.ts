@@ -135,7 +135,6 @@ export const processAgentWorker = async (
       {
         bypassReplyGate,
         commandName,
-        getRemainingTimeInMillis: () => context.getRemainingTimeInMillis(),
       },
     )
     logger.info(

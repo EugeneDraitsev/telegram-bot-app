@@ -10,11 +10,9 @@ import {
 import {
   adaptOmniInteractionRequest,
   extractLyriaInteractionOutput,
-  getGoogleInteractionErrorMessage,
 } from './google-interactions.adapter'
 
-export const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
-export const GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS = 60_000
+const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
 // Inline media is base64-encoded in JSON (~4/3 expansion). Keep raw inputs at
 // 14 MiB so the encoded media plus request metadata stays below 20 MB.
 const MAX_INLINE_MEDIA_RAW_BYTES = 14 * 1024 * 1024
@@ -33,11 +31,9 @@ export type LyriaModel = typeof LYRIA_3_CLIP_MODEL | typeof LYRIA_3_PRO_MODEL
 interface GeneratedMedia {
   buffer: Buffer
   mimeType: string
-  interactionId?: string
-  outputTokensByModality?: Record<string, number>
 }
 
-export interface GeneratedMusic extends GeneratedMedia {
+interface GeneratedMusic extends GeneratedMedia {
   text?: string
 }
 
@@ -138,32 +134,6 @@ function createPrompt(
   ]
 }
 
-function getInteractionId(metadata: unknown): string | undefined {
-  if (!metadata || typeof metadata !== 'object') return undefined
-  const google = (metadata as Record<string, unknown>).google
-  if (!google || typeof google !== 'object') return undefined
-  const interactionId = (google as Record<string, unknown>).interactionId
-  return typeof interactionId === 'string' ? interactionId : undefined
-}
-
-function getOutputTokensByModality(
-  metadata: unknown,
-): Record<string, number> | undefined {
-  if (!metadata || typeof metadata !== 'object') return undefined
-  const google = (metadata as Record<string, unknown>).google
-  if (!google || typeof google !== 'object') return undefined
-  const raw = (google as Record<string, unknown>).outputTokensByModality
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
-
-  const entries = Object.entries(raw).filter(
-    (entry): entry is [string, number] =>
-      typeof entry[1] === 'number' &&
-      Number.isFinite(entry[1]) &&
-      entry[1] >= 0,
-  )
-  return entries.length ? Object.fromEntries(entries) : undefined
-}
-
 export function createOmniFetch(
   aspectRatio: OmniAspectRatio,
   durationSeconds: number,
@@ -207,7 +177,11 @@ async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run()
   } catch (error) {
-    throw new Error(getGoogleInteractionErrorMessage(error), { cause: error })
+    logger.error(
+      { error: getErrorMessage(error) },
+      'google_media.interaction_failed',
+    )
+    throw new Error('Google media generation failed', { cause: error })
   }
 }
 
@@ -216,7 +190,6 @@ export async function generateOmniVideo(options: {
   aspectRatio: OmniAspectRatio
   durationSeconds: number
   media?: MediaBuffer[]
-  timeoutMs?: number
 }): Promise<GeneratedMedia> {
   const media = options.media ?? []
   const response = await runGoogleInteraction(() =>
@@ -226,7 +199,7 @@ export async function generateOmniVideo(options: {
       }).interactions(GEMINI_OMNI_FLASH_MODEL),
       prompt: createPrompt(options.prompt.trim(), media),
       maxRetries: 0,
-      timeout: options.timeoutMs ?? GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+      timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
       providerOptions: {
         google: { store: false, responseModalities: ['video'] },
       },
@@ -238,15 +211,9 @@ export async function generateOmniVideo(options: {
   if (!video?.uint8Array.byteLength) {
     throw new Error('Gemini Omni returned no video output')
   }
-  const outputTokensByModality = getOutputTokensByModality(
-    response.providerMetadata,
-  )
-
   return {
     buffer: Buffer.from(video.uint8Array),
     mimeType: video.mediaType,
-    interactionId: getInteractionId(response.providerMetadata),
-    ...(outputTokensByModality ? { outputTokensByModality } : {}),
   }
 }
 
@@ -254,7 +221,6 @@ export async function generateLyriaMusic(options: {
   prompt: string
   model: LyriaModel
   media?: MediaBuffer[]
-  timeoutMs?: number
 }): Promise<GeneratedMusic> {
   const images = options.media ?? []
   const response = await runGoogleInteraction(() =>
@@ -262,7 +228,7 @@ export async function generateLyriaMusic(options: {
       model: getAiSdkGoogleProvider().interactions(options.model),
       prompt: createPrompt(options.prompt.trim(), images),
       maxRetries: 0,
-      timeout: options.timeoutMs ?? GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+      timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
       include: { responseBody: true },
       providerOptions: {
         google: { store: false, responseModalities: ['audio'] },
@@ -271,16 +237,10 @@ export async function generateLyriaMusic(options: {
   )
   const output = extractLyriaInteractionOutput(response.response.body)
   if (!output) throw new Error('Lyria returned no audio output')
-  const outputTokensByModality = getOutputTokensByModality(
-    response.providerMetadata,
-  )
 
   return {
     buffer: output.buffer,
     mimeType: output.mimeType,
-    interactionId:
-      getInteractionId(response.providerMetadata) ?? output.interactionId,
-    ...(outputTokensByModality ? { outputTokensByModality } : {}),
     text: response.text?.trim() || output.text,
   }
 }
