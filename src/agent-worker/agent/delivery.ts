@@ -444,7 +444,7 @@ async function sendVideo(
     }
     await saveBotReplyToHistory(sentMessage)
     const extraText = params.text.trim()
-    if (extraText && extraText !== params.video.caption?.trim()) {
+    if (extraText && extraText !== rawCaption.trim()) {
       await sendText({
         ...params,
         text: extraText,

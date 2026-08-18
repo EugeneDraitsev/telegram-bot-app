@@ -281,6 +281,31 @@ describe('sendResponses', () => {
     expect(api.sendRichMessage).not.toHaveBeenCalled()
   })
 
+  test('does not repeat fallback video caption as a separate message', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'video',
+          buffer: Buffer.from('video'),
+        },
+        { type: 'text', text: 'Generated video is ready' },
+      ],
+    })
+
+    expect(api.sendVideo).toHaveBeenCalledWith(
+      123,
+      expect.anything(),
+      expect.objectContaining({ caption: 'Generated video is ready' }),
+    )
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+    expect(api.sendMessage).not.toHaveBeenCalled()
+  })
+
   test('keeps a generated video buffer over a search video URL', async () => {
     const api = createApi()
 
