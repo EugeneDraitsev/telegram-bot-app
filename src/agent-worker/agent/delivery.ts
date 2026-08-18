@@ -397,7 +397,7 @@ async function sendGeneratedAudio(
     | Awaited<ReturnType<TelegramApi['sendDocument']>>
     | undefined
 
-  if (VOICE_MIME_TYPES.has(mimeType)) {
+  if (params.audio.delivery !== 'audio' && VOICE_MIME_TYPES.has(mimeType)) {
     try {
       sentMessage = await params.api.sendVoice(
         params.chatId,

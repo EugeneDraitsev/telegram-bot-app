@@ -50,7 +50,9 @@ export function getCollectedResponses(): AgentResponse[] {
 export function claimPaidMediaGeneration(): void {
   const context = requireToolContext()
   if (context.paidMediaGenerationClaimed) {
-    throw new Error('A paid media generation was already attempted')
+    throw new Error(
+      'Only one generated media result can be created per request',
+    )
   }
 
   context.paidMediaGenerationClaimed = true

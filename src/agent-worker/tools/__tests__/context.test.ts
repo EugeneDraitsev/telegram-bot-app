@@ -28,7 +28,7 @@ describe('tool context', () => {
     await runWithToolContext(message, undefined, async () => {
       claimPaidMediaGeneration()
       expect(() => claimPaidMediaGeneration()).toThrow(
-        'A paid media generation was already attempted',
+        'Only one generated media result can be created per request',
       )
     })
 

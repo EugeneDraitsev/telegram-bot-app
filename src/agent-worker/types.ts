@@ -63,6 +63,7 @@ export interface AudioResponse {
   fileName?: string
   title?: string
   caption?: string
+  delivery?: 'voice' | 'audio'
 }
 export interface AnimationResponse {
   type: 'animation'

@@ -4,11 +4,11 @@ import type { MediaBuffer } from '@tg-bot/common'
 
 const mockGenerateOmniVideo = jest.fn()
 const mockGenerateLyriaMusic = jest.fn()
-const mockValidateOmniMedia = jest.fn(
-  (media: MediaBuffer[] | undefined) => media ?? [],
+const mockPrepareOmniMedia = jest.fn(
+  (media: MediaBuffer[] | undefined, _explicit: boolean) => media ?? [],
 )
-const mockValidateLyriaMedia = jest.fn(
-  (media: MediaBuffer[] | undefined) => media ?? [],
+const mockPrepareLyriaMedia = jest.fn(
+  (media: MediaBuffer[] | undefined, _explicit: boolean) => media ?? [],
 )
 
 jest.mock('../../services/google-media', () => ({
@@ -20,10 +20,10 @@ jest.mock('../../services/google-media', () => ({
   LYRIA_3_PRO_MODEL: 'lyria-3-pro-preview',
   generateOmniVideo: (...args: unknown[]) => mockGenerateOmniVideo(...args),
   generateLyriaMusic: (...args: unknown[]) => mockGenerateLyriaMusic(...args),
-  validateOmniMedia: (media: MediaBuffer[] | undefined) =>
-    mockValidateOmniMedia(media),
-  validateLyriaMedia: (media: MediaBuffer[] | undefined) =>
-    mockValidateLyriaMedia(media),
+  prepareOmniMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
+    mockPrepareOmniMedia(media, explicit),
+  prepareLyriaMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
+    mockPrepareLyriaMedia(media, explicit),
 }))
 
 import { getCollectedResponses, runWithToolContext } from '../context'
@@ -61,10 +61,10 @@ describe('Google media agent tools', () => {
       mimeType: 'audio/mpeg',
       text: '[Verse]\nhello',
     })
-    mockValidateOmniMedia.mockClear()
-    mockValidateOmniMedia.mockImplementation((media) => media ?? [])
-    mockValidateLyriaMedia.mockClear()
-    mockValidateLyriaMedia.mockImplementation((media) => media ?? [])
+    mockPrepareOmniMedia.mockClear()
+    mockPrepareOmniMedia.mockImplementation((media) => media ?? [])
+    mockPrepareLyriaMedia.mockClear()
+    mockPrepareLyriaMedia.mockImplementation((media) => media ?? [])
   })
 
   test('reserves Lambda time for routing and Telegram delivery', () => {
@@ -93,6 +93,7 @@ describe('Google media agent tools', () => {
       media: [requestImage],
       timeoutMs: 160_000,
     })
+    expect(mockPrepareOmniMedia).toHaveBeenCalledWith([requestImage], false)
     expect(responses).toEqual([
       expect.objectContaining({
         type: 'video',
@@ -134,6 +135,7 @@ describe('Google media agent tools', () => {
         fileName: 'lyria-song.mp3',
         title: 'Город после полуночи',
         caption: 'Меланхоличный синти-поп о ночном городе.',
+        delivery: 'audio',
       }),
       { type: 'text', text: '[Verse]\nhello' },
     ])
@@ -151,6 +153,7 @@ describe('Google media agent tools', () => {
     expect(mockGenerateOmniVideo).toHaveBeenCalledWith(
       expect.objectContaining({ media: [historyImage] }),
     )
+    expect(mockPrepareOmniMedia).toHaveBeenCalledWith([historyImage], true)
   })
 
   test('does not expose technical prompts as missing metadata', async () => {
@@ -167,7 +170,11 @@ describe('Google media agent tools', () => {
       expect.objectContaining({ caption: undefined }),
     )
     expect(musicResponses[0]).toEqual(
-      expect.objectContaining({ title: undefined, caption: undefined }),
+      expect.objectContaining({
+        title: undefined,
+        caption: undefined,
+        delivery: 'voice',
+      }),
     )
   })
 
@@ -184,7 +191,9 @@ describe('Google media agent tools', () => {
           title: 'Night Run',
           caption: 'A fast synth track',
         }),
-      ).rejects.toThrow('A paid media generation was already attempted')
+      ).rejects.toThrow(
+        'Only one generated media result can be created per request',
+      )
       await videoPromise
     })
 
@@ -201,7 +210,9 @@ describe('Google media agent tools', () => {
       ).rejects.toThrow('Omni failed')
       await expect(
         generateMusicTool.execute({ prompt: 'Try music instead' }),
-      ).rejects.toThrow('A paid media generation was already attempted')
+      ).rejects.toThrow(
+        'Only one generated media result can be created per request',
+      )
     })
 
     expect(mockGenerateOmniVideo).toHaveBeenCalledTimes(1)
@@ -246,8 +257,10 @@ describe('Google media agent tools', () => {
   })
 
   test('rejects invalid selected media before claiming paid generation', async () => {
-    mockValidateOmniMedia.mockImplementationOnce(() => {
-      throw new Error('Gemini Omni selected media exceeds the 19 MiB limit')
+    mockPrepareOmniMedia.mockImplementationOnce(() => {
+      throw new Error(
+        'Gemini Omni selected media exceeds the 14 MiB raw inline limit',
+      )
     })
 
     await runWithToolContext(message, [requestImage], async () => {
@@ -257,7 +270,7 @@ describe('Google media agent tools', () => {
           caption: 'Animation',
           mediaIds: [1],
         }),
-      ).rejects.toThrow('selected media exceeds the 19 MiB limit')
+      ).rejects.toThrow('selected media exceeds the 14 MiB raw inline limit')
 
       await expect(
         generateMusicTool.execute({

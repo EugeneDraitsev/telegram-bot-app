@@ -6,7 +6,7 @@ import {
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateOmniVideo,
   type OmniAspectRatio,
-  validateOmniMedia,
+  prepareOmniMedia,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
 import {
@@ -85,8 +85,13 @@ export const generateVideoTool: AgentTool = {
 
       const durationSeconds = getDurationSeconds(args.durationSeconds)
       const aspectRatio = getAspectRatio(args.aspectRatio)
-      const selectedMedia = validateOmniMedia(
-        selectMediaForTool(mediaBuffers, args.mediaIds, ['image', 'video']),
+      const mediaSelection = selectMediaForTool(mediaBuffers, args.mediaIds, [
+        'image',
+        'video',
+      ])
+      const selectedMedia = prepareOmniMedia(
+        mediaSelection.media,
+        mediaSelection.explicit,
       )
       const timeoutMs = await preparePaidMediaGeneration({
         maximumRequestTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,

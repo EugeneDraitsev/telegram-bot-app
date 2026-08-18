@@ -10,6 +10,7 @@ describe('Google Interactions adapter', () => {
       adaptOmniInteractionRequest(
         {
           model: 'gemini-omni-flash-preview',
+          response_format: [{ type: 'text', mime_type: 'text/plain' }],
           input: [
             {
               type: 'user_input',
@@ -25,6 +26,15 @@ describe('Google Interactions adapter', () => {
       ),
     ).toEqual({
       model: 'gemini-omni-flash-preview',
+      response_format: [
+        { type: 'text', mime_type: 'text/plain' },
+        {
+          type: 'video',
+          aspect_ratio: '9:16',
+          duration: '5s',
+          delivery: 'inline',
+        },
+      ],
       input: [
         {
           type: 'user_input',
@@ -34,12 +44,30 @@ describe('Google Interactions adapter', () => {
           ],
         },
       ],
-      response_format: {
-        type: 'video',
-        aspect_ratio: '9:16',
-        duration: '5s',
-        delivery: 'inline',
-      },
+    })
+  })
+
+  test('updates an SDK video entry without duplicating it', () => {
+    expect(
+      adaptOmniInteractionRequest(
+        {
+          response_format: [
+            { type: 'video', mime_type: 'video/mp4', delivery: 'uri' },
+          ],
+        },
+        '16:9',
+        3,
+      ),
+    ).toEqual({
+      response_format: [
+        {
+          type: 'video',
+          mime_type: 'video/mp4',
+          aspect_ratio: '16:9',
+          duration: '3s',
+          delivery: 'inline',
+        },
+      ],
     })
   })
 

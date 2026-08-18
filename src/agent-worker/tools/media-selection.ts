@@ -2,6 +2,11 @@ import type { MediaBuffer } from '@tg-bot/common'
 
 type MediaType = MediaBuffer['mediaType']
 
+export interface ToolMediaSelection {
+  media: MediaBuffer[]
+  explicit: boolean
+}
+
 export function getMediaIdsParameter(supportedMedia: string) {
   return {
     type: 'array' as const,
@@ -30,30 +35,36 @@ export function selectMediaForTool(
   mediaBuffers: MediaBuffer[] | undefined,
   mediaIds: unknown,
   supportedTypes: readonly MediaType[],
-): MediaBuffer[] {
+): ToolMediaSelection {
   const media = mediaBuffers ?? []
   const supported = new Set(supportedTypes)
   const ids = parseMediaIds(mediaIds)
 
   if (ids === undefined) {
-    return media.filter(
-      (item) => item.origin !== 'history' && supported.has(item.mediaType),
-    )
+    return {
+      media: media.filter(
+        (item) => item.origin !== 'history' && supported.has(item.mediaType),
+      ),
+      explicit: false,
+    }
   }
 
-  return ids.map((mediaId) => {
-    const item = media[mediaId - 1]
-    if (!item) {
-      const available = media.length ? `1-${media.length}` : 'none'
-      throw new Error(
-        `Unknown media_id ${mediaId}; available media_id range is ${available}`,
-      )
-    }
-    if (!supported.has(item.mediaType)) {
-      throw new Error(
-        `media_id ${mediaId} is ${item.mediaType}, but this tool supports ${supportedTypes.join(' or ')}`,
-      )
-    }
-    return item
-  })
+  return {
+    media: ids.map((mediaId) => {
+      const item = media[mediaId - 1]
+      if (!item) {
+        const available = media.length ? `1-${media.length}` : 'none'
+        throw new Error(
+          `Unknown media_id ${mediaId}; available media_id range is ${available}`,
+        )
+      }
+      if (!supported.has(item.mediaType)) {
+        throw new Error(
+          `media_id ${mediaId} is ${item.mediaType}, but this tool supports ${supportedTypes.join(' or ')}`,
+        )
+      }
+      return item
+    }),
+    explicit: true,
+  }
 }

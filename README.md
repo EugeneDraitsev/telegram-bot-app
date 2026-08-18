@@ -185,18 +185,19 @@ explicit Telegram commands and built-in agent tools:
   audio. It defaults to a five-second vertical clip; prompts can request 3-10
   seconds or 16:9. An attached/replied image becomes an animation/reference;
   an attached/replied video becomes an edit source. Omni receives up to four
-  selected visual items within a 19 MiB inline budget. A selected item set that
-  exceeds either limit is rejected before the billed provider call instead of
-  silently falling back to text-only generation.
+  visual items within a 14 MiB raw-media budget, leaving room for base64 and
+  JSON overhead under the API request limit. An explicitly selected item set
+  that exceeds either limit is rejected before the billed provider call;
+  implicit current/reply/album media is reduced to the newest items that fit.
 - `/lyria <prompt>` uses `lyria-3-clip-preview` for a 30-second stereo MP3.
 - `/lyriapro <prompt>` uses `lyria-3-pro-preview` for a full-length structured
-  song. Both Lyria commands accept up to 10 selected images within the same 19
-  MiB inline budget. Replying with `/lyriapro` to a Clip can create a new
+  song. Both Lyria commands accept up to 10 selected images within the same 14
+  MiB raw-media budget. Replying with `/lyriapro` to a Clip can create a new
   full-length rendition from the visible text context, but Google does not
-  support exact continuation of the replied audio. Generated MP3/M4A/OGG is
-  attempted through Telegram's voice-message player, then falls back to audio
-  or document delivery so an already generated track is not discarded;
-  requested lyrics are sent separately.
+  support exact continuation of the replied audio. Lyria Clip uses Telegram's
+  voice-message player; Lyria Pro uses the music player with its track title.
+  Delivery falls back to audio or document as applicable so an already
+  generated track is not discarded; requested lyrics are sent separately.
 
 Every available media item is presented to the routing model inside a
 structured message block with its source relation (current message, reply

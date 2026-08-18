@@ -13,7 +13,9 @@ import {
 
 export const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
 export const GOOGLE_MEDIA_MIN_REQUEST_TIMEOUT_MS = 60_000
-const MAX_INLINE_MEDIA_BYTES = 19 * 1024 * 1024
+// Inline media is base64-encoded in JSON (~4/3 expansion). Keep raw inputs at
+// 14 MiB so the encoded media plus request metadata stays below 20 MB.
+const MAX_INLINE_MEDIA_RAW_BYTES = 14 * 1024 * 1024
 const MAX_OMNI_MEDIA_ITEMS = 4
 const MAX_LYRIA_IMAGES = 10
 
@@ -37,54 +39,76 @@ export interface GeneratedMusic extends GeneratedMedia {
   text?: string
 }
 
-function validateInlineMedia(
+function prepareInlineMedia(
   media: MediaBuffer[] | undefined,
+  explicit: boolean,
   maxItems: number,
   supports: (item: MediaBuffer) => boolean,
   modelLabel: string,
 ): MediaBuffer[] {
   const selected = media ?? []
   const unsupported = selected.find((item) => !supports(item))
-  if (unsupported) {
+  if (explicit && unsupported) {
     throw new Error(
       `${modelLabel} does not support selected ${unsupported.mediaType} media`,
     )
   }
-  if (selected.length > maxItems) {
+  const supported = selected.filter(supports)
+
+  if (explicit && supported.length > maxItems) {
     throw new Error(
       `${modelLabel} accepts at most ${maxItems} selected media items`,
     )
   }
 
-  const totalBytes = selected.reduce(
+  const totalBytes = supported.reduce(
     (total, item) => total + item.buffer.byteLength,
     0,
   )
-  if (totalBytes > MAX_INLINE_MEDIA_BYTES) {
+  if (explicit && totalBytes > MAX_INLINE_MEDIA_RAW_BYTES) {
     throw new Error(
-      `${modelLabel} selected media exceeds the 19 MiB inline limit`,
+      `${modelLabel} selected media exceeds the 14 MiB raw inline limit`,
     )
   }
 
-  return selected
+  if (explicit) return supported
+
+  const bounded: MediaBuffer[] = []
+  let boundedBytes = 0
+  for (let index = supported.length - 1; index >= 0; index -= 1) {
+    if (bounded.length >= maxItems) break
+    const item = supported[index]
+    if (!item) continue
+    if (boundedBytes + item.buffer.byteLength > MAX_INLINE_MEDIA_RAW_BYTES) {
+      continue
+    }
+
+    bounded.unshift(item)
+    boundedBytes += item.buffer.byteLength
+  }
+  return bounded
 }
 
-export function validateLyriaMedia(
+export function prepareLyriaMedia(
   media: MediaBuffer[] | undefined,
+  explicit: boolean,
 ): MediaBuffer[] {
-  return validateInlineMedia(
+  return prepareInlineMedia(
     media,
+    explicit,
     MAX_LYRIA_IMAGES,
     (item) => item.mediaType === 'image',
     'Lyria',
   )
 }
 
-export function validateOmniMedia(
+export function prepareOmniMedia(
   media: MediaBuffer[] | undefined,
+  explicit: boolean,
 ): MediaBuffer[] {
-  return validateInlineMedia(
+  return prepareInlineMedia(
     media,
+    explicit,
     MAX_OMNI_MEDIA_ITEMS,
     (item) => item.mediaType === 'image' || item.mediaType === 'video',
     'Gemini Omni',
@@ -174,7 +198,7 @@ export async function generateOmniVideo(options: {
   media?: MediaBuffer[]
   timeoutMs?: number
 }): Promise<GeneratedMedia> {
-  const media = validateOmniMedia(options.media)
+  const media = options.media ?? []
   const response = await runGoogleInteraction(() =>
     generateText({
       model: createAiSdkGoogleProvider({
@@ -212,7 +236,7 @@ export async function generateLyriaMusic(options: {
   media?: MediaBuffer[]
   timeoutMs?: number
 }): Promise<GeneratedMusic> {
-  const images = validateLyriaMedia(options.media)
+  const images = options.media ?? []
   const response = await runGoogleInteraction(() =>
     generateText({
       model: getAiSdkGoogleProvider().interactions(options.model),

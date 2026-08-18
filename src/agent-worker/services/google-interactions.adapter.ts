@@ -22,14 +22,32 @@ export function adaptOmniInteractionRequest(
 ): unknown {
   if (!isRecord(value)) return value
 
+  // The API accepts one format object or an array; the AI SDK builds an array.
+  // Normalize here so adding video never overwrites SDK-provided entries.
+  const existingFormats = Array.isArray(value.response_format)
+    ? value.response_format
+    : value.response_format === undefined
+      ? []
+      : [value.response_format]
+  const videoFormat = {
+    type: 'video',
+    aspect_ratio: aspectRatio,
+    duration: `${durationSeconds}s`,
+    delivery: 'inline',
+  }
+  const responseFormats = existingFormats.some(
+    (format) => isRecord(format) && format.type === 'video',
+  )
+    ? existingFormats.map((format) =>
+        isRecord(format) && format.type === 'video'
+          ? { ...format, ...videoFormat }
+          : format,
+      )
+    : [...existingFormats, videoFormat]
+
   return {
     ...value,
-    response_format: {
-      type: 'video',
-      aspect_ratio: aspectRatio,
-      duration: `${durationSeconds}s`,
-      delivery: 'inline',
-    },
+    response_format: responseFormats,
   }
 }
 

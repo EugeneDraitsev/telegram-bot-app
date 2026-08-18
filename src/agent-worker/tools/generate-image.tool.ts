@@ -143,9 +143,11 @@ export const generateImageTool: AgentTool = {
       }
 
       const includeTextResponse = args.includeTextResponse as boolean
-      const imageCandidates = selectMediaForTool(mediaBuffers, args.mediaIds, [
-        'image',
-      ])
+      const { media: imageCandidates } = selectMediaForTool(
+        mediaBuffers,
+        args.mediaIds,
+        ['image'],
+      )
       const imagesToEdit =
         imageCandidates.length > 0 ? imageCandidates : undefined
       const imagePrompt = buildImageEditTargetPrompt(

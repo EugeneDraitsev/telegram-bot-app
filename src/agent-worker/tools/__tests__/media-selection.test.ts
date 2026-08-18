@@ -28,7 +28,7 @@ describe('selectMediaForTool', () => {
         undefined,
         ['image'],
       ),
-    ).toEqual([requestImage])
+    ).toEqual({ media: [requestImage], explicit: false })
   })
 
   test('uses exact stable media IDs when explicitly selected', () => {
@@ -38,8 +38,11 @@ describe('selectMediaForTool', () => {
         [2, 1],
         ['image'],
       ),
-    ).toEqual([historyImage, requestImage])
-    expect(selectMediaForTool([requestImage], [], ['image'])).toEqual([])
+    ).toEqual({ media: [historyImage, requestImage], explicit: true })
+    expect(selectMediaForTool([requestImage], [], ['image'])).toEqual({
+      media: [],
+      explicit: true,
+    })
   })
 
   test('rejects unknown or unsupported media IDs', () => {

@@ -7,7 +7,7 @@ import {
   LYRIA_3_CLIP_MODEL,
   LYRIA_3_PRO_MODEL,
   type LyriaModel,
-  validateLyriaMedia,
+  prepareLyriaMedia,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
 import {
@@ -87,8 +87,12 @@ export const generateMusicTool: AgentTool = {
 
       const mode = getLyriaMode(commandName, args.mode)
       const model = getLyriaModel(mode)
-      const selectedMedia = validateLyriaMedia(
-        selectMediaForTool(mediaBuffers, args.mediaIds, ['image']),
+      const mediaSelection = selectMediaForTool(mediaBuffers, args.mediaIds, [
+        'image',
+      ])
+      const selectedMedia = prepareLyriaMedia(
+        mediaSelection.media,
+        mediaSelection.explicit,
       )
       const timeoutMs = await preparePaidMediaGeneration({
         maximumRequestTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
@@ -116,6 +120,7 @@ export const generateMusicTool: AgentTool = {
         fileName: mode === 'pro' ? 'lyria-song.mp3' : 'lyria-clip.mp3',
         title,
         caption,
+        delivery: mode === 'pro' ? 'audio' : 'voice',
       })
       if (args.includeLyrics === true && result.text) {
         addResponse({ type: 'text', text: result.text.slice(0, 3_800) })

@@ -10,6 +10,8 @@ import {
   generateLyriaMusic,
   generateOmniVideo,
   LYRIA_3_CLIP_MODEL,
+  prepareLyriaMedia,
+  prepareOmniMedia,
 } from '../google-media'
 
 const originalGeminiApiKey = process.env.GEMINI_API_KEY
@@ -182,9 +184,9 @@ describe('Google media through the AI SDK', () => {
     )
   })
 
-  test('rejects unsupported or oversized Omni media before the provider call', async () => {
+  test('strictly validates explicitly selected Omni media', () => {
     const largeImage: MediaBuffer = {
-      buffer: Buffer.alloc(10 * 1024 * 1024, 1),
+      buffer: Buffer.alloc(8 * 1024 * 1024, 1),
       mimeType: 'image/jpeg',
       mediaType: 'image',
     }
@@ -194,7 +196,7 @@ describe('Google media through the AI SDK', () => {
       mediaType: 'audio',
     }
     const largeVideo: MediaBuffer = {
-      buffer: Buffer.alloc(10 * 1024 * 1024, 2),
+      buffer: Buffer.alloc(8 * 1024 * 1024, 2),
       mimeType: 'video/mp4',
       mediaType: 'video',
     }
@@ -205,24 +207,39 @@ describe('Google media through the AI SDK', () => {
       origin: 'history',
     }))
 
-    const generate = (media: MediaBuffer[]) =>
-      generateOmniVideo({
-        prompt: 'Use these exact visual references',
-        aspectRatio: '9:16',
-        durationSeconds: 5,
-        media,
-      })
-
-    await expect(generate([excludedAudio])).rejects.toThrow(
+    expect(() => prepareOmniMedia([excludedAudio], true)).toThrow(
       'does not support selected audio media',
     )
-    await expect(generate(fiveImages)).rejects.toThrow(
+    expect(() => prepareOmniMedia(fiveImages, true)).toThrow(
       'accepts at most 4 selected media items',
     )
-    await expect(generate([largeImage, largeVideo])).rejects.toThrow(
-      'selected media exceeds the 19 MiB inline limit',
+    expect(() => prepareOmniMedia([largeImage, largeVideo], true)).toThrow(
+      'selected media exceeds the 14 MiB raw inline limit',
     )
-    expect(mockGenerateText).not.toHaveBeenCalled()
+  })
+
+  test('soft-bounds implicit Omni media to the newest items that fit', () => {
+    const fiveImages: MediaBuffer[] = [1, 2, 3, 4, 5].map((index) => ({
+      buffer: Buffer.from(`small-${index}`),
+      mimeType: 'image/png',
+      mediaType: 'image',
+    }))
+    expect(prepareOmniMedia(fiveImages, false)).toEqual(fiveImages.slice(-4))
+
+    const oldestSmall = fiveImages[0]
+    const olderLarge: MediaBuffer = {
+      buffer: Buffer.alloc(8 * 1024 * 1024, 1),
+      mimeType: 'image/jpeg',
+      mediaType: 'image',
+    }
+    const newestLarge: MediaBuffer = {
+      buffer: Buffer.alloc(8 * 1024 * 1024, 2),
+      mimeType: 'video/mp4',
+      mediaType: 'video',
+    }
+    expect(
+      prepareOmniMedia([oldestSmall, olderLarge, newestLarge], false),
+    ).toEqual([oldestSmall, newestLarge])
   })
 
   test('forwards selected current and history images and extracts Lyria audio', async () => {
@@ -282,14 +299,14 @@ describe('Google media through the AI SDK', () => {
     })
   })
 
-  test('rejects unsupported or oversized Lyria media before the provider call', async () => {
+  test('strictly validates explicitly selected Lyria media', () => {
     const firstImage: MediaBuffer = {
-      buffer: Buffer.alloc(10 * 1024 * 1024, 1),
+      buffer: Buffer.alloc(8 * 1024 * 1024, 1),
       mimeType: 'image/jpeg',
       mediaType: 'image',
     }
     const secondLargeImage: MediaBuffer = {
-      buffer: Buffer.alloc(10 * 1024 * 1024, 2),
+      buffer: Buffer.alloc(8 * 1024 * 1024, 2),
       mimeType: 'image/png',
       mediaType: 'image',
     }
@@ -308,23 +325,18 @@ describe('Google media through the AI SDK', () => {
       }),
     )
 
-    const generate = (media: MediaBuffer[]) =>
-      generateLyriaMusic({
-        prompt: 'Use these exact image references',
-        model: LYRIA_3_CLIP_MODEL,
-        media,
-      })
-
-    await expect(generate([excludedAudio])).rejects.toThrow(
+    expect(() => prepareLyriaMedia([excludedAudio], true)).toThrow(
       'does not support selected audio media',
     )
-    await expect(generate(elevenImages)).rejects.toThrow(
+    expect(() => prepareLyriaMedia(elevenImages, true)).toThrow(
       'accepts at most 10 selected media items',
     )
-    await expect(generate([firstImage, secondLargeImage])).rejects.toThrow(
-      'selected media exceeds the 19 MiB inline limit',
+    expect(() =>
+      prepareLyriaMedia([firstImage, secondLargeImage], true),
+    ).toThrow('selected media exceeds the 14 MiB raw inline limit')
+    expect(prepareLyriaMedia(elevenImages, false)).toEqual(
+      elevenImages.slice(-10),
     )
-    expect(mockGenerateText).not.toHaveBeenCalled()
   })
 
   test('fails clearly without an API key or generated media', async () => {

@@ -254,6 +254,7 @@ describe('sendResponses', () => {
           fileName: 'lyria.mp3',
           title: 'Midnight Cats',
           caption: 'An emo song about two cats',
+          delivery: 'voice',
         },
         { type: 'text', text: '[Verse]\nhello' },
       ],
@@ -277,6 +278,40 @@ describe('sendResponses', () => {
       { reply_parameters: { message_id: 3 } },
       undefined,
     )
+  })
+
+  test('uploads full-length music as audio with its track title', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'audio',
+          buffer: Buffer.from('full-song'),
+          mimeType: 'audio/mpeg',
+          fileName: 'lyria-song.mp3',
+          title: 'Midnight Cats',
+          caption: 'A full-length emo song',
+          delivery: 'audio',
+        },
+      ],
+    })
+
+    expect(api.sendVoice).not.toHaveBeenCalled()
+    expect(api.sendAudio).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'lyria-song.mp3' }),
+      {
+        title: 'Midnight Cats',
+        caption: 'A full-length emo song',
+        parse_mode: 'MarkdownV2',
+        reply_parameters: { message_id: 456 },
+      },
+    )
+    expect(api.sendDocument).not.toHaveBeenCalled()
   })
 
   test('falls back to audio when Telegram forbids voice messages', async () => {
