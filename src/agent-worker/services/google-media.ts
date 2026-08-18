@@ -1,31 +1,31 @@
-import { generateText, type ModelMessage } from 'ai'
+import {
+  generateText,
+  experimental_generateVideo as generateVideo,
+  type ModelMessage,
+} from 'ai'
 
 import {
-  createAiSdkGoogleProvider,
   getAiSdkGoogleProvider,
   getErrorMessage,
   logger,
   type MediaBuffer,
 } from '@tg-bot/common'
-import {
-  adaptOmniInteractionRequest,
-  extractLyriaInteractionOutput,
-} from './google-interactions.adapter'
+import { extractLyriaInteractionOutput } from './google-interactions.adapter'
 
 const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
 // Inline media is base64-encoded in JSON (~4/3 expansion). Keep raw inputs at
 // 14 MiB so the encoded media plus request metadata stays below 20 MB.
 const MAX_INLINE_MEDIA_RAW_BYTES = 14 * 1024 * 1024
-const MAX_OMNI_MEDIA_ITEMS = 4
+const MAX_VEO_IMAGES = 1
 const MAX_LYRIA_IMAGES = 10
 
 export const GOOGLE_MEDIA_TOOL_TIMEOUT_MS = 170_000
 
-export const GEMINI_OMNI_FLASH_MODEL = 'gemini-omni-flash-preview'
+export const VEO_3_1_LITE_MODEL = 'veo-3.1-lite-generate-preview'
 export const LYRIA_3_CLIP_MODEL = 'lyria-3-clip-preview'
 export const LYRIA_3_PRO_MODEL = 'lyria-3-pro-preview'
 
-export type OmniAspectRatio = '9:16' | '16:9'
+export type VeoAspectRatio = '9:16' | '16:9'
 export type LyriaModel = typeof LYRIA_3_CLIP_MODEL | typeof LYRIA_3_PRO_MODEL
 
 interface GeneratedMedia {
@@ -100,16 +100,16 @@ export function prepareLyriaMedia(
   )
 }
 
-export function prepareOmniMedia(
+export function prepareVeoMedia(
   media: MediaBuffer[] | undefined,
   explicit: boolean,
 ): MediaBuffer[] {
   return prepareInlineMedia(
     media,
     explicit,
-    MAX_OMNI_MEDIA_ITEMS,
-    (item) => item.mediaType === 'image' || item.mediaType === 'video',
-    'Gemini Omni',
+    MAX_VEO_IMAGES,
+    (item) => item.mediaType === 'image',
+    'Veo 3.1 Lite',
   )
 }
 
@@ -134,45 +134,6 @@ function createPrompt(
   ]
 }
 
-export function createOmniFetch(
-  aspectRatio: OmniAspectRatio,
-  durationSeconds: number,
-  transport: typeof fetch = fetch,
-): typeof fetch {
-  // TODO: Remove this adapter when @ai-sdk/google supports video responseFormat.
-  return async (input, init) => {
-    if (typeof init?.body !== 'string') {
-      logger.warn(
-        { bodyType: typeof init?.body },
-        'google_media.omni_request_adapter_failed',
-      )
-      throw new Error(
-        'Gemini Omni request could not be adapted to the required video format',
-      )
-    }
-
-    let body: unknown
-    try {
-      body = adaptOmniInteractionRequest(
-        JSON.parse(init.body),
-        aspectRatio,
-        durationSeconds,
-      )
-    } catch (error) {
-      logger.warn(
-        { error: getErrorMessage(error) },
-        'google_media.omni_request_adapter_failed',
-      )
-      throw new Error(
-        'Gemini Omni request could not be adapted to the required video format',
-        { cause: error },
-      )
-    }
-
-    return transport(input, { ...init, body: JSON.stringify(body) })
-  }
-}
-
 async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run()
@@ -185,35 +146,39 @@ async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function generateOmniVideo(options: {
+export async function generateVeoVideo(options: {
   prompt: string
-  aspectRatio: OmniAspectRatio
+  aspectRatio: VeoAspectRatio
   durationSeconds: number
   media?: MediaBuffer[]
 }): Promise<GeneratedMedia> {
-  const media = options.media ?? []
+  const image = options.media?.[0]
   const response = await runGoogleInteraction(() =>
-    generateText({
-      model: createAiSdkGoogleProvider({
-        fetch: createOmniFetch(options.aspectRatio, options.durationSeconds),
-      }).interactions(GEMINI_OMNI_FLASH_MODEL),
-      prompt: createPrompt(options.prompt.trim(), media),
+    generateVideo({
+      model: getAiSdkGoogleProvider().video(VEO_3_1_LITE_MODEL),
+      prompt: image
+        ? {
+            image: `data:${image.mimeType};base64,${image.buffer.toString('base64')}`,
+            text: options.prompt.trim(),
+          }
+        : options.prompt.trim(),
+      aspectRatio: options.aspectRatio,
+      resolution: '1280x720',
+      duration: options.durationSeconds,
+      generateAudio: true,
       maxRetries: 0,
-      timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+      abortSignal: AbortSignal.timeout(GOOGLE_MEDIA_REQUEST_TIMEOUT_MS),
       providerOptions: {
-        google: { store: false, responseModalities: ['video'] },
+        google: { pollTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS },
       },
     }),
   )
-  const video = response.files.find((file) =>
-    file.mediaType.startsWith('video/'),
-  )
-  if (!video?.uint8Array.byteLength) {
-    throw new Error('Gemini Omni returned no video output')
+  if (!response.video.uint8Array.byteLength) {
+    throw new Error('Veo 3.1 Lite returned no video output')
   }
   return {
-    buffer: Buffer.from(video.uint8Array),
-    mimeType: video.mediaType,
+    buffer: Buffer.from(response.video.uint8Array),
+    mimeType: response.video.mediaType,
   }
 }
 

@@ -10,53 +10,6 @@ function isRecord(value: unknown): value is JsonRecord {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-/**
- * The AI SDK Google provider does not yet expose Omni's video response format.
- * Keep the provider request intact and add only the missing documented format.
- */
-export function adaptOmniInteractionRequest(
-  value: unknown,
-  aspectRatio: '9:16' | '16:9',
-  durationSeconds: number,
-): JsonRecord {
-  if (!isRecord(value)) {
-    throw new Error('Google Interactions request body must be a JSON object')
-  }
-  if ('responseFormat' in value) {
-    throw new Error(
-      'Google Interactions request unexpectedly used camelCase responseFormat',
-    )
-  }
-
-  // The wire schema requires an array. Preserve the SDK array and normalize a
-  // single legacy entry defensively so adding video never overwrites it.
-  const existingFormats = Array.isArray(value.response_format)
-    ? value.response_format
-    : value.response_format === undefined
-      ? []
-      : [value.response_format]
-  const videoFormat = {
-    type: 'video',
-    aspect_ratio: aspectRatio,
-    duration: `${durationSeconds}s`,
-    delivery: 'inline',
-  }
-  const responseFormats = existingFormats.some(
-    (format) => isRecord(format) && format.type === 'video',
-  )
-    ? existingFormats.map((format) =>
-        isRecord(format) && format.type === 'video'
-          ? { ...format, ...videoFormat }
-          : format,
-      )
-    : [...existingFormats, videoFormat]
-
-  return {
-    ...value,
-    response_format: responseFormats,
-  }
-}
-
 function getOutputBlocks(body: JsonRecord): JsonRecord[] {
   if (Array.isArray(body.outputs)) return body.outputs.filter(isRecord)
   if (!Array.isArray(body.steps)) return []

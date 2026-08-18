@@ -1,59 +1,85 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 
-import { createOmniFetch, GEMINI_OMNI_FLASH_MODEL } from '../google-media'
+import { VEO_3_1_LITE_MODEL } from '../google-media'
 
-describe('Google Omni wire request', () => {
-  test('patches the actual AI SDK snake_case request before transport', async () => {
+describe('Google Veo wire request', () => {
+  test('uses the native AI SDK video endpoint and Veo parameters', async () => {
+    let requestUrl: string | undefined
     let requestBody: Record<string, unknown> | undefined
-    const fetchMock = jest.fn(async (_input: unknown, init?: RequestInit) => {
+    const fetchMock = jest.fn(async (input: unknown, init?: RequestInit) => {
+      requestUrl = String(input)
       requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
       return new Response(
         JSON.stringify({
-          error: {
-            code: 400,
-            message: 'stop after capturing request',
-            status: 'INVALID_ARGUMENT',
+          name: 'operations/video-1',
+          done: true,
+          response: {
+            generateVideoResponse: {
+              generatedSamples: [
+                {
+                  video: {
+                    uri: 'https://generativelanguage.googleapis.com/v1beta/files/video-1:download',
+                  },
+                },
+              ],
+            },
           },
         }),
-        {
-          status: 400,
-          headers: { 'content-type': 'application/json' },
-        },
+        { headers: { 'content-type': 'application/json' } },
       )
     })
     const provider = createGoogleGenerativeAI({
       apiKey: 'test-key',
-      fetch: createOmniFetch('16:9', 3, fetchMock as unknown as typeof fetch),
+      fetch: fetchMock as unknown as typeof fetch,
     })
 
-    await expect(
-      provider.interactions(GEMINI_OMNI_FLASH_MODEL).doGenerate({
-        prompt: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: 'A fox in snow' }],
-          },
-        ],
-        providerOptions: {
-          google: { store: false, responseModalities: ['video'] },
-        },
-      }),
-    ).rejects.toThrow('stop after capturing request')
+    const result = await provider.video(VEO_3_1_LITE_MODEL).doGenerate({
+      prompt: 'A fox in snow',
+      n: 1,
+      aspectRatio: '16:9',
+      resolution: '1280x720',
+      duration: 6,
+      fps: undefined,
+      seed: undefined,
+      image: {
+        type: 'file',
+        data: new Uint8Array(Buffer.from('image')),
+        mediaType: 'image/jpeg',
+      },
+      frameImages: undefined,
+      inputReferences: undefined,
+      generateAudio: true,
+      providerOptions: { google: { pollTimeoutMs: 160_000 } },
+      headers: {},
+    })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(requestBody).toEqual(
-      expect.objectContaining({
-        model: GEMINI_OMNI_FLASH_MODEL,
-        response_format: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'video',
-            aspect_ratio: '16:9',
-            duration: '3s',
-            delivery: 'inline',
-          }),
-        ]),
-      }),
+    expect(requestUrl).toBe(
+      `https://generativelanguage.googleapis.com/v1beta/models/${VEO_3_1_LITE_MODEL}:predictLongRunning`,
     )
-    expect(requestBody).not.toHaveProperty('responseFormat')
+    expect(requestBody).toEqual({
+      instances: [
+        {
+          prompt: 'A fox in snow',
+          image: {
+            bytesBase64Encoded: 'aW1hZ2U=',
+            mimeType: 'image/jpeg',
+          },
+        },
+      ],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: '16:9',
+        resolution: '720p',
+        durationSeconds: 6,
+      },
+    })
+    expect(result.videos).toEqual([
+      {
+        type: 'url',
+        url: 'https://generativelanguage.googleapis.com/v1beta/files/video-1:download?key=test-key',
+        mediaType: 'video/mp4',
+      },
+    ])
   })
 })

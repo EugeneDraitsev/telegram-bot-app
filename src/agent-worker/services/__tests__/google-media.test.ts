@@ -1,17 +1,20 @@
 const mockGenerateText = jest.fn()
+const mockGenerateVideo = jest.fn()
 
 jest.mock('ai', () => ({
+  experimental_generateVideo: (...args: unknown[]) =>
+    mockGenerateVideo(...args),
   generateText: (...args: unknown[]) => mockGenerateText(...args),
 }))
 
 import { type MediaBuffer, resetAiSdkProvidersForTests } from '@tg-bot/common'
 import {
-  GEMINI_OMNI_FLASH_MODEL,
   generateLyriaMusic,
-  generateOmniVideo,
+  generateVeoVideo,
   LYRIA_3_CLIP_MODEL,
   prepareLyriaMedia,
-  prepareOmniMedia,
+  prepareVeoMedia,
+  VEO_3_1_LITE_MODEL,
 } from '../google-media'
 
 const originalGeminiApiKey = process.env.GEMINI_API_KEY
@@ -19,12 +22,10 @@ const originalGoogleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
 function generatedVideo(value: string) {
   return {
-    files: [
-      {
-        mediaType: 'video/mp4',
-        uint8Array: new Uint8Array(Buffer.from(value)),
-      },
-    ],
+    video: {
+      mediaType: 'video/mp4',
+      uint8Array: new Uint8Array(Buffer.from(value)),
+    },
     providerMetadata: {},
   }
 }
@@ -57,6 +58,7 @@ describe('Google media through the AI SDK', () => {
     delete process.env.GOOGLE_GENERATIVE_AI_API_KEY
     resetAiSdkProvidersForTests()
     mockGenerateText.mockReset()
+    mockGenerateVideo.mockReset()
   })
 
   afterAll(() => {
@@ -73,58 +75,39 @@ describe('Google media through the AI SDK', () => {
     resetAiSdkProvidersForTests()
   })
 
-  test('generates an image-referenced Omni video', async () => {
-    mockGenerateText.mockResolvedValue(generatedVideo('generated-video'))
+  test('generates an image-to-video Veo clip with native audio', async () => {
+    mockGenerateVideo.mockResolvedValue(generatedVideo('generated-video'))
 
-    const result = await generateOmniVideo({
+    const result = await generateVeoVideo({
       prompt: 'A fox runs through neon snow',
       aspectRatio: '9:16',
-      durationSeconds: 5,
+      durationSeconds: 6,
       media: [
         {
           buffer: Buffer.from('image'),
           mimeType: 'image/png',
           mediaType: 'image',
         },
-        {
-          buffer: Buffer.from('history-image'),
-          mimeType: 'image/jpeg',
-          mediaType: 'image',
-          origin: 'history',
-        },
       ],
     })
 
-    expect(mockGenerateText).toHaveBeenCalledWith({
+    expect(mockGenerateVideo).toHaveBeenCalledWith({
       model: expect.objectContaining({
-        modelId: GEMINI_OMNI_FLASH_MODEL,
-        provider: 'google.generative-ai.interactions',
+        modelId: VEO_3_1_LITE_MODEL,
+        provider: 'google.generative-ai',
       }),
-      prompt: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'file',
-              data: Buffer.from('image'),
-              mediaType: 'image/png',
-            },
-            {
-              type: 'file',
-              data: Buffer.from('history-image'),
-              mediaType: 'image/jpeg',
-            },
-            {
-              type: 'text',
-              text: 'A fox runs through neon snow',
-            },
-          ],
-        },
-      ],
+      prompt: {
+        image: 'data:image/png;base64,aW1hZ2U=',
+        text: 'A fox runs through neon snow',
+      },
+      aspectRatio: '9:16',
+      resolution: '1280x720',
+      duration: 6,
+      generateAudio: true,
       maxRetries: 0,
-      timeout: 160_000,
+      abortSignal: expect.any(AbortSignal),
       providerOptions: {
-        google: { store: false, responseModalities: ['video'] },
+        google: { pollTimeoutMs: 160_000 },
       },
     })
     expect(result).toEqual({
@@ -133,47 +116,27 @@ describe('Google media through the AI SDK', () => {
     })
   })
 
-  test('passes an attached video as an Omni edit input', async () => {
-    mockGenerateText.mockResolvedValue(generatedVideo('edited-video'))
+  test('generates a text-only Veo clip', async () => {
+    mockGenerateVideo.mockResolvedValue(generatedVideo('generated-video'))
 
-    await generateOmniVideo({
-      prompt: 'Make it snow',
+    await generateVeoVideo({
+      prompt: 'Ocean at sunset',
       aspectRatio: '16:9',
-      durationSeconds: 3,
-      media: [
-        {
-          buffer: Buffer.from('source-video'),
-          mimeType: 'video/mp4',
-          mediaType: 'video',
-        },
-      ],
+      durationSeconds: 4,
     })
 
-    expect(mockGenerateText).toHaveBeenCalledWith(
+    expect(mockGenerateVideo).toHaveBeenCalledWith(
       expect.objectContaining({
-        timeout: 160_000,
-        prompt: [
-          {
-            role: 'user',
-            content: [
-              expect.objectContaining({
-                type: 'file',
-                mediaType: 'video/mp4',
-              }),
-              expect.objectContaining({
-                type: 'text',
-                text: expect.stringContaining('Make it snow'),
-              }),
-            ],
-          },
-        ],
+        prompt: 'Ocean at sunset',
+        aspectRatio: '16:9',
+        duration: 4,
       }),
     )
   })
 
-  test('strictly validates explicitly selected Omni media', () => {
+  test('strictly validates explicitly selected Veo media', () => {
     const largeImage: MediaBuffer = {
-      buffer: Buffer.alloc(8 * 1024 * 1024, 1),
+      buffer: Buffer.alloc(15 * 1024 * 1024, 1),
       mimeType: 'image/jpeg',
       mediaType: 'image',
     }
@@ -182,51 +145,48 @@ describe('Google media through the AI SDK', () => {
       mimeType: 'audio/mpeg',
       mediaType: 'audio',
     }
-    const largeVideo: MediaBuffer = {
-      buffer: Buffer.alloc(8 * 1024 * 1024, 2),
+    const video: MediaBuffer = {
+      buffer: Buffer.from('video'),
       mimeType: 'video/mp4',
       mediaType: 'video',
     }
-    const fiveImages: MediaBuffer[] = [1, 2, 3, 4, 5].map((index) => ({
+    const twoImages: MediaBuffer[] = [1, 2].map((index) => ({
       buffer: Buffer.from(`small-${index}`),
       mimeType: 'image/png',
       mediaType: 'image',
       origin: 'history',
     }))
 
-    expect(() => prepareOmniMedia([excludedAudio], true)).toThrow(
+    expect(() => prepareVeoMedia([excludedAudio], true)).toThrow(
       'does not support selected audio media',
     )
-    expect(() => prepareOmniMedia(fiveImages, true)).toThrow(
-      'accepts at most 4 selected media items',
+    expect(() => prepareVeoMedia([video], true)).toThrow(
+      'does not support selected video media',
     )
-    expect(() => prepareOmniMedia([largeImage, largeVideo], true)).toThrow(
+    expect(() => prepareVeoMedia(twoImages, true)).toThrow(
+      'accepts at most 1 selected media items',
+    )
+    expect(() => prepareVeoMedia([largeImage], true)).toThrow(
       'selected media exceeds the 14 MiB raw inline limit',
     )
   })
 
-  test('soft-bounds implicit Omni media to the newest items that fit', () => {
+  test('soft-bounds implicit Veo media to the newest image that fits', () => {
     const fiveImages: MediaBuffer[] = [1, 2, 3, 4, 5].map((index) => ({
       buffer: Buffer.from(`small-${index}`),
       mimeType: 'image/png',
       mediaType: 'image',
     }))
-    expect(prepareOmniMedia(fiveImages, false)).toEqual(fiveImages.slice(-4))
+    expect(prepareVeoMedia(fiveImages, false)).toEqual(fiveImages.slice(-1))
 
-    const oldestSmall = fiveImages[0]
-    const olderLarge: MediaBuffer = {
-      buffer: Buffer.alloc(8 * 1024 * 1024, 1),
+    const newestLarge: MediaBuffer = {
+      buffer: Buffer.alloc(15 * 1024 * 1024, 2),
       mimeType: 'image/jpeg',
       mediaType: 'image',
     }
-    const newestLarge: MediaBuffer = {
-      buffer: Buffer.alloc(8 * 1024 * 1024, 2),
-      mimeType: 'video/mp4',
-      mediaType: 'video',
-    }
-    expect(
-      prepareOmniMedia([oldestSmall, olderLarge, newestLarge], false),
-    ).toEqual([oldestSmall, newestLarge])
+    expect(prepareVeoMedia([fiveImages[0], newestLarge], false)).toEqual([
+      fiveImages[0],
+    ])
   })
 
   test('forwards selected current and history images and extracts Lyria audio', async () => {
@@ -336,13 +296,13 @@ describe('Google media through the AI SDK', () => {
     ).rejects.toThrow('Google media generation failed')
 
     process.env.GEMINI_API_KEY = 'test-key'
-    mockGenerateText.mockResolvedValue({ files: [], providerMetadata: {} })
+    mockGenerateVideo.mockResolvedValue(generatedVideo(''))
     await expect(
-      generateOmniVideo({
+      generateVeoVideo({
         prompt: 'Ocean at sunset',
         aspectRatio: '16:9',
-        durationSeconds: 5,
+        durationSeconds: 6,
       }),
-    ).rejects.toThrow('Gemini Omni returned no video output')
+    ).rejects.toThrow('Veo 3.1 Lite returned no video output')
   })
 })

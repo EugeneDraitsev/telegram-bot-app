@@ -1,10 +1,10 @@
 import { getErrorMessage } from '@tg-bot/common'
 import {
-  GEMINI_OMNI_FLASH_MODEL,
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
-  generateOmniVideo,
-  type OmniAspectRatio,
-  prepareOmniMedia,
+  generateVeoVideo,
+  prepareVeoMedia,
+  VEO_3_1_LITE_MODEL,
+  type VeoAspectRatio,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
 import {
@@ -16,21 +16,25 @@ import {
 import { getMediaIdsParameter, selectMediaForTool } from './media-selection'
 import { getMediaCaption } from './media-text'
 
-const DEFAULT_DURATION_SECONDS = 5
-const MIN_DURATION_SECONDS = 3
-const MAX_DURATION_SECONDS = 10
+const SUPPORTED_DURATION_SECONDS = [4, 6, 8] as const
+const DEFAULT_DURATION_SECONDS = 6
 
 function getDurationSeconds(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return DEFAULT_DURATION_SECONDS
   }
-  return Math.min(
-    MAX_DURATION_SECONDS,
-    Math.max(MIN_DURATION_SECONDS, Math.round(value)),
-  )
+
+  return SUPPORTED_DURATION_SECONDS.reduce((nearest, candidate) => {
+    const nearestDistance = Math.abs(nearest - value)
+    const candidateDistance = Math.abs(candidate - value)
+    return candidateDistance < nearestDistance ||
+      (candidateDistance === nearestDistance && candidate > nearest)
+      ? candidate
+      : nearest
+  })
 }
 
-function getAspectRatio(value: unknown): OmniAspectRatio {
+function getAspectRatio(value: unknown): VeoAspectRatio {
   return value === '16:9' ? '16:9' : '9:16'
 }
 
@@ -39,16 +43,16 @@ export const generateVideoTool: AgentTool = {
   timeoutMs: GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   declaration: {
     type: 'function',
-    name: 'generate_video_with_omni',
+    name: 'generate_video_with_veo',
     description:
-      'Generate a new 720p video with native synchronized audio, animate selected images, or edit selected video using Gemini Omni Flash. Call only for an explicit request to create, generate, animate, or edit video. Only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to their source messages and visible content; select only media the user actually refers to.',
+      'Generate a new 720p video with native synchronized audio or animate one selected image using Veo 3.1 Lite. Call only for an explicit request to create, generate, or animate video. Only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to their source messages and visible content; select only media the user actually refers to.',
     parameters: {
       type: 'object',
       properties: {
         prompt: {
           type: 'string',
           description:
-            'Detailed scene or edit instructions, including camera motion and desired dialogue, music, ambience, or silence. Preserve the user language and any exact spoken text.',
+            'Detailed scene instructions, including camera motion and desired dialogue, music, ambience, or silence. Preserve the user language and any exact spoken text.',
         },
         caption: {
           type: 'string',
@@ -57,10 +61,9 @@ export const generateVideoTool: AgentTool = {
         },
         durationSeconds: {
           type: 'number',
-          minimum: MIN_DURATION_SECONDS,
-          maximum: MAX_DURATION_SECONDS,
+          enum: [...SUPPORTED_DURATION_SECONDS],
           description:
-            'Requested output duration from 3 to 10 seconds. Default: 5.',
+            'Requested output duration: 4, 6, or 8 seconds. Default: 6.',
         },
         aspectRatio: {
           type: 'string',
@@ -68,7 +71,7 @@ export const generateVideoTool: AgentTool = {
           description:
             '9:16 for vertical/social video; 16:9 for landscape. Default: 9:16.',
         },
-        mediaIds: getMediaIdsParameter('image/video conditioning inputs'),
+        mediaIds: getMediaIdsParameter('a single image conditioning input'),
       },
       required: ['prompt', 'caption'],
     },
@@ -85,9 +88,8 @@ export const generateVideoTool: AgentTool = {
       const aspectRatio = getAspectRatio(args.aspectRatio)
       const mediaSelection = selectMediaForTool(mediaBuffers, args.mediaIds, [
         'image',
-        'video',
       ])
-      const selectedMedia = prepareOmniMedia(
+      const selectedMedia = prepareVeoMedia(
         mediaSelection.media,
         mediaSelection.explicit,
       )
@@ -95,10 +97,10 @@ export const generateVideoTool: AgentTool = {
       const result = await trackToolModelCall(
         {
           name: 'video_generation',
-          model: `google/${GEMINI_OMNI_FLASH_MODEL}`,
+          model: `google/${VEO_3_1_LITE_MODEL}`,
         },
         () =>
-          generateOmniVideo({
+          generateVeoVideo({
             prompt,
             durationSeconds,
             aspectRatio,
@@ -110,7 +112,7 @@ export const generateVideoTool: AgentTool = {
         type: 'video',
         buffer: result.buffer,
         mimeType: result.mimeType,
-        fileName: 'omni-video.mp4',
+        fileName: 'veo-lite-video.mp4',
         caption,
       })
       return caption ? `Generated video: ${caption}` : 'Generated video'

@@ -68,14 +68,14 @@ batches, partial batch responses, and separate dead-letter queues.
 
 ## Agent media
 
-The agent supports image generation plus these Google Interactions models:
+The agent supports image generation plus these Google media models:
 
-- `/omni` — `gemini-omni-flash-preview`, 720p video with native audio;
+- `/omni` — `veo-3.1-lite-generate-preview`, 6-second 720p video with native audio;
 - `/lyria` — `lyria-3-clip-preview`, a 30-second music clip;
 - `/lyriapro` — `lyria-3-pro-preview`, a full-length structured song.
 
 The same features are available to natural-language requests through
-`generate_video_with_omni` and `generate_music_with_lyria`.
+`generate_video_with_veo` and `generate_music_with_lyria`.
 
 Current, replied, album, and recent-history media is described to the routing
 model as structured `MESSAGE_CONTEXT` and `MEDIA` blocks. Every item has a
@@ -84,10 +84,11 @@ tools default to current/replied/album media; the model must select exact ids
 when the user refers to particular history items. An empty id list means
 text-only generation.
 
-Omni accepts images and video, with at most four items and 14 MiB of raw inline
-media. Lyria accepts up to ten images within the same budget. Explicit invalid
-selections fail; implicit selections keep the newest supported items that fit.
-Only one generated media result is created per agent request.
+Veo 3.1 Lite accepts one starting image up to 14 MiB and generates 4-, 6-, or
+8-second video; the bot defaults to 6 seconds. Lyria accepts up to ten images
+within the same budget. Explicit invalid selections fail; implicit selections
+keep the newest supported items that fit. Only one generated media result is
+created per agent request.
 
 Generated video is sent through Telegram's video player with a document
 fallback. Lyria Clip uses a voice message; Lyria Pro uses the music player with
@@ -96,10 +97,9 @@ titles, and requested lyrics are delivered separately from the binary payload
 when needed.
 
 Google calls use the Vercel AI SDK and `GEMINI_API_KEY`
-(`GOOGLE_GENERATIVE_AI_API_KEY` also works). A narrow request adapter adds the
-video response format missing from `@ai-sdk/google`; Lyria audio is extracted
-from the raw Interactions response. The project does not require Vertex AI or
-`@google/genai`.
+(`GOOGLE_GENERATIVE_AI_API_KEY` also works). Veo uses the SDK's native video
+model support; Lyria audio is extracted from the raw Interactions response. The
+project does not require Vertex AI or `@google/genai`.
 
 ## Local development
 

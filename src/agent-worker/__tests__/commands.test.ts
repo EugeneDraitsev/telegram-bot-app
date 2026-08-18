@@ -30,7 +30,7 @@ describe('prepareAgentCommandMessage', () => {
   test.each([
     [
       'omni',
-      'Generate or edit a video for this request with the generate_video_with_omni tool. Default to a 5-second vertical video with native audio unless the user specifies another 3-10 second duration or aspect ratio',
+      'Generate or animate a video for this request with the generate_video_with_veo tool. Default to a 6-second vertical video with native audio unless the user specifies a supported 4, 6, or 8 second duration or another aspect ratio',
     ],
     [
       'lyria',
