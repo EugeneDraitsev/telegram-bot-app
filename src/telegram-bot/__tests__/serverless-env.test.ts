@@ -58,7 +58,7 @@ describe('agentic chat configuration infrastructure', () => {
     expect(ingressRole).not.toContain('dynamodb:UpdateItem')
   })
 
-  test('gives the owner admin API only its two DynamoDB tables', () => {
+  test('gives the Telegram session API only its two DynamoDB tables', () => {
     expect(serverlessConfig).toContain('telegram-admin-api:')
     expect(serverlessConfig).toContain(
       `TELEGRAM_OIDC_CLIENT_ID: \${env:TELEGRAM_OIDC_CLIENT_ID}`,
@@ -66,18 +66,36 @@ describe('agentic chat configuration infrastructure', () => {
     expect(serverlessConfig).toContain(
       `ADMIN_SESSION_SECRET: \${env:ADMIN_SESSION_SECRET}`,
     )
+    expect(serverlessConfig).toContain('path: /chats/{chatId}/access')
+    expect(serverlessConfig).toContain(
+      'CHAT_USER_STATISTICS_USER_ID_INDEX_NAME:',
+    )
 
     const adminRole = iamRoles
       .split('  TelegramAdminApiRole:')[1]
       ?.split('  TelegramReplyWorkerRole:')[0]
 
     expect(adminRole).toContain('dynamodb:GetItem')
+    expect(adminRole).toContain('dynamodb:BatchGetItem')
     expect(adminRole).toContain('dynamodb:Scan')
     expect(adminRole).toContain('dynamodb:UpdateItem')
+    expect(adminRole).toContain('dynamodb:Query')
     expect(adminRole).toContain(`\${self:custom.chatConfigurationTableName}`)
     expect(adminRole).toContain(`\${self:custom.chatUserStatisticsTableName}`)
+    expect(adminRole).toContain(
+      `/index/\${self:custom.chatUserStatisticsUserIdIndexName}`,
+    )
     expect(adminRole).not.toContain('sqs:')
     expect(adminRole).not.toContain('lambda:')
+  })
+
+  test('keeps the user chat index keys-only', () => {
+    const statisticsTable = resources
+      .split('  ChatUserStatisticsTable:')[1]
+      ?.split('  ChatConfigurationTable:')[0]
+
+    expect(statisticsTable).toContain('ProjectionType: KEYS_ONLY')
+    expect(statisticsTable).not.toContain('NonKeyAttributes:')
   })
 
   test('alarms on fail-closed configuration reads without runtime metric calls', () => {

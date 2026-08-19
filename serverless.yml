@@ -28,6 +28,7 @@ provider:
     BOT_OWNER_ID: ${env:BOT_OWNER_ID}
     CHAT_CONFIGURATION_TABLE_NAME: ${self:custom.chatConfigurationTableName}
     CHAT_USER_STATISTICS_TABLE_NAME: ${self:custom.runtimeChatUserStatisticsTableNameByStage.${sls:stage}, self:custom.chatUserStatisticsTableName}
+    CHAT_USER_STATISTICS_USER_ID_INDEX_NAME: ${self:custom.chatUserStatisticsUserIdIndexName}
     CHAT_EVENTS_TABLE_NAME: ${self:custom.runtimeChatEventsTableNameByStage.${sls:stage}, self:custom.chatEventsTableName}
     SHARP_RENDERER_FUNCTION_NAME: ${self:service}-${sls:stage}-sharp-renderer
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
@@ -69,10 +70,20 @@ functions:
     environment:
       TELEGRAM_OIDC_CLIENT_ID: ${env:TELEGRAM_OIDC_CLIENT_ID}
       ADMIN_SESSION_SECRET: ${env:ADMIN_SESSION_SECRET}
+      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
     events:
+      - http:
+          path: /session
+          method: post
       - http:
           path: /admin/session
           method: post
+      - http:
+          path: /chats
+          method: get
+      - http:
+          path: /chats/{chatId}/access
+          method: get
       - http:
           path: /admin/chats
           method: get
@@ -286,6 +297,7 @@ custom:
   websocketConnectionsTableName: ${self:service}-${sls:stage}-websocket-connections
   websocketConnectionsChatIdIndexName: ${self:service}-${sls:stage}-websocket-connections-chat-id
   chatUserStatisticsTableName: ${param:chatUserStatisticsTableName}
+  chatUserStatisticsUserIdIndexName: ${self:service}-${sls:stage}-chat-user-statistics-user-id
   chatEventsTableName: ${param:chatEventsTableName}
   chatConfigurationTableName: ${param:chatConfigurationTableName}
   frontendBaseUrl: ${env:FRONTEND_BASE_URL, 'https://telegram-bot-ui.vercel.app'}

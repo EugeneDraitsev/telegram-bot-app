@@ -19,9 +19,10 @@ const sign = (chatId: string, expiresAt: number) =>
 export function createStatisticsAccessToken(
   chatId: string | number,
   now = Date.now(),
+  ttlSeconds = TOKEN_TTL_SECONDS,
 ): string {
   const normalizedChatId = String(chatId)
-  const expiresAt = Math.floor(now / 1000) + TOKEN_TTL_SECONDS
+  const expiresAt = Math.floor(now / 1000) + ttlSeconds
   const signature = sign(normalizedChatId, expiresAt).toString('base64url')
 
   return `${TOKEN_VERSION}.${expiresAt}.${signature}`

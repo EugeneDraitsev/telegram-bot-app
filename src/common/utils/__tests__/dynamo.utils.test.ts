@@ -6,6 +6,7 @@ import {
 
 import {
   DYNAMO_GET_TIMEOUT_MS,
+  dynamoBatchGetAll,
   dynamoDeleteItem,
   dynamoGetItem,
   dynamoPutItem,
@@ -50,6 +51,54 @@ describe('dynamo utils', () => {
 
     const options = {} as PutCommandInput
     expect(await dynamoQuery(options)).toEqual('query response!!')
+  })
+
+  test('dynamoBatchGetAll chunks requests at the DynamoDB limit', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockResolvedValueOnce({ Responses: { table: [{ id: 1 }] } } as never)
+      .mockResolvedValueOnce({ Responses: { table: [{ id: 101 }] } } as never)
+    const keys = Array.from({ length: 101 }, (_, index) => ({ id: index + 1 }))
+
+    await expect(dynamoBatchGetAll('table', keys)).resolves.toEqual([
+      { id: 1 },
+      { id: 101 },
+    ])
+    expect(
+      (
+        sendSpy.mock.calls[0][0].input as {
+          RequestItems: { table: { Keys: unknown[] } }
+        }
+      ).RequestItems.table.Keys,
+    ).toHaveLength(100)
+    expect(
+      (
+        sendSpy.mock.calls[1][0].input as {
+          RequestItems: { table: { Keys: unknown[] } }
+        }
+      ).RequestItems.table.Keys,
+    ).toEqual([{ id: 101 }])
+  })
+
+  test('dynamoBatchGetAll retries unprocessed keys', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockResolvedValueOnce({
+        Responses: { table: [{ id: 1 }] },
+        UnprocessedKeys: { table: { Keys: [{ id: 2 }] } },
+      } as never)
+      .mockResolvedValueOnce({ Responses: { table: [{ id: 2 }] } } as never)
+
+    await expect(
+      dynamoBatchGetAll('table', [{ id: 1 }, { id: 2 }]),
+    ).resolves.toEqual([{ id: 1 }, { id: 2 }])
+    expect(
+      (
+        sendSpy.mock.calls[1][0].input as {
+          RequestItems: { table: { Keys: unknown[] } }
+        }
+      ).RequestItems.table.Keys,
+    ).toEqual([{ id: 2 }])
   })
 
   test('dynamoQueryAll should collect all paginated query results', async () => {

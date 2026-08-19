@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
+  BatchGetCommand,
   DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
@@ -50,6 +51,11 @@ const docClient = DynamoDBDocumentClient.from(client, {
 })
 
 export const DYNAMO_GET_TIMEOUT_MS = 1_000
+const DYNAMO_BATCH_GET_MAX_KEYS = 100
+const DYNAMO_BATCH_GET_MAX_ATTEMPTS = 5
+const DYNAMO_BATCH_GET_RETRY_DELAY_MS = 25
+
+type DynamoDocumentKey = Record<string, string | number>
 
 export const dynamoQuery = (
   params: QueryCommandInput,
@@ -65,6 +71,48 @@ export const dynamoGetItem = (
   return docClient.send(command, {
     abortSignal: AbortSignal.timeout(DYNAMO_GET_TIMEOUT_MS),
   })
+}
+
+export const dynamoBatchGetAll = async <T = Record<string, unknown>>(
+  tableName: string,
+  keys: DynamoDocumentKey[],
+): Promise<T[]> => {
+  const results: T[] = []
+
+  for (
+    let offset = 0;
+    offset < keys.length;
+    offset += DYNAMO_BATCH_GET_MAX_KEYS
+  ) {
+    let pendingKeys = keys.slice(offset, offset + DYNAMO_BATCH_GET_MAX_KEYS)
+
+    for (
+      let attempt = 0;
+      attempt < DYNAMO_BATCH_GET_MAX_ATTEMPTS;
+      attempt += 1
+    ) {
+      const response = await docClient.send(
+        new BatchGetCommand({
+          RequestItems: { [tableName]: { Keys: pendingKeys } },
+        }),
+      )
+      results.push(...((response.Responses?.[tableName] as T[]) ?? []))
+      pendingKeys =
+        (response.UnprocessedKeys?.[tableName]?.Keys as
+          | DynamoDocumentKey[]
+          | undefined) ?? []
+
+      if (pendingKeys.length === 0) break
+      if (attempt === DYNAMO_BATCH_GET_MAX_ATTEMPTS - 1) {
+        throw new Error(`Could not read all DynamoDB items from ${tableName}`)
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, DYNAMO_BATCH_GET_RETRY_DELAY_MS * 2 ** attempt),
+      )
+    }
+  }
+
+  return results
 }
 
 export const dynamoQueryAll = async <T = Record<string, unknown>>(
