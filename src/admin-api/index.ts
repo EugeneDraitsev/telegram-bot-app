@@ -12,8 +12,8 @@ import {
   dynamoScanAll,
   logger,
   setChatConfigurationFlags,
+  TtlCache,
 } from '@tg-bot/common'
-import { TtlCache } from '../common/ttl-cache'
 import {
   ADMIN_SESSION_TTL_SECONDS,
   AdminAuthError,
