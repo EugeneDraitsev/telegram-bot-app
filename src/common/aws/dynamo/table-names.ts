@@ -1,5 +1,7 @@
 export const CHAT_USER_STATISTICS_TABLE_NAME =
   process.env.CHAT_USER_STATISTICS_TABLE_NAME || 'chat-user-statistics'
+export const CHAT_USER_STATISTICS_USER_ID_INDEX_NAME =
+  process.env.CHAT_USER_STATISTICS_USER_ID_INDEX_NAME || 'userId-chatId-index'
 
 export const CHAT_EVENTS_TABLE_NAME =
   process.env.CHAT_EVENTS_TABLE_NAME || 'chat-events'

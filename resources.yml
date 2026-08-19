@@ -265,6 +265,19 @@ Resources:
           KeyType: HASH
         - AttributeName: userId
           KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: ${self:custom.chatUserStatisticsUserIdIndexName}
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: chatId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - chatInfo
+              - updatedAt
+              - msgCount
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
         AttributeName: ttl

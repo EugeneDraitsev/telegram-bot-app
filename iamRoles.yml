@@ -57,8 +57,10 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:Scan
+                  - dynamodb:Query
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}/index/${self:custom.chatUserStatisticsUserIdIndexName}
 
   TelegramReplyWorkerRole:
     Type: AWS::IAM::Role

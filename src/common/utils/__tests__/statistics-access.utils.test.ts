@@ -30,6 +30,17 @@ describe('statistics access tokens', () => {
     ).toBe(false)
   })
 
+  test('supports a shorter login-issued lifetime', () => {
+    const token = createStatisticsAccessToken('-123', NOW, 15 * 60)
+
+    expect(verifyStatisticsAccessToken('-123', token, NOW + 14 * 60_000)).toBe(
+      true,
+    )
+    expect(verifyStatisticsAccessToken('-123', token, NOW + 15 * 60_000)).toBe(
+      false,
+    )
+  })
+
   test.each([undefined, '', 'v1.invalid.signature', 'v2.123.signature'])(
     'rejects malformed token %p',
     (token) => {

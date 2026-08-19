@@ -8,7 +8,10 @@ import {
   dynamoQueryAll,
   dynamoUpdateItem,
 } from '../../utils'
-import { CHAT_USER_STATISTICS_TABLE_NAME } from './table-names'
+import {
+  CHAT_USER_STATISTICS_TABLE_NAME,
+  CHAT_USER_STATISTICS_USER_ID_INDEX_NAME,
+} from './table-names'
 
 export interface ChatStat {
   chatId: string
@@ -19,6 +22,13 @@ export interface ChatStat {
 export interface FormattedChatStatistics {
   text: string
   richMarkdown: string
+}
+
+export interface UserChatSummary {
+  chatId: string
+  chatInfo?: Chat
+  lastActivityAt?: number
+  messageCount: number
 }
 
 const RICH_STATISTICS_ROW_LIMIT = 100
@@ -80,6 +90,55 @@ const getStoredUserStatistic = async (
   })
 
   return toStoredUserStat(result.Items?.[0])
+}
+
+export const hasStoredChatUser = async (
+  chatId: number | string,
+  userId: number,
+): Promise<boolean> => Boolean(await getStoredUserStatistic(chatId, userId))
+
+export const hasStoredChat = async (
+  chatId: number | string,
+): Promise<boolean> => {
+  const result = await dynamoQuery({
+    TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+    ExpressionAttributeValues: { ':chatId': String(chatId) },
+    KeyConditionExpression: 'chatId = :chatId',
+    Limit: 1,
+    ProjectionExpression: 'chatId',
+  })
+  return Boolean(result.Items?.length)
+}
+
+export const getStoredUserChats = async (
+  userId: number,
+): Promise<UserChatSummary[]> => {
+  const items = await dynamoQueryAll({
+    TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+    IndexName: CHAT_USER_STATISTICS_USER_ID_INDEX_NAME,
+    ExpressionAttributeValues: { ':userId': userId },
+    KeyConditionExpression: 'userId = :userId',
+  })
+
+  return items
+    .flatMap((item) => {
+      const stored = toStoredUserStat(item)
+      return stored
+        ? [
+            {
+              chatId: stored.chatId,
+              chatInfo: stored.chatInfo,
+              lastActivityAt: stored.updatedAt,
+              messageCount: stored.msgCount,
+            } satisfies UserChatSummary,
+          ]
+        : []
+    })
+    .sort(
+      (left, right) =>
+        (right.lastActivityAt ?? 0) - (left.lastActivityAt ?? 0) ||
+        left.chatId.localeCompare(right.chatId),
+    )
 }
 
 const getStoredUserStatistics = async (

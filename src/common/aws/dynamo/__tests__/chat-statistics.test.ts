@@ -4,6 +4,9 @@ import * as utils from '../../../utils'
 import {
   buildFormattedChatStatisticsMessages,
   getStoredChatStatistics,
+  getStoredUserChats,
+  hasStoredChat,
+  hasStoredChatUser,
   setUserOptOut,
 } from '../chat-statistics'
 
@@ -116,5 +119,48 @@ describe('per-user chat statistics storage', () => {
       ],
     })
     expect(querySpy).not.toHaveBeenCalled()
+  })
+
+  test('lists chats through the user ID index', async () => {
+    queryAllSpy.mockResolvedValue([
+      {
+        chatId: '-100',
+        userId: 7,
+        msgCount: 8,
+        username: 'alice',
+        chatInfo: chat,
+        updatedAt: 10,
+      },
+    ])
+
+    await expect(getStoredUserChats(7)).resolves.toEqual([
+      {
+        chatId: '-100',
+        chatInfo: chat,
+        lastActivityAt: 10,
+        messageCount: 8,
+      },
+    ])
+    expect(queryAllSpy).toHaveBeenCalledWith({
+      TableName: 'chat-user-statistics',
+      IndexName: 'userId-chatId-index',
+      ExpressionAttributeValues: { ':userId': 7 },
+      KeyConditionExpression: 'userId = :userId',
+    })
+  })
+
+  test('checks exact user access and chat existence with bounded queries', async () => {
+    querySpy
+      .mockResolvedValueOnce({
+        Items: [{ chatId: '-100', userId: 7, msgCount: 8, username: 'alice' }],
+      } as never)
+      .mockResolvedValueOnce({ Items: [{ chatId: '-100' }] } as never)
+
+    await expect(hasStoredChatUser(-100, 7)).resolves.toBe(true)
+    await expect(hasStoredChat(-100)).resolves.toBe(true)
+    expect(querySpy.mock.calls[1]?.[0]).toMatchObject({
+      Limit: 1,
+      ProjectionExpression: 'chatId',
+    })
   })
 })
