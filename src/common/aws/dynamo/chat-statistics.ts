@@ -46,6 +46,14 @@ interface StoredUserStat {
   updatedAt?: number
 }
 
+interface StoredUserChatProjection {
+  chatId: string
+  userId: number
+  msgCount: number
+  chatInfo?: Chat
+  updatedAt?: number
+}
+
 const toStoredUserStat = (value: unknown): StoredUserStat | undefined => {
   const item = value as Partial<StoredUserStat> | null
   if (
@@ -65,6 +73,29 @@ const toStoredUserStat = (value: unknown): StoredUserStat | undefined => {
     msgCount: item.msgCount,
     username: item.username,
     optedOut: item.optedOut,
+    chatInfo: item.chatInfo,
+    updatedAt: item.updatedAt,
+  }
+}
+
+const toStoredUserChatProjection = (
+  value: unknown,
+): StoredUserChatProjection | undefined => {
+  const item = value as Partial<StoredUserChatProjection> | null
+  if (
+    typeof item !== 'object' ||
+    item === null ||
+    typeof item.chatId !== 'string' ||
+    typeof item.userId !== 'number' ||
+    typeof item.msgCount !== 'number'
+  ) {
+    return undefined
+  }
+
+  return {
+    chatId: item.chatId,
+    userId: item.userId,
+    msgCount: item.msgCount,
     chatInfo: item.chatInfo,
     updatedAt: item.updatedAt,
   }
@@ -122,7 +153,10 @@ export const getStoredUserChats = async (
 
   return items
     .flatMap((item) => {
-      const stored = toStoredUserStat(item)
+      // The user-ID index intentionally omits username and optedOut. Opt-out is
+      // only a /all mention preference; an observed row still grants its owner
+      // access to that chat's statistics.
+      const stored = toStoredUserChatProjection(item)
       return stored
         ? [
             {

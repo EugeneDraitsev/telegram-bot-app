@@ -534,19 +534,22 @@ export async function handleAdminApi(
     }
 
     const identity = await requireSession(event)
+    if (resource.startsWith('/admin/')) {
+      const admin = requireAdmin(identity)
+      if (method === 'GET' && resource === '/admin/chats') {
+        return await listChats(event, admin)
+      }
+      if (method === 'PATCH' && resource === '/admin/chats/{chatId}') {
+        return await updateChat(event, admin)
+      }
+      return json(404, { error: 'Not found' })
+    }
+
     if (method === 'GET' && resource === '/chats') {
       return await listUserChats(identity)
     }
     if (method === 'GET' && resource === '/chats/{chatId}/access') {
       return await createChatAccess(event, identity)
-    }
-
-    const admin = requireAdmin(identity)
-    if (method === 'GET' && resource === '/admin/chats') {
-      return await listChats(event, admin)
-    }
-    if (method === 'PATCH' && resource === '/admin/chats/{chatId}') {
-      return await updateChat(event, admin)
     }
     return json(404, { error: 'Not found' })
   } catch (error) {

@@ -243,6 +243,19 @@ describe('admin API chat directory', () => {
     expect(response.statusCode).toBe(403)
   })
 
+  test('protects every route under the admin prefix before dispatch', async () => {
+    const token = await signSession('7')
+    const response = await handleAdminApi(
+      event({
+        path: '/admin/future-route',
+        resource: '/admin/future-route',
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    )
+
+    expect(response.statusCode).toBe(403)
+  })
+
   test('issues a short-lived token only for a stored user-chat pair', async () => {
     const token = await signSession('7')
     const accessSpy = jest

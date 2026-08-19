@@ -127,7 +127,6 @@ describe('per-user chat statistics storage', () => {
         chatId: '-100',
         userId: 7,
         msgCount: 8,
-        username: 'alice',
         chatInfo: chat,
         updatedAt: 10,
       },
