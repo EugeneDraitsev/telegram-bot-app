@@ -51,6 +51,8 @@ jobs:
           OPENAI_API_KEY: ${{secrets.OPENAI_API_KEY}}
           AGENTIC_BOT_ENABLED: ${{vars.AGENTIC_BOT_ENABLED || 'true'}}
           BOT_OWNER_ID: ${{vars.BOT_OWNER_ID}}
+          TELEGRAM_OIDC_CLIENT_ID: ${{vars.TELEGRAM_OIDC_CLIENT_ID}}
+          ADMIN_SESSION_SECRET: ${{secrets.ADMIN_SESSION_SECRET}}
           WORKER_FAILURE_ALERT_EMAIL: ${{vars.WORKER_FAILURE_ALERT_EMAIL || 'ddrrai@gmail.com'}}
           UPSTASH_REDIS_URL: ${{secrets.UPSTASH_REDIS_URL}}
           UPSTASH_REDIS_TOKEN: ${{secrets.UPSTASH_REDIS_TOKEN}}

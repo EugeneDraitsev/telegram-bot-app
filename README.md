@@ -59,6 +59,8 @@ while different chats run in parallel.
 - `websockets` serves authenticated live statistics.
 - `sharp-renderer` renders PNG cards and charts.
 - `currency-scheduler` posts scheduled currency digests.
+- `admin-api` verifies Telegram OIDC logins and exposes owner-only chat
+  configuration reads and writes.
 
 DynamoDB chat configuration controls AI access. Ingress checks it before
 enqueueing agent work, and the agent worker checks it again before processing.
@@ -114,6 +116,25 @@ FIFO deduplication ids include a nonce, and Redis worker leases are bypassed.
 This lets the same Telegram `message_id` run repeatedly without reading the
 production chat-configuration table. The framework alone sets `IS_OFFLINE`;
 deployed Lambdas never receive it. Configuration writes are not emulated.
+
+## Owner admin API
+
+The admin dashboard uses Telegram's authorization-code OIDC flow. The UI
+exchanges the one-time code server-side, then this service verifies the signed
+Telegram ID token and requires its user id to equal `BOT_OWNER_ID`. Successful
+logins receive a separate 12-hour admin session; AWS credentials are never sent
+to the UI.
+
+Configure these deployment values:
+
+- repository variable `TELEGRAM_OIDC_CLIENT_ID` from BotFather;
+- repository secret `ADMIN_SESSION_SECRET` with at least 32 random characters;
+- the existing repository variable `BOT_OWNER_ID` with the sole allowed
+  Telegram user id.
+
+The Lambda role can only scan the chat configuration/statistics tables and
+read or update the configuration table. It has no Redis, queue, model, or bot
+token access.
 
 Stop with `Ctrl+C` so Serverless can remove ElasticMQ cleanly.
 

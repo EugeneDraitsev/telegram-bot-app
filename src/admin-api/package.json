@@ -1,0 +1,11 @@
+{
+  "name": "@tg-bot/admin-api",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "sideEffects": false,
+  "dependencies": {
+    "@tg-bot/common": "workspace:*",
+    "jose": "^6.2.9"
+  }
+}

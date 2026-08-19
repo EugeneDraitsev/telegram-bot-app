@@ -37,6 +37,29 @@ Resources:
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatConfigurationTableName}
 
+  TelegramAdminApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
+      Policies:
+        - PolicyName: administer-chat-configuration
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatConfigurationTableName}
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                Resource:
+                  - arn:aws:dynamodb:*:*:table/${self:custom.chatUserStatisticsTableName}
+
   TelegramReplyWorkerRole:
     Type: AWS::IAM::Role
     Properties:

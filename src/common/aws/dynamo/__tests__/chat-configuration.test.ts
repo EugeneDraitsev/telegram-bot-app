@@ -8,6 +8,7 @@ import {
   isAiAllowedChat,
   isBotOwner,
   setChatAiAllowed,
+  setChatConfigurationFlags,
   toggleAgenticChat,
 } from '../chat-configuration'
 
@@ -342,5 +343,130 @@ describe('toggleAgenticChat', () => {
       enabled: false,
       error: 'Could not update chat configuration; please try again',
     })
+  })
+})
+
+describe('setChatConfigurationFlags', () => {
+  test('sets explicit flags and records both audit timestamps', async () => {
+    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456)
+    getSpy.mockResolvedValue({
+      Item: {
+        chatId: '123',
+        aiAllowed: false,
+        agenticEnabled: false,
+        version: 2,
+      },
+    } as never)
+    updateSpy.mockResolvedValue({
+      Attributes: {
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: true,
+        version: 3,
+        allowUpdatedAt: 123456,
+        allowUpdatedBy: 7,
+        toggledAt: 123456,
+        toggledBy: 7,
+      },
+    } as never)
+
+    await expect(
+      setChatConfigurationFlags(
+        123,
+        { aiAllowed: true, agenticEnabled: true },
+        7,
+        2,
+      ),
+    ).resolves.toEqual({
+      configuration: expect.objectContaining({
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: true,
+        version: 3,
+      }),
+    })
+    dateNowSpy.mockRestore()
+
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ConditionExpression:
+          'attribute_not_exists(#version) OR #version = :expectedVersion',
+        ExpressionAttributeValues: expect.objectContaining({
+          ':aiAllowed': true,
+          ':agenticEnabled': true,
+          ':expectedVersion': 2,
+          ':nextVersion': 3,
+          ':updatedBy': 7,
+        }),
+        ReturnValues: 'ALL_NEW',
+      }),
+    )
+  })
+
+  test('disallowing AI also disables the agentic flag', async () => {
+    getSpy.mockResolvedValue({
+      Item: {
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: true,
+        version: 4,
+      },
+    } as never)
+    updateSpy.mockResolvedValue({
+      Attributes: {
+        chatId: '123',
+        aiAllowed: false,
+        agenticEnabled: false,
+        version: 5,
+      },
+    } as never)
+
+    await setChatConfigurationFlags(123, { aiAllowed: false }, 7, 4)
+
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ExpressionAttributeValues: expect.objectContaining({
+          ':aiAllowed': false,
+          ':agenticEnabled': false,
+        }),
+      }),
+    )
+  })
+
+  test('rejects stale UI writes before updating DynamoDB', async () => {
+    getSpy.mockResolvedValue({
+      Item: {
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: false,
+        version: 5,
+      },
+    } as never)
+
+    await expect(
+      setChatConfigurationFlags(123, { agenticEnabled: true }, 7, 4),
+    ).resolves.toEqual({
+      error: 'Chat configuration changed; refresh and try again',
+      conflict: true,
+    })
+    expect(updateSpy).not.toHaveBeenCalled()
+  })
+
+  test('does not enable agentic mode outside the owner allowlist', async () => {
+    getSpy.mockResolvedValue({
+      Item: {
+        chatId: '123',
+        aiAllowed: false,
+        agenticEnabled: false,
+        version: 1,
+      },
+    } as never)
+
+    await expect(
+      setChatConfigurationFlags(123, { agenticEnabled: true }, 7, 1),
+    ).resolves.toEqual({
+      error: 'Allow AI access before enabling the agentic bot',
+    })
+    expect(updateSpy).not.toHaveBeenCalled()
   })
 })

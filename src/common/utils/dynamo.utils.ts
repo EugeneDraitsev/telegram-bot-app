@@ -5,6 +5,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   TransactWriteCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb'
@@ -17,6 +18,7 @@ import type {
   PutCommandOutput,
   QueryCommandInput,
   QueryCommandOutput,
+  ScanCommandInput,
   TransactWriteCommandInput,
   TransactWriteCommandOutput,
   UpdateCommandInput,
@@ -85,6 +87,29 @@ export const dynamoQueryAll = async <T = Record<string, unknown>>(
     }
 
     exclusiveStartKey = queryResults.LastEvaluatedKey
+  }
+}
+
+export const dynamoScanAll = async <T = Record<string, unknown>>(
+  inputParams: ScanCommandInput,
+): Promise<T[]> => {
+  const results: T[] = []
+  let exclusiveStartKey = inputParams.ExclusiveStartKey
+
+  while (true) {
+    const scanResults = await docClient.send(
+      new ScanCommand({
+        ...inputParams,
+        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+      }),
+    )
+    results.push(...((scanResults.Items as T[]) ?? []))
+
+    if (!scanResults.LastEvaluatedKey) {
+      return results
+    }
+
+    exclusiveStartKey = scanResults.LastEvaluatedKey
   }
 }
 
