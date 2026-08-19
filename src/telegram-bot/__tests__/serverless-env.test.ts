@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs'
 
 const serverlessConfig = readFileSync('serverless.yml', 'utf8')
 const deployWorkflow = readFileSync('.github/workflows/deploy.yml', 'utf8')
+const pullRequestWorkflow = readFileSync(
+  '.github/workflows/pull-request.yml',
+  'utf8',
+)
 const iamRoles = readFileSync('iamRoles.yml', 'utf8')
 const resources = readFileSync('resources.yml', 'utf8')
 describe('agentic chat configuration infrastructure', () => {
@@ -29,6 +33,15 @@ describe('agentic chat configuration infrastructure', () => {
   test('passes the configurable worker alert email into production packaging', () => {
     expect(deployWorkflow).toContain('WORKER_FAILURE_ALERT_EMAIL:')
     expect(deployWorkflow).toContain('vars.WORKER_FAILURE_ALERT_EMAIL')
+  })
+
+  test('passes admin API configuration into pull request packaging', () => {
+    expect(pullRequestWorkflow).toContain(
+      `TELEGRAM_OIDC_CLIENT_ID: \${{vars.TELEGRAM_OIDC_CLIENT_ID}}`,
+    )
+    expect(pullRequestWorkflow).toContain(
+      'ADMIN_SESSION_SECRET: ci-placeholder',
+    )
   })
 
   test('still wires the Telegram token into ingress', () => {

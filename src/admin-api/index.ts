@@ -169,9 +169,16 @@ async function requireAdmin(
 ): Promise<AdminIdentity> {
   const authorization =
     event.headers.authorization ?? event.headers.Authorization ?? ''
-  const match = /^Bearer\s+(.+)$/i.exec(authorization)
-  if (!match) throw new AdminAuthError('Admin session is missing')
-  return verifyAdminSession(match[1])
+  const bearerPrefix = 'bearer '
+  if (
+    authorization.slice(0, bearerPrefix.length).toLowerCase() !== bearerPrefix
+  ) {
+    throw new AdminAuthError('Admin session is missing')
+  }
+
+  const token = authorization.slice(bearerPrefix.length).trim()
+  if (!token) throw new AdminAuthError('Admin session is missing')
+  return verifyAdminSession(token)
 }
 
 async function createSession(

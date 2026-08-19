@@ -44,6 +44,8 @@ jobs:
           GEMINI_API_KEY: ci-placeholder
           AGENTIC_BOT_ENABLED: "false"
           BOT_OWNER_ID: "1"
+          TELEGRAM_OIDC_CLIENT_ID: ${{vars.TELEGRAM_OIDC_CLIENT_ID}}
+          ADMIN_SESSION_SECRET: ci-placeholder-admin-session-secret-32-plus
           WORKER_FAILURE_ALERT_EMAIL: ci@example.invalid
           UPSTASH_REDIS_URL: https://ci.invalid
           UPSTASH_REDIS_TOKEN: ci-placeholder
