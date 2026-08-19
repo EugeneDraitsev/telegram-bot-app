@@ -9,6 +9,8 @@ export const CHAT_CONFIGURATION_CACHE_TTL_MS = 5_000
 const TOGGLE_MAX_ATTEMPTS = 3
 const CHAT_CONFIGURATION_UPDATE_ERROR =
   'Could not update chat configuration; please try again'
+const CHAT_CONFIGURATION_CONFLICT_ERROR =
+  'Chat configuration changed; refresh and try again'
 
 const configurationCache = new TtlCache<string, ChatConfiguration>(
   CHAT_CONFIGURATION_CACHE_TTL_MS,
@@ -31,6 +33,12 @@ export interface ChatConfiguration {
 export interface ChatConfigurationUpdateResult {
   configuration?: ChatConfiguration
   error?: string
+  conflict?: boolean
+}
+
+export interface ChatConfigurationFlagsPatch {
+  aiAllowed?: boolean
+  agenticEnabled?: boolean
 }
 
 export function clearChatConfigurationCache(): void {
@@ -184,6 +192,113 @@ export async function setChatAiAllowed(
     )
     return { error: CHAT_CONFIGURATION_UPDATE_ERROR }
   }
+}
+
+/**
+ * Set owner-controlled chat flags to explicit values for the admin API.
+ * The write is optimistic and preserves the same invariant as /disallowai:
+ * a disallowed chat can never remain agentic-enabled.
+ */
+export async function setChatConfigurationFlags(
+  chatId: string | number,
+  patch: ChatConfigurationFlagsPatch,
+  updatedBy: number,
+  expectedVersion?: number,
+): Promise<ChatConfigurationUpdateResult> {
+  if (
+    typeof patch.aiAllowed !== 'boolean' &&
+    typeof patch.agenticEnabled !== 'boolean'
+  ) {
+    return { error: 'At least one chat configuration flag is required' }
+  }
+
+  if (patch.agenticEnabled === true && !isAgenticBotGloballyEnabled()) {
+    return { error: 'AI is globally disabled' }
+  }
+
+  const cacheKey = String(chatId)
+  for (let attempt = 0; attempt < TOGGLE_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const current = await readChatConfiguration(chatId)
+      if (
+        expectedVersion !== undefined &&
+        current.version !== expectedVersion
+      ) {
+        return { error: CHAT_CONFIGURATION_CONFLICT_ERROR, conflict: true }
+      }
+
+      const aiAllowed = patch.aiAllowed ?? current.aiAllowed
+      if (patch.agenticEnabled === true && !aiAllowed) {
+        return {
+          error: 'Allow AI access before enabling the agentic bot',
+        }
+      }
+
+      const agenticEnabled = aiAllowed
+        ? (patch.agenticEnabled ?? current.agenticEnabled)
+        : false
+      const aiAllowedChanged = aiAllowed !== current.aiAllowed
+      const agenticEnabledChanged = agenticEnabled !== current.agenticEnabled
+
+      if (!aiAllowedChanged && !agenticEnabledChanged) {
+        configurationCache.set(cacheKey, current)
+        return { configuration: current }
+      }
+
+      const now = Date.now()
+      const updateExpressionParts = [
+        'aiAllowed = :aiAllowed',
+        'agenticEnabled = :agenticEnabled',
+        '#version = :nextVersion',
+      ]
+      const expressionAttributeValues: Record<string, boolean | number> = {
+        ':aiAllowed': aiAllowed,
+        ':agenticEnabled': agenticEnabled,
+        ':expectedVersion': current.version,
+        ':nextVersion': current.version + 1,
+      }
+
+      if (aiAllowedChanged) {
+        updateExpressionParts.push(
+          'allowUpdatedAt = :now',
+          'allowUpdatedBy = :updatedBy',
+        )
+      }
+      if (agenticEnabledChanged) {
+        updateExpressionParts.push('toggledAt = :now', 'toggledBy = :updatedBy')
+      }
+      if (aiAllowedChanged || agenticEnabledChanged) {
+        expressionAttributeValues[':now'] = now
+        expressionAttributeValues[':updatedBy'] = updatedBy
+      }
+
+      const result = await dynamoUpdateItem({
+        TableName: CHAT_CONFIGURATION_TABLE_NAME,
+        Key: { chatId: cacheKey },
+        UpdateExpression: `SET ${updateExpressionParts.join(', ')}`,
+        ConditionExpression:
+          'attribute_not_exists(#version) OR #version = :expectedVersion',
+        ExpressionAttributeNames: { '#version': 'version' },
+        ExpressionAttributeValues: expressionAttributeValues,
+        ReturnValues: 'ALL_NEW',
+      })
+      const configuration = normalizeChatConfiguration(
+        chatId,
+        result.Attributes as Partial<ChatConfiguration> | undefined,
+      )
+      configurationCache.set(cacheKey, configuration)
+      return { configuration }
+    } catch (error) {
+      if (isConditionalCheckFailure(error)) {
+        continue
+      }
+
+      logger.error({ chatId, patch, error }, 'chat_configuration.admin_failed')
+      return { error: CHAT_CONFIGURATION_UPDATE_ERROR }
+    }
+  }
+
+  return { error: CHAT_CONFIGURATION_CONFLICT_ERROR, conflict: true }
 }
 
 /**

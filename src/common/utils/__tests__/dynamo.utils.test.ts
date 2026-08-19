@@ -11,6 +11,7 @@ import {
   dynamoPutItem,
   dynamoQuery,
   dynamoQueryAll,
+  dynamoScanAll,
   dynamoUpdateItem,
 } from '..'
 
@@ -63,6 +64,27 @@ describe('dynamo utils', () => {
       .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 2 }] }))
 
     expect(await dynamoQueryAll({ TableName: 'table' })).toEqual([
+      { id: 1 },
+      { id: 2 },
+    ])
+    expect(
+      (sendSpy.mock.calls[1][0].input as { ExclusiveStartKey?: unknown })
+        .ExclusiveStartKey,
+    ).toEqual({ id: 1 })
+  })
+
+  test('dynamoScanAll should collect all paginated scan results', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Items: [{ id: 1 }],
+          LastEvaluatedKey: { id: 1 },
+        }),
+      )
+      .mockImplementationOnce(() => Promise.resolve({ Items: [{ id: 2 }] }))
+
+    expect(await dynamoScanAll({ TableName: 'table' })).toEqual([
       { id: 1 },
       { id: 2 },
     ])

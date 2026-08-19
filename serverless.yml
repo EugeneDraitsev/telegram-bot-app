@@ -59,6 +59,27 @@ functions:
           path: /
           method: post
 
+  telegram-admin-api:
+    handler: src/admin-api/index.default
+    role:
+      Fn::GetAtt:
+        - TelegramAdminApiRole
+        - Arn
+    timeout: 15
+    environment:
+      TELEGRAM_OIDC_CLIENT_ID: ${env:TELEGRAM_OIDC_CLIENT_ID}
+      ADMIN_SESSION_SECRET: ${env:ADMIN_SESSION_SECRET}
+    events:
+      - http:
+          path: /admin/session
+          method: post
+      - http:
+          path: /admin/chats
+          method: get
+      - http:
+          path: /admin/chats/{chatId}
+          method: patch
+
   telegram-reply-worker:
     handler: src/telegram-bot/telegram-reply-worker.default
     role:

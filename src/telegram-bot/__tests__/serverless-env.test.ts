@@ -38,11 +38,33 @@ describe('agentic chat configuration infrastructure', () => {
   test('lets ingress read only the configuration table before enqueue', () => {
     const ingressRole = iamRoles
       .split('  TelegramIngressRole:')[1]
-      ?.split('  TelegramReplyWorkerRole:')[0]
+      ?.split('  TelegramAdminApiRole:')[0]
 
     expect(ingressRole).toContain('dynamodb:GetItem')
     expect(ingressRole).toContain(`\${self:custom.chatConfigurationTableName}`)
     expect(ingressRole).not.toContain('dynamodb:UpdateItem')
+  })
+
+  test('gives the owner admin API only its two DynamoDB tables', () => {
+    expect(serverlessConfig).toContain('telegram-admin-api:')
+    expect(serverlessConfig).toContain(
+      `TELEGRAM_OIDC_CLIENT_ID: \${env:TELEGRAM_OIDC_CLIENT_ID}`,
+    )
+    expect(serverlessConfig).toContain(
+      `ADMIN_SESSION_SECRET: \${env:ADMIN_SESSION_SECRET}`,
+    )
+
+    const adminRole = iamRoles
+      .split('  TelegramAdminApiRole:')[1]
+      ?.split('  TelegramReplyWorkerRole:')[0]
+
+    expect(adminRole).toContain('dynamodb:GetItem')
+    expect(adminRole).toContain('dynamodb:Scan')
+    expect(adminRole).toContain('dynamodb:UpdateItem')
+    expect(adminRole).toContain(`\${self:custom.chatConfigurationTableName}`)
+    expect(adminRole).toContain(`\${self:custom.chatUserStatisticsTableName}`)
+    expect(adminRole).not.toContain('sqs:')
+    expect(adminRole).not.toContain('lambda:')
   })
 
   test('alarms on fail-closed configuration reads without runtime metric calls', () => {
