@@ -273,11 +273,7 @@ Resources:
             - AttributeName: chatId
               KeyType: RANGE
           Projection:
-            ProjectionType: INCLUDE
-            NonKeyAttributes:
-              - chatInfo
-              - updatedAt
-              - msgCount
+            ProjectionType: KEYS_ONLY
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
         AttributeName: ttl

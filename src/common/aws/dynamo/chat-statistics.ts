@@ -4,6 +4,7 @@ import { logger } from '../../logger'
 import type { UserStat } from '../../types'
 import {
   dedent,
+  dynamoBatchGetAll,
   dynamoQuery,
   dynamoQueryAll,
   dynamoUpdateItem,
@@ -46,12 +47,9 @@ interface StoredUserStat {
   updatedAt?: number
 }
 
-interface StoredUserChatProjection {
+type StoredUserChatKey = {
   chatId: string
   userId: number
-  msgCount: number
-  chatInfo?: Chat
-  updatedAt?: number
 }
 
 const toStoredUserStat = (value: unknown): StoredUserStat | undefined => {
@@ -78,16 +76,13 @@ const toStoredUserStat = (value: unknown): StoredUserStat | undefined => {
   }
 }
 
-const toStoredUserChatProjection = (
-  value: unknown,
-): StoredUserChatProjection | undefined => {
-  const item = value as Partial<StoredUserChatProjection> | null
+const toStoredUserChatKey = (value: unknown): StoredUserChatKey | undefined => {
+  const item = value as Partial<StoredUserChatKey> | null
   if (
     typeof item !== 'object' ||
     item === null ||
     typeof item.chatId !== 'string' ||
-    typeof item.userId !== 'number' ||
-    typeof item.msgCount !== 'number'
+    typeof item.userId !== 'number'
   ) {
     return undefined
   }
@@ -95,9 +90,6 @@ const toStoredUserChatProjection = (
   return {
     chatId: item.chatId,
     userId: item.userId,
-    msgCount: item.msgCount,
-    chatInfo: item.chatInfo,
-    updatedAt: item.updatedAt,
   }
 }
 
@@ -144,19 +136,24 @@ export const hasStoredChat = async (
 export const getStoredUserChats = async (
   userId: number,
 ): Promise<UserChatSummary[]> => {
-  const items = await dynamoQueryAll({
+  const indexItems = await dynamoQueryAll({
     TableName: CHAT_USER_STATISTICS_TABLE_NAME,
     IndexName: CHAT_USER_STATISTICS_USER_ID_INDEX_NAME,
     ExpressionAttributeValues: { ':userId': userId },
     KeyConditionExpression: 'userId = :userId',
+    ProjectionExpression: 'chatId, userId',
   })
+  const keys = indexItems.flatMap((item) => {
+    const key = toStoredUserChatKey(item)
+    return key?.userId === userId ? [key] : []
+  })
+  const items = await dynamoBatchGetAll(CHAT_USER_STATISTICS_TABLE_NAME, keys)
 
   return items
     .flatMap((item) => {
-      // The user-ID index intentionally omits username and optedOut. Opt-out is
-      // only a /all mention preference; an observed row still grants its owner
-      // access to that chat's statistics.
-      const stored = toStoredUserChatProjection(item)
+      // Opt-out is only a /all mention preference; an observed row still
+      // grants its owner access to that chat's statistics.
+      const stored = toStoredUserStat(item)
       return stored
         ? [
             {

@@ -284,9 +284,19 @@ describe('admin API chat directory', () => {
     }
   })
 
-  test('caches the expensive chat directory scan for one minute', async () => {
+  test('caches admin scans and invalidates configuration rows after a write', async () => {
     const token = await signSession('42', 'Owner')
     const scanSpy = jest.spyOn(common, 'dynamoScanAll').mockResolvedValue([])
+    const updateSpy = jest
+      .spyOn(common, 'setChatConfigurationFlags')
+      .mockResolvedValue({
+        configuration: {
+          chatId: '-1001',
+          aiAllowed: true,
+          agenticEnabled: false,
+          version: 1,
+        },
+      })
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(10_000)
     const authenticatedEvent = event({
       headers: { authorization: `Bearer ${token}` },
@@ -295,19 +305,70 @@ describe('admin API chat directory', () => {
     try {
       expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
       expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
+      const scansFor = (tableName: string) =>
+        scanSpy.mock.calls.filter(([input]) => input.TableName === tableName)
+      expect(scansFor(common.CHAT_CONFIGURATION_TABLE_NAME)).toHaveLength(1)
+      expect(scansFor(common.CHAT_USER_STATISTICS_TABLE_NAME)).toHaveLength(1)
+
       expect(
-        scanSpy.mock.calls.filter(
-          ([input]) =>
-            input.TableName === common.CHAT_USER_STATISTICS_TABLE_NAME,
-        ),
-      ).toHaveLength(1)
+        (
+          await handleAdminApi(
+            event({
+              httpMethod: 'PATCH',
+              path: '/admin/chats/-1001',
+              resource: '/admin/chats/{chatId}',
+              pathParameters: { chatId: '-1001' },
+              headers: { authorization: `Bearer ${token}` },
+              body: JSON.stringify({ aiAllowed: true, version: 0 }),
+            }),
+          )
+        ).statusCode,
+      ).toBe(200)
+      expect(updateSpy).toHaveBeenCalled()
+      expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
+      expect(scansFor(common.CHAT_CONFIGURATION_TABLE_NAME)).toHaveLength(2)
+      expect(scansFor(common.CHAT_USER_STATISTICS_TABLE_NAME)).toHaveLength(1)
 
       nowSpy.mockReturnValue(70_001)
       expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
+      expect(scansFor(common.CHAT_CONFIGURATION_TABLE_NAME)).toHaveLength(3)
+      expect(scansFor(common.CHAT_USER_STATISTICS_TABLE_NAME)).toHaveLength(2)
+    } finally {
+      jest.restoreAllMocks()
+    }
+  })
+
+  test('invalidates cached configuration rows after a write conflict', async () => {
+    const token = await signSession('42', 'Owner')
+    const scanSpy = jest.spyOn(common, 'dynamoScanAll').mockResolvedValue([])
+    jest.spyOn(common, 'setChatConfigurationFlags').mockResolvedValue({
+      conflict: true,
+      error: 'Chat configuration changed; refresh and try again',
+    })
+    const authenticatedEvent = event({
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    try {
+      expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
+      expect(
+        (
+          await handleAdminApi(
+            event({
+              httpMethod: 'PATCH',
+              path: '/admin/chats/-1001',
+              resource: '/admin/chats/{chatId}',
+              pathParameters: { chatId: '-1001' },
+              headers: { authorization: `Bearer ${token}` },
+              body: JSON.stringify({ aiAllowed: true, version: 0 }),
+            }),
+          )
+        ).statusCode,
+      ).toBe(409)
+      expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
       expect(
         scanSpy.mock.calls.filter(
-          ([input]) =>
-            input.TableName === common.CHAT_USER_STATISTICS_TABLE_NAME,
+          ([input]) => input.TableName === common.CHAT_CONFIGURATION_TABLE_NAME,
         ),
       ).toHaveLength(2)
     } finally {

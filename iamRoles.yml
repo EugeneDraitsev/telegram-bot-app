@@ -56,6 +56,7 @@ Resources:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatConfigurationTableName}
               - Effect: Allow
                 Action:
+                  - dynamodb:BatchGetItem
                   - dynamodb:Scan
                   - dynamodb:Query
                 Resource:

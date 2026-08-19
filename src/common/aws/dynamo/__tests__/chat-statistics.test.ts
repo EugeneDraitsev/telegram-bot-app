@@ -12,15 +12,18 @@ import {
 
 const querySpy = jest.spyOn(utils, 'dynamoQuery')
 const queryAllSpy = jest.spyOn(utils, 'dynamoQueryAll')
+const batchGetAllSpy = jest.spyOn(utils, 'dynamoBatchGetAll')
 const putSpy = jest.spyOn(utils, 'dynamoPutItem')
 const updateSpy = jest.spyOn(utils, 'dynamoUpdateItem')
 
 beforeEach(() => {
   querySpy.mockReset()
   queryAllSpy.mockReset()
+  batchGetAllSpy.mockReset()
   putSpy.mockReset()
   updateSpy.mockReset()
   queryAllSpy.mockResolvedValue([])
+  batchGetAllSpy.mockResolvedValue([])
   putSpy.mockResolvedValue({} as never)
   updateSpy.mockResolvedValue({} as never)
 })
@@ -126,7 +129,14 @@ describe('per-user chat statistics storage', () => {
       {
         chatId: '-100',
         userId: 7,
+      },
+    ])
+    batchGetAllSpy.mockResolvedValue([
+      {
+        chatId: '-100',
+        userId: 7,
         msgCount: 8,
+        username: 'alice',
         chatInfo: chat,
         updatedAt: 10,
       },
@@ -145,7 +155,11 @@ describe('per-user chat statistics storage', () => {
       IndexName: 'userId-chatId-index',
       ExpressionAttributeValues: { ':userId': 7 },
       KeyConditionExpression: 'userId = :userId',
+      ProjectionExpression: 'chatId, userId',
     })
+    expect(batchGetAllSpy).toHaveBeenCalledWith('chat-user-statistics', [
+      { chatId: '-100', userId: 7 },
+    ])
   })
 
   test('checks exact user access and chat existence with bounded queries', async () => {

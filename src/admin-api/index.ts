@@ -33,8 +33,9 @@ interface StoredChatDirectoryRow {
   updatedAt?: unknown
 }
 
-const CHAT_DIRECTORY_CACHE_TTL_MS = 60_000
+const ADMIN_CHAT_CACHE_TTL_MS = 60_000
 const CHAT_DIRECTORY_CACHE_KEY = 'chat-directory'
+const CHAT_CONFIGURATIONS_CACHE_KEY = 'chat-configurations'
 const CHAT_ACCESS_TOKEN_TTL_SECONDS = 15 * 60
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 100
@@ -42,7 +43,11 @@ const PAGE_SIZES = new Set([10, 20, 50, 100])
 const chatDirectoryCache = new TtlCache<
   typeof CHAT_DIRECTORY_CACHE_KEY,
   StoredChatDirectoryRow[]
->(CHAT_DIRECTORY_CACHE_TTL_MS, 1)
+>(ADMIN_CHAT_CACHE_TTL_MS, 1)
+const chatConfigurationsCache = new TtlCache<
+  typeof CHAT_CONFIGURATIONS_CACHE_KEY,
+  unknown[]
+>(ADMIN_CHAT_CACHE_TTL_MS, 1)
 
 export type AdminChatSortKey = 'name' | 'lastActivityAt' | 'aiAccess' | 'agent'
 export type SortDirection = 'asc' | 'desc'
@@ -382,7 +387,7 @@ async function listChats(
   admin: SessionIdentity,
 ): Promise<APIGatewayProxyResult> {
   const [configurations, directoryRows] = await Promise.all([
-    dynamoScanAll({ TableName: CHAT_CONFIGURATION_TABLE_NAME }),
+    loadChatConfigurations(),
     loadChatDirectoryRows(),
   ])
   const page = paginateAdminChats(
@@ -393,6 +398,17 @@ async function listChats(
     admin,
     ...page,
   })
+}
+
+async function loadChatConfigurations(): Promise<unknown[]> {
+  const cached = chatConfigurationsCache.get(CHAT_CONFIGURATIONS_CACHE_KEY)
+  if (cached) return cached
+
+  const rows = await dynamoScanAll({
+    TableName: CHAT_CONFIGURATION_TABLE_NAME,
+  })
+  chatConfigurationsCache.set(CHAT_CONFIGURATIONS_CACHE_KEY, rows)
+  return rows
 }
 
 async function loadChatDirectoryRows(): Promise<StoredChatDirectoryRow[]> {
@@ -512,10 +528,14 @@ async function updateChat(
     input.version,
   )
   if (!result.configuration) {
+    if (result.conflict) {
+      chatConfigurationsCache.delete(CHAT_CONFIGURATIONS_CACHE_KEY)
+    }
     return json(result.conflict ? 409 : 400, {
       error: result.error ?? 'Could not update chat configuration',
     })
   }
+  chatConfigurationsCache.delete(CHAT_CONFIGURATIONS_CACHE_KEY)
   return json(200, { configuration: result.configuration })
 }
 

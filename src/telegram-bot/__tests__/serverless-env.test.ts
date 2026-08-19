@@ -76,6 +76,7 @@ describe('agentic chat configuration infrastructure', () => {
       ?.split('  TelegramReplyWorkerRole:')[0]
 
     expect(adminRole).toContain('dynamodb:GetItem')
+    expect(adminRole).toContain('dynamodb:BatchGetItem')
     expect(adminRole).toContain('dynamodb:Scan')
     expect(adminRole).toContain('dynamodb:UpdateItem')
     expect(adminRole).toContain('dynamodb:Query')
@@ -86,6 +87,15 @@ describe('agentic chat configuration infrastructure', () => {
     )
     expect(adminRole).not.toContain('sqs:')
     expect(adminRole).not.toContain('lambda:')
+  })
+
+  test('keeps the user chat index keys-only', () => {
+    const statisticsTable = resources
+      .split('  ChatUserStatisticsTable:')[1]
+      ?.split('  ChatConfigurationTable:')[0]
+
+    expect(statisticsTable).toContain('ProjectionType: KEYS_ONLY')
+    expect(statisticsTable).not.toContain('NonKeyAttributes:')
   })
 
   test('alarms on fail-closed configuration reads without runtime metric calls', () => {
