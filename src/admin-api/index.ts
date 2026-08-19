@@ -13,6 +13,7 @@ import {
   logger,
   setChatConfigurationFlags,
 } from '@tg-bot/common'
+import { TtlCache } from '../common/ttl-cache'
 import {
   ADMIN_SESSION_TTL_SECONDS,
   AdminAuthError,
@@ -26,6 +27,13 @@ interface StoredChatDirectoryRow {
   chatInfo?: unknown
   updatedAt?: unknown
 }
+
+const CHAT_DIRECTORY_CACHE_TTL_MS = 60_000
+const CHAT_DIRECTORY_CACHE_KEY = 'chat-directory'
+const chatDirectoryCache = new TtlCache<
+  typeof CHAT_DIRECTORY_CACHE_KEY,
+  StoredChatDirectoryRow[]
+>(CHAT_DIRECTORY_CACHE_TTL_MS, 1)
 
 interface TelegramChatInfo {
   id?: number
@@ -207,15 +215,24 @@ async function createSession(
 async function listChats(admin: AdminIdentity): Promise<APIGatewayProxyResult> {
   const [configurations, directoryRows] = await Promise.all([
     dynamoScanAll({ TableName: CHAT_CONFIGURATION_TABLE_NAME }),
-    dynamoScanAll<StoredChatDirectoryRow>({
-      TableName: CHAT_USER_STATISTICS_TABLE_NAME,
-      ProjectionExpression: 'chatId, chatInfo, updatedAt',
-    }),
+    loadChatDirectoryRows(),
   ])
   return json(200, {
     admin,
     chats: mergeAdminChats(configurations, directoryRows),
   })
+}
+
+async function loadChatDirectoryRows(): Promise<StoredChatDirectoryRow[]> {
+  const cached = chatDirectoryCache.get(CHAT_DIRECTORY_CACHE_KEY)
+  if (cached) return cached
+
+  const rows = await dynamoScanAll<StoredChatDirectoryRow>({
+    TableName: CHAT_USER_STATISTICS_TABLE_NAME,
+    ProjectionExpression: 'chatId, chatInfo, updatedAt',
+  })
+  chatDirectoryCache.set(CHAT_DIRECTORY_CACHE_KEY, rows)
+  return rows
 }
 
 function parsePatchBody(value: unknown):

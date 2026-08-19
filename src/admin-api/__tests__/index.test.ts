@@ -1,5 +1,7 @@
+import { SignJWT } from 'jose'
 import type { APIGatewayProxyEvent } from 'aws-lambda'
 
+import * as common from '@tg-bot/common'
 import { handleAdminApi, mergeAdminChats } from '../index'
 
 const event = (overrides: Partial<APIGatewayProxyEvent> = {}) =>
@@ -75,6 +77,56 @@ describe('admin API chat directory', () => {
     expect(JSON.parse(response.body)).toEqual({
       error: 'Admin session is missing',
     })
+  })
+
+  test('caches the expensive chat directory scan for one minute', async () => {
+    const originalOwnerId = process.env.BOT_OWNER_ID
+    const originalSessionSecret = process.env.ADMIN_SESSION_SECRET
+    process.env.BOT_OWNER_ID = '42'
+    process.env.ADMIN_SESSION_SECRET = 'x'.repeat(48)
+
+    const token = await new SignJWT({ name: 'Owner' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuer('telegram-bot-admin')
+      .setAudience('telegram-bot-admin-api')
+      .setSubject('42')
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(new TextEncoder().encode(process.env.ADMIN_SESSION_SECRET))
+    const scanSpy = jest.spyOn(common, 'dynamoScanAll').mockResolvedValue([])
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(10_000)
+    const authenticatedEvent = event({
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    try {
+      expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
+      expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
+      expect(
+        scanSpy.mock.calls.filter(
+          ([input]) =>
+            input.TableName === common.CHAT_USER_STATISTICS_TABLE_NAME,
+        ),
+      ).toHaveLength(1)
+
+      nowSpy.mockReturnValue(70_001)
+      expect((await handleAdminApi(authenticatedEvent)).statusCode).toBe(200)
+      expect(
+        scanSpy.mock.calls.filter(
+          ([input]) =>
+            input.TableName === common.CHAT_USER_STATISTICS_TABLE_NAME,
+        ),
+      ).toHaveLength(2)
+    } finally {
+      jest.restoreAllMocks()
+      if (originalOwnerId === undefined) delete process.env.BOT_OWNER_ID
+      else process.env.BOT_OWNER_ID = originalOwnerId
+      if (originalSessionSecret === undefined) {
+        delete process.env.ADMIN_SESSION_SECRET
+      } else {
+        process.env.ADMIN_SESSION_SECRET = originalSessionSecret
+      }
+    }
   })
 
   test('validates session exchange payloads before Telegram verification', async () => {
