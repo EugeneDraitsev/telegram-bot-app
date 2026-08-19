@@ -106,8 +106,9 @@ export async function createAdminSessionFromTelegram(
 export async function verifyAdminSession(
   token: string,
 ): Promise<AdminIdentity> {
+  const secret = getAdminSessionSecret()
   try {
-    const { payload } = await jwtVerify(token, getAdminSessionSecret(), {
+    const { payload } = await jwtVerify(token, secret, {
       issuer: ADMIN_SESSION_ISSUER,
       audience: ADMIN_SESSION_AUDIENCE,
       algorithms: ['HS256'],

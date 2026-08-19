@@ -33,6 +33,15 @@ describe('admin session verification', () => {
     })
   })
 
+  test('does not mask invalid session secret configuration as a 401', async () => {
+    process.env.ADMIN_SESSION_SECRET = 'too-short'
+
+    await expect(verifyAdminSession('not-a-jwt')).rejects.toMatchObject({
+      name: 'Error',
+      message: 'ADMIN_SESSION_SECRET must contain at least 32 characters',
+    })
+  })
+
   test('accepts a valid session only for the current bot owner', async () => {
     const secret = new TextEncoder().encode(
       process.env.ADMIN_SESSION_SECRET ?? '',
