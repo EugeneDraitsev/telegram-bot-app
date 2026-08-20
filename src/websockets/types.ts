@@ -24,7 +24,7 @@ export type StatsPayload = {
   >
   usersData: Array<User & { messages: number }>
   historicalData: UserStat[]
-  messageCounts: MessageCounts
+  messageCounts?: MessageCounts
 }
 
 export type MessageCounts = Record<MessageCountRange, MessageCountPoint[]>

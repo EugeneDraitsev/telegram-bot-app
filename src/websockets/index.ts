@@ -182,19 +182,32 @@ const messageCountsCache = new TtlCache<string, MessageCounts>(
   MESSAGE_COUNTS_CACHE_TTL_MS,
 )
 
-const getMessageCounts = async (chatId: string): Promise<MessageCounts> => {
+// Best effort: the chart is the least important part of the snapshot, and it
+// is the widest surface for a failure — at least 73 count queries. One of them
+// throwing must not cost the viewer the user breakdown and the history too.
+const getMessageCounts = async (
+  chatId: string,
+): Promise<MessageCounts | undefined> => {
   const cached = messageCountsCache.get(chatId)
   if (cached) return cached
 
-  const ranges = await Promise.all(
-    MESSAGE_COUNT_RANGES.map(
-      async (range) =>
-        [range, await getChatMessageCounts(chatId, range)] as const,
-    ),
-  )
-  const counts = Object.fromEntries(ranges) as MessageCounts
-  messageCountsCache.set(chatId, counts)
-  return counts
+  try {
+    const ranges = await Promise.all(
+      MESSAGE_COUNT_RANGES.map(
+        async (range) =>
+          [range, await getChatMessageCounts(chatId, range)] as const,
+      ),
+    )
+    const counts = Object.fromEntries(ranges) as MessageCounts
+    messageCountsCache.set(chatId, counts)
+    return counts
+  } catch (error) {
+    logger.error(
+      { chatId, err: error },
+      'websocket.stats.message_counts_failed',
+    )
+    return undefined
+  }
 }
 
 const getStatsPayload = async (chatId: string): Promise<StatsPayload> => {

@@ -163,22 +163,42 @@ describe('getMessageCountBuckets', () => {
   test.each([
     ['week', 7],
     ['month', 30],
-  ] as const)('covers %s in whole days', (range, length) => {
+  ] as const)('covers %s in local calendar days', (range, length) => {
     const buckets = getMessageCountBuckets(range, now)
 
     expect(buckets).toHaveLength(length)
-    expect(iso(buckets[length - 1].from)).toBe('2026-08-20T00:00:00.000Z')
+    // Local midnight in Stockholm, i.e. 22:00Z the evening before in summer,
+    // rather than 00:00Z which would drag two hours of today into yesterday.
+    expect(iso(buckets[length - 1].from)).toBe('2026-08-19T22:00:00.000Z')
     expect(buckets[0].to).toBe(buckets[1].from)
+  })
+
+  test.each([
+    ['spring forward', Date.UTC(2026, 2, 30, 12), 23],
+    ['autumn back', Date.UTC(2026, 9, 26, 12), 25],
+  ])('keeps a %s day its real length', (_label, at, hours) => {
+    const buckets = getMessageCountBuckets('week', at)
+    const transition = buckets[buckets.length - 2]
+
+    expect((transition.to - transition.from) / (60 * 60 * 1000)).toBe(hours)
+  })
+
+  test('cuts months on local midnight too', () => {
+    const buckets = getMessageCountBuckets('year', now)
+
+    // Winter months start at 23:00Z, summer months at 22:00Z.
+    expect(iso(buckets[4].from)).toBe('2025-12-31T23:00:00.000Z')
+    expect(iso(buckets[11].from)).toBe('2026-07-31T22:00:00.000Z')
   })
 
   test('covers a year in calendar months, including the year boundary', () => {
     const buckets = getMessageCountBuckets('year', now)
 
     expect(buckets).toHaveLength(12)
-    expect(iso(buckets[0].from)).toBe('2025-09-01T00:00:00.000Z')
-    expect(iso(buckets[11].from)).toBe('2026-08-01T00:00:00.000Z')
+    expect(iso(buckets[0].from)).toBe('2025-08-31T22:00:00.000Z')
+    expect(iso(buckets[11].from)).toBe('2026-07-31T22:00:00.000Z')
     // February keeps its own length rather than a fixed 30 days.
-    const february = buckets.find((b) => iso(b.from).startsWith('2026-02'))
+    const february = buckets.find((b) => iso(b.from).startsWith('2026-01-31'))
     expect(february).toBeDefined()
     expect(
       ((february?.to ?? 0) - (february?.from ?? 0)) / (24 * 60 * 60 * 1000),

@@ -7,6 +7,7 @@ import {
 import {
   DYNAMO_GET_TIMEOUT_MS,
   dynamoBatchGetAll,
+  dynamoCountAll,
   dynamoDeleteItem,
   dynamoGetItem,
   dynamoPutItem,
@@ -120,6 +121,39 @@ describe('dynamo utils', () => {
       (sendSpy.mock.calls[1][0].input as { ExclusiveStartKey?: unknown })
         .ExclusiveStartKey,
     ).toEqual({ id: 1 })
+  })
+
+  test('dynamoCountAll sums Count across pages and never asks for items', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() =>
+        Promise.resolve({ Count: 900, LastEvaluatedKey: { date: 42 } }),
+      )
+      .mockImplementationOnce(() => Promise.resolve({ Count: 77 }))
+
+    expect(await dynamoCountAll({ TableName: 'table' })).toBe(977)
+    expect(sendSpy).toHaveBeenCalledTimes(2)
+
+    const first = sendSpy.mock.calls[0][0].input as {
+      Select?: string
+      ExclusiveStartKey?: unknown
+    }
+    const second = sendSpy.mock.calls[1][0].input as {
+      Select?: string
+      ExclusiveStartKey?: unknown
+    }
+    expect(first.Select).toBe('COUNT')
+    expect(first.ExclusiveStartKey).toBeUndefined()
+    expect(second.Select).toBe('COUNT')
+    expect(second.ExclusiveStartKey).toEqual({ date: 42 })
+  })
+
+  test('dynamoCountAll treats a page without Count as zero', async () => {
+    jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() => Promise.resolve({}))
+
+    expect(await dynamoCountAll({ TableName: 'table' })).toBe(0)
   })
 
   test('dynamoScanAll should collect all paginated scan results', async () => {

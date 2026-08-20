@@ -1,5 +1,6 @@
 import type { Chat, User } from 'grammy/types'
 
+import { STATISTICS_TIME_ZONE } from '../../constants'
 import { logger } from '../../logger'
 import type { ChatEvent } from '../../types'
 import {
@@ -182,44 +183,92 @@ interface MessageCountBucket {
 
 const HOUR = 60 * 60 * 1000
 
-const startOfUtcHour = (ms: number) => Math.floor(ms / HOUR) * HOUR
-const startOfUtcDay = (ms: number) => Math.floor(ms / DAY) * DAY
+const zoneParts = (utcMs: number) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: STATISTICS_TIME_ZONE,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(utcMs)
+  const value = (type: string) =>
+    Number(parts.find((part) => part.type === type)?.value)
+  return {
+    year: value('year'),
+    month: value('month') - 1,
+    day: value('day'),
+    hour: value('hour') % 24,
+    minute: value('minute'),
+    second: value('second'),
+  }
+}
 
-const getFixedBuckets = (
-  count: number,
-  size: number,
-  end: number,
-): MessageCountBucket[] =>
-  Array.from({ length: count }, (_, index) => {
-    const from = end - (count - index) * size
-    return { from, to: from + size }
-  })
+/** Offset of the statistics zone at a given instant, in milliseconds. */
+const zoneOffset = (utcMs: number) => {
+  const local = zoneParts(utcMs)
+  return (
+    Date.UTC(
+      local.year,
+      local.month,
+      local.day,
+      local.hour,
+      local.minute,
+      local.second,
+    ) -
+    Math.floor(utcMs / 1000) * 1000
+  )
+}
 
-/** Buckets each range is drawn from: 24 hours, 7 days, 30 days, 12 months. */
+/**
+ * Instant at which the given local calendar date starts. Resolved twice because
+ * the offset guessed from the wall clock can belong to the other side of a DST
+ * transition; the second pass uses the offset in force at the real instant.
+ */
+const startOfZonedDate = (year: number, month: number, day: number) => {
+  const wallClock = Date.UTC(year, month, day)
+  return wallClock - zoneOffset(wallClock - zoneOffset(wallClock))
+}
+
+/**
+ * Buckets each range is drawn from: 24 hours, 7 days, 30 days, 12 months.
+ * Hours are absolute, days and months follow the statistics zone calendar, so a
+ * daily bucket is 23 or 25 hours long across a DST change.
+ */
 export function getMessageCountBuckets(
   range: MessageCountRange,
   now = Date.now(),
 ): MessageCountBucket[] {
   if (range === 'day') {
-    return getFixedBuckets(24, HOUR, startOfUtcHour(now) + HOUR)
-  }
-  if (range === 'week' || range === 'month') {
-    const days = range === 'week' ? 7 : 30
-    return getFixedBuckets(days, DAY, startOfUtcDay(now) + DAY)
+    const end = Math.floor(now / HOUR) * HOUR + HOUR
+    return Array.from({ length: 24 }, (_, index) => {
+      const from = end - (24 - index) * HOUR
+      return { from, to: from + HOUR }
+    })
   }
 
-  const current = new Date(now)
+  const today = zoneParts(now)
+  if (range === 'week' || range === 'month') {
+    const days = range === 'week' ? 7 : 30
+    return Array.from({ length: days }, (_, index) => ({
+      from: startOfZonedDate(
+        today.year,
+        today.month,
+        today.day - (days - 1 - index),
+      ),
+      to: startOfZonedDate(
+        today.year,
+        today.month,
+        today.day - (days - 2 - index),
+      ),
+    }))
+  }
+
   return Array.from({ length: 12 }, (_, index) => ({
-    from: Date.UTC(
-      current.getUTCFullYear(),
-      current.getUTCMonth() - (11 - index),
-      1,
-    ),
-    to: Date.UTC(
-      current.getUTCFullYear(),
-      current.getUTCMonth() - (10 - index),
-      1,
-    ),
+    from: startOfZonedDate(today.year, today.month - (11 - index), 1),
+    to: startOfZonedDate(today.year, today.month - (10 - index), 1),
   }))
 }
 
