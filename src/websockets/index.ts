@@ -12,14 +12,18 @@ import {
   dynamoQuery,
   dynamoUpdateItem,
   get24hChatStats,
+  getChatMessageCounts,
   getRequiredEnv,
   getStoredChatStatistics,
   logger,
+  type MessageCountRange,
+  TtlCache,
   verifyStatisticsAccessToken,
 } from '@tg-bot/common'
 import type {
   Connection,
   ConnectionIndexRecord,
+  MessageCounts,
   StatsErrorPayload,
   StatsPayload,
 } from './types'
@@ -164,10 +168,53 @@ const subscribeConnectionToChat = (connectionId: string, chatId: string) =>
     },
   })
 
+const MESSAGE_COUNT_RANGES: MessageCountRange[] = [
+  'day',
+  'week',
+  'month',
+  'year',
+]
+// A broadcast fires on every message while someone is watching, and the year
+// range reads ~80k events. Recomputing that per message buys nothing, so the
+// whole block is reused for a minute.
+const MESSAGE_COUNTS_CACHE_TTL_MS = 60_000
+const messageCountsCache = new TtlCache<string, MessageCounts>(
+  MESSAGE_COUNTS_CACHE_TTL_MS,
+)
+
+// Best effort: the chart is the least important part of the snapshot, and it
+// is the widest surface for a failure — at least 73 count queries. One of them
+// throwing must not cost the viewer the user breakdown and the history too.
+const getMessageCounts = async (
+  chatId: string,
+): Promise<MessageCounts | undefined> => {
+  const cached = messageCountsCache.get(chatId)
+  if (cached) return cached
+
+  try {
+    const ranges = await Promise.all(
+      MESSAGE_COUNT_RANGES.map(
+        async (range) =>
+          [range, await getChatMessageCounts(chatId, range)] as const,
+      ),
+    )
+    const counts = Object.fromEntries(ranges) as MessageCounts
+    messageCountsCache.set(chatId, counts)
+    return counts
+  } catch (error) {
+    logger.error(
+      { chatId, err: error },
+      'websocket.stats.message_counts_failed',
+    )
+    return undefined
+  }
+}
+
 const getStatsPayload = async (chatId: string): Promise<StatsPayload> => {
-  const [usersData, storedStatistics] = await Promise.all([
+  const [usersData, storedStatistics, messageCounts] = await Promise.all([
     get24hChatStats(chatId),
     getStoredChatStatistics(chatId),
+    getMessageCounts(chatId),
   ])
 
   const chatInfo = storedStatistics?.chatInfo
@@ -185,6 +232,7 @@ const getStatsPayload = async (chatId: string): Promise<StatsPayload> => {
       : undefined,
     usersData,
     historicalData: storedStatistics?.users ?? [],
+    messageCounts,
   }
 }
 

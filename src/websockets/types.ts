@@ -1,6 +1,10 @@
 import type { Chat, User } from 'grammy/types'
 
-import type { UserStat } from '@tg-bot/common'
+import type {
+  MessageCountPoint,
+  MessageCountRange,
+  UserStat,
+} from '@tg-bot/common'
 
 export type Connection = {
   connectionId: string
@@ -20,7 +24,10 @@ export type StatsPayload = {
   >
   usersData: Array<User & { messages: number }>
   historicalData: UserStat[]
+  messageCounts?: MessageCounts
 }
+
+export type MessageCounts = Record<MessageCountRange, MessageCountPoint[]>
 
 export type StatsErrorPayload = {
   error: string

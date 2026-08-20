@@ -115,6 +115,36 @@ export const dynamoBatchGetAll = async <T = Record<string, unknown>>(
   return results
 }
 
+/**
+ * Total number of matching items, counted by DynamoDB rather than transferred.
+ * Select: COUNT still reads the items, so the read cost is the same as a query,
+ * but nothing crosses the wire and there is nothing to deserialise. Paginates,
+ * because COUNT is also capped at 1 MB of scanned data per page.
+ */
+export const dynamoCountAll = async (
+  inputParams: QueryCommandInput,
+): Promise<number> => {
+  let total = 0
+  let exclusiveStartKey = inputParams.ExclusiveStartKey
+
+  while (true) {
+    const result = await docClient.send(
+      new QueryCommand({
+        ...inputParams,
+        Select: 'COUNT',
+        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+      }),
+    )
+    total += result.Count ?? 0
+
+    if (!result.LastEvaluatedKey) {
+      return total
+    }
+
+    exclusiveStartKey = result.LastEvaluatedKey
+  }
+}
+
 export const dynamoQueryAll = async <T = Record<string, unknown>>(
   inputParams: QueryCommandInput,
 ): Promise<T[]> => {
