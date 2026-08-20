@@ -3,6 +3,7 @@ import type { Chat, User } from 'grammy/types'
 import { logger } from '../../logger'
 import type { ChatEvent } from '../../types'
 import {
+  dynamoCountAll,
   dynamoQueryAll,
   dynamoTransactWrite,
   getOptionalEnv,
@@ -164,4 +165,95 @@ export const get24hChatStats = async (chatId: string | number) => {
   return Array.from(groupedData.values()).sort(
     (a, b) => b.messages - a.messages,
   )
+}
+
+export type MessageCountRange = 'day' | 'week' | 'month' | 'year'
+
+export interface MessageCountPoint {
+  /** Bucket start, epoch milliseconds UTC. */
+  t: number
+  count: number
+}
+
+interface MessageCountBucket {
+  from: number
+  to: number
+}
+
+const HOUR = 60 * 60 * 1000
+
+const startOfUtcHour = (ms: number) => Math.floor(ms / HOUR) * HOUR
+const startOfUtcDay = (ms: number) => Math.floor(ms / DAY) * DAY
+
+const getFixedBuckets = (
+  count: number,
+  size: number,
+  end: number,
+): MessageCountBucket[] =>
+  Array.from({ length: count }, (_, index) => {
+    const from = end - (count - index) * size
+    return { from, to: from + size }
+  })
+
+/** Buckets each range is drawn from: 24 hours, 7 days, 30 days, 12 months. */
+export function getMessageCountBuckets(
+  range: MessageCountRange,
+  now = Date.now(),
+): MessageCountBucket[] {
+  if (range === 'day') {
+    return getFixedBuckets(24, HOUR, startOfUtcHour(now) + HOUR)
+  }
+  if (range === 'week' || range === 'month') {
+    const days = range === 'week' ? 7 : 30
+    return getFixedBuckets(days, DAY, startOfUtcDay(now) + DAY)
+  }
+
+  const current = new Date(now)
+  return Array.from({ length: 12 }, (_, index) => ({
+    from: Date.UTC(
+      current.getUTCFullYear(),
+      current.getUTCMonth() - (11 - index),
+      1,
+    ),
+    to: Date.UTC(
+      current.getUTCFullYear(),
+      current.getUTCMonth() - (10 - index),
+      1,
+    ),
+  }))
+}
+
+/**
+ * Message counts per bucket, counted inside DynamoDB. One COUNT query per
+ * bucket, all issued in parallel, so a year costs twelve small round trips
+ * instead of pulling ~80k event items across the wire to length() them here.
+ */
+export const getChatMessageCounts = async (
+  chatId: string | number,
+  range: MessageCountRange,
+  now = Date.now(),
+): Promise<MessageCountPoint[]> => {
+  const buckets = getMessageCountBuckets(range, now)
+  const counts = await Promise.all(
+    buckets.map(({ from, to }) =>
+      dynamoCountAll({
+        TableName: CHAT_EVENTS_TABLE_NAME,
+        KeyConditionExpression:
+          'chatId = :chatId AND #date BETWEEN :from AND :to',
+        ExpressionAttributeNames: { '#date': 'date' },
+        ExpressionAttributeValues: {
+          ':chatId': String(Number(chatId)),
+          ':from': from,
+          // Sort keys carry a sub-millisecond message-id fraction, so the upper
+          // bound sits just under the next bucket instead of one whole ms below.
+          ':to': to - 0.001,
+        },
+      }),
+    ),
+  )
+
+  return buckets.map((bucket, index) => ({
+    t: bucket.from,
+    count: counts[index],
+  }))
 }

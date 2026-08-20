@@ -134,15 +134,29 @@ describe('websocket handlers', () => {
     const response = await stats(createStatsEvent({ chatId: '123' }))
 
     expect(response.statusCode).toBe(200)
-    expect(dynamoSendSpy).toHaveBeenCalledTimes(3)
+    const statisticsReads = dynamoSendSpy.mock.calls.filter(
+      ([command]) => (command.input as { Select?: string }).Select !== 'COUNT',
+    )
+    expect(statisticsReads).toHaveLength(3)
     expect(apiSendSpy).toHaveBeenCalledTimes(1)
     const postInput = apiSendSpy.mock.calls[0][0].input as { Data: unknown }
 
-    expect(JSON.parse(String(postInput.Data))).toEqual({
+    const payload = JSON.parse(String(postInput.Data))
+    expect(payload).toMatchObject({
       chatInfo: { id: 123, type: 'group', title: 'Test chat' },
       usersData: [{ id: 1, first_name: 'Jane', messages: 1 }],
       historicalData: [{ id: 1, msgCount: 2, username: 'Jane' }],
     })
+    expect(Object.keys(payload.messageCounts)).toEqual([
+      'day',
+      'week',
+      'month',
+      'year',
+    ])
+    expect(payload.messageCounts.day).toHaveLength(24)
+    expect(payload.messageCounts.week).toHaveLength(7)
+    expect(payload.messageCounts.month).toHaveLength(30)
+    expect(payload.messageCounts.year).toHaveLength(12)
   })
 
   test('broadcast removes gone connections rejected by API Gateway', async () => {
