@@ -16,12 +16,6 @@ import {
 } from './table-names'
 
 const TELEGRAM_EVENT_ID_SPACE = 1_000_000
-const CHAT_EVENT_TTL_SECONDS = 60 * 60 * 24 * 3
-
-export function getChatEventTtl(date: number): number {
-  const dateMs = date < 10_000_000_000 ? date * 1000 : date
-  return Math.floor(dateMs / 1000) + CHAT_EVENT_TTL_SECONDS
-}
 
 export function getChatEventSortKey(date: number, messageId?: number): number {
   const dateMs = date < 10_000_000_000 ? date * 1000 : date
@@ -99,7 +93,6 @@ export const recordChatActivity = async (params: {
               date: getChatEventSortKey(date, messageId),
               chatId,
               command,
-              ttl: getChatEventTtl(date),
             },
             ConditionExpression: 'attribute_not_exists(chatId)',
           },

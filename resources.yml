@@ -232,9 +232,10 @@ Resources:
 
   ChatEventsTable:
     Type: AWS::DynamoDB::Table
-    # Intentionally no TimeToLiveSpecification: chat event records are
-    # permanent. The application-level ttl attribute does not expire items
-    # unless DynamoDB TTL is explicitly enabled for this table.
+    # PERMANENT DATA — never add TimeToLiveSpecification here. One event per
+    # message, kept since 2018; this is the only per-day history there is.
+    # Writes must not set a ttl attribute either: an armed TTL would then
+    # delete recent events and leave older ones, i.e. a hole, not a clean loss.
     Properties:
       TableName: ${self:custom.chatEventsTableName}
       AttributeDefinitions:
@@ -251,8 +252,11 @@ Resources:
 
   ChatUserStatisticsTable:
     Type: AWS::DynamoDB::Table
-    # Aggregate chat statistics are permanent: current writes intentionally
-    # omit the ttl attribute. DynamoDB TTL only affects items that contain it.
+    # PERMANENT DATA — never add TimeToLiveSpecification here. These are the
+    # lifetime per-user counters, the least recoverable data in the stack: they
+    # predate the events table, so they cannot be re-aggregated from anything.
+    # A TimeToLiveSpecification lived here between f5c71b4 and this commit
+    # after being reparented from ChatEventsTable by a YAML insertion.
     Properties:
       TableName: ${self:custom.chatUserStatisticsTableName}
       AttributeDefinitions:
@@ -275,9 +279,6 @@ Resources:
           Projection:
             ProjectionType: KEYS_ONLY
       BillingMode: PAY_PER_REQUEST
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
 
   ChatConfigurationTable:
     Type: AWS::DynamoDB::Table

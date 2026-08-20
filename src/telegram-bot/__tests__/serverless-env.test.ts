@@ -98,6 +98,25 @@ describe('agentic chat configuration infrastructure', () => {
     expect(statisticsTable).not.toContain('NonKeyAttributes:')
   })
 
+  // A TimeToLiveSpecification once drifted from ChatEventsTable onto
+  // ChatUserStatisticsTable because a new table block was inserted between
+  // BillingMode and the TTL lines. Pin which tables may expire their items.
+  test('expires only ephemeral websocket connections', () => {
+    const tableBlock = (name: string, next: string) =>
+      resources.split(`  ${name}:`)[1]?.split(`  ${next}:`)[0] ?? ''
+
+    expect(
+      tableBlock('ChatWebsocketConnectionsTable', 'ChatEventsTable'),
+    ).toContain('TimeToLiveSpecification:')
+    expect(
+      tableBlock('ChatEventsTable', 'ChatUserStatisticsTable'),
+    ).not.toContain('TimeToLiveSpecification:')
+    expect(
+      tableBlock('ChatUserStatisticsTable', 'ChatConfigurationTable'),
+    ).not.toContain('TimeToLiveSpecification:')
+    expect(resources.match(/TimeToLiveSpecification:/g)).toHaveLength(1)
+  })
+
   test('alarms on fail-closed configuration reads without runtime metric calls', () => {
     expect(
       resources.match(/FilterPattern: '"chat_configuration\.read_failed"'/g),
