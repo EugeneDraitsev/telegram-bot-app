@@ -61,8 +61,8 @@ export function buildContextBlock(
       lines.push(`- Telegram reply target (${replyLabel}): "${replyText}"`)
     }
     lines.push(
-      '- Reply rule: answer the current user message about this reply target first. Treat recent history and history media as background unless the user explicitly asks about other messages.',
-      '- Media priority: if the reply target has media, inspect explicitly labeled Reply message media before history media.',
+      '- Reply rule: answer the current user message about this reply target first. Treat recent history as background unless the user explicitly asks about other messages.',
+      '- Media priority: if the reply target has media, inspect explicitly labeled Reply message media. Historical images are available only after selecting their exact message_id with load_chat_media.',
     )
   }
 

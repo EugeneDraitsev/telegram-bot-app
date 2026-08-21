@@ -243,7 +243,9 @@ export function formatHistoryForDisplay(
     const time = msg.date
       ? new Date(msg.date * 1000).toLocaleTimeString('ru-RU')
       : ''
-    return `[${time}] ${from}: ${text.slice(0, 200)}`
+    const messageId =
+      typeof msg.message_id === 'number' ? ` message_id=${msg.message_id}` : ''
+    return `[${time}${messageId}] ${from}: ${text.slice(0, 200)}`
   })
 
   if (options.includeHeader === false) {

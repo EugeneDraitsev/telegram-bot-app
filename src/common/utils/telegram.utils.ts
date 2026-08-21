@@ -234,6 +234,19 @@ function collectSingleMessageMediaFileRefs(
   return refs
 }
 
+/** Media attached directly to one stored Telegram message. */
+export function getMessageMediaRefs(message: Message): MediaFileRef[] {
+  const refs: MediaFileRef[] = []
+  appendMediaRefs(
+    refs,
+    new Set<string>(),
+    message,
+    'History message',
+    'history-message',
+  )
+  return refs
+}
+
 function appendMediaRefs(
   refs: MediaFileRef[],
   seen: Set<string>,

@@ -160,7 +160,7 @@ describe('getAgentDeliveryReplyMessageId', () => {
 })
 
 describe('buildInitialInput', () => {
-  test('orders request media, reply context, history media, and user text', () => {
+  test('orders request media and reply context without old history media', () => {
     const requestImage = {
       buffer: Buffer.from('request'),
       mimeType: 'image/png',
@@ -219,19 +219,6 @@ describe('buildInitialInput', () => {
             type: 'image',
             image: requestImage.buffer,
             mediaType: 'image/png',
-          },
-          {
-            type: 'text',
-            text: 'MESSAGE_CONTEXT relation=history-message\nmessage_id=8\ntext="older photo"\nauthor="Alice"',
-          },
-          {
-            type: 'text',
-            text: 'MEDIA media_id=2 type=image mime_type=image/jpeg\nlabel="History message image"',
-          },
-          {
-            type: 'image',
-            image: historyImage.buffer,
-            mediaType: 'image/jpeg',
           },
           {
             type: 'text',

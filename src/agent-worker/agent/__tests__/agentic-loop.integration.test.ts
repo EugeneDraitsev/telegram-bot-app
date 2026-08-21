@@ -196,6 +196,80 @@ describe('runAgenticLoop integration', () => {
     )
   })
 
+  test('shows only an explicitly loaded history image in the next model round', async () => {
+    const historyImage = {
+      buffer: Buffer.from('selected-history-image'),
+      mimeType: 'image/jpeg',
+      mediaType: 'image' as const,
+      origin: 'history' as const,
+      fileId: 'history-file',
+      context: {
+        relation: 'history-message' as const,
+        messageId: 8,
+        text: 'one of the pictures above',
+        author: 'Alice',
+      },
+    }
+    const loadTool: AgentTool = {
+      declaration: {
+        type: 'function',
+        name: 'load_chat_media',
+        description: 'Load selected history media',
+      },
+      execution: ['serial'],
+      execute: async () => {
+        const registered = agentTools.registerToolMediaBuffers([historyImage])
+        agentTools.queueModelInspectionImages(registered)
+        return 'media_id=1 message_id=8 type=image mime_type=image/jpeg'
+      },
+    }
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([loadTool])
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            {
+              toolCallId: 'load-1',
+              toolName: 'load_chat_media',
+              input: { messageId: 8 },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createModelResult({ text: 'I can see the selected image now.' }),
+      )
+
+    await runAgenticLoop(
+      createMessage('look at the picture above'),
+      createApi(),
+      undefined,
+      undefined,
+      { bypassReplyGate: true },
+    )
+
+    expect(modelSpy).toHaveBeenCalledTimes(2)
+    expect(modelSpy.mock.calls[1]?.[0].messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'user',
+          content: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'text',
+              text: expect.stringContaining('message_id=8'),
+            }),
+            {
+              type: 'image',
+              image: historyImage.buffer,
+              mediaType: 'image/jpeg',
+            },
+          ]),
+        }),
+      ]),
+    )
+  })
+
   test('passes thrown tool failures as structured error results', async () => {
     const lookupTool: AgentTool = {
       declaration: {
@@ -472,7 +546,7 @@ describe('runAgenticLoop integration', () => {
     ])
   })
 
-  test('always includes resolved history images in the main model input', async () => {
+  test('keeps history media as markers without attaching old images', async () => {
     const historyMessage = {
       ...createMessage('older photo'),
       message_id: 8,
@@ -485,20 +559,13 @@ describe('runAgenticLoop integration', () => {
         },
       ],
     } as Message
-    const historyBuffer = Buffer.from('history-image')
     jest
       .spyOn(common, 'getRecentRawHistory')
       .mockResolvedValue([historyMessage])
-    jest.spyOn(common, 'resolveHistoryMediaAttachments').mockResolvedValue([
-      {
-        message: historyMessage,
-        media: {
-          buffer: historyBuffer,
-          mimeType: 'image/jpeg',
-          mediaType: 'image',
-        },
-      },
-    ])
+    const historyDownloadSpy = jest.spyOn(
+      common,
+      'resolveHistoryMediaAttachments',
+    )
     const modelSpy = jest
       .spyOn(modelCall, 'generateModelWithRetryWithInfo')
       .mockResolvedValue(createModelResult({ text: 'answer' }))
@@ -511,17 +578,11 @@ describe('runAgenticLoop integration', () => {
       { bypassReplyGate: true },
     )
 
-    expect(modelSpy.mock.calls[0]?.[0].messages).toEqual([
-      expect.objectContaining({
-        content: expect.arrayContaining([
-          {
-            type: 'image',
-            image: historyBuffer,
-            mediaType: 'image/jpeg',
-          },
-        ]),
-      }),
-    ])
+    const modelInput = modelSpy.mock.calls[0]?.[0]
+    expect(historyDownloadSpy).not.toHaveBeenCalled()
+    expect(modelInput?.system).toContain('message_id=8')
+    expect(modelInput?.system).toContain('[media: photo]')
+    expect(JSON.stringify(modelInput?.messages)).not.toContain('"type":"image"')
   })
 
   test('sends a user-facing failure and always stops indicators', async () => {

@@ -3,6 +3,7 @@ import type { Message } from 'grammy/types'
 import type { MediaBuffer } from '@tg-bot/common'
 import {
   claimGeneratedMedia,
+  registerToolMediaBuffers,
   requireToolContext,
   runWithToolContext,
   withToolMediaBuffers,
@@ -48,6 +49,32 @@ describe('tool context', () => {
       })
 
       expect(requireToolContext().mediaBuffers).toBe(initialMedia)
+    })
+  })
+
+  test('registers lazily loaded media with stable deduplicated ids', async () => {
+    const initial = {
+      ...image('initial'),
+      fileId: 'telegram-file-1',
+      fileUniqueId: 'telegram-unique-1',
+    }
+    const duplicate = {
+      ...image('duplicate download'),
+      fileId: 'telegram-file-2',
+      fileUniqueId: 'telegram-unique-1',
+    }
+    const loaded = {
+      ...image('loaded'),
+      fileId: 'telegram-file-3',
+      fileUniqueId: 'telegram-unique-3',
+    }
+
+    await runWithToolContext(message, [initial], async () => {
+      expect(registerToolMediaBuffers([duplicate, loaded])).toEqual([
+        { media: initial, mediaId: 1 },
+        { media: loaded, mediaId: 2 },
+      ])
+      expect(requireToolContext().mediaBuffers).toEqual([initial, loaded])
     })
   })
 })

@@ -52,6 +52,8 @@ describe('buildContextBlock', () => {
       'Telegram reply target (message_id=44): "reply photo"',
     )
     expect(contextBlock).toContain('stable 1-based media_id')
-    expect(contextBlock).toContain('Reply message media before history media')
+    expect(contextBlock).toContain(
+      'Historical images are available only after selecting their exact message_id',
+    )
   })
 })

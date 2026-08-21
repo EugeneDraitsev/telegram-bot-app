@@ -1,4 +1,4 @@
-import type { ModelMessage, ToolSet } from 'ai'
+import type { ModelMessage, ToolSet, UserModelMessage } from 'ai'
 
 import type { AiModelConfig, MetricStatus } from '@tg-bot/common'
 import {
@@ -7,7 +7,12 @@ import {
   logger,
   recordMetric,
 } from '@tg-bot/common'
-import { getCollectedResponses, getToolMetricAttribution } from '../tools'
+import {
+  getCollectedResponses,
+  getToolMetricAttribution,
+  type RegisteredToolMedia,
+  takePendingModelInspectionImages,
+} from '../tools'
 import type { AgentTool, AgentToolExecutionPolicy } from '../types'
 import { MAX_TOOL_ITERATIONS, TOOL_CALL_TIMEOUT_MS } from './config'
 import {
@@ -204,6 +209,46 @@ function buildFunctionResponsePart(
   }
 }
 
+function buildModelInspectionMessage(
+  images: RegisteredToolMedia[],
+): ModelMessage | undefined {
+  if (!images.length) return undefined
+
+  const content: Exclude<UserModelMessage['content'], string> = [
+    {
+      type: 'text',
+      text: 'SELECTED_HISTORY_IMAGES: these images were explicitly loaded for the current request. Inspect only these selected images and keep each image tied to its media_id and source message_id.',
+    },
+  ]
+  for (const { media, mediaId } of images) {
+    content.push({
+      type: 'text',
+      text: [
+        `SELECTED_HISTORY_IMAGE media_id=${mediaId}`,
+        media.context?.messageId === undefined
+          ? undefined
+          : `message_id=${media.context.messageId}`,
+        `mime_type=${media.mimeType}`,
+        media.context?.text
+          ? `source_text=${JSON.stringify(media.context.text)}`
+          : undefined,
+        media.context?.author
+          ? `source_author=${JSON.stringify(media.context.author)}`
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    })
+    content.push({
+      type: 'image',
+      image: media.buffer,
+      mediaType: media.mimeType,
+    })
+  }
+
+  return { role: 'user', content }
+}
+
 export async function runToolLoop(
   input: ModelMessage[],
   systemInstruction: string,
@@ -346,6 +391,20 @@ export async function runToolLoop(
     }
 
     input.push({ role: 'tool', content: functionResponses })
+
+    const inspectionImages = takePendingModelInspectionImages()
+    const inspectionMessage = buildModelInspectionMessage(inspectionImages)
+    if (inspectionMessage) {
+      input.push(inspectionMessage)
+      logger.info(
+        {
+          chatId,
+          count: inspectionImages.length,
+          mediaIds: inspectionImages.map(({ mediaId }) => mediaId),
+        },
+        'loop.selected_history_images_attached',
+      )
+    }
   }
 
   // If no user-facing response came out of the loop, force a final synthesis

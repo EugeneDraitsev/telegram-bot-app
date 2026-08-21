@@ -108,6 +108,8 @@ describe('formatHistoryForDisplay', () => {
 
     expect(history).toContain('look at this [media: photo, video]')
     expect(history).toContain('[media: document (application/pdf)]')
+    expect(history).toContain('message_id=1')
+    expect(history).toContain('message_id=2')
   })
 
   test('can render the full available history when requested explicitly', () => {
