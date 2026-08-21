@@ -3,9 +3,11 @@ import type { Message } from 'grammy/types'
 import type { MediaBuffer } from '@tg-bot/common'
 import {
   claimGeneratedMedia,
+  queueModelInspectionImages,
   registerToolMediaBuffers,
   requireToolContext,
   runWithToolContext,
+  takePendingModelInspectionImages,
   withToolMediaBuffers,
 } from '../context'
 
@@ -75,6 +77,27 @@ describe('tool context', () => {
         { media: loaded, mediaId: 2 },
       ])
       expect(requireToolContext().mediaBuffers).toEqual([initial, loaded])
+    })
+  })
+
+  test('does not queue current media again after a historical download deduplicates to it', async () => {
+    const current = {
+      ...image('current'),
+      origin: 'request' as const,
+      fileUniqueId: 'same-image',
+    }
+    const historicalDownload = {
+      ...image('historical download'),
+      origin: 'history' as const,
+      fileUniqueId: 'same-image',
+    }
+
+    await runWithToolContext(message, [current], async () => {
+      const registered = registerToolMediaBuffers([historicalDownload])
+
+      expect(registered).toEqual([{ media: current, mediaId: 1 }])
+      expect(queueModelInspectionImages(registered)).toEqual(new Set())
+      expect(takePendingModelInspectionImages()).toEqual([])
     })
   })
 })

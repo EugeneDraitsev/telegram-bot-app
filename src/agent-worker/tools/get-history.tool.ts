@@ -29,8 +29,7 @@ export const getHistoryTool: AgentTool = {
         },
         all: {
           type: 'boolean',
-          description:
-            'Set to true to retrieve all available history from the last 24 hours.',
+          description: 'Set to true to retrieve all retained history.',
         },
         raw: {
           type: 'boolean',

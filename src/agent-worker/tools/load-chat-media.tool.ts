@@ -6,6 +6,7 @@ import {
 } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import {
+  MAX_MODEL_INSPECTION_IMAGES,
   queueModelInspectionImages,
   registerToolMediaBuffers,
   requireToolContext,
@@ -23,8 +24,7 @@ export const loadChatMediaTool: AgentTool = {
   declaration: {
     type: 'function',
     name: 'load_chat_media',
-    description:
-      'Load images from one exact Telegram message in the available 24-hour chat history and register stable media_id values for later media tools. Loaded images are attached to the next model round for visual inspection. Use when the current request refers to a historical image. Choose messageId semantically from structured history; never guess it.',
+    description: `Load images from one exact Telegram message in retained chat history and register stable media_id values for later media tools. Up to ${MAX_MODEL_INSPECTION_IMAGES} distinct loaded images are available for visual inspection per request; excess images remain registered and are explicitly marked as not shown in the result. Use only for historical images. Choose messageId semantically from structured history; never guess it.`,
     parameters: {
       type: 'object',
       properties: {
@@ -40,7 +40,7 @@ export const loadChatMediaTool: AgentTool = {
     },
   },
   execute: async (args) => {
-    const { message, api } = requireToolContext()
+    const { message, api, historyMessages } = requireToolContext()
     const chatId = message.chat?.id
     const getFile = api?.getFile?.bind(api)
     if (!chatId) throw new Error('No chat ID available')
@@ -48,13 +48,18 @@ export const loadChatMediaTool: AgentTool = {
 
     try {
       const messageId = getMessageId(args.messageId)
-      const history = await getRawHistory(chatId)
-      const sourceMessage = history.find(
+      let sourceMessage = historyMessages.find(
         (historyMessage) => historyMessage.message_id === messageId,
       )
       if (!sourceMessage) {
+        const history = await getRawHistory(chatId)
+        sourceMessage = history.find(
+          (historyMessage) => historyMessage.message_id === messageId,
+        )
+      }
+      if (!sourceMessage) {
         throw new Error(
-          `message_id ${messageId} is not available in the 24-hour chat history`,
+          `message_id ${messageId} is not available in retained chat history`,
         )
       }
 
@@ -75,7 +80,7 @@ export const loadChatMediaTool: AgentTool = {
       const registered = registerToolMediaBuffers(
         media.map((item) => ({ ...item, origin: 'history' as const })),
       )
-      queueModelInspectionImages(registered)
+      const limitReachedMediaIds = queueModelInspectionImages(registered)
       return registered
         .map(({ media: item, mediaId }) =>
           [
@@ -83,9 +88,10 @@ export const loadChatMediaTool: AgentTool = {
             `message_id=${messageId}`,
             `type=${item.mediaType}`,
             `mime_type=${item.mimeType}`,
-          ]
-            .filter(Boolean)
-            .join(' '),
+            limitReachedMediaIds.has(mediaId)
+              ? `model_inspection=registered_but_not_shown reason=attachment_limit_reached limit=${MAX_MODEL_INSPECTION_IMAGES}`
+              : 'model_inspection=available',
+          ].join(' '),
         )
         .join('\n')
     } catch (error) {

@@ -11,7 +11,7 @@ import {
 } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
-const MAX_MODEL_INSPECTION_IMAGES = 4
+export const MAX_MODEL_INSPECTION_IMAGES = 4
 
 export interface RegisteredToolMedia {
   media: MediaBuffer
@@ -23,6 +23,7 @@ interface ToolContext {
   api?: ChatAdminApi & Partial<MediaResolverApi>
   commandName?: string
   generatedMediaClaimed: boolean
+  historyMessages: Message[]
   mediaBuffers?: MediaBuffer[]
   pendingModelInspectionImages: RegisteredToolMedia[]
   inspectedModelMediaIds: Set<number>
@@ -74,21 +75,30 @@ export function registerToolMediaBuffers(
 
 export function queueModelInspectionImages(
   registeredMedia: RegisteredToolMedia[],
-): void {
+): Set<number> {
   const context = requireToolContext()
+  const limitReachedMediaIds = new Set<number>()
   for (const item of registeredMedia) {
     if (item.media.mediaType !== 'image') continue
+    if (item.media.origin !== 'history') continue
     if (context.inspectedModelMediaIds.has(item.mediaId)) continue
-    if (context.inspectedModelMediaIds.size >= MAX_MODEL_INSPECTION_IMAGES)
-      break
+    if (context.inspectedModelMediaIds.size >= MAX_MODEL_INSPECTION_IMAGES) {
+      limitReachedMediaIds.add(item.mediaId)
+      continue
+    }
 
     context.inspectedModelMediaIds.add(item.mediaId)
     context.pendingModelInspectionImages.push(item)
   }
+  return limitReachedMediaIds
 }
 
 export function takePendingModelInspectionImages(): RegisteredToolMedia[] {
   return requireToolContext().pendingModelInspectionImages.splice(0)
+}
+
+export function setToolHistoryMessages(messages: Message[]): void {
+  requireToolContext().historyMessages = messages
 }
 
 export function claimGeneratedMedia(): void {
@@ -165,6 +175,7 @@ export async function runWithToolContext<T>(
       api,
       commandName,
       generatedMediaClaimed: false,
+      historyMessages: [],
       mediaBuffers,
       pendingModelInspectionImages: [],
       inspectedModelMediaIds: new Set<number>(),

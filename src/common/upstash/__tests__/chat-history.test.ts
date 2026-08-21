@@ -106,10 +106,27 @@ describe('formatHistoryForDisplay', () => {
       }),
     ])
 
-    expect(history).toContain('look at this [media: photo, video]')
-    expect(history).toContain('[media: document (application/pdf)]')
+    expect(history).toContain(
+      'look at this [media: photo, video; load_chat_media: images only]',
+    )
+    expect(history).toContain(
+      '[media: document (application/pdf); load_chat_media: images only]',
+    )
     expect(history).toContain('message_id=1')
     expect(history).toContain('message_id=2')
+  })
+
+  test('formats a message id without leading whitespace when date is absent', () => {
+    const history = formatHistoryForDisplay([
+      {
+        message_id: 8,
+        text: 'undated message',
+        from: { id: 1, is_bot: false, first_name: 'Eugene' },
+      } as Message,
+    ])
+
+    expect(history).toContain('[message_id=8] Eugene: undated message')
+    expect(history).not.toContain('[ message_id=8]')
   })
 
   test('can render the full available history when requested explicitly', () => {

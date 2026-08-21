@@ -81,6 +81,7 @@ Media tools use exact ids for explicit selection, omit `mediaIds` for current
 request media, and use `[]` for text-only generation. Inline inputs are limited
 to 14 MiB for Google media tools, and one request may produce at most one
 generated media result.
+
 Delivery uses Telegram's native media methods with document fallback. Google
 media calls use the Vercel AI SDK and `GEMINI_API_KEY`
 (`GOOGLE_GENERATIVE_AI_API_KEY` also works).

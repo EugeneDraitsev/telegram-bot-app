@@ -24,6 +24,7 @@ import {
   getBaseAgentTools,
   getCollectedResponses,
   runWithToolContext,
+  setToolHistoryMessages,
   withToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, TelegramApi } from '../types'
@@ -495,6 +496,7 @@ export async function runAgenticLoop(
         },
         'loop.preload_done',
       )
+      setToolHistoryMessages(rawHistory)
 
       const recentHistory = getRecentHistoryContext(
         rawHistory,

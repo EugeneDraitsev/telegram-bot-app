@@ -50,17 +50,26 @@ function normalizeRawHistoryLimit(limit?: number): number | undefined {
   return Math.max(Math.trunc(limit ?? 1), 1)
 }
 
-function getMediaLabels(message: Message): string[] {
+function getMediaLabels(message: Message): {
+  labels: string[]
+  hasNonImageMedia: boolean
+} {
   const labels: string[] = []
   const sticker = message.sticker as
-    | (typeof message.sticker & { is_video?: boolean; file_id?: string })
+    | (typeof message.sticker & {
+        is_animated?: boolean
+        is_video?: boolean
+        file_id?: string
+      })
     | undefined
+  let hasNonImageMedia = false
 
   if (message.photo?.length) {
     labels.push('photo')
   }
   if (sticker?.file_id) {
     labels.push(sticker.is_video ? 'video sticker' : 'sticker')
+    hasNonImageMedia ||= Boolean(sticker.is_video || sticker.is_animated)
   }
   if (message.document?.file_id) {
     labels.push(
@@ -68,38 +77,47 @@ function getMediaLabels(message: Message): string[] {
         ? `document (${message.document.mime_type})`
         : 'document',
     )
+    hasNonImageMedia ||= !message.document.mime_type?.startsWith('image/')
   }
   if (message.animation?.file_id) {
     labels.push('animation')
+    hasNonImageMedia = true
   }
   if (message.voice?.file_id) {
     labels.push('voice')
+    hasNonImageMedia = true
   }
   if (message.audio?.file_id) {
     labels.push('audio')
+    hasNonImageMedia = true
   }
   if (message.video?.file_id) {
     labels.push('video')
+    hasNonImageMedia = true
   }
   if (message.video_note?.file_id) {
     labels.push('video_note')
+    hasNonImageMedia = true
   }
 
-  return labels
+  return { labels, hasNonImageMedia }
 }
 
 function getHistoryLineText(message: Message): string {
-  const mediaLabels = getMediaLabels(message)
+  const { labels: mediaLabels, hasNonImageMedia } = getMediaLabels(message)
   const text = message.text || message.caption
+  const mediaMarker = `[media: ${mediaLabels.join(', ')}${
+    hasNonImageMedia ? '; load_chat_media: images only' : ''
+  }]`
 
   if (text && mediaLabels.length === 0) {
     return text
   }
   if (text) {
-    return `${text} [media: ${mediaLabels.join(', ')}]`
+    return `${text} ${mediaMarker}`
   }
   if (mediaLabels.length > 0) {
-    return `[media: ${mediaLabels.join(', ')}]`
+    return mediaMarker
   }
 
   return '[empty message]'
@@ -243,9 +261,15 @@ export function formatHistoryForDisplay(
     const time = msg.date
       ? new Date(msg.date * 1000).toLocaleTimeString('ru-RU')
       : ''
-    const messageId =
-      typeof msg.message_id === 'number' ? ` message_id=${msg.message_id}` : ''
-    return `[${time}${messageId}] ${from}: ${text.slice(0, 200)}`
+    const metadata = [
+      time || undefined,
+      typeof msg.message_id === 'number'
+        ? `message_id=${msg.message_id}`
+        : undefined,
+    ]
+      .filter(Boolean)
+      .join(' ')
+    return `[${metadata}] ${from}: ${text.slice(0, 200)}`
   })
 
   if (options.includeHeader === false) {

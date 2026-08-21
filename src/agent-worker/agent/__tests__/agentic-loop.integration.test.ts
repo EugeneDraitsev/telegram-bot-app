@@ -562,10 +562,6 @@ describe('runAgenticLoop integration', () => {
     jest
       .spyOn(common, 'getRecentRawHistory')
       .mockResolvedValue([historyMessage])
-    const historyDownloadSpy = jest.spyOn(
-      common,
-      'resolveHistoryMediaAttachments',
-    )
     const modelSpy = jest
       .spyOn(modelCall, 'generateModelWithRetryWithInfo')
       .mockResolvedValue(createModelResult({ text: 'answer' }))
@@ -579,7 +575,6 @@ describe('runAgenticLoop integration', () => {
     )
 
     const modelInput = modelSpy.mock.calls[0]?.[0]
-    expect(historyDownloadSpy).not.toHaveBeenCalled()
     expect(modelInput?.system).toContain('message_id=8')
     expect(modelInput?.system).toContain('[media: photo]')
     expect(JSON.stringify(modelInput?.messages)).not.toContain('"type":"image"')
