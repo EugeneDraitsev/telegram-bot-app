@@ -128,11 +128,6 @@ export interface MediaFileRef {
   context?: MediaMessageContext
 }
 
-export interface HistoryMediaFileRef {
-  ref: MediaFileRef
-  message: Message
-}
-
 const IMAGE_MIME_PREFIXES = ['image/']
 
 function getMediaKey(ref: MediaFileRef): string {
@@ -231,6 +226,19 @@ function collectSingleMessageMediaFileRefs(
     })
   }
 
+  return refs
+}
+
+/** Media attached directly to one stored Telegram message. */
+export function getMessageMediaRefs(message: Message): MediaFileRef[] {
+  const refs: MediaFileRef[] = []
+  appendMediaRefs(
+    refs,
+    new Set<string>(),
+    message,
+    'History message',
+    'history-message',
+  )
   return refs
 }
 
@@ -343,70 +351,6 @@ export function collectMediaFileRefs(
   return refs
 }
 
-export function collectHistoryMediaFileRefs(
-  messages: Message[],
-  options: {
-    excludeMessageId?: number
-    excludeFileIds?: Iterable<string>
-    excludeFileUniqueIds?: Iterable<string>
-    limit?: number
-    mediaTypes?: MediaFileRef['mediaType'][]
-  } = {},
-): HistoryMediaFileRef[] {
-  // History media intentionally includes each visible message's immediate
-  // reply context so a recent reply can carry the replied-to media into
-  // the model input as additional context.
-  const visibleMessages =
-    typeof options.excludeMessageId === 'number'
-      ? messages.filter(
-          (message) => message.message_id !== options.excludeMessageId,
-        )
-      : messages
-
-  const limitedMessages = Number.isFinite(options.limit)
-    ? visibleMessages.slice(-Math.max(Math.trunc(options.limit ?? 1), 1))
-    : visibleMessages
-
-  const allowedMediaTypes = options.mediaTypes?.length
-    ? new Set(options.mediaTypes)
-    : undefined
-  const excludedFileIds = new Set(options.excludeFileIds ?? [])
-  const excludedFileUniqueIds = new Set(options.excludeFileUniqueIds ?? [])
-  const refsById = new Map<string, HistoryMediaFileRef>()
-
-  for (const message of limitedMessages) {
-    const refs: MediaFileRef[] = []
-    const seen = new Set<string>()
-    appendMediaRefs(refs, seen, message, 'History message', 'history-message')
-    appendMediaRefs(
-      refs,
-      seen,
-      message.reply_to_message,
-      'History reply target',
-      'history-reply-target',
-      message,
-    )
-    const filteredRefs = refs
-      .filter(
-        (ref) => !allowedMediaTypes || allowedMediaTypes.has(ref.mediaType),
-      )
-      .filter(
-        (ref) =>
-          !excludedFileIds.has(ref.fileId) &&
-          !(ref.fileUniqueId && excludedFileUniqueIds.has(ref.fileUniqueId)),
-      )
-
-    for (const ref of filteredRefs) {
-      const key = getMediaKey(ref)
-      if (!refsById.has(key)) {
-        refsById.set(key, { ref, message })
-      }
-    }
-  }
-
-  return [...refsById.values()]
-}
-
 // ── Multi-media support ──────────────────────────────────────
 
 /** Maximum file size for inline Gemini input (19 MB to stay under 20 MB API limit) */
@@ -430,7 +374,6 @@ export type MediaMessageRelation =
   | 'reply-album'
   | 'related-album'
   | 'history-message'
-  | 'history-reply-target'
 
 export interface MediaMessageContext {
   relation: MediaMessageRelation
@@ -440,11 +383,6 @@ export interface MediaMessageContext {
   referencedByMessageId?: number
   referencedByText?: string
   referencedByAuthor?: string
-}
-
-export interface HistoryMediaAttachment {
-  message: Message
-  media: MediaBuffer
 }
 
 /**
@@ -539,20 +477,4 @@ export async function resolveMediaBuffers(
     }
   }
   return buffers
-}
-
-export async function resolveHistoryMediaAttachments(
-  entries: HistoryMediaFileRef[],
-  api: MediaResolverApi,
-): Promise<HistoryMediaAttachment[]> {
-  const resolved = await Promise.all(
-    entries.map(async (entry) => {
-      const [media] = await resolveMediaBuffers([entry.ref], api)
-      return media ? { message: entry.message, media } : undefined
-    }),
-  )
-
-  return resolved.filter(
-    (entry): entry is HistoryMediaAttachment => entry != null,
-  )
 }

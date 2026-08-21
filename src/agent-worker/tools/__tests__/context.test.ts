@@ -3,8 +3,11 @@ import type { Message } from 'grammy/types'
 import type { MediaBuffer } from '@tg-bot/common'
 import {
   claimGeneratedMedia,
+  queueModelInspectionImages,
+  registerToolMediaBuffers,
   requireToolContext,
   runWithToolContext,
+  takePendingModelInspectionImages,
   withToolMediaBuffers,
 } from '../context'
 
@@ -48,6 +51,53 @@ describe('tool context', () => {
       })
 
       expect(requireToolContext().mediaBuffers).toBe(initialMedia)
+    })
+  })
+
+  test('registers lazily loaded media with stable deduplicated ids', async () => {
+    const initial = {
+      ...image('initial'),
+      fileId: 'telegram-file-1',
+      fileUniqueId: 'telegram-unique-1',
+    }
+    const duplicate = {
+      ...image('duplicate download'),
+      fileId: 'telegram-file-2',
+      fileUniqueId: 'telegram-unique-1',
+    }
+    const loaded = {
+      ...image('loaded'),
+      fileId: 'telegram-file-3',
+      fileUniqueId: 'telegram-unique-3',
+    }
+
+    await runWithToolContext(message, [initial], async () => {
+      expect(registerToolMediaBuffers([duplicate, loaded])).toEqual([
+        { media: initial, mediaId: 1 },
+        { media: loaded, mediaId: 2 },
+      ])
+      expect(requireToolContext().mediaBuffers).toEqual([initial, loaded])
+    })
+  })
+
+  test('does not queue current media again after a historical download deduplicates to it', async () => {
+    const current = {
+      ...image('current'),
+      origin: 'request' as const,
+      fileUniqueId: 'same-image',
+    }
+    const historicalDownload = {
+      ...image('historical download'),
+      origin: 'history' as const,
+      fileUniqueId: 'same-image',
+    }
+
+    await runWithToolContext(message, [current], async () => {
+      const registered = registerToolMediaBuffers([historicalDownload])
+
+      expect(registered).toEqual([{ media: current, mediaId: 1 }])
+      expect(queueModelInspectionImages(registered)).toEqual(new Set())
+      expect(takePendingModelInspectionImages()).toEqual([])
     })
   })
 })

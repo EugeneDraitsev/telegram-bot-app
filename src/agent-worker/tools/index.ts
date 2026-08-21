@@ -18,6 +18,7 @@ import {
 import { generateImageTool } from './generate-image.tool'
 import { generateVoiceTool } from './generate-voice.tool'
 import { getHistoryTool } from './get-history.tool'
+import { loadChatMediaTool } from './load-chat-media.tool'
 import { generateMusicTool } from './lyria-music.tool'
 import { magic8BallTool } from './magic8ball.tool'
 import { getMemoryTool, updateMemoryTool } from './memory.tool'
@@ -31,13 +32,19 @@ import { searchVideoTool } from './search-video.tool'
 import { weatherTool } from './weather.tool'
 import { webSearchTool } from './web-search.tool'
 
+export type { RegisteredToolMedia } from './context'
 // Context management
 export {
   addResponse,
   getCollectedResponses,
   getToolMetricAttribution,
+  MAX_MODEL_INSPECTION_IMAGES,
+  queueModelInspectionImages,
+  registerToolMediaBuffers,
   requireToolContext,
   runWithToolContext,
+  setToolHistoryMessages,
+  takePendingModelInspectionImages,
   trackToolModelCall,
   withToolMediaBuffers,
 } from './context'
@@ -63,6 +70,7 @@ const baseAgentTools: AgentTool[] = [
   generateVoiceTool,
   weatherTool,
   getHistoryTool,
+  loadChatMediaTool,
   getMemoryTool,
   updateMemoryTool,
   createDynamicToolTool,

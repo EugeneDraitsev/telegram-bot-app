@@ -34,6 +34,7 @@ const RESERVED_TOOL_NAMES = new Set<string>([
   'generate_voice',
   'get_weather',
   'get_chat_history',
+  'load_chat_media',
   'get_memory',
   'update_memory',
   'create_dynamic_tool',

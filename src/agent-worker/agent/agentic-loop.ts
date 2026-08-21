@@ -6,7 +6,6 @@ import {
   AGENT_REACTION,
   type BotIdentity,
   cleanModelMessage,
-  collectHistoryMediaFileRefs,
   collectMediaFileRefs,
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
@@ -16,7 +15,6 @@ import {
   getRecentRawHistory,
   isTelegramReplyTargetMissingError,
   logger,
-  resolveHistoryMediaAttachments,
   startThinkingRichDraftIndicator,
   startTypingIndicator,
 } from '@tg-bot/common'
@@ -26,6 +24,7 @@ import {
   getBaseAgentTools,
   getCollectedResponses,
   runWithToolContext,
+  setToolHistoryMessages,
   withToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, TelegramApi } from '../types'
@@ -63,7 +62,6 @@ function getRecentHistoryContext(
   return history === 'No message history available' ? '' : history
 }
 
-const MAX_HISTORY_IMAGE_ATTACHMENTS = 4
 const AGENT_PRELOAD_TIMEOUT_MS = 3_000
 
 async function preloadWithFallback<T>(params: {
@@ -192,11 +190,13 @@ export function buildInitialInput(
   mediaBuffers: MediaBuffer[] | undefined,
 ): ModelMessage[] {
   const parts: UserContentPart[] = []
-  const indexedMedia = (mediaBuffers ?? []).map((media, index) => ({
-    media,
-    mediaId: index + 1,
-    index,
-  }))
+  const indexedMedia = (mediaBuffers ?? [])
+    .map((media, index) => ({
+      media,
+      mediaId: index + 1,
+      index,
+    }))
+    .filter(({ media }) => media.origin !== 'history')
   const mediaGroups = new Map<string, typeof indexedMedia>()
   for (const item of indexedMedia) {
     const key = getMediaGroupKey(item.media, item.index)
@@ -496,46 +496,24 @@ export async function runAgenticLoop(
         },
         'loop.preload_done',
       )
+      setToolHistoryMessages(rawHistory)
 
       const recentHistory = getRecentHistoryContext(
         rawHistory,
         message.message_id,
       )
-      const requestMediaIds = (key: 'fileId' | 'fileUniqueId') =>
-        new Set(
-          (mediaBuffers ?? [])
-            .map((media) => media[key])
-            .filter((id): id is string => Boolean(id)),
-        )
-
-      const historyImageRefs = collectHistoryMediaFileRefs(rawHistory, {
-        excludeMessageId: message.message_id,
-        excludeFileIds: requestMediaIds('fileId'),
-        excludeFileUniqueIds: requestMediaIds('fileUniqueId'),
-        limit: DEFAULT_AGENT_HISTORY_LIMIT,
-        mediaTypes: ['image'],
-      }).slice(-MAX_HISTORY_IMAGE_ATTACHMENTS)
-
-      const historyMediaAttachments = historyImageRefs.length
-        ? await resolveHistoryMediaAttachments(historyImageRefs, api).catch(
-            (error) => {
-              logger.warn({ chatId, error }, 'history.media_preload_failed')
-              return []
-            },
-          )
-        : []
-
-      const historyMediaBuffers = historyMediaAttachments.map(({ media }) => ({
-        ...media,
-        origin: 'history' as const,
-      }))
-      const allMediaBuffers = [...(mediaBuffers ?? []), ...historyMediaBuffers]
-      await withToolMediaBuffers(allMediaBuffers, async () => {
+      // Historical media stays as structured text markers until the model
+      // intentionally selects one message through load_chat_media. Only media
+      // attached to the current message, its reply target, or their albums is
+      // visible to the routing model.
+      const requestMediaBuffers = [...(mediaBuffers ?? [])]
+      const inputMediaCount = requestMediaBuffers.length
+      await withToolMediaBuffers(requestMediaBuffers, async () => {
         const contextBlock = buildContextBlock(
           message,
           textContent,
           hasMedia,
-          allMediaBuffers,
+          requestMediaBuffers,
           {
             recentHistory,
           },
@@ -558,7 +536,11 @@ export async function runAgenticLoop(
           'loop.tools_ready',
         )
 
-        const input = buildInitialInput(message, textContent, allMediaBuffers)
+        const input = buildInitialInput(
+          message,
+          textContent,
+          requestMediaBuffers,
+        )
 
         const { finalText, toolResults } = await runToolLoop(
           input,
@@ -628,7 +610,7 @@ export async function runAgenticLoop(
             durationMs: Date.now() - startedAt,
             deliveryDurationMs: Date.now() - deliveryStart,
             responseCount: responsesToSend.length,
-            inputMediaCount: allMediaBuffers.length,
+            inputMediaCount,
             outputMediaCount: mediaResponses.length,
             hasFinalText: Boolean(combinedText),
           },

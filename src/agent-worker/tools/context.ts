@@ -4,18 +4,29 @@ import type { Message } from 'grammy/types'
 import {
   type ChatAdminApi,
   type MediaBuffer,
+  type MediaResolverApi,
   type MetricSource,
   type MetricStatus,
   timedCall,
 } from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
+export const MAX_MODEL_INSPECTION_IMAGES = 4
+
+export interface RegisteredToolMedia {
+  media: MediaBuffer
+  mediaId: number
+}
+
 interface ToolContext {
   message: Message
-  api?: ChatAdminApi
+  api?: ChatAdminApi & Partial<MediaResolverApi>
   commandName?: string
   generatedMediaClaimed: boolean
+  historyMessages: Message[]
   mediaBuffers?: MediaBuffer[]
+  pendingModelInspectionImages: RegisteredToolMedia[]
+  inspectedModelMediaIds: Set<number>
   responses: AgentResponse[]
 }
 
@@ -35,6 +46,59 @@ export function addResponse(response: AgentResponse): void {
 
 export function getCollectedResponses(): AgentResponse[] {
   return [...(contextStorage.getStore()?.responses ?? [])]
+}
+
+export function registerToolMediaBuffers(
+  additions: MediaBuffer[],
+): RegisteredToolMedia[] {
+  const context = requireToolContext()
+  const mediaBuffers = context.mediaBuffers ?? []
+  context.mediaBuffers = mediaBuffers
+
+  return additions.map((media) => {
+    const existingIndex = mediaBuffers.findIndex(
+      (candidate) =>
+        (media.fileUniqueId && candidate.fileUniqueId === media.fileUniqueId) ||
+        (media.fileId && candidate.fileId === media.fileId),
+    )
+    if (existingIndex >= 0) {
+      return {
+        media: mediaBuffers[existingIndex] as MediaBuffer,
+        mediaId: existingIndex + 1,
+      }
+    }
+
+    mediaBuffers.push(media)
+    return { media, mediaId: mediaBuffers.length }
+  })
+}
+
+export function queueModelInspectionImages(
+  registeredMedia: RegisteredToolMedia[],
+): Set<number> {
+  const context = requireToolContext()
+  const limitReachedMediaIds = new Set<number>()
+  for (const item of registeredMedia) {
+    if (item.media.mediaType !== 'image') continue
+    if (item.media.origin !== 'history') continue
+    if (context.inspectedModelMediaIds.has(item.mediaId)) continue
+    if (context.inspectedModelMediaIds.size >= MAX_MODEL_INSPECTION_IMAGES) {
+      limitReachedMediaIds.add(item.mediaId)
+      continue
+    }
+
+    context.inspectedModelMediaIds.add(item.mediaId)
+    context.pendingModelInspectionImages.push(item)
+  }
+  return limitReachedMediaIds
+}
+
+export function takePendingModelInspectionImages(): RegisteredToolMedia[] {
+  return requireToolContext().pendingModelInspectionImages.splice(0)
+}
+
+export function setToolHistoryMessages(messages: Message[]): void {
+  requireToolContext().historyMessages = messages
 }
 
 export function claimGeneratedMedia(): void {
@@ -102,7 +166,7 @@ export async function runWithToolContext<T>(
   message: Message,
   mediaBuffers: MediaBuffer[] | undefined,
   callback: () => Promise<T>,
-  api?: ChatAdminApi,
+  api?: ChatAdminApi & Partial<MediaResolverApi>,
   commandName?: string,
 ): Promise<T> {
   return contextStorage.run(
@@ -111,7 +175,10 @@ export async function runWithToolContext<T>(
       api,
       commandName,
       generatedMediaClaimed: false,
+      historyMessages: [],
       mediaBuffers,
+      pendingModelInspectionImages: [],
+      inspectedModelMediaIds: new Set<number>(),
       responses: [],
     },
     callback,

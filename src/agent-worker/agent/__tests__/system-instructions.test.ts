@@ -15,6 +15,21 @@ describe('agentSystemInstructions', () => {
       'Call generate_video_with_veo only when the current user explicitly asks',
     )
     expect(agentSystemInstructions).toContain(
+      'choose the exact Telegram message_id semantically',
+    )
+    expect(agentSystemInstructions).toContain(
+      'never match user wording with a fixed phrase list',
+    )
+    expect(agentSystemInstructions).toContain(
+      'Historical media appears as text markers in recent history',
+    )
+    expect(agentSystemInstructions).toContain(
+      'Explicitly loaded historical images appear in the next model round',
+    )
+    expect(agentSystemInstructions).toContain(
+      'derive the new memory fact only from the current request and its direct reply target',
+    )
+    expect(agentSystemInstructions).toContain(
       'Each MEDIA has a stable media_id and belongs only to the message immediately above it',
     )
     expect(agentSystemInstructions).toContain(
