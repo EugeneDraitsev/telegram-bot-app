@@ -6,6 +6,6 @@
   "sideEffects": false,
   "dependencies": {
     "@tg-bot/common": "workspace:*",
-    "jose": "^6.2.9"
+    "jose": "^6.2.10"
   }
 }

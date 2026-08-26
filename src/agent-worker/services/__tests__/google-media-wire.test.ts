@@ -4,27 +4,37 @@ import { VEO_3_1_LITE_MODEL } from '../google-media'
 
 describe('Google Veo wire request', () => {
   test('uses the native AI SDK video endpoint and Veo parameters', async () => {
-    let requestUrl: string | undefined
-    let requestBody: Record<string, unknown> | undefined
+    const requests: Array<{
+      url: string
+      body?: Record<string, unknown>
+    }> = []
     const fetchMock = jest.fn(async (input: unknown, init?: RequestInit) => {
-      requestUrl = String(input)
-      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+      requests.push({
+        url: String(input),
+        body: init?.body
+          ? (JSON.parse(String(init.body)) as Record<string, unknown>)
+          : undefined,
+      })
       return new Response(
-        JSON.stringify({
-          name: 'operations/video-1',
-          done: true,
-          response: {
-            generateVideoResponse: {
-              generatedSamples: [
-                {
-                  video: {
-                    uri: 'https://generativelanguage.googleapis.com/v1beta/files/video-1:download',
+        JSON.stringify(
+          init?.method === 'POST'
+            ? { name: 'operations/video-1' }
+            : {
+                name: 'operations/video-1',
+                done: true,
+                response: {
+                  generateVideoResponse: {
+                    generatedSamples: [
+                      {
+                        video: {
+                          uri: 'https://generativelanguage.googleapis.com/v1beta/files/video-1:download',
+                        },
+                      },
+                    ],
                   },
                 },
-              ],
-            },
-          },
-        }),
+              },
+        ),
         { headers: { 'content-type': 'application/json' } },
       )
     })
@@ -32,8 +42,12 @@ describe('Google Veo wire request', () => {
       apiKey: 'test-key',
       fetch: fetchMock as unknown as typeof fetch,
     })
+    const model = provider.video(VEO_3_1_LITE_MODEL)
+    if (!model.doStart || !model.doStatus) {
+      throw new Error('Google video model must support asynchronous operations')
+    }
 
-    const result = await provider.video(VEO_3_1_LITE_MODEL).doGenerate({
+    const start = await model.doStart({
       prompt: 'A fox in snow',
       n: 1,
       aspectRatio: '16:9',
@@ -52,12 +66,16 @@ describe('Google Veo wire request', () => {
       providerOptions: { google: { pollTimeoutMs: 160_000 } },
       headers: {},
     })
+    const result = await model.doStatus({
+      operation: start.operation,
+      headers: {},
+    })
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(requestUrl).toBe(
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(requests[0]?.url).toBe(
       `https://generativelanguage.googleapis.com/v1beta/models/${VEO_3_1_LITE_MODEL}:predictLongRunning`,
     )
-    expect(requestBody).toEqual({
+    expect(requests[0]?.body).toEqual({
       instances: [
         {
           prompt: 'A fox in snow',
@@ -74,6 +92,13 @@ describe('Google Veo wire request', () => {
         durationSeconds: 6,
       },
     })
+    expect(requests[1]?.url).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/operations/video-1',
+    )
+    expect(result.status).toBe('completed')
+    if (result.status !== 'completed') {
+      throw new Error('Google video operation did not complete')
+    }
     expect(result.videos).toEqual([
       {
         type: 'url',
