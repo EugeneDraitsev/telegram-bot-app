@@ -2,9 +2,9 @@ import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
 
-const mockGenerateVeoVideo = jest.fn()
+const mockGenerateOmniVideo = jest.fn()
 const mockGenerateLyriaMusic = jest.fn()
-const mockPrepareVeoMedia = jest.fn(
+const mockPrepareOmniMedia = jest.fn(
   (media: MediaBuffer[] | undefined, _explicit: boolean) => media ?? [],
 )
 const mockPrepareLyriaMedia = jest.fn(
@@ -15,11 +15,13 @@ jest.mock('../../services/google-media', () => ({
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS: 170_000,
   LYRIA_3_CLIP_MODEL: 'lyria-3-clip-preview',
   LYRIA_3_PRO_MODEL: 'lyria-3-pro-preview',
-  VEO_3_1_LITE_MODEL: 'veo-3.1-lite-generate-preview',
-  generateVeoVideo: (...args: unknown[]) => mockGenerateVeoVideo(...args),
+  OMNI_VIDEO_MODEL: 'gemini-omni-1.1-flash',
+  MIN_OMNI_VIDEO_SECONDS: 3,
+  MAX_OMNI_VIDEO_SECONDS: 10,
+  generateOmniVideo: (...args: unknown[]) => mockGenerateOmniVideo(...args),
   generateLyriaMusic: (...args: unknown[]) => mockGenerateLyriaMusic(...args),
-  prepareVeoMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
-    mockPrepareVeoMedia(media, explicit),
+  prepareOmniMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
+    mockPrepareOmniMedia(media, explicit),
   prepareLyriaMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
     mockPrepareLyriaMedia(media, explicit),
 }))
@@ -46,10 +48,16 @@ const historyImage: MediaBuffer = {
   origin: 'history',
 }
 
+const requestVideo: MediaBuffer = {
+  buffer: Buffer.from('clip'),
+  mimeType: 'video/mp4',
+  mediaType: 'video',
+}
+
 describe('Google media agent tools', () => {
   beforeEach(() => {
-    mockGenerateVeoVideo.mockReset()
-    mockGenerateVeoVideo.mockResolvedValue({
+    mockGenerateOmniVideo.mockReset()
+    mockGenerateOmniVideo.mockResolvedValue({
       buffer: Buffer.from('video'),
       mimeType: 'video/mp4',
     })
@@ -59,8 +67,8 @@ describe('Google media agent tools', () => {
       mimeType: 'audio/mpeg',
       text: '[Verse]\nhello',
     })
-    mockPrepareVeoMedia.mockClear()
-    mockPrepareVeoMedia.mockImplementation((media) => media ?? [])
+    mockPrepareOmniMedia.mockClear()
+    mockPrepareOmniMedia.mockImplementation((media) => media ?? [])
     mockPrepareLyriaMedia.mockClear()
     mockPrepareLyriaMedia.mockImplementation((media) => media ?? [])
   })
@@ -84,21 +92,52 @@ describe('Google media agent tools', () => {
       },
     )
 
-    expect(mockGenerateVeoVideo).toHaveBeenCalledWith({
+    expect(mockGenerateOmniVideo).toHaveBeenCalledWith({
       prompt: 'Neon fox',
-      durationSeconds: 6,
+      durationSeconds: 5,
       aspectRatio: '9:16',
       media: [requestImage],
     })
-    expect(mockPrepareVeoMedia).toHaveBeenCalledWith([requestImage], false)
+    expect(mockPrepareOmniMedia).toHaveBeenCalledWith([requestImage], false)
     expect(responses).toEqual([
       expect.objectContaining({
         type: 'video',
         buffer: Buffer.from('video'),
-        fileName: 'veo-lite-video.mp4',
+        fileName: 'omni-video.mp4',
         caption: 'Неоновая лиса мчится сквозь снежную ночь.',
       }),
     ])
+  })
+
+  test('edits a selected video and clamps the requested duration', async () => {
+    await runWithToolContext(message, [requestVideo], () =>
+      generateVideoTool.execute({
+        prompt: 'Make it anime. Keep everything else the same.',
+        caption: 'Видео в аниме-стиле.',
+        durationSeconds: 30,
+      }),
+    )
+
+    expect(mockGenerateOmniVideo).toHaveBeenCalledWith({
+      prompt: 'Make it anime. Keep everything else the same.',
+      durationSeconds: 10,
+      aspectRatio: '9:16',
+      media: [requestVideo],
+    })
+    expect(mockPrepareOmniMedia).toHaveBeenCalledWith([requestVideo], false)
+  })
+
+  test('defaults to an 8-second clip', async () => {
+    await runWithToolContext(message, [], () =>
+      generateVideoTool.execute({
+        prompt: 'Ocean at sunset',
+        caption: 'Океан',
+      }),
+    )
+
+    expect(mockGenerateOmniVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ durationSeconds: 8 }),
+    )
   })
 
   test('keeps Pro restricted to the explicit /lyriapro command', async () => {
@@ -170,10 +209,10 @@ describe('Google media agent tools', () => {
       }),
     )
 
-    expect(mockGenerateVeoVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ durationSeconds: 6, media: [historyImage] }),
+    expect(mockGenerateOmniVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ durationSeconds: 8, media: [historyImage] }),
     )
-    expect(mockPrepareVeoMedia).toHaveBeenCalledWith([historyImage], true)
+    expect(mockPrepareOmniMedia).toHaveBeenCalledWith([historyImage], true)
   })
 
   test('does not expose technical prompts as missing metadata', async () => {
@@ -217,17 +256,17 @@ describe('Google media agent tools', () => {
       await videoPromise
     })
 
-    expect(mockGenerateVeoVideo).toHaveBeenCalledTimes(1)
+    expect(mockGenerateOmniVideo).toHaveBeenCalledTimes(1)
     expect(mockGenerateLyriaMusic).not.toHaveBeenCalled()
   })
 
   test('does not start another generated media tool after a failure', async () => {
-    mockGenerateVeoVideo.mockRejectedValueOnce(new Error('Veo failed'))
+    mockGenerateOmniVideo.mockRejectedValueOnce(new Error('Omni failed'))
 
     await runWithToolContext(message, [], async () => {
       await expect(
         generateVideoTool.execute({ prompt: 'Failing video' }),
-      ).rejects.toThrow('Veo failed')
+      ).rejects.toThrow('Omni failed')
       await expect(
         generateMusicTool.execute({ prompt: 'Try music instead' }),
       ).rejects.toThrow(
@@ -235,14 +274,14 @@ describe('Google media agent tools', () => {
       )
     })
 
-    expect(mockGenerateVeoVideo).toHaveBeenCalledTimes(1)
+    expect(mockGenerateOmniVideo).toHaveBeenCalledTimes(1)
     expect(mockGenerateLyriaMusic).not.toHaveBeenCalled()
   })
 
   test('rejects invalid selected media before claiming the result slot', async () => {
-    mockPrepareVeoMedia.mockImplementationOnce(() => {
+    mockPrepareOmniMedia.mockImplementationOnce(() => {
       throw new Error(
-        'Veo 3.1 Lite selected media exceeds the 14 MiB raw inline limit',
+        'Gemini Omni Flash selected media exceeds the 14 MiB raw inline limit',
       )
     })
 
@@ -265,7 +304,7 @@ describe('Google media agent tools', () => {
       ).resolves.toBe('Generated track: Afterward')
     })
 
-    expect(mockGenerateVeoVideo).not.toHaveBeenCalled()
+    expect(mockGenerateOmniVideo).not.toHaveBeenCalled()
     expect(mockGenerateLyriaMusic).toHaveBeenCalledTimes(1)
   })
 })

@@ -9,15 +9,18 @@ let googleProviderApiKey = ''
 let openAiProvider: ReturnType<typeof createOpenAI> | undefined
 let openAiProviderApiKey = ''
 
-function getGoogleApiKey(): string | undefined {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+export function getGoogleApiKey(): string {
+  const apiKey =
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY is not set')
+  }
+
+  return apiKey
 }
 
 export function getAiSdkGoogleProvider() {
   const apiKey = getGoogleApiKey()
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY is not set')
-  }
 
   if (!googleProvider || googleProviderApiKey !== apiKey) {
     googleProvider = createGoogleGenerativeAI({ apiKey })

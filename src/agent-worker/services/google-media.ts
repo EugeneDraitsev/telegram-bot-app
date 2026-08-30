@@ -1,33 +1,38 @@
-import {
-  generateText,
-  experimental_generateVideo as generateVideo,
-  type ModelMessage,
-} from 'ai'
+import { generateText, type ModelMessage } from 'ai'
 
 import {
   getAiSdkGoogleProvider,
   getErrorMessage,
+  getGoogleApiKey,
   logger,
   type MediaBuffer,
 } from '@tg-bot/common'
-import { extractLyriaInteractionOutput } from './google-interactions.adapter'
+import {
+  extractLyriaInteractionOutput,
+  extractOmniInteractionVideo,
+} from './google-interactions.adapter'
 
 const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
-const GOOGLE_MEDIA_DOWNLOAD_ORIGIN = 'https://generativelanguage.googleapis.com'
-const GOOGLE_MEDIA_DOWNLOAD_MAX_BYTES = 100 * 1024 * 1024
+const GOOGLE_INTERACTIONS_URL =
+  'https://generativelanguage.googleapis.com/v1beta/interactions'
 // Inline media is base64-encoded in JSON (~4/3 expansion). Keep raw inputs at
 // 14 MiB so the encoded media plus request metadata stays below 20 MB.
 const MAX_INLINE_MEDIA_RAW_BYTES = 14 * 1024 * 1024
-const MAX_VEO_IMAGES = 1
+const MAX_OMNI_MEDIA_ITEMS = 3
 const MAX_LYRIA_IMAGES = 10
 
 export const GOOGLE_MEDIA_TOOL_TIMEOUT_MS = 170_000
 
-export const VEO_3_1_LITE_MODEL = 'veo-3.1-lite-generate-preview'
+export const OMNI_VIDEO_MODEL = 'gemini-omni-1.1-flash'
 export const LYRIA_3_CLIP_MODEL = 'lyria-3-clip-preview'
 export const LYRIA_3_PRO_MODEL = 'lyria-3-pro-preview'
 
-export type VeoAspectRatio = '9:16' | '16:9'
+// 360p keeps generation fast and costs a third of 720p.
+const OMNI_VIDEO_RESOLUTION = '360p'
+export const MIN_OMNI_VIDEO_SECONDS = 3
+export const MAX_OMNI_VIDEO_SECONDS = 10
+
+export type OmniAspectRatio = '9:16' | '16:9'
 export type LyriaModel = typeof LYRIA_3_CLIP_MODEL | typeof LYRIA_3_PRO_MODEL
 
 interface GeneratedMedia {
@@ -102,16 +107,31 @@ export function prepareLyriaMedia(
   )
 }
 
-export function prepareVeoMedia(
+/**
+ * Omni Flash accepts images (single frame, first+last frame, subject
+ * references) and at most one video to edit or extend.
+ */
+export function prepareOmniMedia(
   media: MediaBuffer[] | undefined,
   explicit: boolean,
 ): MediaBuffer[] {
-  return prepareInlineMedia(
+  const prepared = prepareInlineMedia(
     media,
     explicit,
-    MAX_VEO_IMAGES,
-    (item) => item.mediaType === 'image',
-    'Veo 3.1 Lite',
+    MAX_OMNI_MEDIA_ITEMS,
+    (item) => item.mediaType !== 'audio',
+    'Gemini Omni Flash',
+  )
+
+  const videos = prepared.filter((item) => item.mediaType === 'video')
+  if (videos.length <= 1) return prepared
+  if (explicit) {
+    throw new Error('Gemini Omni Flash accepts at most one selected video')
+  }
+
+  const newestVideo = videos.at(-1)
+  return prepared.filter(
+    (item) => item.mediaType !== 'video' || item === newestVideo,
   )
 }
 
@@ -136,48 +156,26 @@ function createPrompt(
   ]
 }
 
-async function downloadGoogleMedia({
-  url,
-  abortSignal,
-}: {
-  url: URL
-  abortSignal?: AbortSignal
-}): Promise<{ data: Uint8Array; mediaType: string | undefined }> {
-  if (
-    url.origin !== GOOGLE_MEDIA_DOWNLOAD_ORIGIN ||
-    !url.pathname.startsWith('/v1beta/files/') ||
-    !url.pathname.endsWith(':download')
-  ) {
-    throw new Error('Rejected unexpected Google media download URL')
-  }
-
-  const response = await fetch(url, {
-    signal: abortSignal,
-    redirect: 'error',
+async function postGoogleInteraction(
+  body: Record<string, unknown>,
+): Promise<unknown> {
+  const response = await fetch(GOOGLE_INTERACTIONS_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-goog-api-key': getGoogleApiKey(),
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(GOOGLE_MEDIA_REQUEST_TIMEOUT_MS),
   })
   if (!response.ok) {
+    const details = (await response.text().catch(() => '')).slice(0, 300)
     throw new Error(
-      `Google media download failed: ${response.status} ${response.statusText}`,
+      `Google interaction failed: ${response.status} ${response.statusText} ${details}`.trim(),
     )
   }
 
-  const contentLength = Number(response.headers.get('content-length'))
-  if (
-    Number.isFinite(contentLength) &&
-    contentLength > GOOGLE_MEDIA_DOWNLOAD_MAX_BYTES
-  ) {
-    throw new Error('Google media download exceeds the 100 MiB limit')
-  }
-
-  const data = new Uint8Array(await response.arrayBuffer())
-  if (data.byteLength > GOOGLE_MEDIA_DOWNLOAD_MAX_BYTES) {
-    throw new Error('Google media download exceeds the 100 MiB limit')
-  }
-
-  return {
-    data,
-    mediaType: response.headers.get('content-type') ?? undefined,
-  }
+  return response.json()
 }
 
 async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
@@ -192,41 +190,44 @@ async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function generateVeoVideo(options: {
+/**
+ * Omni video generation, editing and extension all use the same Interactions
+ * call: media inputs plus a prompt, with the video output format requested
+ * through `response_format`. The AI SDK does not expose video response formats
+ * yet, so the request is sent directly.
+ */
+export async function generateOmniVideo(options: {
   prompt: string
-  aspectRatio: VeoAspectRatio
+  aspectRatio: OmniAspectRatio
   durationSeconds: number
   media?: MediaBuffer[]
 }): Promise<GeneratedMedia> {
-  const image = options.media?.[0]
-  const response = await runGoogleInteraction(() =>
-    generateVideo({
-      model: getAiSdkGoogleProvider().video(VEO_3_1_LITE_MODEL),
-      prompt: image
-        ? {
-            image: `data:${image.mimeType};base64,${image.buffer.toString('base64')}`,
-            text: options.prompt.trim(),
-          }
-        : options.prompt.trim(),
-      aspectRatio: options.aspectRatio,
-      resolution: '1280x720',
-      duration: options.durationSeconds,
-      generateAudio: true,
-      maxRetries: 0,
-      abortSignal: AbortSignal.timeout(GOOGLE_MEDIA_REQUEST_TIMEOUT_MS),
-      download: downloadGoogleMedia,
-      providerOptions: {
-        google: { pollTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS },
+  const media = options.media ?? []
+  const body = await runGoogleInteraction(() =>
+    postGoogleInteraction({
+      model: OMNI_VIDEO_MODEL,
+      input: [
+        ...media.map((item) => ({
+          type: item.mediaType === 'video' ? 'video' : 'image',
+          mime_type: item.mimeType,
+          data: item.buffer.toString('base64'),
+        })),
+        { type: 'text', text: options.prompt.trim() },
+      ],
+      response_format: {
+        type: 'video',
+        aspect_ratio: options.aspectRatio,
+        resolution: OMNI_VIDEO_RESOLUTION,
+        duration: `${options.durationSeconds}s`,
       },
+      store: false,
     }),
   )
-  if (!response.video.uint8Array.byteLength) {
-    throw new Error('Veo 3.1 Lite returned no video output')
-  }
-  return {
-    buffer: Buffer.from(response.video.uint8Array),
-    mimeType: response.video.mediaType,
-  }
+
+  const video = extractOmniInteractionVideo(body)
+  if (!video) throw new Error('Gemini Omni Flash returned no video output')
+
+  return video
 }
 
 export async function generateLyriaMusic(options: {

@@ -26,7 +26,7 @@ const RESERVED_TOOL_NAMES = new Set<string>([
   'telegram_dice',
   'search_image',
   'generate_or_edit_image',
-  'generate_video_with_veo',
+  'generate_video_with_omni',
   'generate_music_with_lyria',
   'search_video',
   'search_gif',

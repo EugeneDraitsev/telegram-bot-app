@@ -9,7 +9,7 @@ const COMMAND_INSTRUCTIONS = new Map<string, string>([
   ['de', IMAGE_INSTRUCTION],
   [
     'omni',
-    'Generate or animate a video for this request with the generate_video_with_veo tool. Default to a 6-second vertical video with native audio unless the user specifies a supported 4, 6, or 8 second duration or another aspect ratio',
+    'Generate, animate, edit, or continue a video for this request with the generate_video_with_omni tool. Default to an 8-second vertical video with native audio unless the user specifies another 3-10 second duration or another aspect ratio',
   ],
   [
     'lyria',

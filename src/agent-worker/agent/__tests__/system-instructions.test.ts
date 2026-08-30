@@ -12,7 +12,7 @@ describe('agentSystemInstructions', () => {
       'When calling generate_or_edit_image, build the image prompt from the current user message',
     )
     expect(agentSystemInstructions).toContain(
-      'Call generate_video_with_veo only when the current user explicitly asks',
+      'Call generate_video_with_omni only when the current user explicitly asks',
     )
     expect(agentSystemInstructions).toContain(
       'choose the exact Telegram message_id semantically',
