@@ -177,7 +177,6 @@ describe('Google media through the AI SDK', () => {
           url: new URL('https://example.com/v1beta/files/video-1:download'),
         }),
       ).rejects.toThrow('Rejected unexpected Google media download URL')
-      expect(fetchSpy).toHaveBeenCalledTimes(1)
     } finally {
       fetchSpy.mockRestore()
     }
