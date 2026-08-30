@@ -127,6 +127,66 @@ describe('Google media agent tools', () => {
     expect(mockPrepareOmniMedia).toHaveBeenCalledWith([requestVideo], false)
   })
 
+  test('follows the orientation of the selected media', async () => {
+    const landscapeImage: MediaBuffer = {
+      ...requestImage,
+      width: 1280,
+      height: 720,
+    }
+
+    await runWithToolContext(message, [landscapeImage], () =>
+      generateVideoTool.execute({
+        prompt: 'Animate this photo',
+        caption: 'Фото оживает.',
+      }),
+    )
+    expect(mockGenerateOmniVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ aspectRatio: '16:9' }),
+    )
+
+    await runWithToolContext(
+      message,
+      [{ ...requestVideo, width: 720, height: 1280 }],
+      () =>
+        generateVideoTool.execute({
+          prompt: 'Continue the scene',
+          caption: 'Сцена продолжается.',
+        }),
+    )
+    expect(mockGenerateOmniVideo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ aspectRatio: '9:16' }),
+    )
+  })
+
+  test('keeps an explicitly requested orientation and the vertical default', async () => {
+    const landscapeImage: MediaBuffer = {
+      ...requestImage,
+      width: 1280,
+      height: 720,
+    }
+
+    await runWithToolContext(message, [landscapeImage], () =>
+      generateVideoTool.execute({
+        prompt: 'Animate this photo vertically',
+        caption: 'Вертикальное видео.',
+        aspectRatio: '9:16',
+      }),
+    )
+    expect(mockGenerateOmniVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ aspectRatio: '9:16' }),
+    )
+
+    await runWithToolContext(message, [], () =>
+      generateVideoTool.execute({
+        prompt: 'Ocean at sunset',
+        caption: 'Океан',
+      }),
+    )
+    expect(mockGenerateOmniVideo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ aspectRatio: '9:16' }),
+    )
+  })
+
   test('defaults to an 8-second clip', async () => {
     await runWithToolContext(message, [], () =>
       generateVideoTool.execute({

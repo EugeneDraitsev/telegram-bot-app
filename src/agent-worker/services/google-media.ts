@@ -31,6 +31,10 @@ export const LYRIA_3_PRO_MODEL = 'lyria-3-pro-preview'
 const OMNI_VIDEO_RESOLUTION = '360p'
 export const MIN_OMNI_VIDEO_SECONDS = 3
 export const MAX_OMNI_VIDEO_SECONDS = 10
+// Uploaded videos can only be edited or extended when they are this short.
+const MAX_OMNI_INPUT_VIDEO_SECONDS = 10
+// Omni documents jpeg and png image inputs; animation must arrive as video.
+const UNSUPPORTED_OMNI_MIME_TYPES = new Set(['image/gif'])
 
 export type OmniAspectRatio = '9:16' | '16:9'
 export type LyriaModel = typeof LYRIA_3_CLIP_MODEL | typeof LYRIA_3_PRO_MODEL
@@ -109,7 +113,8 @@ export function prepareLyriaMedia(
 
 /**
  * Omni Flash accepts images (single frame, first+last frame, subject
- * references) and at most one video to edit or extend.
+ * references) and at most one video to edit or extend. Media the model cannot
+ * use is rejected here, before the caller pays for a generation.
  */
 export function prepareOmniMedia(
   media: MediaBuffer[] | undefined,
@@ -123,7 +128,27 @@ export function prepareOmniMedia(
     'Gemini Omni Flash',
   )
 
+  const unsupported = prepared.find((item) =>
+    UNSUPPORTED_OMNI_MIME_TYPES.has(item.mimeType),
+  )
+  if (unsupported) {
+    throw new Error(
+      `Gemini Omni Flash does not accept ${unsupported.mimeType} media; an animation has to arrive as a video`,
+    )
+  }
+
   const videos = prepared.filter((item) => item.mediaType === 'video')
+  const tooLong = videos.find(
+    (item) =>
+      item.durationSeconds != null &&
+      item.durationSeconds > MAX_OMNI_INPUT_VIDEO_SECONDS,
+  )
+  if (tooLong) {
+    throw new Error(
+      `Gemini Omni Flash can only edit or extend videos up to ${MAX_OMNI_INPUT_VIDEO_SECONDS} seconds; the selected video is ${tooLong.durationSeconds} seconds`,
+    )
+  }
+
   if (videos.length <= 1) return prepared
   if (explicit) {
     throw new Error('Gemini Omni Flash accepts at most one selected video')

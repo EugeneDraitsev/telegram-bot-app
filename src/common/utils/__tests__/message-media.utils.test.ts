@@ -18,6 +18,8 @@ describe('collectMediaFileRefs', () => {
         fileUniqueId: 'p',
         mimeType: 'image/jpeg',
         mediaType: 'image',
+        width: 1000,
+        height: 1000,
       },
     ])
   })
@@ -61,6 +63,64 @@ describe('collectMediaFileRefs', () => {
     const refs = collectMediaFileRefs(message)
     expect(refs).toEqual([
       { fileId: 'video_1', mimeType: 'video/mp4', mediaType: 'video' },
+    ])
+  })
+
+  test('collects a GIF animation as editable video', () => {
+    const message = {
+      animation: {
+        file_id: 'gif_1',
+        file_unique_id: 'gif-unique',
+        mime_type: 'video/mp4',
+        width: 480,
+        height: 270,
+        duration: 4,
+      },
+      // Telegram mirrors animations into document for backward compatibility
+      document: {
+        file_id: 'gif_1',
+        file_unique_id: 'gif-unique',
+        mime_type: 'video/mp4',
+      },
+    } as unknown as Message
+
+    const refs = collectMediaFileRefs(message)
+    expect(refs).toEqual([
+      {
+        fileId: 'gif_1',
+        fileUniqueId: 'gif-unique',
+        mimeType: 'video/mp4',
+        mediaType: 'video',
+        width: 480,
+        height: 270,
+        durationSeconds: 4,
+      },
+    ])
+  })
+
+  // A genuine .gif stays visible to the chat model; Omni rejects it later.
+  test('keeps a genuine .gif animation as a single image ref', () => {
+    const message = {
+      animation: {
+        file_id: 'gif_2',
+        file_unique_id: 'gif-2-unique',
+        mime_type: 'image/gif',
+      },
+      document: {
+        file_id: 'gif_2',
+        file_unique_id: 'gif-2-unique',
+        mime_type: 'image/gif',
+      },
+    } as unknown as Message
+
+    const refs = collectMediaFileRefs(message)
+    expect(refs).toEqual([
+      {
+        fileId: 'gif_2',
+        fileUniqueId: 'gif-2-unique',
+        mimeType: 'image/gif',
+        mediaType: 'image',
+      },
     ])
   })
 

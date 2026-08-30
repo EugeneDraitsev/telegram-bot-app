@@ -158,6 +158,35 @@ describe('getCommandMediaRefs', () => {
       }),
     ])
   })
+
+  it('keeps source dimensions when Telegram reports them', () => {
+    const refs = getCommandMediaRefs({
+      text: '/omni оживи',
+      video: {
+        file_id: 'landscape_video',
+        file_unique_id: 'landscape-unique',
+        mime_type: 'video/mp4',
+        width: 1280,
+        height: 720,
+        duration: 12,
+      },
+      video_note: {
+        file_id: 'note',
+        file_unique_id: 'note-unique',
+        length: 240,
+      },
+    } as unknown as Message)
+
+    expect(refs[0]).toEqual(
+      expect.objectContaining({
+        width: 1280,
+        height: 720,
+        durationSeconds: 12,
+      }),
+    )
+    expect(refs[1]).not.toHaveProperty('width')
+    expect(refs[1]).not.toHaveProperty('durationSeconds')
+  })
 })
 
 describe('getParsedText', () => {

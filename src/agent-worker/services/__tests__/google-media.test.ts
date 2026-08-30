@@ -233,6 +233,50 @@ describe('Google media through the AI SDK', () => {
     )
   })
 
+  test('rejects media Omni cannot use before a paid generation', () => {
+    const longVideo: MediaBuffer = {
+      buffer: Buffer.from('long-clip'),
+      mimeType: 'video/mp4',
+      mediaType: 'video',
+      durationSeconds: 63,
+    }
+    const gif: MediaBuffer = {
+      buffer: Buffer.from('gif'),
+      mimeType: 'image/gif',
+      mediaType: 'image',
+    }
+    const shortVideo: MediaBuffer = {
+      buffer: Buffer.from('clip'),
+      mimeType: 'video/mp4',
+      mediaType: 'video',
+      durationSeconds: 10,
+    }
+
+    for (const explicit of [true, false]) {
+      expect(() => prepareOmniMedia([longVideo], explicit)).toThrow(
+        'can only edit or extend videos up to 10 seconds; the selected video is 63 seconds',
+      )
+      expect(() => prepareOmniMedia([gif], explicit)).toThrow(
+        'does not accept image/gif media',
+      )
+    }
+
+    // Videos at the limit, and videos Telegram gave no duration for, still pass
+    expect(prepareOmniMedia([shortVideo], true)).toEqual([shortVideo])
+    expect(
+      prepareOmniMedia(
+        [
+          {
+            buffer: Buffer.from('clip'),
+            mimeType: 'video/mp4',
+            mediaType: 'video',
+          },
+        ],
+        true,
+      ),
+    ).toHaveLength(1)
+  })
+
   test('soft-bounds implicit Omni media to the newest items that fit', () => {
     const fiveImages: MediaBuffer[] = [1, 2, 3, 4, 5].map((index) => ({
       buffer: Buffer.from(`small-${index}`),

@@ -124,11 +124,31 @@ export interface MediaFileRef {
   fileUniqueId?: string
   mimeType: string
   mediaType: 'image' | 'audio' | 'video'
+  /** Source dimensions, when Telegram reports them. Used to match orientation. */
+  width?: number
+  height?: number
+  /** Playback length in seconds, when Telegram reports it. */
+  durationSeconds?: number
   label?: string
   context?: MediaMessageContext
 }
 
 const IMAGE_MIME_PREFIXES = ['image/']
+
+/** Telegram omits dimensions for some media (voice, video notes, documents). */
+function getDimensions(
+  source: { width?: number; height?: number } | undefined,
+): { width?: number; height?: number } {
+  return source?.width && source.height
+    ? { width: source.width, height: source.height }
+    : {}
+}
+
+function getDuration(seconds: number | undefined): {
+  durationSeconds?: number
+} {
+  return seconds ? { durationSeconds: seconds } : {}
+}
 
 function getMediaKey(ref: MediaFileRef): string {
   return ref.fileUniqueId ? `unique:${ref.fileUniqueId}` : `id:${ref.fileId}`
@@ -150,7 +170,7 @@ function isImageDocument(
 
 /**
  * Media carried by a single message, in a stable order:
- * photo, sticker, document (image only), voice, video, video_note.
+ * photo, sticker, document (image only), voice, video, video_note, animation.
  */
 function collectSingleMessageMediaFileRefs(
   message: Message | undefined,
@@ -166,6 +186,7 @@ function collectSingleMessageMediaFileRefs(
       fileUniqueId: photo.file_unique_id,
       mimeType: 'image/jpeg',
       mediaType: 'image',
+      ...getDimensions(photo),
     })
   }
 
@@ -179,6 +200,7 @@ function collectSingleMessageMediaFileRefs(
       fileUniqueId: sticker.file_unique_id,
       mimeType: sticker.is_video ? 'video/webm' : 'image/webp',
       mediaType: sticker.is_video ? 'video' : 'image',
+      ...getDimensions(sticker),
     })
   }
 
@@ -190,6 +212,7 @@ function collectSingleMessageMediaFileRefs(
         : {}),
       mimeType: message.document.mime_type,
       mediaType: 'image',
+      ...getDimensions(message.document.thumbnail),
     })
   }
 
@@ -212,6 +235,8 @@ function collectSingleMessageMediaFileRefs(
         : {}),
       mimeType: message.video.mime_type || 'video/mp4',
       mediaType: 'video',
+      ...getDimensions(message.video),
+      ...getDuration(message.video.duration),
     })
   }
 
@@ -223,6 +248,23 @@ function collectSingleMessageMediaFileRefs(
         : {}),
       mimeType: 'video/mp4',
       mediaType: 'video',
+      ...getDuration(message.video_note.duration),
+    })
+  }
+
+  // Telegram delivers GIFs as silent MP4 animations; only genuine .gif files
+  // keep an image mime type.
+  if (message.animation?.file_id) {
+    const mimeType = message.animation.mime_type || 'video/mp4'
+    refs.push({
+      fileId: message.animation.file_id,
+      ...(message.animation.file_unique_id
+        ? { fileUniqueId: message.animation.file_unique_id }
+        : {}),
+      mimeType,
+      mediaType: mimeType.startsWith('image/') ? 'image' : 'video',
+      ...getDimensions(message.animation),
+      ...getDuration(message.animation.duration),
     })
   }
 
@@ -363,6 +405,9 @@ export interface MediaBuffer {
   origin?: 'request' | 'history'
   fileId?: string
   fileUniqueId?: string
+  width?: number
+  height?: number
+  durationSeconds?: number
   label?: string
   context?: MediaMessageContext
 }
@@ -454,6 +499,8 @@ export async function resolveMediaBuffers(
         mediaType: ref.mediaType,
         fileId: ref.fileId,
         fileUniqueId: ref.fileUniqueId,
+        ...getDimensions(ref),
+        ...getDuration(ref.durationSeconds),
         label: ref.label,
         context: ref.context,
       }

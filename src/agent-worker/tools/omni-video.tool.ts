@@ -1,4 +1,4 @@
-import { getErrorMessage } from '@tg-bot/common'
+import { getErrorMessage, type MediaBuffer } from '@tg-bot/common'
 import {
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateOmniVideo,
@@ -19,6 +19,7 @@ import { getMediaIdsParameter, selectMediaForTool } from './media-selection'
 import { getMediaCaption } from './media-text'
 
 const DEFAULT_DURATION_SECONDS = 8
+const DEFAULT_ASPECT_RATIO: OmniAspectRatio = '9:16'
 
 function getDurationSeconds(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -31,8 +32,21 @@ function getDurationSeconds(value: unknown): number {
   )
 }
 
-function getAspectRatio(value: unknown): OmniAspectRatio {
-  return value === '16:9' ? '16:9' : '9:16'
+/** Match the orientation of the media the video is built from, when known. */
+function getReferenceAspectRatio(
+  media: MediaBuffer[],
+): OmniAspectRatio | undefined {
+  const reference = media.find((item) => item.mediaType === 'video') ?? media[0]
+  const { width, height } = reference ?? {}
+  if (!width || !height || width === height) return undefined
+
+  return width > height ? '16:9' : '9:16'
+}
+
+function getAspectRatio(value: unknown, media: MediaBuffer[]): OmniAspectRatio {
+  if (value === '16:9' || value === '9:16') return value
+
+  return getReferenceAspectRatio(media) ?? DEFAULT_ASPECT_RATIO
 }
 
 export const generateVideoTool: AgentTool = {
@@ -66,7 +80,7 @@ export const generateVideoTool: AgentTool = {
           type: 'string',
           enum: ['9:16', '16:9'],
           description:
-            '9:16 for vertical/social video; 16:9 for landscape. Default: 9:16.',
+            'Set only when the user asks for a specific orientation: 9:16 for vertical/social video, 16:9 for landscape. Omit it to follow the orientation of the selected media, or 9:16 when no media is selected.',
         },
         mediaIds: getMediaIdsParameter(
           'up to 3 conditioning images (one image, first and last frame, or subject references) or a single video to edit or extend',
@@ -84,7 +98,6 @@ export const generateVideoTool: AgentTool = {
       const caption = getMediaCaption(args.caption)
 
       const durationSeconds = getDurationSeconds(args.durationSeconds)
-      const aspectRatio = getAspectRatio(args.aspectRatio)
       const mediaSelection = selectMediaForTool(mediaBuffers, args.mediaIds, [
         'image',
         'video',
@@ -93,6 +106,7 @@ export const generateVideoTool: AgentTool = {
         mediaSelection.media,
         mediaSelection.explicit,
       )
+      const aspectRatio = getAspectRatio(args.aspectRatio, selectedMedia)
       claimGeneratedMedia()
       const result = await trackToolModelCall(
         {
