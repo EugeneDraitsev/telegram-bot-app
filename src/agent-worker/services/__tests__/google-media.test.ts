@@ -106,6 +106,7 @@ describe('Google media through the AI SDK', () => {
       generateAudio: true,
       maxRetries: 0,
       abortSignal: expect.any(AbortSignal),
+      download: expect.any(Function),
       providerOptions: {
         google: { pollTimeoutMs: 160_000 },
       },
@@ -132,6 +133,54 @@ describe('Google media through the AI SDK', () => {
         duration: 4,
       }),
     )
+  })
+
+  test('downloads Veo output with native fetch from the Google media endpoint only', async () => {
+    mockGenerateVideo.mockResolvedValue(generatedVideo('generated-video'))
+    await generateVeoVideo({
+      prompt: 'Ocean at sunset',
+      aspectRatio: '16:9',
+      durationSeconds: 4,
+    })
+
+    const call = mockGenerateVideo.mock.calls[0]?.[0] as {
+      download?: (options: {
+        url: URL
+        abortSignal?: AbortSignal
+      }) => Promise<{ data: Uint8Array; mediaType: string | undefined }>
+    }
+    if (!call.download) throw new Error('Expected a custom video downloader')
+
+    const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(Buffer.from('downloaded-video'), {
+        headers: { 'content-type': 'video/mp4' },
+      }),
+    )
+    try {
+      const result = await call.download({
+        url: new URL(
+          'https://generativelanguage.googleapis.com/v1beta/files/video-1:download?key=secret',
+        ),
+      })
+
+      expect(result).toEqual({
+        data: new Uint8Array(Buffer.from('downloaded-video')),
+        mediaType: 'video/mp4',
+      })
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.any(URL),
+        expect.objectContaining({ redirect: 'error' }),
+      )
+
+      await expect(
+        call.download({
+          url: new URL('https://example.com/v1beta/files/video-1:download'),
+        }),
+      ).rejects.toThrow('Rejected unexpected Google media download URL')
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      fetchSpy.mockRestore()
+    }
   })
 
   test('strictly validates explicitly selected Veo media', () => {

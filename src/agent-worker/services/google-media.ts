@@ -13,6 +13,8 @@ import {
 import { extractLyriaInteractionOutput } from './google-interactions.adapter'
 
 const GOOGLE_MEDIA_REQUEST_TIMEOUT_MS = 160_000
+const GOOGLE_MEDIA_DOWNLOAD_ORIGIN = 'https://generativelanguage.googleapis.com'
+const GOOGLE_MEDIA_DOWNLOAD_MAX_BYTES = 100 * 1024 * 1024
 // Inline media is base64-encoded in JSON (~4/3 expansion). Keep raw inputs at
 // 14 MiB so the encoded media plus request metadata stays below 20 MB.
 const MAX_INLINE_MEDIA_RAW_BYTES = 14 * 1024 * 1024
@@ -134,6 +136,50 @@ function createPrompt(
   ]
 }
 
+async function downloadGoogleMedia({
+  url,
+  abortSignal,
+}: {
+  url: URL
+  abortSignal?: AbortSignal
+}): Promise<{ data: Uint8Array; mediaType: string | undefined }> {
+  if (
+    url.origin !== GOOGLE_MEDIA_DOWNLOAD_ORIGIN ||
+    !url.pathname.startsWith('/v1beta/files/') ||
+    !url.pathname.endsWith(':download')
+  ) {
+    throw new Error('Rejected unexpected Google media download URL')
+  }
+
+  const response = await fetch(url, {
+    signal: abortSignal,
+    redirect: 'error',
+  })
+  if (!response.ok) {
+    throw new Error(
+      `Google media download failed: ${response.status} ${response.statusText}`,
+    )
+  }
+
+  const contentLength = Number(response.headers.get('content-length'))
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > GOOGLE_MEDIA_DOWNLOAD_MAX_BYTES
+  ) {
+    throw new Error('Google media download exceeds the 100 MiB limit')
+  }
+
+  const data = new Uint8Array(await response.arrayBuffer())
+  if (data.byteLength > GOOGLE_MEDIA_DOWNLOAD_MAX_BYTES) {
+    throw new Error('Google media download exceeds the 100 MiB limit')
+  }
+
+  return {
+    data,
+    mediaType: response.headers.get('content-type') ?? undefined,
+  }
+}
+
 async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run()
@@ -168,6 +214,7 @@ export async function generateVeoVideo(options: {
       generateAudio: true,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(GOOGLE_MEDIA_REQUEST_TIMEOUT_MS),
+      download: downloadGoogleMedia,
       providerOptions: {
         google: { pollTimeoutMs: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS },
       },
