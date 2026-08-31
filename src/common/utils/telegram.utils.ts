@@ -3,6 +3,7 @@ import type { Chat, Message, User } from 'grammy/types'
 import type { Context } from 'grammy/web'
 
 import { logger } from '../logger'
+import { getMessageText } from './message-text.utils'
 
 export function isTelegramReplyTargetMissingError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -53,21 +54,16 @@ export const getCommandData = (
   extraMessages: Message[] = [],
 ) => {
   const { message_id, reply_to_message } = message ?? {}
-  const parsedText = getParsedText(message?.text || message?.caption)
+  const parsedText = getParsedText(getMessageText(message))
 
   const replyId = parsedText
     ? message_id || 0
     : (reply_to_message?.message_id ?? message_id ?? 0)
   const quoteText = message?.quote?.text
-  const text =
-    parsedText ||
-    quoteText ||
-    reply_to_message?.text ||
-    reply_to_message?.caption ||
-    ''
+  const replyTargetText = getMessageText(reply_to_message)
+  const text = parsedText || quoteText || replyTargetText || ''
   const messageText = parsedText
-  const replyText =
-    quoteText || reply_to_message?.text || reply_to_message?.caption
+  const replyText = quoteText || replyTargetText
   const combinedText =
     replyText && messageText ? `${replyText}\n${messageText}` : text
 
@@ -101,7 +97,7 @@ export const getLargestPhoto = (m?: Message) =>
   (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
 
 function getShortMessageText(message: Message | undefined): string {
-  return (message?.caption || message?.text || '').trim().slice(0, 180)
+  return getMessageText(message).trim().slice(0, 180)
 }
 
 function getMessageLabel(message: Message | undefined): string {

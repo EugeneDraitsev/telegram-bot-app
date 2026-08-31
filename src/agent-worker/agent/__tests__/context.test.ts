@@ -56,4 +56,26 @@ describe('buildContextBlock', () => {
       'Historical images are available only after selecting their exact message_id',
     )
   })
+
+  test('reads the reply target text out of a rich message', () => {
+    const contextBlock = buildContextBlock(
+      {
+        ...BASE_MESSAGE,
+        reply_to_message: {
+          message_id: 44,
+          from: { id: 1, is_bot: true, first_name: 'bot' },
+          rich_message: {
+            blocks: [{ type: 'paragraph', text: 'Безопасный маршрут: врач' }],
+          },
+        },
+      } as Message,
+      'а это точно безопасный маршрут?',
+      false,
+    )
+
+    expect(contextBlock).toContain(
+      'Telegram reply target (message_id=44): "Безопасный маршрут: врач"',
+    )
+    expect(contextBlock).not.toContain('[media]')
+  })
 })

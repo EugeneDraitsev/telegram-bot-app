@@ -129,6 +129,24 @@ describe('formatHistoryForDisplay', () => {
     expect(history).not.toContain('[ message_id=8]')
   })
 
+  test('renders rich bot replies instead of an empty message marker', () => {
+    const history = formatHistoryForDisplay([
+      createMessage(9, {
+        text: undefined,
+        from: { id: 1, is_bot: true, first_name: 'illuminati chat bot' },
+        rich_message: {
+          blocks: [
+            { type: 'paragraph', text: 'Безопасный маршрут:' },
+            { type: 'paragraph', text: { type: 'bold', text: 'к врачу' } },
+          ],
+        },
+      } as Partial<Message>),
+    ])
+
+    expect(history).toContain('Bot: Безопасный маршрут:\nк врачу')
+    expect(history).not.toContain('[empty message]')
+  })
+
   test('can render the full available history when requested explicitly', () => {
     const messages = Array.from({ length: 3 }, (_, index) =>
       createMessage(index + 1),

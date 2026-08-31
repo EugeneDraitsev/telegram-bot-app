@@ -8,6 +8,7 @@ import type { Message } from 'grammy/types'
 import { isAiAllowedChat } from '../aws/dynamo'
 import { logger } from '../logger'
 import { TtlCache } from '../ttl-cache'
+import { getMessageText } from '../utils/message-text.utils'
 import { getRedisClient } from './client'
 
 const ONE_HOUR = 60 * 60 * 1000
@@ -105,7 +106,7 @@ function getMediaLabels(message: Message): {
 
 function getHistoryLineText(message: Message): string {
   const { labels: mediaLabels, hasNonImageMedia } = getMediaLabels(message)
-  const text = message.text || message.caption
+  const text = getMessageText(message)
   const mediaMarker = `[media: ${mediaLabels.join(', ')}${
     hasNonImageMedia ? '; load_chat_media: images only' : ''
   }]`

@@ -3,6 +3,8 @@ import { inspect } from 'node:util'
 import pino from 'pino'
 import type { Message } from 'grammy/types'
 
+import { getMessageText } from './utils/message-text.utils'
+
 type LogRecord = Record<string, unknown> & {
   time?: number
   level?: number | string
@@ -220,7 +222,7 @@ export function getMessageLogMeta(message: Message) {
     chatId: message.chat?.id,
     messageId: message.message_id,
     fromId: message.from?.id,
-    hasText: Boolean(message.text || message.caption),
+    hasText: Boolean(getMessageText(message)),
     hasPhoto: Boolean(message.photo?.length),
   }
 }

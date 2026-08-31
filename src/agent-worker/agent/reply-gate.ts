@@ -12,6 +12,7 @@ import {
   type BotIdentity,
   getAiSdkLanguageModel,
   getAiSdkProviderOptions,
+  getMessageText,
   getMetricStatusFromError,
   isReplyToAnotherBot,
   isReplyToOurBot,
@@ -115,8 +116,7 @@ ${params.memoryBlock ? `\n${params.memoryBlock}` : ''}`
 }
 
 function buildReplyGateInput(message: Message, textContent: string): string {
-  const replyTargetText =
-    message.reply_to_message?.text || message.reply_to_message?.caption
+  const replyTargetText = getMessageText(message.reply_to_message)
 
   if (!replyTargetText) {
     return textContent || '[media without text]'
@@ -283,8 +283,7 @@ export async function shouldEngageWithMessage(params: {
     mentionsOther,
     hasMedia,
     textContent,
-    replyTargetText:
-      message.reply_to_message?.text || message.reply_to_message?.caption,
+    replyTargetText: getMessageText(message.reply_to_message),
     memoryBlock,
   })
   const prompt = buildReplyGateInput(message, textContent)

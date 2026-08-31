@@ -1,6 +1,10 @@
 import type { Message } from 'grammy/types'
 
-import { cleanModelMessage, type MediaBuffer } from '@tg-bot/common'
+import {
+  cleanModelMessage,
+  getMessageText,
+  type MediaBuffer,
+} from '@tg-bot/common'
 import type { AgentResponse } from '../types'
 
 interface BuildContextOptions {
@@ -46,7 +50,7 @@ export function buildContextBlock(
 
   if (message.reply_to_message) {
     const replyTarget = message.reply_to_message
-    const replyText = replyTarget.text || replyTarget.caption || '[media]'
+    const replyText = getMessageText(replyTarget) || '[media]'
     const replyLabel =
       typeof replyTarget.message_id === 'number'
         ? `message_id=${replyTarget.message_id}`

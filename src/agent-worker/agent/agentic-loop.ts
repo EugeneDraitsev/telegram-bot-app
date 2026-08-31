@@ -12,6 +12,7 @@ import {
   getChatMemory,
   getGlobalMemory,
   getMessageLogMeta,
+  getMessageText,
   getRecentRawHistory,
   isTelegramReplyTargetMissingError,
   logger,
@@ -245,8 +246,7 @@ export function buildInitialInput(
     ({ media }) => media.context?.relation === 'reply-target',
   )
   if (message.reply_to_message && !hasReplyMedia) {
-    const replyText =
-      message.reply_to_message.text || message.reply_to_message.caption
+    const replyText = getMessageText(message.reply_to_message)
     const replyId = message.reply_to_message.message_id
     const replyLabel =
       typeof replyId === 'number'
