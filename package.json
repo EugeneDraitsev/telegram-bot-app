@@ -10,7 +10,7 @@
   "private": true,
   "scripts": {
     "start": "sls offline start --stage local",
-    "build": "bun run prepare:sharp-layer && sls package",
+    "build": "bun run prepare:layers && sls package",
     "tsc": "tsc --noEmit",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
@@ -20,8 +20,10 @@
     "logs": "sls logs -f telegram-bot -t",
     "diagram": "bun tools/render-diagrams.mts",
     "validate:deployment-config": "bun tools/validate-deployment-config.mts",
-    "deploy": "bun run validate:deployment-config && bun run prepare:sharp-layer && sls deploy",
-    "prepare:sharp-layer": "bun tools/prepare-sharp-layer.mts"
+    "deploy": "bun run validate:deployment-config && bun run prepare:layers && sls deploy",
+    "prepare:layers": "bun run prepare:sharp-layer && bun run prepare:ffmpeg-layer",
+    "prepare:sharp-layer": "bun tools/prepare-sharp-layer.mts",
+    "prepare:ffmpeg-layer": "bun tools/prepare-ffmpeg-layer.mts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.10",

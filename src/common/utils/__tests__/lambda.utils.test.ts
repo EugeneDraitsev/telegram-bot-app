@@ -1,6 +1,6 @@
 import { type InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
-import { invokeLambda } from '..'
+import { invokeLambda, invokeLambdaForBuffer } from '..'
 
 type LambdaSend = LambdaClient['send']
 
@@ -105,5 +105,68 @@ describe('invokeLambda', () => {
     await invokeLambda({ name: 'fn-two', payload: {} })
 
     expect(clients.size).toBe(1)
+  })
+})
+
+describe('invokeLambdaForBuffer', () => {
+  function reply(payload: Record<string, unknown>) {
+    return { Payload: new TextEncoder().encode(JSON.stringify(payload)) }
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test('should decode a base64 body', async () => {
+    mockLambdaSend(() =>
+      Promise.resolve(
+        reply({ statusCode: 200, body: Buffer.from('png').toString('base64') }),
+      ),
+    )
+
+    expect(
+      await invokeLambdaForBuffer({
+        label: 'renderer',
+        name: 'fn',
+        payload: {},
+      }),
+    ).toEqual(Buffer.from('png'))
+  })
+
+  test("should surface the callee's own error", async () => {
+    mockLambdaSend(() =>
+      Promise.resolve(
+        reply({ statusCode: 400, body: JSON.stringify({ error: 'bad svg' }) }),
+      ),
+    )
+
+    await expect(
+      invokeLambdaForBuffer({ label: 'renderer', name: 'fn', payload: {} }),
+    ).rejects.toThrow('bad svg')
+  })
+
+  test('should reject an unusable response', async () => {
+    mockLambdaSend(() => Promise.resolve({ FunctionError: 'Unhandled' }))
+    await expect(
+      invokeLambdaForBuffer({ label: 'renderer', name: 'fn', payload: {} }),
+    ).rejects.toThrow('Unhandled')
+
+    mockLambdaSend(() => Promise.resolve(reply({ statusCode: 200, body: '' })))
+    await expect(
+      invokeLambdaForBuffer({
+        label: 'video trimmer',
+        name: 'fn',
+        payload: {},
+      }),
+    ).rejects.toThrow('video trimmer returned an empty body')
+
+    mockLambdaSend(() => Promise.resolve(reply({ statusCode: 500 })))
+    await expect(
+      invokeLambdaForBuffer({
+        label: 'video trimmer',
+        name: 'fn',
+        payload: {},
+      }),
+    ).rejects.toThrow('video trimmer failed')
   })
 })

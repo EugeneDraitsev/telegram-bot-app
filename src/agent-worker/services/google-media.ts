@@ -6,6 +6,8 @@ import {
   getGoogleApiKey,
   logger,
   type MediaBuffer,
+  trimTelegramVideo,
+  VIDEO_TRIM_TIMEOUT_MS,
 } from '@tg-bot/common'
 import {
   extractLyriaInteractionOutput,
@@ -22,6 +24,9 @@ const MAX_OMNI_MEDIA_ITEMS = 3
 const MAX_LYRIA_IMAGES = 10
 
 export const GOOGLE_MEDIA_TOOL_TIMEOUT_MS = 170_000
+// Omni can spend its whole budget generating after a long input was trimmed.
+export const OMNI_VIDEO_TOOL_TIMEOUT_MS =
+  GOOGLE_MEDIA_TOOL_TIMEOUT_MS + VIDEO_TRIM_TIMEOUT_MS
 
 export const OMNI_VIDEO_MODEL = 'gemini-omni-1.1-flash'
 export const LYRIA_3_CLIP_MODEL = 'lyria-3-clip-preview'
@@ -114,7 +119,9 @@ export function prepareLyriaMedia(
 /**
  * Omni Flash accepts images (single frame, first+last frame, subject
  * references) and at most one video to edit or extend. Media the model cannot
- * use is rejected here, before the caller pays for a generation.
+ * use is rejected here, before the caller pays for a generation. An over-long
+ * video survives when Telegram can serve it again, because `shortenOmniVideos`
+ * cuts it down once the generation is committed to.
  */
 export function prepareOmniMedia(
   media: MediaBuffer[] | undefined,
@@ -141,7 +148,8 @@ export function prepareOmniMedia(
   const tooLong = videos.find(
     (item) =>
       item.durationSeconds != null &&
-      item.durationSeconds > MAX_OMNI_INPUT_VIDEO_SECONDS,
+      item.durationSeconds > MAX_OMNI_INPUT_VIDEO_SECONDS &&
+      !item.fileId,
   )
   if (tooLong) {
     throw new Error(
@@ -158,6 +166,63 @@ export function prepareOmniMedia(
   return prepared.filter(
     (item) => item.mediaType !== 'video' || item === newestVideo,
   )
+}
+
+async function shortenVideo(
+  item: MediaBuffer,
+  aspectRatio: OmniAspectRatio,
+): Promise<MediaBuffer> {
+  if (
+    item.mediaType !== 'video' ||
+    !item.fileId ||
+    item.durationSeconds == null ||
+    item.durationSeconds <= MAX_OMNI_INPUT_VIDEO_SECONDS
+  ) {
+    return item
+  }
+
+  try {
+    const buffer = await trimTelegramVideo({
+      fileId: item.fileId,
+      maxDurationSeconds: MAX_OMNI_INPUT_VIDEO_SECONDS,
+      aspectRatio,
+    })
+
+    return {
+      ...item,
+      buffer,
+      mimeType: 'video/mp4',
+      durationSeconds: MAX_OMNI_INPUT_VIDEO_SECONDS,
+      // The clip was re-framed, so the dimensions Telegram reported are gone.
+      width: undefined,
+      height: undefined,
+    }
+  } catch (error) {
+    logger.error(
+      { error: getErrorMessage(error), fileId: item.fileId },
+      'google_media.video_trim_failed',
+    )
+    throw new Error(
+      `Could not shorten the selected video to ${MAX_OMNI_INPUT_VIDEO_SECONDS} seconds`,
+      { cause: error },
+    )
+  }
+}
+
+/**
+ * Cut every over-long Telegram video or video note down to the few seconds Omni
+ * can edit or extend, using the ffmpeg lambda, and centre-crop it to the frame
+ * Omni is being asked to produce. Omni only outputs 9:16 or 16:9, so a square
+ * video note would otherwise be re-framed by the model itself, which loses the
+ * original composition on an edit or an extension. Runs after
+ * `prepareOmniMedia` accepted the selection, so only media that is about to
+ * reach the model is re-encoded.
+ */
+export function shortenOmniVideos(
+  media: MediaBuffer[],
+  aspectRatio: OmniAspectRatio,
+): Promise<MediaBuffer[]> {
+  return Promise.all(media.map((item) => shortenVideo(item, aspectRatio)))
 }
 
 function createPrompt(

@@ -1,5 +1,7 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
+import { safeJSONParse } from './json.utils'
+
 const lambdaClients = new Map<string, LambdaClient>()
 
 interface InvokeLambdaOptions {
@@ -42,4 +44,40 @@ export const invokeLambda = ({
   })
 
   return lambda.send(command)
+}
+
+/**
+ * Invoke a lambda that answers with a base64 body and decode it, surfacing the
+ * callee's own error message so callers can report why the work failed.
+ */
+export async function invokeLambdaForBuffer({
+  label,
+  ...options
+}: Omit<InvokeLambdaOptions, 'async'> & { label: string }): Promise<Buffer> {
+  const response = await invokeLambda(options)
+
+  if (response.FunctionError) {
+    throw new Error(response.FunctionError)
+  }
+
+  const body = safeJSONParse(new TextDecoder().decode(response.Payload))
+  if (body?.statusCode !== 200) {
+    const error = safeJSONParse(body?.body)?.error
+    throw new Error(
+      typeof error === 'string' && error.trim()
+        ? error.trim()
+        : `${label} failed`,
+    )
+  }
+
+  if (typeof body.body !== 'string') {
+    throw new Error(`${label} returned no body`)
+  }
+
+  const result = Buffer.from(body.body, 'base64')
+  if (result.byteLength === 0) {
+    throw new Error(`${label} returned an empty body`)
+  }
+
+  return result
 }

@@ -1,12 +1,13 @@
 import { getErrorMessage, type MediaBuffer } from '@tg-bot/common'
 import {
-  GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateOmniVideo,
   MAX_OMNI_VIDEO_SECONDS,
   MIN_OMNI_VIDEO_SECONDS,
   OMNI_VIDEO_MODEL,
+  OMNI_VIDEO_TOOL_TIMEOUT_MS,
   type OmniAspectRatio,
   prepareOmniMedia,
+  shortenOmniVideos,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
 import {
@@ -51,7 +52,7 @@ function getAspectRatio(value: unknown, media: MediaBuffer[]): OmniAspectRatio {
 
 export const generateVideoTool: AgentTool = {
   execution: ['after-data', 'terminal'],
-  timeoutMs: GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
+  timeoutMs: OMNI_VIDEO_TOOL_TIMEOUT_MS,
   declaration: {
     type: 'function',
     name: 'generate_video_with_omni',
@@ -102,12 +103,13 @@ export const generateVideoTool: AgentTool = {
         'image',
         'video',
       ])
-      const selectedMedia = prepareOmniMedia(
+      const validatedMedia = prepareOmniMedia(
         mediaSelection.media,
         mediaSelection.explicit,
       )
-      const aspectRatio = getAspectRatio(args.aspectRatio, selectedMedia)
+      const aspectRatio = getAspectRatio(args.aspectRatio, validatedMedia)
       claimGeneratedMedia()
+      const selectedMedia = await shortenOmniVideos(validatedMedia, aspectRatio)
       const result = await trackToolModelCall(
         {
           name: 'video_generation',

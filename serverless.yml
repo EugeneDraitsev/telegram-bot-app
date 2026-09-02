@@ -31,6 +31,7 @@ provider:
     CHAT_USER_STATISTICS_USER_ID_INDEX_NAME: ${self:custom.chatUserStatisticsUserIdIndexName}
     CHAT_EVENTS_TABLE_NAME: ${self:custom.runtimeChatEventsTableNameByStage.${sls:stage}, self:custom.chatEventsTableName}
     SHARP_RENDERER_FUNCTION_NAME: ${self:service}-${sls:stage}-sharp-renderer
+    VIDEO_TRIMMER_FUNCTION_NAME: ${self:service}-${sls:stage}-video-trimmer
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
     WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME: ${self:custom.websocketConnectionsChatIdIndexName}
 functions:
@@ -206,6 +207,19 @@ functions:
       FONTCONFIG_PATH: "./fonts"
     memorySize: 1536
 
+  video-trimmer:
+    handler: src/video-trimmer/index.default
+    role:
+      Fn::GetAtt:
+        - VideoTrimmerRole
+        - Arn
+    timeout: 60
+    memorySize: 3008
+    layers:
+      - Ref: FfmpegLambdaLayer
+    environment:
+      TOKEN: ${env:TOKEN}
+
   websocket-connect:
     handler: src/websockets/index.connect
     role:
@@ -266,6 +280,12 @@ package:
 layers:
   sharpRenderer:
     path: .layers/sharp
+    compatibleRuntimes:
+      - ${self:provider.runtime}
+    compatibleArchitectures:
+      - arm64
+  ffmpeg:
+    path: .layers/ffmpeg
     compatibleRuntimes:
       - ${self:provider.runtime}
     compatibleArchitectures:

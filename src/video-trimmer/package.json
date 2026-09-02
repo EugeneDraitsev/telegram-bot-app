@@ -1,0 +1,7 @@
+{
+  "name": "@tg-bot/video-trimmer",
+  "version": "0.1.0",
+  "dependencies": {
+    "@tg-bot/common": "workspace:*"
+  }
+}
