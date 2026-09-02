@@ -113,7 +113,7 @@ Resources:
       AssumeRolePolicyDocument: *lambdaAssumeRole
       ManagedPolicyArns: *lambdaBasicExecution
       Policies:
-        - PolicyName: invoke-sharp-renderer
+        - PolicyName: invoke-media-lambdas
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -122,6 +122,7 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - arn:aws:lambda:*:*:${self:service}-${sls:stage}-sharp-renderer
+                  - arn:aws:lambda:*:*:${self:service}-${sls:stage}-video-trimmer
               - Effect: Allow
                 Action:
                   - sqs:ReceiveMessage
@@ -212,6 +213,12 @@ Resources:
                   - dynamodb:Query
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
+
+  VideoTrimmerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: *lambdaAssumeRole
+      ManagedPolicyArns: *lambdaBasicExecution
 
   WebsocketConnectRole:
     Type: AWS::IAM::Role

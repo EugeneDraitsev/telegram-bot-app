@@ -4,6 +4,8 @@ jest.mock('ai', () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
 }))
 
+import { type InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
+
 import { type MediaBuffer, resetAiSdkProvidersForTests } from '@tg-bot/common'
 import {
   generateLyriaMusic,
@@ -12,6 +14,7 @@ import {
   OMNI_VIDEO_MODEL,
   prepareLyriaMedia,
   prepareOmniMedia,
+  shortenOmniVideos,
 } from '../google-media'
 
 const originalGeminiApiKey = process.env.GEMINI_API_KEY
@@ -424,5 +427,132 @@ describe('Google media through the AI SDK', () => {
         durationSeconds: 6,
       }),
     ).rejects.toThrow('Gemini Omni Flash returned no video output')
+  })
+})
+
+describe('Omni input video trimming', () => {
+  const longVideoNote: MediaBuffer = {
+    buffer: Buffer.from('sixty-second-circle'),
+    mimeType: 'video/mp4',
+    mediaType: 'video',
+    fileId: 'file-1',
+    durationSeconds: 60,
+  }
+
+  function mockTrimmer(
+    implementation: (command: InvokeCommand) => unknown,
+  ): void {
+    jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation(implementation as never)
+  }
+
+  function trimmerReply(video: string) {
+    return {
+      Payload: new TextEncoder().encode(
+        JSON.stringify({
+          statusCode: 200,
+          isBase64Encoded: true,
+          body: Buffer.from(video).toString('base64'),
+        }),
+      ),
+    }
+  }
+
+  beforeEach(() => {
+    process.env.VIDEO_TRIMMER_FUNCTION_NAME = 'telegram-test-video-trimmer'
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+    delete process.env.VIDEO_TRIMMER_FUNCTION_NAME
+  })
+
+  test('keeps a long Telegram video so it can be shortened later', () => {
+    expect(prepareOmniMedia([longVideoNote], true)).toEqual([longVideoNote])
+  })
+
+  test('charges a long video the size it will have after the trim', () => {
+    // Over the 14 MiB inline limit now, comfortably under it once trimmed.
+    const heavyLongVideo: MediaBuffer = {
+      ...longVideoNote,
+      buffer: Buffer.alloc(15 * 1024 * 1024),
+    }
+    const heavyShortVideo: MediaBuffer = {
+      ...heavyLongVideo,
+      durationSeconds: 8,
+    }
+
+    expect(prepareOmniMedia([heavyLongVideo], true)).toEqual([heavyLongVideo])
+    expect(prepareOmniMedia([heavyLongVideo], false)).toEqual([heavyLongVideo])
+
+    // A short video is not trimmable, so its real weight still applies.
+    expect(() => prepareOmniMedia([heavyShortVideo], true)).toThrow(
+      'selected media exceeds the 14 MiB raw inline limit',
+    )
+    expect(prepareOmniMedia([heavyShortVideo], false)).toEqual([])
+  })
+
+  test('replaces a long video with its trimmed first seconds', async () => {
+    let command: InvokeCommand | undefined
+    mockTrimmer((invoke) => {
+      command = invoke
+      return Promise.resolve(trimmerReply('ten-seconds'))
+    })
+
+    const image: MediaBuffer = {
+      buffer: Buffer.from('image'),
+      mimeType: 'image/jpeg',
+      mediaType: 'image',
+    }
+
+    expect(await shortenOmniVideos([image, longVideoNote], '9:16')).toEqual([
+      image,
+      {
+        ...longVideoNote,
+        buffer: Buffer.from('ten-seconds'),
+        durationSeconds: 10,
+        width: undefined,
+        height: undefined,
+      },
+    ])
+    expect(command?.input.FunctionName).toBe('telegram-test-video-trimmer')
+    // Omni only outputs 9:16 or 16:9, so the input is cropped to the same frame.
+    expect(JSON.parse(String(command?.input.Payload))).toEqual({
+      fileId: 'file-1',
+      maxDurationSeconds: 10,
+      aspectRatio: '9:16',
+    })
+  })
+
+  test('leaves short videos and non-Telegram media untouched', async () => {
+    const send = jest
+      .spyOn(LambdaClient.prototype, 'send')
+      .mockImplementation((() => Promise.resolve(trimmerReply('x'))) as never)
+
+    const shortVideo: MediaBuffer = { ...longVideoNote, durationSeconds: 9 }
+    const withoutFileId: MediaBuffer = { ...longVideoNote, fileId: undefined }
+
+    expect(
+      await shortenOmniVideos([shortVideo, withoutFileId], '16:9'),
+    ).toEqual([shortVideo, withoutFileId])
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  test('reports a failed trim instead of generating from a long video', async () => {
+    mockTrimmer(() =>
+      Promise.resolve({
+        Payload: new TextEncoder().encode(
+          JSON.stringify({
+            statusCode: 400,
+            body: JSON.stringify({ error: 'ffmpeg exited with 1' }),
+          }),
+        ),
+      }),
+    )
+
+    await expect(shortenOmniVideos([longVideoNote], '9:16')).rejects.toThrow(
+      'Could not shorten the selected video to 10 seconds',
+    )
   })
 })

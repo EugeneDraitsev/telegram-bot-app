@@ -7,12 +7,16 @@ const mockGenerateLyriaMusic = jest.fn()
 const mockPrepareOmniMedia = jest.fn(
   (media: MediaBuffer[] | undefined, _explicit: boolean) => media ?? [],
 )
+const mockShortenOmniVideos = jest.fn(
+  async (media: MediaBuffer[], _aspectRatio: string) => media,
+)
 const mockPrepareLyriaMedia = jest.fn(
   (media: MediaBuffer[] | undefined, _explicit: boolean) => media ?? [],
 )
 
 jest.mock('../../services/google-media', () => ({
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS: 170_000,
+  OMNI_VIDEO_TOOL_TIMEOUT_MS: 230_000,
   LYRIA_3_CLIP_MODEL: 'lyria-3-clip-preview',
   LYRIA_3_PRO_MODEL: 'lyria-3-pro-preview',
   OMNI_VIDEO_MODEL: 'gemini-omni-1.1-flash',
@@ -22,6 +26,8 @@ jest.mock('../../services/google-media', () => ({
   generateLyriaMusic: (...args: unknown[]) => mockGenerateLyriaMusic(...args),
   prepareOmniMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
     mockPrepareOmniMedia(media, explicit),
+  shortenOmniVideos: (media: MediaBuffer[], aspectRatio: string) =>
+    mockShortenOmniVideos(media, aspectRatio),
   prepareLyriaMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
     mockPrepareLyriaMedia(media, explicit),
 }))
@@ -69,12 +75,16 @@ describe('Google media agent tools', () => {
     })
     mockPrepareOmniMedia.mockClear()
     mockPrepareOmniMedia.mockImplementation((media) => media ?? [])
+    mockShortenOmniVideos.mockClear()
+    mockShortenOmniVideos.mockImplementation(async (media) => media)
+
     mockPrepareLyriaMedia.mockClear()
     mockPrepareLyriaMedia.mockImplementation((media) => media ?? [])
   })
 
   test('uses the Google media tool timeout', () => {
-    expect(generateVideoTool.timeoutMs).toBe(170_000)
+    // The video tool also budgets for trimming a long input clip.
+    expect(generateVideoTool.timeoutMs).toBe(230_000)
     expect(generateMusicTool.timeoutMs).toBe(170_000)
   })
 
@@ -156,6 +166,18 @@ describe('Google media agent tools', () => {
     expect(mockGenerateOmniVideo).toHaveBeenLastCalledWith(
       expect.objectContaining({ aspectRatio: '9:16' }),
     )
+  })
+
+  test('crops a trimmed input video to the orientation it will generate', async () => {
+    await runWithToolContext(message, [requestVideo], () =>
+      generateVideoTool.execute({
+        prompt: 'Continue the scene',
+        caption: 'Сцена продолжается.',
+        aspectRatio: '16:9',
+      }),
+    )
+
+    expect(mockShortenOmniVideos).toHaveBeenCalledWith([requestVideo], '16:9')
   })
 
   test('keeps an explicitly requested orientation and the vertical default', async () => {

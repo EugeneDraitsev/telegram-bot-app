@@ -79,6 +79,13 @@
         "grammy": "^1.45.1",
       },
     },
+    "src/video-trimmer": {
+      "name": "@tg-bot/video-trimmer",
+      "version": "0.1.0",
+      "dependencies": {
+        "@tg-bot/common": "workspace:*",
+      },
+    },
     "src/websockets": {
       "name": "@tg-bot/websockets",
       "version": "1.0.0",
@@ -439,6 +446,8 @@
     "@tg-bot/common": ["@tg-bot/common@workspace:src/common"],
 
     "@tg-bot/sharp-renderer": ["@tg-bot/sharp-renderer@workspace:src/sharp-renderer"],
+
+    "@tg-bot/video-trimmer": ["@tg-bot/video-trimmer@workspace:src/video-trimmer"],
 
     "@tg-bot/websockets": ["@tg-bot/websockets@workspace:src/websockets"],
 

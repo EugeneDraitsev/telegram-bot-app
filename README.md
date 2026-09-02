@@ -58,6 +58,8 @@ while different chats run in parallel.
   reply gating, model calls, and tools.
 - `websockets` serves authenticated live statistics.
 - `sharp-renderer` renders PNG cards and charts.
+- `video-trimmer` cuts and reframes Telegram videos and video notes with
+  ffmpeg.
 - `currency-scheduler` posts scheduled currency digests.
 - `admin-api` verifies Telegram OIDC logins and exposes owner-only chat
   configuration reads and writes.
@@ -82,6 +84,15 @@ request media, and use `[]` for text-only generation. Inline inputs are limited
 to 14 MiB for Google media tools, and one request may produce at most one
 generated media result.
 
+Omni only edits or extends short clips, so a longer selected video or video
+note is re-downloaded and cut to its first seconds by the `video-trimmer`
+lambda once the generation slot is claimed. The clip is also centre-cropped to
+the 9:16 or 16:9 frame the generation was asked for, because Omni outputs
+nothing else and would otherwise re-frame a square video note on its own.
+Padding is avoided on purpose: a generator copies black bars into its output.
+The ffmpeg layer is built by `bun run prepare:ffmpeg-layer`, which `build` and
+`deploy` run for you.
+
 Delivery uses Telegram's native media methods with document fallback. Google
 media calls use the Vercel AI SDK and `GEMINI_API_KEY`
 (`GOOGLE_GENERATIVE_AI_API_KEY` also works).
@@ -93,6 +104,9 @@ Docker must be running. Start Serverless Offline and its ElasticMQ container:
 ```sh
 bun run start
 ```
+
+The `video-trimmer` lambda has no layer outside AWS, so it runs whatever
+`ffmpeg` is on `PATH`; point `FFMPEG_PATH` at a binary to override that.
 
 During `serverless-offline`, the read-only chat authorization gates are open,
 FIFO deduplication ids include a nonce, and Redis worker leases are bypassed.
