@@ -1,4 +1,5 @@
 import { logger } from '../logger'
+import { isOffline } from '../utils/env.utils'
 import { getRedisClient } from './client'
 
 // Both Redis-backed workers have a 300 second Lambda timeout. Keeping the
@@ -50,7 +51,7 @@ export async function acquireWorkerLease(
   // this to a stage name: IS_OFFLINE is the serverless-offline runtime signal
   // and local runs may use any stage. The warning is process-wide on purpose
   // to keep local logs quiet after the first notice.
-  if (process.env.IS_OFFLINE === 'true') {
+  if (isOffline()) {
     if (!offlineBypassWarned) {
       offlineBypassWarned = true
       logger.warn({ namespace }, 'worker.idempotency_offline_bypass')

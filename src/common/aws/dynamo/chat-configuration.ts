@@ -1,6 +1,11 @@
 import { logger } from '../../logger'
 import { TtlCache } from '../../ttl-cache'
-import { dynamoGetItem, dynamoUpdateItem, getOptionalEnv } from '../../utils'
+import {
+  dynamoGetItem,
+  dynamoUpdateItem,
+  getOptionalEnv,
+  isOffline,
+} from '../../utils'
 import { CHAT_CONFIGURATION_TABLE_NAME } from './table-names'
 
 // Keep disabled chats out of SQS while making owner/admin changes visible
@@ -116,7 +121,7 @@ export async function getChatConfiguration(
 export async function isAiAllowedChat(
   chatId?: string | number,
 ): Promise<boolean> {
-  if (process.env.IS_OFFLINE === 'true') {
+  if (isOffline()) {
     return true
   }
 
@@ -129,7 +134,7 @@ export async function isAgenticChatEnabled(
   if (!isAgenticBotGloballyEnabled()) {
     return false
   }
-  if (process.env.IS_OFFLINE === 'true') {
+  if (isOffline()) {
     return true
   }
 

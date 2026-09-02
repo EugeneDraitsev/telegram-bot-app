@@ -1,7 +1,7 @@
 import { createRequire as createNodeRequire } from 'node:module'
 import path from 'node:path'
 
-import { logger, renderSharpImage } from '@tg-bot/common'
+import { isOffline, logger, renderSharpImage } from '@tg-bot/common'
 import type { CurrencyRateSection } from './types'
 
 const SHARP_RENDERER_PACKAGE_PATH = path.join(
@@ -25,7 +25,7 @@ type CurrencyRatesComponent = {
 }
 
 function shouldRenderLocally() {
-  return process.env.stage === 'local' || process.env.IS_OFFLINE === 'true'
+  return process.env.stage === 'local' || isOffline()
 }
 
 async function renderCurrencyImageLocally(

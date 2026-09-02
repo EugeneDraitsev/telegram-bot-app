@@ -59,7 +59,7 @@ export const processAgentWorker = async (
 ) => {
   const startedAt = Date.now()
   let lease: AgentWorkerLease | undefined
-  let chatModel = resolveAgentChatModel()
+  const chatModel = resolveAgentChatModel(event?.commandName)
   try {
     const {
       message: incomingMessage,
@@ -67,7 +67,6 @@ export const processAgentWorker = async (
       bypassReplyGate,
       commandName,
     } = event
-    chatModel = resolveAgentChatModel(commandName)
 
     if (!incomingMessage?.chat?.id) {
       logger.error(
