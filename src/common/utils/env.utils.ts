@@ -13,3 +13,5 @@ export const getRequiredEnv = (name: string): string => {
 
   return value
 }
+
+export const isOffline = (): boolean => process.env.IS_OFFLINE === 'true'

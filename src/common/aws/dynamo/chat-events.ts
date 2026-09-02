@@ -10,6 +10,7 @@ import {
   getOptionalEnv,
   getUserName,
   invokeLambda,
+  isOffline,
   isTransactionConditionFailure,
 } from '../../utils'
 import {
@@ -32,10 +33,7 @@ export function getChatEventSortKey(date: number, messageId?: number): number {
 }
 
 export function shouldSkipStatsBroadcast(): boolean {
-  return (
-    process.env.IS_OFFLINE === 'true' &&
-    process.env.ENABLE_LOCAL_WEBSOCKET_BROADCAST !== 'true'
-  )
+  return isOffline() && process.env.ENABLE_LOCAL_WEBSOCKET_BROADCAST !== 'true'
 }
 
 const invokeStatsBroadcast = (chatId: string) => {

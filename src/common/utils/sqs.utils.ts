@@ -7,7 +7,7 @@ import {
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda'
 
 import { logger } from '../logger'
-import { getOptionalEnv, getRequiredEnv } from './env.utils'
+import { getOptionalEnv, getRequiredEnv, isOffline } from './env.utils'
 
 const WORKER_ENQUEUE_ACK_TIMEOUT_MS = 3_000
 const LOCAL_SQS_ENDPOINT = 'http://localhost:9324'
@@ -55,7 +55,7 @@ class WorkerEnqueueAckTimeoutError extends Error {
 }
 
 function getSqsEndpoint(): string | undefined {
-  if (process.env.IS_OFFLINE !== 'true') {
+  if (!isOffline()) {
     return undefined
   }
 
@@ -140,10 +140,9 @@ function enqueueWorker<T extends TelegramWorkerPayload>(
     QueueUrl: getQueueUrl(config),
     MessageBody: JSON.stringify(payload),
     MessageGroupId: String(chatId),
-    MessageDeduplicationId:
-      process.env.IS_OFFLINE === 'true'
-        ? `${deduplicationId}:${randomUUID()}`
-        : deduplicationId,
+    MessageDeduplicationId: isOffline()
+      ? `${deduplicationId}:${randomUUID()}`
+      : deduplicationId,
   })
   const send = getSqsClient().send(command, {
     abortSignal: abortController.signal,

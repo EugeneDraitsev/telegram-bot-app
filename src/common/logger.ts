@@ -3,6 +3,7 @@ import { inspect } from 'node:util'
 import pino from 'pino'
 import type { Message } from 'grammy/types'
 
+import { isOffline } from './utils/env.utils'
 import { getMessageText } from './utils/message-text.utils'
 
 type LogRecord = Record<string, unknown> & {
@@ -14,7 +15,7 @@ type LogRecord = Record<string, unknown> & {
 
 const isLocalPrettyLog =
   process.env.STAGE === 'local' ||
-  process.env.IS_OFFLINE === 'true' ||
+  isOffline() ||
   process.env.NODE_ENV === 'development'
 
 const isPrettyEnabled =

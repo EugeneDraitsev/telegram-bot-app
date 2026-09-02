@@ -1,5 +1,6 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 
+import { isOffline } from './env.utils'
 import { safeJSONParse } from './json.utils'
 
 const lambdaClients = new Map<string, LambdaClient>()
@@ -12,8 +13,7 @@ interface InvokeLambdaOptions {
 }
 
 function getLambdaEndpoint(customEndpoint: boolean): string | undefined {
-  const isOffline = process.env.IS_OFFLINE === 'true'
-  return isOffline && customEndpoint ? 'http://localhost:3002' : undefined
+  return isOffline() && customEndpoint ? 'http://localhost:3002' : undefined
 }
 
 function getLambdaClient(customEndpoint: boolean): LambdaClient {
