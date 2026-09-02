@@ -14,6 +14,10 @@ describe('agentSystemInstructions', () => {
     expect(agentSystemInstructions).toContain(
       'Call generate_video_with_omni only when the current user explicitly asks',
     )
+    // The trimmer shortens long inputs, so the model must not refuse them.
+    expect(agentSystemInstructions).toContain(
+      'is cut to its first 10 seconds automatically, so never refuse one for its length',
+    )
     expect(agentSystemInstructions).toContain(
       'choose the exact Telegram message_id semantically',
     )
