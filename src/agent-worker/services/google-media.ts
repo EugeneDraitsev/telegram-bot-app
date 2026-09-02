@@ -6,6 +6,7 @@ import {
   getGoogleApiKey,
   logger,
   type MediaBuffer,
+  TRIMMED_VIDEO_MAX_BYTES,
   trimTelegramVideo,
   VIDEO_TRIM_TIMEOUT_MS,
 } from '@tg-bot/common'
@@ -59,6 +60,8 @@ function prepareInlineMedia(
   maxItems: number,
   supports: (item: MediaBuffer) => boolean,
   modelLabel: string,
+  getInlineBytes: (item: MediaBuffer) => number = (item) =>
+    item.buffer.byteLength,
 ): MediaBuffer[] {
   const selected = media ?? []
   const unsupported = selected.find((item) => !supports(item))
@@ -76,7 +79,7 @@ function prepareInlineMedia(
   }
 
   const totalBytes = supported.reduce(
-    (total, item) => total + item.buffer.byteLength,
+    (total, item) => total + getInlineBytes(item),
     0,
   )
   if (explicit && totalBytes > MAX_INLINE_MEDIA_RAW_BYTES) {
@@ -93,12 +96,13 @@ function prepareInlineMedia(
     if (bounded.length >= maxItems) break
     const item = supported[index]
     if (!item) continue
-    if (boundedBytes + item.buffer.byteLength > MAX_INLINE_MEDIA_RAW_BYTES) {
+    const itemBytes = getInlineBytes(item)
+    if (boundedBytes + itemBytes > MAX_INLINE_MEDIA_RAW_BYTES) {
       continue
     }
 
     bounded.unshift(item)
-    boundedBytes += item.buffer.byteLength
+    boundedBytes += itemBytes
   }
   return bounded
 }
@@ -114,6 +118,27 @@ export function prepareLyriaMedia(
     (item) => item.mediaType === 'image',
     'Lyria',
   )
+}
+
+/** A Telegram video Omni cannot use as is, but the trimmer can cut down. */
+function isTrimmableVideo(item: MediaBuffer): boolean {
+  return (
+    item.mediaType === 'video' &&
+    Boolean(item.fileId) &&
+    item.durationSeconds != null &&
+    item.durationSeconds > MAX_OMNI_INPUT_VIDEO_SECONDS
+  )
+}
+
+/**
+ * What the item will really cost inline. A video still awaiting its trim is
+ * charged the trimmer's output ceiling rather than its current size, so a long
+ * high-bitrate clip is not dropped for a weight it is about to lose.
+ */
+function getOmniInlineBytes(item: MediaBuffer): number {
+  return isTrimmableVideo(item)
+    ? TRIMMED_VIDEO_MAX_BYTES
+    : item.buffer.byteLength
 }
 
 /**
@@ -133,6 +158,7 @@ export function prepareOmniMedia(
     MAX_OMNI_MEDIA_ITEMS,
     (item) => item.mediaType !== 'audio',
     'Gemini Omni Flash',
+    getOmniInlineBytes,
   )
 
   const unsupported = prepared.find((item) =>
@@ -172,18 +198,14 @@ async function shortenVideo(
   item: MediaBuffer,
   aspectRatio: OmniAspectRatio,
 ): Promise<MediaBuffer> {
-  if (
-    item.mediaType !== 'video' ||
-    !item.fileId ||
-    item.durationSeconds == null ||
-    item.durationSeconds <= MAX_OMNI_INPUT_VIDEO_SECONDS
-  ) {
+  const { fileId } = item
+  if (!fileId || !isTrimmableVideo(item)) {
     return item
   }
 
   try {
     const buffer = await trimTelegramVideo({
-      fileId: item.fileId,
+      fileId,
       maxDurationSeconds: MAX_OMNI_INPUT_VIDEO_SECONDS,
       aspectRatio,
     })
@@ -199,7 +221,7 @@ async function shortenVideo(
     }
   } catch (error) {
     logger.error(
-      { error: getErrorMessage(error), fileId: item.fileId },
+      { error: getErrorMessage(error), fileId },
       'google_media.video_trim_failed',
     )
     throw new Error(

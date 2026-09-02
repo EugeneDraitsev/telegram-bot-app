@@ -10,7 +10,12 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { getErrorMessage, getRequiredEnv, logger } from '@tg-bot/common'
+import {
+  getErrorMessage,
+  getRequiredEnv,
+  logger,
+  TRIMMED_VIDEO_MAX_BYTES,
+} from '@tg-bot/common'
 
 type AspectRatio = '9:16' | '16:9'
 
@@ -27,8 +32,6 @@ const DEFAULT_MAX_DURATION_SECONDS = 10
 const MAX_DURATION_SECONDS = 60
 // Telegram never serves a bot more than 20 MB through the file API.
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024
-// Base64 inflates the reply by 4/3, so stay well under the 6 MB Lambda cap.
-const MAX_OUTPUT_BYTES = 4 * 1024 * 1024
 const MAX_LONG_SIDE = 720
 const CROP_RATIOS: Record<AspectRatio, [number, number]> = {
   '9:16': [9, 16],
@@ -157,6 +160,29 @@ function runFfmpeg(args: string[]): Promise<void> {
   })
 }
 
+/**
+ * Telegram answers `getFile` with a plain relative path. Anything else is
+ * refused rather than pasted into the download URL, where `..` segments or an
+ * absolute path could steer the request somewhere unintended.
+ */
+function isPlainRelativePath(filePath: string): boolean {
+  const segments = filePath.split('/')
+
+  return (
+    segments.length > 0 &&
+    segments.every(
+      (segment) =>
+        /^[\w.-]+$/.test(segment) && segment !== '.' && segment !== '..',
+    )
+  )
+}
+
+function assertSourceSize(bytes: number): void {
+  if (bytes > MAX_SOURCE_BYTES) {
+    throw new Error(`Source video exceeds ${MAX_SOURCE_BYTES} bytes`)
+  }
+}
+
 async function downloadTelegramFile(fileId: string): Promise<Buffer> {
   const token = getRequiredEnv('TOKEN')
   const fileResponse = await fetch(
@@ -167,8 +193,8 @@ async function downloadTelegramFile(fileId: string): Promise<Buffer> {
   }
 
   const filePath = (await fileResponse.json())?.result?.file_path
-  if (typeof filePath !== 'string' || !filePath) {
-    throw new Error('Telegram returned no file path')
+  if (typeof filePath !== 'string' || !isPlainRelativePath(filePath)) {
+    throw new Error('Telegram returned no usable file path')
   }
 
   const download = await fetch(
@@ -178,10 +204,11 @@ async function downloadTelegramFile(fileId: string): Promise<Buffer> {
     throw new Error(`Telegram file download failed: ${download.status}`)
   }
 
+  // Checked from the header first so an oversized body is refused before it is
+  // buffered, then again because the header is advisory.
+  assertSourceSize(Number(download.headers.get('content-length')))
   const source = Buffer.from(await download.arrayBuffer())
-  if (source.byteLength > MAX_SOURCE_BYTES) {
-    throw new Error(`Source video exceeds ${MAX_SOURCE_BYTES} bytes`)
-  }
+  assertSourceSize(source.byteLength)
 
   return source
 }
@@ -212,9 +239,9 @@ const videoTrimmerHandler = async (event: VideoTrimmerEvent) => {
     if (trimmed.byteLength === 0) {
       throw new Error('ffmpeg produced an empty video')
     }
-    if (trimmed.byteLength > MAX_OUTPUT_BYTES) {
+    if (trimmed.byteLength > TRIMMED_VIDEO_MAX_BYTES) {
       throw new Error(
-        `Trimmed video is ${trimmed.byteLength} bytes, above the ${MAX_OUTPUT_BYTES} byte limit`,
+        `Trimmed video is ${trimmed.byteLength} bytes, above the ${TRIMMED_VIDEO_MAX_BYTES} byte limit`,
       )
     }
 

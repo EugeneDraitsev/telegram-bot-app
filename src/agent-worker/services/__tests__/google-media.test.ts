@@ -472,6 +472,27 @@ describe('Omni input video trimming', () => {
     expect(prepareOmniMedia([longVideoNote], true)).toEqual([longVideoNote])
   })
 
+  test('charges a long video the size it will have after the trim', () => {
+    // Over the 14 MiB inline limit now, comfortably under it once trimmed.
+    const heavyLongVideo: MediaBuffer = {
+      ...longVideoNote,
+      buffer: Buffer.alloc(15 * 1024 * 1024),
+    }
+    const heavyShortVideo: MediaBuffer = {
+      ...heavyLongVideo,
+      durationSeconds: 8,
+    }
+
+    expect(prepareOmniMedia([heavyLongVideo], true)).toEqual([heavyLongVideo])
+    expect(prepareOmniMedia([heavyLongVideo], false)).toEqual([heavyLongVideo])
+
+    // A short video is not trimmable, so its real weight still applies.
+    expect(() => prepareOmniMedia([heavyShortVideo], true)).toThrow(
+      'selected media exceeds the 14 MiB raw inline limit',
+    )
+    expect(prepareOmniMedia([heavyShortVideo], false)).toEqual([])
+  })
+
   test('replaces a long video with its trimmed first seconds', async () => {
     let command: InvokeCommand | undefined
     mockTrimmer((invoke) => {

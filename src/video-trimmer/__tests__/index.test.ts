@@ -126,6 +126,47 @@ describe('video-trimmer lambda', () => {
     expect(JSON.parse(response.body).error).toContain('ffmpeg exited with 1')
   })
 
+  test('refuses a file path that is not a plain relative path', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async () =>
+      Response.json({
+        ok: true,
+        result: { file_path: '../../secrets/file_1.mp4' },
+      })) as unknown as typeof fetch)
+
+    const response = await videoTrimmerHandler({ fileId: 'file-1' })
+
+    expect(response.statusCode).toBe(400)
+    expect(JSON.parse(response.body).error).toBe(
+      'Telegram returned no usable file path',
+    )
+    expect(mockSpawn).not.toHaveBeenCalled()
+  })
+
+  test('refuses an oversized download before buffering it', async () => {
+    const arrayBuffer = jest.fn()
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async (
+      input: string,
+    ) =>
+      input.includes('/getFile')
+        ? Response.json({
+            ok: true,
+            result: { file_path: 'videos/file_1.mp4' },
+          })
+        : {
+            ok: true,
+            headers: new Headers({
+              'content-length': String(64 * 1024 * 1024),
+            }),
+            arrayBuffer,
+          }) as unknown as typeof fetch)
+
+    const response = await videoTrimmerHandler({ fileId: 'file-1' })
+
+    expect(response.statusCode).toBe(400)
+    expect(JSON.parse(response.body).error).toContain('Source video exceeds')
+    expect(arrayBuffer).not.toHaveBeenCalled()
+  })
+
   test('requires a file id', async () => {
     const response = await videoTrimmerHandler({ fileId: '  ' })
 
