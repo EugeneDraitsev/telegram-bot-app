@@ -105,6 +105,9 @@ Docker must be running. Start Serverless Offline and its ElasticMQ container:
 bun run start
 ```
 
+The `video-trimmer` lambda has no layer outside AWS, so it runs whatever
+`ffmpeg` is on `PATH`; point `FFMPEG_PATH` at a binary to override that.
+
 During `serverless-offline`, the read-only chat authorization gates are open,
 FIFO deduplication ids include a nonce, and Redis worker leases are bypassed.
 This lets the same Telegram `message_id` run repeatedly without reading the

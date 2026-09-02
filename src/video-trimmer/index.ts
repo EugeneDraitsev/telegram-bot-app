@@ -43,12 +43,15 @@ const MAX_FFMPEG_STDERR_CHARS = 2_000
 /**
  * Lambda mounts layers read-only at /opt. A layer zipped on a filesystem
  * without a POSIX exec bit (Windows) arrives non-executable, so fall back to an
- * executable /tmp copy that survives for the life of the container.
+ * executable /tmp copy that lives as long as the container. Outside Lambda the
+ * layer is absent altogether and ffmpeg comes from PATH, which is what
+ * `serverless offline` runs against. `FFMPEG_PATH` overrides all of it.
  */
-function getFfmpegPath(): string {
+export function getFfmpegPath(): string {
   const configured = process.env.FFMPEG_PATH?.trim()
   if (configured) return configured
   if (existsSync(RUNTIME_FFMPEG_PATH)) return RUNTIME_FFMPEG_PATH
+  if (!existsSync(LAYER_FFMPEG_PATH)) return 'ffmpeg'
 
   try {
     accessSync(LAYER_FFMPEG_PATH, constants.X_OK)
@@ -136,7 +139,8 @@ export function getFfmpegArgs(
 
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(getFfmpegPath(), args, {
+    const binary = getFfmpegPath()
+    const child = spawn(binary, args, {
       timeout: FFMPEG_TIMEOUT_MS,
       stdio: ['ignore', 'ignore', 'pipe'],
     })
@@ -145,7 +149,15 @@ function runFfmpeg(args: string[]): Promise<void> {
     child.stderr?.on('data', (chunk: Buffer | string) => {
       stderr = `${stderr}${chunk}`.slice(-MAX_FFMPEG_STDERR_CHARS)
     })
-    child.on('error', reject)
+    child.on('error', (error: NodeJS.ErrnoException) => {
+      reject(
+        error.code === 'ENOENT'
+          ? new Error(
+              `ffmpeg not found at ${binary}; install it or set FFMPEG_PATH to run outside Lambda`,
+            )
+          : error,
+      )
+    })
     child.on('close', (code) => {
       if (code === 0) {
         resolve()

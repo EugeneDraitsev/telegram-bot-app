@@ -10,6 +10,7 @@ jest.mock('node:child_process', () => ({
 
 import videoTrimmerHandler, {
   getFfmpegArgs,
+  getFfmpegPath,
   getMaxDurationSeconds,
   getVideoFilters,
 } from '..'
@@ -46,13 +47,20 @@ function telegramResponses(video: Buffer) {
 describe('video-trimmer lambda', () => {
   beforeEach(() => {
     process.env.TOKEN = 'test-token'
-    process.env.FFMPEG_PATH = 'ffmpeg'
+    delete process.env.FFMPEG_PATH
     mockSpawn.mockReset()
   })
 
   afterEach(() => {
     jest.restoreAllMocks()
     delete process.env.FFMPEG_PATH
+  })
+
+  test('takes ffmpeg from PATH when the layer is absent', () => {
+    expect(getFfmpegPath()).toBe('ffmpeg')
+
+    process.env.FFMPEG_PATH = '/custom/ffmpeg'
+    expect(getFfmpegPath()).toBe('/custom/ffmpeg')
   })
 
   test('bounds the requested duration', () => {
