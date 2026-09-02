@@ -1,6 +1,7 @@
 import { generateText, type ModelMessage } from 'ai'
 
 import {
+  extractTelegramVideoFrames,
   getAiSdkGoogleProvider,
   getErrorMessage,
   getGoogleApiKey,
@@ -48,6 +49,21 @@ export type LyriaModel = typeof LYRIA_3_CLIP_MODEL | typeof LYRIA_3_PRO_MODEL
 interface GeneratedMedia {
   buffer: Buffer
   mimeType: string
+}
+
+interface GeneratedOmniVideo extends GeneratedMedia {
+  /** Set when the source video was refused and its stills were used instead. */
+  fromFrames?: boolean
+}
+
+class OmniVideoInputRefusedError extends Error {
+  constructor(cause: unknown) {
+    super(
+      'Gemini Omni Flash cannot edit or extend an uploaded video on this account: it refuses every video input.',
+      { cause },
+    )
+    this.name = 'OmniVideoInputRefusedError'
+  }
 }
 
 interface GeneratedMusic extends GeneratedMedia {
@@ -292,7 +308,7 @@ async function postGoogleInteraction(
 
 async function runGoogleInteraction<T>(
   run: () => Promise<T>,
-  explain?: (error: unknown) => string | undefined,
+  explain?: (error: unknown) => Error | undefined,
 ): Promise<T> {
   try {
     return await run()
@@ -302,9 +318,10 @@ async function runGoogleInteraction<T>(
       'google_media.interaction_failed',
     )
     // Google's own wording is never forwarded to the chat; only our summary is.
-    throw new Error(explain?.(error) ?? 'Google media generation failed', {
-      cause: error,
-    })
+    throw (
+      explain?.(error) ??
+      new Error('Google media generation failed', { cause: error })
+    )
   }
 }
 
@@ -317,11 +334,11 @@ async function runGoogleInteraction<T>(
 function explainOmniFailure(
   error: unknown,
   hasVideoInput: boolean,
-): string | undefined {
+): Error | undefined {
   const message = getErrorMessage(error)
   if (!hasVideoInput || !message.includes('Input blocked')) return undefined
 
-  return 'Gemini Omni Flash cannot edit or extend an uploaded video on this account: it refuses every video input. Generating a new video from an image or from text still works.'
+  return new OmniVideoInputRefusedError(error)
 }
 
 /**
@@ -330,13 +347,17 @@ function explainOmniFailure(
  * through `response_format`. The AI SDK does not expose video response formats
  * yet, so the request is sent directly.
  */
-export async function generateOmniVideo(options: {
+interface OmniVideoRequest {
   prompt: string
   aspectRatio: OmniAspectRatio
   durationSeconds: number
   media?: MediaBuffer[]
-}): Promise<GeneratedMedia> {
-  const media = options.media ?? []
+}
+
+async function requestOmniVideo(
+  options: OmniVideoRequest,
+  media: MediaBuffer[],
+): Promise<GeneratedMedia> {
   const hasVideoInput = media.some((item) => item.mediaType === 'video')
   const body = await runGoogleInteraction(
     () =>
@@ -365,6 +386,45 @@ export async function generateOmniVideo(options: {
   if (!video) throw new Error('Gemini Omni Flash returned no video output')
 
   return video
+}
+
+/**
+ * Ask Omni to work on the video itself first, so the day the account gains
+ * video input nothing has to change. When it is refused, rebuild the request
+ * from the clip's first and last still: both ends let Omni interpolate the
+ * motion the clip really had, and image input is accepted.
+ */
+export async function generateOmniVideo(
+  options: OmniVideoRequest,
+): Promise<GeneratedOmniVideo> {
+  const media = options.media ?? []
+
+  try {
+    return await requestOmniVideo(options, media)
+  } catch (error) {
+    const source = media.find((item) => item.mediaType === 'video')
+    if (!(error instanceof OmniVideoInputRefusedError) || !source?.fileId) {
+      throw error
+    }
+
+    const frames = await extractTelegramVideoFrames({
+      fileId: source.fileId,
+      maxDurationSeconds: MAX_OMNI_INPUT_VIDEO_SECONDS,
+      aspectRatio: options.aspectRatio,
+    })
+    const stills: MediaBuffer[] = frames.map((buffer) => ({
+      buffer,
+      mimeType: 'image/jpeg',
+      mediaType: 'image',
+    }))
+    const alsoSelected = media.filter((item) => item.mediaType === 'image')
+    const result = await requestOmniVideo(
+      options,
+      [...stills, ...alsoSelected].slice(0, MAX_OMNI_MEDIA_ITEMS),
+    )
+
+    return { ...result, fromFrames: true }
+  }
 }
 
 export async function generateLyriaMusic(options: {

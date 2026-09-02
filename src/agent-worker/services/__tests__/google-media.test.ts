@@ -448,6 +448,65 @@ describe('Google media through the AI SDK', () => {
     ).rejects.toThrow('Google media generation failed')
   })
 
+  test('rebuilds from stills when Omni refuses the video input', async () => {
+    const inputBlocked = () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            message: 'Input blocked: The prompt could not be submitted.',
+          },
+        }),
+        { status: 400, statusText: 'Bad Request' },
+      )
+    const video: MediaBuffer = {
+      buffer: Buffer.from('clip'),
+      mimeType: 'video/mp4',
+      mediaType: 'video',
+      fileId: 'file-9',
+    }
+
+    // The trimmer answers the frame request with two JPEG stills.
+    jest.spyOn(LambdaClient.prototype, 'send').mockImplementation((() =>
+      Promise.resolve({
+        Payload: new TextEncoder().encode(
+          JSON.stringify({
+            statusCode: 200,
+            body: JSON.stringify({
+              frames: [
+                Buffer.from('first').toString('base64'),
+                Buffer.from('last').toString('base64'),
+              ],
+            }),
+          }),
+        ),
+      })) as never)
+    process.env.VIDEO_TRIMMER_FUNCTION_NAME = 'telegram-test-video-trimmer'
+    mockFetch.mockResolvedValueOnce(inputBlocked())
+    mockFetch.mockResolvedValueOnce(omniResponse('rebuilt'))
+
+    const result = await generateOmniVideo({
+      prompt: 'Make the car drive at night',
+      aspectRatio: '9:16',
+      durationSeconds: 5,
+      media: [video],
+    })
+
+    expect(result.fromFrames).toBe(true)
+    expect(result.buffer.toString()).toBe('rebuilt')
+
+    // The retry carries the two stills as images, and no video at all.
+    const retry = JSON.parse(
+      String((mockFetch.mock.calls[1] as [string, RequestInit])[1].body),
+    )
+    expect(retry.input.map((part: { type: string }) => part.type)).toEqual([
+      'image',
+      'image',
+      'text',
+    ])
+    jest.restoreAllMocks()
+    delete process.env.VIDEO_TRIMMER_FUNCTION_NAME
+  })
+
   test('fails clearly without an API key or generated media', async () => {
     delete process.env.GEMINI_API_KEY
     delete process.env.GOOGLE_GENERATIVE_AI_API_KEY

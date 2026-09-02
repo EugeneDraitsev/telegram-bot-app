@@ -168,6 +168,62 @@ describe('Google media agent tools', () => {
     )
   })
 
+  test('discloses a rebuilt video in the caption', async () => {
+    mockGenerateOmniVideo.mockResolvedValue({
+      buffer: Buffer.from('video'),
+      mimeType: 'video/mp4',
+      fromFrames: true,
+    })
+
+    const responses = await runWithToolContext(
+      message,
+      [requestVideo],
+      async () => {
+        await generateVideoTool.execute({
+          prompt: 'Continue the scene',
+          caption: 'Машина едет ночью.',
+          frameFallbackNote: 'Собрал по двум кадрам твоего видео.',
+        })
+        return getCollectedResponses()
+      },
+    )
+
+    // A terminal tool ends the loop, so the note has to ride the caption.
+    expect(responses[0]).toEqual(
+      expect.objectContaining({
+        caption: 'Машина едет ночью.\n\nСобрал по двум кадрам твоего видео.',
+      }),
+    )
+  })
+
+  test('falls back to its own note when the model gave none', async () => {
+    mockGenerateOmniVideo.mockResolvedValue({
+      buffer: Buffer.from('video'),
+      mimeType: 'video/mp4',
+      fromFrames: true,
+    })
+
+    const responses = await runWithToolContext(
+      message,
+      [requestVideo],
+      async () => {
+        await generateVideoTool.execute({
+          prompt: 'Continue the scene',
+          caption: 'A car at night.',
+        })
+        return getCollectedResponses()
+      },
+    )
+
+    expect(responses[0]).toEqual(
+      expect.objectContaining({
+        caption: expect.stringContaining(
+          'Rebuilt from the first and last frame',
+        ),
+      }),
+    )
+  })
+
   test('crops a trimmed input video to the orientation it will generate', async () => {
     await runWithToolContext(message, [requestVideo], () =>
       generateVideoTool.execute({

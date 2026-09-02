@@ -46,14 +46,18 @@ export const invokeLambda = ({
   return lambda.send(command)
 }
 
+type InvokeForResultOptions = Omit<InvokeLambdaOptions, 'async'> & {
+  label: string
+}
+
 /**
- * Invoke a lambda that answers with a base64 body and decode it, surfacing the
- * callee's own error message so callers can report why the work failed.
+ * Invoke a lambda and return its response body, surfacing the callee's own
+ * error message so callers can report why the work failed.
  */
-export async function invokeLambdaForBuffer({
+async function invokeLambdaForBody({
   label,
   ...options
-}: Omit<InvokeLambdaOptions, 'async'> & { label: string }): Promise<Buffer> {
+}: InvokeForResultOptions): Promise<string> {
   const response = await invokeLambda(options)
 
   if (response.FunctionError) {
@@ -74,10 +78,29 @@ export async function invokeLambdaForBuffer({
     throw new Error(`${label} returned no body`)
   }
 
-  const result = Buffer.from(body.body, 'base64')
+  return body.body
+}
+
+/** Invoke a lambda that answers with a base64 body and decode it. */
+export async function invokeLambdaForBuffer(
+  options: InvokeForResultOptions,
+): Promise<Buffer> {
+  const result = Buffer.from(await invokeLambdaForBody(options), 'base64')
   if (result.byteLength === 0) {
-    throw new Error(`${label} returned an empty body`)
+    throw new Error(`${options.label} returned an empty body`)
   }
 
   return result
+}
+
+/** Invoke a lambda that answers with a JSON body and parse it. */
+export async function invokeLambdaForJson<T>(
+  options: InvokeForResultOptions,
+): Promise<T> {
+  const parsed = safeJSONParse(await invokeLambdaForBody(options))
+  if (!parsed) {
+    throw new Error(`${options.label} returned an unreadable body`)
+  }
+
+  return parsed as T
 }

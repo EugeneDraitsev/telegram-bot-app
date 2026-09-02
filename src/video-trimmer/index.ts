@@ -23,6 +23,8 @@ interface VideoTrimmerEvent {
   fileId?: unknown
   maxDurationSeconds?: unknown
   aspectRatio?: unknown
+  /** 'frames' returns the clip's first and last still instead of the video. */
+  output?: unknown
 }
 
 const LAYER_FFMPEG_PATH = '/opt/bin/ffmpeg'
@@ -90,6 +92,39 @@ export function getVideoFilters(aspectRatio?: AspectRatio): string {
   const cropHeight = `trunc(min(ih,iw*${height}/${width})/2)*2`
 
   return `crop=w='${cropWidth}':h='${cropHeight}',${scale}`
+}
+
+/**
+ * The first and last still of the clip, reframed like the video would be.
+ * A generator given both ends interpolates the motion that was really there,
+ * which one frame alone can only invent.
+ */
+export function getFrameArgs(
+  inputPath: string,
+  outputPath: string,
+  aspectRatio: AspectRatio | undefined,
+  position: 'first' | 'last',
+): string[] {
+  return [
+    '-y',
+    '-hide_banner',
+    '-nostdin',
+    '-loglevel',
+    'error',
+    // Seeking from the end has to be requested before the input is opened.
+    ...(position === 'last' ? ['-sseof', '-0.5'] : []),
+    '-i',
+    inputPath,
+    '-vf',
+    getVideoFilters(aspectRatio),
+    '-frames:v',
+    '1',
+    '-update',
+    '1',
+    '-q:v',
+    '3',
+    outputPath,
+  ]
 }
 
 /** Cut the head of the clip and reframe it for the model that consumes it. */
@@ -226,6 +261,36 @@ async function downloadTelegramFile(fileId: string): Promise<Buffer> {
 }
 
 /**
+ * A clip too short to seek into from the end yields only its opening still; one
+ * usable frame beats failing the whole request.
+ */
+async function extractFrames(
+  workDir: string,
+  inputPath: string,
+  aspectRatio: AspectRatio | undefined,
+): Promise<Buffer[]> {
+  const frames: Buffer[] = []
+
+  for (const position of ['first', 'last'] as const) {
+    const framePath = path.join(workDir, `${position}.jpg`)
+    try {
+      await runFfmpeg(getFrameArgs(inputPath, framePath, aspectRatio, position))
+      const frame = await readFile(framePath)
+      if (frame.byteLength > 0) frames.push(frame)
+    } catch (error) {
+      logger.warn(
+        { error: getErrorMessage(error), position },
+        'video_trimmer.frame_failed',
+      )
+    }
+  }
+
+  if (!frames.length) throw new Error('ffmpeg produced no frames')
+
+  return frames
+}
+
+/**
  * Shorten one Telegram video, video note or animation so it fits the limits of
  * models that only accept a few seconds of input in a fixed frame shape.
  */
@@ -243,6 +308,19 @@ const videoTrimmerHandler = async (event: VideoTrimmerEvent) => {
     const outputPath = path.join(workDir, 'output.mp4')
 
     await writeFile(inputPath, await downloadTelegramFile(fileId))
+
+    if (event.output === 'frames') {
+      const frames = await extractFrames(workDir, inputPath, aspectRatio)
+
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          frames: frames.map((frame) => frame.toString('base64')),
+        }),
+      }
+    }
+
     await runFfmpeg(
       getFfmpegArgs(inputPath, outputPath, maxDurationSeconds, aspectRatio),
     )

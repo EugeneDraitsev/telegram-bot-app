@@ -20,6 +20,9 @@ import { getMediaIdsParameter, selectMediaForTool } from './media-selection'
 import { getMediaCaption } from './media-text'
 
 const DEFAULT_DURATION_SECONDS = 8
+// Used only when the model gave no note in the user's own language.
+const DEFAULT_FRAME_FALLBACK_NOTE =
+  'Rebuilt from the first and last frame of the video — editing the video itself is unavailable.'
 const DEFAULT_ASPECT_RATIO: OmniAspectRatio = '9:16'
 
 function getDurationSeconds(value: unknown): number {
@@ -83,6 +86,11 @@ export const generateVideoTool: AgentTool = {
           description:
             'Set only when the user asks for a specific orientation: 9:16 for vertical/social video, 16:9 for landscape. Omit it to follow the orientation of the selected media, or 9:16 when no media is selected.',
         },
+        frameFallbackNote: {
+          type: 'string',
+          description:
+            'One short sentence in the user language saying the clip was rebuilt from the first and last frame of their video, because the video itself could not be edited. Provide it whenever mediaIds selects a video; it is used only if that happens.',
+        },
         mediaIds: getMediaIdsParameter(
           'up to 3 conditioning images (one image, first and last frame, or subject references) or a single video to edit or extend',
         ),
@@ -124,14 +132,28 @@ export const generateVideoTool: AgentTool = {
           }),
       )
 
+      // A terminal tool ends the loop, so the caption is the only place left to
+      // tell the user their video was rebuilt rather than edited.
+      const note = result.fromFrames
+        ? getMediaCaption(args.frameFallbackNote) || DEFAULT_FRAME_FALLBACK_NOTE
+        : undefined
+      const finalCaption = [caption, note].filter(Boolean).join('\n\n')
+
       addResponse({
         type: 'video',
         buffer: result.buffer,
         mimeType: result.mimeType,
         fileName: 'omni-video.mp4',
-        caption,
+        caption: finalCaption || undefined,
       })
-      return caption ? `Generated video: ${caption}` : 'Generated video'
+      return [
+        result.fromFrames
+          ? 'Generated video from the first and last frame of the selected video, because editing the video itself was refused'
+          : 'Generated video',
+        finalCaption,
+      ]
+        .filter(Boolean)
+        .join(': ')
     } catch (error) {
       throw new Error(`Error generating video: ${getErrorMessage(error)}`)
     }

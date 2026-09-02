@@ -11,6 +11,7 @@ jest.mock('node:child_process', () => ({
 import videoTrimmerHandler, {
   getFfmpegArgs,
   getFfmpegPath,
+  getFrameArgs,
   getMaxDurationSeconds,
   getVideoFilters,
 } from '..'
@@ -122,6 +123,60 @@ describe('video-trimmer lambda', () => {
     expect(mockSpawn.mock.calls[0]?.[1]).toContain(getVideoFilters('9:16'))
     // The work directory is removed even on the happy path.
     expect(existsSync(inputPath)).toBe(false)
+  })
+
+  test('seeks from the end only for the closing frame', () => {
+    const first = getFrameArgs('in.mp4', 'first.jpg', '9:16', 'first')
+    const last = getFrameArgs('in.mp4', 'last.jpg', '9:16', 'last')
+
+    expect(first).not.toContain('-sseof')
+    expect(last.slice(0, 2)).not.toContain('-i')
+    expect(last[last.indexOf('-sseof') + 1]).toBe('-0.5')
+    expect(last.indexOf('-sseof')).toBeLessThan(last.indexOf('-i'))
+    // Stills are reframed exactly like the video they stand in for.
+    expect(first[first.indexOf('-vf') + 1]).toBe(getVideoFilters('9:16'))
+  })
+
+  test('returns both stills in frames mode', async () => {
+    telegramResponses(Buffer.from('source-video'))
+    fakeFfmpeg(async (args) => {
+      await writeFile(String(args.at(-1)), `still:${args.at(-1)}`)
+      return 0
+    })
+
+    const response = await videoTrimmerHandler({
+      fileId: 'file-1',
+      aspectRatio: '9:16',
+      output: 'frames',
+    })
+
+    expect(response.statusCode).toBe(200)
+    const frames = JSON.parse(response.body).frames as string[]
+    expect(frames).toHaveLength(2)
+    expect(Buffer.from(frames[0] as string, 'base64').toString()).toContain(
+      'first.jpg',
+    )
+    expect(Buffer.from(frames[1] as string, 'base64').toString()).toContain(
+      'last.jpg',
+    )
+  })
+
+  test('keeps the opening still when the closing one cannot be read', async () => {
+    telegramResponses(Buffer.from('source-video'))
+    fakeFfmpeg(async (args) => {
+      const target = String(args.at(-1))
+      if (target.includes('last')) return 1
+      await writeFile(target, 'only-still')
+      return 0
+    })
+
+    const response = await videoTrimmerHandler({
+      fileId: 'file-1',
+      output: 'frames',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(JSON.parse(response.body).frames).toHaveLength(1)
   })
 
   test('reports the ffmpeg failure instead of an empty video', async () => {
