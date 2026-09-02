@@ -131,10 +131,16 @@ describe('video-trimmer lambda', () => {
 
     expect(first).not.toContain('-sseof')
     expect(last.slice(0, 2)).not.toContain('-i')
-    expect(last[last.indexOf('-sseof') + 1]).toBe('-0.5')
+    expect(last[last.indexOf('-sseof') + 1]).toBe('-2')
     expect(last.indexOf('-sseof')).toBeLessThan(last.indexOf('-i'))
-    // Stills are reframed exactly like the video they stand in for.
-    expect(first[first.indexOf('-vf') + 1]).toBe(getVideoFilters('9:16'))
+    // The opening window is bounded from the input side instead.
+    expect(first[first.indexOf('-t') + 1]).toBe('2')
+    expect(last).not.toContain('-t')
+    // Stills are reframed exactly like the video they stand in for, then the
+    // least average-looking frame of the window is taken.
+    expect(first[first.indexOf('-vf') + 1]).toBe(
+      `${getVideoFilters('9:16')},thumbnail=50`,
+    )
   })
 
   test('returns both stills in frames mode', async () => {
@@ -159,6 +165,21 @@ describe('video-trimmer lambda', () => {
     expect(Buffer.from(frames[1] as string, 'base64').toString()).toContain(
       'last.jpg',
     )
+  })
+
+  test('returns one still when both windows land on the same frame', async () => {
+    telegramResponses(Buffer.from('source-video'))
+    fakeFfmpeg(async (args) => {
+      await writeFile(String(args.at(-1)), 'identical-still')
+      return 0
+    })
+
+    const response = await videoTrimmerHandler({
+      fileId: 'file-1',
+      output: 'frames',
+    })
+
+    expect(JSON.parse(response.body).frames).toHaveLength(1)
   })
 
   test('keeps the opening still when the closing one cannot be read', async () => {

@@ -39,6 +39,10 @@ const CROP_RATIOS: Record<AspectRatio, [number, number]> = {
   '9:16': [9, 16],
   '16:9': [16, 9],
 }
+// Stills are picked inside a window at each end rather than at the exact edge:
+// an opening frame is often a fade from black and a closing one a fade to it.
+const FRAME_WINDOW_SECONDS = 2
+const FRAME_WINDOW_BATCH = 50
 const FFMPEG_TIMEOUT_MS = 45_000
 const MAX_FFMPEG_STDERR_CHARS = 2_000
 
@@ -112,11 +116,14 @@ export function getFrameArgs(
     '-loglevel',
     'error',
     // Seeking from the end has to be requested before the input is opened.
-    ...(position === 'last' ? ['-sseof', '-0.5'] : []),
+    ...(position === 'last' ? ['-sseof', `-${FRAME_WINDOW_SECONDS}`] : []),
     '-i',
     inputPath,
-    '-vf',
-    getVideoFilters(aspectRatio),
+    ...(position === 'first' ? ['-t', String(FRAME_WINDOW_SECONDS)] : []),
+    // thumbnail picks the frame least like the window's average, which skips
+    // fades and mid-blur. It still emits at EOF on a window short of a batch.
+    `-vf`,
+    `${getVideoFilters(aspectRatio)},thumbnail=${FRAME_WINDOW_BATCH}`,
     '-frames:v',
     '1',
     '-update',
@@ -276,7 +283,12 @@ async function extractFrames(
     try {
       await runFfmpeg(getFrameArgs(inputPath, framePath, aspectRatio, position))
       const frame = await readFile(framePath)
-      if (frame.byteLength > 0) frames.push(frame)
+      // Both windows cover the whole of a very short clip and then land on the
+      // same still; one image asks the model to animate rather than to
+      // interpolate between two identical ends.
+      if (frame.byteLength > 0 && !frames.some((kept) => kept.equals(frame))) {
+        frames.push(frame)
+      }
     } catch (error) {
       logger.warn(
         { error: getErrorMessage(error), position },
