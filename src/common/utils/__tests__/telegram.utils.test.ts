@@ -8,6 +8,7 @@ import {
   getParsedText,
   getUserName,
   isTelegramReplyTargetMissingError,
+  normalizeChatId,
 } from '..'
 
 describe('isTelegramReplyTargetMissingError', () => {
@@ -233,6 +234,23 @@ describe('getChatName', () => {
   })
   it('should return "Unknown Chat" if name doesn\'t exist', () => {
     expect(getChatName()).toEqual('Unknown Chat')
+  })
+})
+
+describe('normalizeChatId', () => {
+  it('accepts numeric strings, numbers, and trims whitespace', () => {
+    expect(normalizeChatId('123')).toEqual('123')
+    expect(normalizeChatId('-100123')).toEqual('-100123')
+    expect(normalizeChatId(123)).toEqual('123')
+    expect(normalizeChatId('  123  ')).toEqual('123')
+  })
+  it('rejects non-numeric chat ids', () => {
+    expect(normalizeChatId('0')).toBeUndefined()
+    expect(normalizeChatId('abc')).toBeUndefined()
+    expect(normalizeChatId('')).toBeUndefined()
+    expect(normalizeChatId(undefined)).toBeUndefined()
+    expect(normalizeChatId(null)).toBeUndefined()
+    expect(normalizeChatId({})).toBeUndefined()
   })
 })
 

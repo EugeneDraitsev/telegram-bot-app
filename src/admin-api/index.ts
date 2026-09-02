@@ -16,6 +16,7 @@ import {
   hasStoredChatUser,
   isBotOwner,
   logger,
+  normalizeChatId,
   setChatConfigurationFlags,
   TtlCache,
 } from '@tg-bot/common'
@@ -454,8 +455,8 @@ async function createChatAccess(
   event: APIGatewayProxyEvent,
   identity: SessionIdentity,
 ): Promise<APIGatewayProxyResult> {
-  const chatId = event.pathParameters?.chatId
-  if (!chatId || !/^-?[1-9]\d*$/.test(chatId)) {
+  const chatId = normalizeChatId(event.pathParameters?.chatId)
+  if (!chatId) {
     return json(400, { error: 'A valid numeric chat ID is required' })
   }
 
@@ -508,8 +509,8 @@ async function updateChat(
   event: APIGatewayProxyEvent,
   admin: SessionIdentity,
 ): Promise<APIGatewayProxyResult> {
-  const chatId = event.pathParameters?.chatId
-  if (!chatId || !/^-?[1-9]\d*$/.test(chatId)) {
+  const chatId = normalizeChatId(event.pathParameters?.chatId)
+  if (!chatId) {
     return json(400, { error: 'A valid numeric chat ID is required' })
   }
   const input = parsePatchBody(parseJsonBody(event))

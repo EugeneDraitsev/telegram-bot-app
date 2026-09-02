@@ -105,19 +105,40 @@ export async function saveBotReplyToHistory(messageLike: unknown) {
 }
 
 /**
- * Middleware that saves bot text replies to chat history.
+ * Middleware that saves bot replies to chat history.
  * Agent worker saves responses through saveBotReplyToHistory directly.
  */
 export async function saveBotMessageMiddleware(
   ctx: Context,
   next: NextFunction,
 ) {
-  const originalReply = ctx.reply.bind(ctx)
+  const historyMethods = [
+    'reply',
+    'replyWithPhoto',
+    'replyWithDocument',
+    'replyWithVideo',
+    'replyWithAudio',
+    'replyWithVoice',
+    'replyWithAnimation',
+    'replyWithVideoNote',
+    'replyWithSticker',
+    'replyWithDice',
+    'replyWithMediaGroup',
+  ] as const
 
-  ctx.reply = async (text, ...args) => {
-    const sentMessage = await originalReply(text, ...args)
-    await saveBotReplyToHistory(sentMessage)
-    return sentMessage
+  for (const method of historyMethods) {
+    const original = (
+      ctx[method] as (...args: never[]) => Promise<unknown>
+    ).bind(ctx)
+    ;(ctx[method] as (...args: never[]) => Promise<unknown>) = (async (
+      ...args: never[]
+    ) => {
+      const sentMessage = await original(...args)
+      await saveBotReplyToHistory(
+        Array.isArray(sentMessage) ? sentMessage[0] : sentMessage,
+      )
+      return sentMessage
+    }) as (typeof ctx)[typeof method]
   }
 
   await next()

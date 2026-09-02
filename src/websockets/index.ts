@@ -17,6 +17,7 @@ import {
   getStoredChatStatistics,
   logger,
   type MessageCountRange,
+  normalizeChatId,
   TtlCache,
   verifyStatisticsAccessToken,
 } from '@tg-bot/common'
@@ -48,16 +49,6 @@ const badRequest = (message: string): APIGatewayProxyResult => ({
 })
 
 const getExpiresAt = () => Math.floor(Date.now() / 1000) + connectionTtlSeconds
-
-const normalizeChatId = (chatId: unknown) => {
-  if (typeof chatId !== 'string' && typeof chatId !== 'number') {
-    return undefined
-  }
-
-  const chatIdText = String(chatId).trim()
-
-  return /^-?[1-9]\d*$/.test(chatIdText) ? chatIdText : undefined
-}
 
 const getClient = (endpoint: string) => {
   const endpointUrl = `https://${endpoint}`

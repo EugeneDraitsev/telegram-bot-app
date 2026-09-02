@@ -6,6 +6,7 @@ import {
 
 import {
   DYNAMO_GET_TIMEOUT_MS,
+  DYNAMO_OP_TIMEOUT_MS,
   dynamoBatchGetAll,
   dynamoCountAll,
   dynamoDeleteItem,
@@ -14,6 +15,7 @@ import {
   dynamoQuery,
   dynamoQueryAll,
   dynamoScanAll,
+  dynamoTransactWrite,
   dynamoUpdateItem,
 } from '..'
 
@@ -23,12 +25,16 @@ describe('dynamo utils', () => {
   })
 
   test('dynamoPutItem should call send on dynamo object and return promise with result', async () => {
-    jest
+    const sendSpy = jest
       .spyOn(DynamoDBDocumentClient.prototype, 'send')
       .mockImplementation(() => 'put response!!')
 
     const options = {} as PutCommandInput
     expect(await dynamoPutItem(options)).toEqual('put response!!')
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+    )
   })
 
   test('dynamoGetItem should call send on dynamo object and return promise with result', async () => {
@@ -46,12 +52,38 @@ describe('dynamo utils', () => {
   })
 
   test('dynamoQuery should call send on dynamo object and return promise with result', async () => {
-    jest
+    const sendSpy = jest
       .spyOn(DynamoDBDocumentClient.prototype, 'send')
       .mockImplementation(() => 'query response!!')
 
     const options = {} as PutCommandInput
     expect(await dynamoQuery(options)).toEqual('query response!!')
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+    )
+    expect(DYNAMO_OP_TIMEOUT_MS).toBeLessThan(10_000)
+  })
+
+  test('dynamo writes bound every operation well under the webhook limit', async () => {
+    const sendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation(() => 'ok')
+
+    await dynamoUpdateItem({
+      TableName: 'table',
+      Key: {},
+      UpdateExpression: 'SET #value = :value',
+    })
+    await dynamoDeleteItem({ TableName: 'table', Key: {} })
+    await dynamoTransactWrite({ TransactItems: [] })
+    expect(sendSpy).toHaveBeenCalledTimes(3)
+    for (const call of sendSpy.mock.calls) {
+      expect(call[1]).toEqual(
+        expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+      )
+    }
+    expect(DYNAMO_OP_TIMEOUT_MS).toBeLessThan(10_000)
   })
 
   test('dynamoBatchGetAll chunks requests at the DynamoDB limit', async () => {

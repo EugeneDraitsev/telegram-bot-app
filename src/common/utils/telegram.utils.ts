@@ -113,6 +113,17 @@ function getMessageLabel(message: Message | undefined): string {
 
 export const getChatName = (chat?: Chat) => chat?.title || getUserName(chat)
 
+const CHAT_ID_PATTERN = /^-?[1-9]\d*$/
+
+export const normalizeChatId = (chatId: unknown): string | undefined => {
+  if (typeof chatId !== 'string' && typeof chatId !== 'number') {
+    return undefined
+  }
+
+  const chatIdText = String(chatId).trim()
+  return CHAT_ID_PATTERN.test(chatIdText) ? chatIdText : undefined
+}
+
 // ── Media file refs ──────────────────────────────────────────
 
 export interface MediaFileRef {
