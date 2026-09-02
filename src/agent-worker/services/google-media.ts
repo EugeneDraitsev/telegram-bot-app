@@ -290,7 +290,10 @@ async function postGoogleInteraction(
   return response.json()
 }
 
-async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
+async function runGoogleInteraction<T>(
+  run: () => Promise<T>,
+  explain?: (error: unknown) => string | undefined,
+): Promise<T> {
   try {
     return await run()
   } catch (error) {
@@ -298,8 +301,27 @@ async function runGoogleInteraction<T>(run: () => Promise<T>): Promise<T> {
       { error: getErrorMessage(error) },
       'google_media.interaction_failed',
     )
-    throw new Error('Google media generation failed', { cause: error })
+    // Google's own wording is never forwarded to the chat; only our summary is.
+    throw new Error(explain?.(error) ?? 'Google media generation failed', {
+      cause: error,
+    })
   }
+}
+
+/**
+ * Omni rejects every request carrying a video input with a 400 blaming the
+ * prompt for prohibited content, even when the request has no prompt at all and
+ * the video is a test pattern. Video input is simply not enabled, so say that
+ * rather than repeating an excuse that sends the user hunting for a bad word.
+ */
+function explainOmniFailure(
+  error: unknown,
+  hasVideoInput: boolean,
+): string | undefined {
+  const message = getErrorMessage(error)
+  if (!hasVideoInput || !message.includes('Input blocked')) return undefined
+
+  return 'Gemini Omni Flash cannot edit or extend an uploaded video on this account: it refuses every video input. Generating a new video from an image or from text still works.'
 }
 
 /**
@@ -315,25 +337,28 @@ export async function generateOmniVideo(options: {
   media?: MediaBuffer[]
 }): Promise<GeneratedMedia> {
   const media = options.media ?? []
-  const body = await runGoogleInteraction(() =>
-    postGoogleInteraction({
-      model: OMNI_VIDEO_MODEL,
-      input: [
-        ...media.map((item) => ({
-          type: item.mediaType === 'video' ? 'video' : 'image',
-          mime_type: item.mimeType,
-          data: item.buffer.toString('base64'),
-        })),
-        { type: 'text', text: options.prompt.trim() },
-      ],
-      response_format: {
-        type: 'video',
-        aspect_ratio: options.aspectRatio,
-        resolution: OMNI_VIDEO_RESOLUTION,
-        duration: `${options.durationSeconds}s`,
-      },
-      store: false,
-    }),
+  const hasVideoInput = media.some((item) => item.mediaType === 'video')
+  const body = await runGoogleInteraction(
+    () =>
+      postGoogleInteraction({
+        model: OMNI_VIDEO_MODEL,
+        input: [
+          ...media.map((item) => ({
+            type: item.mediaType === 'video' ? 'video' : 'image',
+            mime_type: item.mimeType,
+            data: item.buffer.toString('base64'),
+          })),
+          { type: 'text', text: options.prompt.trim() },
+        ],
+        response_format: {
+          type: 'video',
+          aspect_ratio: options.aspectRatio,
+          resolution: OMNI_VIDEO_RESOLUTION,
+          duration: `${options.durationSeconds}s`,
+        },
+        store: false,
+      }),
+    (error) => explainOmniFailure(error, hasVideoInput),
   )
 
   const video = extractOmniInteractionVideo(body)

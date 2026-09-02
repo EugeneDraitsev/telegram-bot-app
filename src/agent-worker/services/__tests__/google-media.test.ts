@@ -407,6 +407,47 @@ describe('Google media through the AI SDK', () => {
     )
   })
 
+  test('names the real reason when Omni refuses a video input', async () => {
+    // Verified against the live API: any video input is refused this way, even
+    // a 1-second test pattern sent with no prompt at all.
+    const inputBlocked = new Response(
+      JSON.stringify({
+        error: {
+          message:
+            "Input blocked: The prompt could not be submitted. The prompt contains sensitive words that violate Google's Generative AI Prohibited Use policy.",
+        },
+      }),
+      { status: 400, statusText: 'Bad Request' },
+    )
+    const video: MediaBuffer = {
+      buffer: Buffer.from('clip'),
+      mimeType: 'video/mp4',
+      mediaType: 'video',
+    }
+    const image: MediaBuffer = {
+      buffer: Buffer.from('frame'),
+      mimeType: 'image/jpeg',
+      mediaType: 'image',
+    }
+    const request = {
+      prompt: 'Make the car drive at night',
+      aspectRatio: '9:16',
+      durationSeconds: 5,
+    } as const
+
+    mockFetch.mockResolvedValue(inputBlocked.clone())
+    await expect(
+      generateOmniVideo({ ...request, media: [video] }),
+    ).rejects.toThrow('cannot edit or extend an uploaded video on this account')
+
+    // Without a video input the same 400 really is about the request content,
+    // so the generic message stands.
+    mockFetch.mockResolvedValue(inputBlocked.clone())
+    await expect(
+      generateOmniVideo({ ...request, media: [image] }),
+    ).rejects.toThrow('Google media generation failed')
+  })
+
   test('fails clearly without an API key or generated media', async () => {
     delete process.env.GEMINI_API_KEY
     delete process.env.GOOGLE_GENERATIVE_AI_API_KEY
