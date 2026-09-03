@@ -174,7 +174,6 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   setupExternalApisCommands(bot)
 
   // /toggle - chat admins enable/disable agentic mode
-  // /allowai, /disallowai - bot owner controls the outer AI allowlist
   setupAgenticConfig(bot)
 
   // Smart agentic responses for non-command messages.

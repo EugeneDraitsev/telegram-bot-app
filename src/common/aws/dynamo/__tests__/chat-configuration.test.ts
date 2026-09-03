@@ -7,7 +7,6 @@ import {
   isAgenticChatEnabled,
   isAiAllowedChat,
   isBotOwner,
-  setChatAiAllowed,
   setChatConfigurationFlags,
   toggleAgenticChat,
 } from '../chat-configuration'
@@ -176,122 +175,6 @@ describe('chat configuration reads', () => {
 
     await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
     expect(getSpy).not.toHaveBeenCalled()
-  })
-})
-
-describe('setChatAiAllowed', () => {
-  test('owner allow initializes but does not enable the administrator switch', async () => {
-    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456)
-    updateSpy.mockResolvedValue({
-      Attributes: {
-        chatId: '-100',
-        aiAllowed: true,
-        agenticEnabled: false,
-        version: 1,
-        allowUpdatedAt: 123456,
-        allowUpdatedBy: 7,
-      },
-    } as never)
-
-    await expect(setChatAiAllowed(-100, true, 7)).resolves.toEqual({
-      configuration: {
-        chatId: '-100',
-        aiAllowed: true,
-        agenticEnabled: false,
-        version: 1,
-        allowUpdatedAt: 123456,
-        allowUpdatedBy: 7,
-      },
-    })
-    dateNowSpy.mockRestore()
-
-    expect(updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        TableName: 'chat-configuration',
-        Key: { chatId: '-100' },
-        UpdateExpression: expect.stringContaining(
-          'agenticEnabled = if_not_exists(agenticEnabled, :disabled)',
-        ),
-        ReturnValues: 'ALL_NEW',
-      }),
-    )
-  })
-
-  test('owner disallow also turns agentic mode off', async () => {
-    updateSpy.mockResolvedValue({
-      Attributes: {
-        chatId: '123',
-        aiAllowed: false,
-        agenticEnabled: false,
-        version: 3,
-      },
-    } as never)
-
-    await setChatAiAllowed(123, false, 7)
-
-    expect(updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        UpdateExpression: expect.stringContaining('agenticEnabled = :disabled'),
-      }),
-    )
-    await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
-    expect(getSpy).not.toHaveBeenCalled()
-  })
-
-  test('does not expose DynamoDB write errors', async () => {
-    updateSpy.mockRejectedValue(new Error('role arn and table details'))
-
-    await expect(setChatAiAllowed(123, true, 7)).resolves.toEqual({
-      error: 'Could not update chat configuration; please try again',
-    })
-  })
-
-  test('reports success when an owner update committed before the timeout', async () => {
-    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456)
-    updateSpy.mockRejectedValueOnce(
-      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
-    )
-    getSpy.mockResolvedValueOnce({
-      Item: {
-        chatId: '123',
-        aiAllowed: false,
-        agenticEnabled: false,
-        version: 4,
-        allowUpdatedAt: 123456,
-      },
-    } as never)
-
-    await expect(setChatAiAllowed(123, false, 7)).resolves.toEqual({
-      configuration: {
-        chatId: '123',
-        aiAllowed: false,
-        agenticEnabled: false,
-        version: 4,
-        allowUpdatedAt: 123456,
-      },
-    })
-    await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
-    expect(getSpy).toHaveBeenCalledTimes(1)
-    dateNowSpy.mockRestore()
-  })
-
-  test('does not reconcile a failed owner update from an older matching state', async () => {
-    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456)
-    updateSpy.mockRejectedValueOnce(new Error('dynamo unavailable'))
-    getSpy.mockResolvedValueOnce({
-      Item: {
-        chatId: '123',
-        aiAllowed: true,
-        agenticEnabled: false,
-        version: 4,
-        allowUpdatedAt: 123455,
-      },
-    } as never)
-
-    await expect(setChatAiAllowed(123, true, 7)).resolves.toEqual({
-      error: 'Could not update chat configuration; please try again',
-    })
-    dateNowSpy.mockRestore()
   })
 })
 

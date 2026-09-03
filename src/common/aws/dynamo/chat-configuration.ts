@@ -10,7 +10,7 @@ import {
 } from '../../utils'
 import { CHAT_CONFIGURATION_TABLE_NAME } from './table-names'
 
-// Keep disabled chats out of SQS while making owner/admin changes visible
+// Keep disabled chats out of SQS while making configuration changes visible
 // across warm ingress and worker instances within a few seconds.
 export const CHAT_CONFIGURATION_CACHE_TTL_MS = 5_000
 const TOGGLE_MAX_ATTEMPTS = 3
@@ -26,7 +26,7 @@ const DISABLED_SWITCH_VALUES = new Set(['0', 'false', 'no', 'off', 'disabled'])
 
 export interface ChatConfiguration {
   chatId: string
-  /** Owner-controlled outer allowlist. Chat administrators cannot change it. */
+  /** Outer allowlist managed through the bot admin panel. */
   aiAllowed: boolean
   /** Chat-admin-controlled switch changed by /toggle. */
   agenticEnabled: boolean
@@ -159,7 +159,7 @@ function isConditionalCheckFailure(error: unknown): boolean {
 type ExpectedChatConfiguration = Partial<
   Pick<
     ChatConfiguration,
-    'aiAllowed' | 'agenticEnabled' | 'allowUpdatedAt' | 'lastToggleOperationId'
+    'aiAllowed' | 'agenticEnabled' | 'lastToggleOperationId'
   >
 >
 
@@ -182,8 +182,6 @@ async function reconcileChatConfigurationWrite(
         latest.aiAllowed !== expected.aiAllowed) ||
       (expected.agenticEnabled !== undefined &&
         latest.agenticEnabled !== expected.agenticEnabled) ||
-      (expected.allowUpdatedAt !== undefined &&
-        latest.allowUpdatedAt !== expected.allowUpdatedAt) ||
       (expected.lastToggleOperationId !== undefined &&
         latest.lastToggleOperationId !== expected.lastToggleOperationId)
     ) {
@@ -196,66 +194,8 @@ async function reconcileChatConfigurationWrite(
 }
 
 /**
- * Change the owner-controlled outer allowlist without overwriting the
- * administrator-controlled fields. Disallowing also turns the inner switch
- * off so re-allowing a chat can never reactivate it unexpectedly.
- */
-export async function setChatAiAllowed(
-  chatId: string | number,
-  aiAllowed: boolean,
-  updatedBy: number,
-): Promise<ChatConfigurationUpdateResult> {
-  const cacheKey = String(chatId)
-  const now = Date.now()
-
-  try {
-    const result = await dynamoUpdateItem({
-      TableName: CHAT_CONFIGURATION_TABLE_NAME,
-      Key: { chatId: cacheKey },
-      UpdateExpression: aiAllowed
-        ? 'SET aiAllowed = :allowed, agenticEnabled = if_not_exists(agenticEnabled, :disabled), allowUpdatedAt = :now, allowUpdatedBy = :updatedBy, #version = if_not_exists(#version, :zero) + :one'
-        : 'SET aiAllowed = :allowed, agenticEnabled = :disabled, allowUpdatedAt = :now, allowUpdatedBy = :updatedBy, #version = if_not_exists(#version, :zero) + :one',
-      ExpressionAttributeNames: { '#version': 'version' },
-      ExpressionAttributeValues: {
-        ':allowed': aiAllowed,
-        ':disabled': false,
-        ':now': now,
-        ':updatedBy': updatedBy,
-        ':zero': 0,
-        ':one': 1,
-      },
-      ReturnValues: 'ALL_NEW',
-    })
-    const configuration = normalizeChatConfiguration(
-      chatId,
-      result.Attributes as Partial<ChatConfiguration> | undefined,
-    )
-    configurationCache.set(cacheKey, configuration)
-    return { configuration }
-  } catch (error) {
-    const reconciled = await reconcileChatConfigurationWrite(
-      chatId,
-      aiAllowed
-        ? { aiAllowed, allowUpdatedAt: now }
-        : { aiAllowed, agenticEnabled: false, allowUpdatedAt: now },
-    )
-    if (reconciled) {
-      configurationCache.set(cacheKey, reconciled)
-      return { configuration: reconciled }
-    }
-
-    logger.error(
-      { chatId, aiAllowed, error },
-      'chat_configuration.allow_failed',
-    )
-    return { error: CHAT_CONFIGURATION_UPDATE_ERROR }
-  }
-}
-
-/**
- * Set owner-controlled chat flags to explicit values for the admin API.
- * The write is optimistic and preserves the same invariant as /disallowai:
- * a disallowed chat can never remain agentic-enabled.
+ * Set chat flags to explicit values for the admin API. The write is
+ * optimistic, and disallowing AI also disables agentic mode.
  */
 export async function setChatConfigurationFlags(
   chatId: string | number,
@@ -380,8 +320,8 @@ export async function setChatConfigurationFlags(
 
 /**
  * Toggle only the chat-admin-controlled flag. An optimistic version condition
- * prevents concurrent toggles from losing an update and prevents an owner
- * disallow racing with a toggle. The caller owns Telegram admin authorization.
+ * prevents concurrent toggles from losing an update and prevents an allowlist
+ * change racing with a toggle. The caller owns Telegram admin authorization.
  */
 export async function toggleAgenticChat(
   chatId: string | number,
