@@ -14,7 +14,6 @@ import {
   DEFAULT_WEB_SEARCH_MODEL,
   formatAiModelConfig,
   getAiModelConfig,
-  isSameAiModel,
 } from '@tg-bot/common'
 
 export const CHAT_MODEL_CONFIG = getAiModelConfig(
@@ -54,15 +53,17 @@ export const CHAT_MODEL_REASONING_EFFORT = 'none'
 export const CHAT_FALLBACK_REASONING_EFFORT = 'medium'
 
 export function resolveAgentChatModel(commandName?: string) {
-  const config =
-    commandName === 'o' ? DEFAULT_OPENAI_TEXT_MODEL : CHAT_MODEL_CONFIG
+  const isOpenAiOverride = commandName === 'o'
+  const config = isOpenAiOverride
+    ? DEFAULT_OPENAI_TEXT_MODEL
+    : CHAT_MODEL_CONFIG
 
   return {
     config,
     label: formatAiModelConfig(config),
-    reasoningEffort: isSameAiModel(config, CHAT_MODEL_CONFIG)
-      ? CHAT_MODEL_REASONING_EFFORT
-      : CHAT_FALLBACK_REASONING_EFFORT,
+    reasoningEffort: isOpenAiOverride
+      ? CHAT_FALLBACK_REASONING_EFFORT
+      : CHAT_MODEL_REASONING_EFFORT,
   }
 }
 export const REPLY_GATE_MODEL = formatAiModelConfig(REPLY_GATE_MODEL_CONFIG)
