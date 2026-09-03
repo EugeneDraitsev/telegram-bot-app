@@ -153,22 +153,30 @@ function isConditionalCheckFailure(error: unknown): boolean {
   )
 }
 
+type ExpectedChatConfiguration = Partial<
+  Pick<ChatConfiguration, 'aiAllowed' | 'agenticEnabled'>
+>
+
 /**
  * A failed UpdateItem response does not mean the write was lost: the update
- * may have committed server-side while our abort fired first. Reporting a
- * blind failure then invites a /toggle retry that flips the committed value
- * straight back. Re-read once with a consistent read: an advanced version
- * carrying the attempted value means the intent is satisfied (either this
- * attempt landed it or an equivalent change did), so report success.
+ * may have committed server-side while our abort fired first. Re-read once
+ * with a consistent read and report success when the requested state is now
+ * visible. Versioned writes must also advance beyond the attempted base.
  */
-async function reconcileToggleWrite(
+async function reconcileChatConfigurationWrite(
   chatId: string | number,
-  baseVersion: number,
-  enabled: boolean,
+  expected: ExpectedChatConfiguration,
+  baseVersion?: number,
 ): Promise<ChatConfiguration | undefined> {
   try {
     const latest = await readChatConfiguration(chatId)
-    if (latest.version <= baseVersion || latest.agenticEnabled !== enabled) {
+    if (
+      (baseVersion !== undefined && latest.version <= baseVersion) ||
+      (expected.aiAllowed !== undefined &&
+        latest.aiAllowed !== expected.aiAllowed) ||
+      (expected.agenticEnabled !== undefined &&
+        latest.agenticEnabled !== expected.agenticEnabled)
+    ) {
       return undefined
     }
     return latest
@@ -215,6 +223,15 @@ export async function setChatAiAllowed(
     configurationCache.set(cacheKey, configuration)
     return { configuration }
   } catch (error) {
+    const reconciled = await reconcileChatConfigurationWrite(
+      chatId,
+      aiAllowed ? { aiAllowed } : { aiAllowed, agenticEnabled: false },
+    )
+    if (reconciled) {
+      configurationCache.set(cacheKey, reconciled)
+      return { configuration: reconciled }
+    }
+
     logger.error(
       { chatId, aiAllowed, error },
       'chat_configuration.allow_failed',
@@ -247,6 +264,9 @@ export async function setChatConfigurationFlags(
 
   const cacheKey = String(chatId)
   for (let attempt = 0; attempt < TOGGLE_MAX_ATTEMPTS; attempt += 1) {
+    let attempted:
+      | { version: number; expected: ExpectedChatConfiguration }
+      | undefined
     try {
       const current = await readChatConfiguration(chatId)
       if (
@@ -272,6 +292,10 @@ export async function setChatConfigurationFlags(
       if (!aiAllowedChanged && !agenticEnabledChanged) {
         configurationCache.set(cacheKey, current)
         return { configuration: current }
+      }
+      attempted = {
+        version: current.version,
+        expected: { aiAllowed, agenticEnabled },
       }
 
       const now = Date.now()
@@ -320,6 +344,18 @@ export async function setChatConfigurationFlags(
     } catch (error) {
       if (isConditionalCheckFailure(error)) {
         continue
+      }
+
+      const reconciled = attempted
+        ? await reconcileChatConfigurationWrite(
+            chatId,
+            attempted.expected,
+            attempted.version,
+          )
+        : undefined
+      if (reconciled) {
+        configurationCache.set(cacheKey, reconciled)
+        return { configuration: reconciled }
       }
 
       logger.error({ chatId, patch, error }, 'chat_configuration.admin_failed')
@@ -400,10 +436,10 @@ export async function toggleAgenticChat(
       }
 
       const reconciled = attempted
-        ? await reconcileToggleWrite(
+        ? await reconcileChatConfigurationWrite(
             chatId,
+            { agenticEnabled: attempted.enabled },
             attempted.version,
-            attempted.enabled,
           )
         : undefined
       if (attempted && reconciled) {

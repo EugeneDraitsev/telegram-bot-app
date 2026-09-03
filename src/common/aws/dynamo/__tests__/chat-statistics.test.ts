@@ -92,6 +92,62 @@ describe('per-user chat statistics storage', () => {
     })
   })
 
+  test('reports success when an opt-out update committed before the timeout', async () => {
+    querySpy
+      .mockResolvedValueOnce({
+        Items: [
+          {
+            chatId: '-100',
+            userId: 7,
+            msgCount: 5,
+            username: 'alice',
+            optedOut: false,
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        Items: [
+          {
+            chatId: '-100',
+            userId: 7,
+            msgCount: 5,
+            username: 'alice',
+            optedOut: true,
+          },
+        ],
+      } as never)
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
+    )
+
+    await expect(setUserOptOut(-100, 7, true)).resolves.toBe('updated')
+    expect(querySpy.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ ConsistentRead: true }),
+    )
+  })
+
+  test('preserves the write failure when a timed-out opt-out update did not land', async () => {
+    querySpy.mockResolvedValue({
+      Items: [
+        {
+          chatId: '-100',
+          userId: 7,
+          msgCount: 5,
+          username: 'alice',
+          optedOut: false,
+        },
+      ],
+    } as never)
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
+    )
+
+    await expect(setUserOptOut(-100, 7, true)).rejects.toThrow(
+      'operation timed out',
+    )
+    expect(querySpy).toHaveBeenCalledTimes(2)
+  })
+
   test('reads chat statistics only from per-user records', async () => {
     const currentChat = { ...chat, title: 'Renamed chat' } as Chat
     queryAllSpy.mockResolvedValue([

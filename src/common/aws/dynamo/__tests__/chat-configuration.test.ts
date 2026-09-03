@@ -245,6 +245,31 @@ describe('setChatAiAllowed', () => {
       error: 'Could not update chat configuration; please try again',
     })
   })
+
+  test('reports success when an owner update committed before the timeout', async () => {
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
+    )
+    getSpy.mockResolvedValueOnce({
+      Item: {
+        chatId: '123',
+        aiAllowed: false,
+        agenticEnabled: false,
+        version: 4,
+      },
+    } as never)
+
+    await expect(setChatAiAllowed(123, false, 7)).resolves.toEqual({
+      configuration: {
+        chatId: '123',
+        aiAllowed: false,
+        agenticEnabled: false,
+        version: 4,
+      },
+    })
+    await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
+    expect(getSpy).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('toggleAgenticChat', () => {
@@ -516,5 +541,62 @@ describe('setChatConfigurationFlags', () => {
       error: 'Allow AI access before enabling the agentic bot',
     })
     expect(updateSpy).not.toHaveBeenCalled()
+  })
+
+  test('reports success when an admin update committed before the timeout', async () => {
+    getSpy
+      .mockResolvedValueOnce({
+        Item: {
+          chatId: '123',
+          aiAllowed: true,
+          agenticEnabled: false,
+          version: 4,
+        },
+      } as never)
+      .mockResolvedValueOnce({
+        Item: {
+          chatId: '123',
+          aiAllowed: true,
+          agenticEnabled: true,
+          version: 5,
+        },
+      } as never)
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
+    )
+
+    await expect(
+      setChatConfigurationFlags(123, { agenticEnabled: true }, 7, 4),
+    ).resolves.toEqual({
+      configuration: {
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: true,
+        version: 5,
+      },
+    })
+    await expect(isAgenticChatEnabled(123)).resolves.toBe(true)
+    expect(getSpy).toHaveBeenCalledTimes(2)
+  })
+
+  test('reports failure when a timed-out admin update did not land', async () => {
+    getSpy.mockResolvedValue({
+      Item: {
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: false,
+        version: 4,
+      },
+    } as never)
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
+    )
+
+    await expect(
+      setChatConfigurationFlags(123, { agenticEnabled: true }, 7, 4),
+    ).resolves.toEqual({
+      error: 'Could not update chat configuration; please try again',
+    })
+    expect(getSpy).toHaveBeenCalledTimes(2)
   })
 })

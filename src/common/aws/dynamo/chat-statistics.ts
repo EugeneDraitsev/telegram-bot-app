@@ -102,6 +102,7 @@ const isConditionalWriteConflict = (error: unknown): boolean =>
 const getStoredUserStatistic = async (
   chatId: number | string,
   userId: number,
+  consistentRead = false,
 ): Promise<StoredUserStat | undefined> => {
   const result = await dynamoQuery({
     TableName: CHAT_USER_STATISTICS_TABLE_NAME,
@@ -110,6 +111,7 @@ const getStoredUserStatistic = async (
       ':userId': userId,
     },
     KeyConditionExpression: 'chatId = :chatId AND userId = :userId',
+    ...(consistentRead ? { ConsistentRead: true } : {}),
   })
 
   return toStoredUserStat(result.Items?.[0])
@@ -253,11 +255,20 @@ export const setUserOptOut = async (
         })
         return 'updated'
       } catch (error) {
-        if (!isConditionalWriteConflict(error)) {
-          throw error
+        if (isConditionalWriteConflict(error)) {
+          lastConflict = error
+          continue
         }
-        lastConflict = error
-        continue
+
+        try {
+          const latest = await getStoredUserStatistic(chatId, user_id, true)
+          if (latest && Boolean(latest.optedOut) === optedOut) {
+            return 'updated'
+          }
+        } catch {
+          // Preserve the original write failure when reconciliation cannot read.
+        }
+        throw error
       }
     }
 
