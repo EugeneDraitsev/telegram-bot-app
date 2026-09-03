@@ -9,6 +9,7 @@ import type {
 
 import {
   dynamoDeleteItem,
+  dynamoGetItem,
   dynamoQuery,
   dynamoUpdateItem,
   get24hChatStats,
@@ -118,19 +119,51 @@ const sendEvent = async (
   )
 }
 
-const saveConnection = (
+const didConnectionUpdateCommit = async (
+  connectionId: string,
+  matches: (connection: Connection) => boolean,
+): Promise<boolean> => {
+  try {
+    const result = await dynamoGetItem({
+      TableName: connectionsTableName,
+      Key: { connectionId },
+      ConsistentRead: true,
+    })
+    return Boolean(result.Item && matches(result.Item as Connection))
+  } catch {
+    return false
+  }
+}
+
+const saveConnection = async (
   connection: Pick<Connection, 'connectionId' | 'date'>,
-) =>
-  dynamoUpdateItem({
-    TableName: connectionsTableName,
-    Key: { connectionId: connection.connectionId },
-    UpdateExpression: 'SET #date = :date, #ttl = :ttl',
-    ExpressionAttributeNames: { '#date': 'date', '#ttl': 'ttl' },
-    ExpressionAttributeValues: {
-      ':date': connection.date,
-      ':ttl': getExpiresAt(),
-    },
-  })
+) => {
+  const ttl = getExpiresAt()
+
+  try {
+    await dynamoUpdateItem({
+      TableName: connectionsTableName,
+      Key: { connectionId: connection.connectionId },
+      UpdateExpression: 'SET #date = :date, #ttl = :ttl',
+      ExpressionAttributeNames: { '#date': 'date', '#ttl': 'ttl' },
+      ExpressionAttributeValues: {
+        ':date': connection.date,
+        ':ttl': ttl,
+      },
+    })
+  } catch (error) {
+    const committed = await didConnectionUpdateCommit(
+      connection.connectionId,
+      (stored) => stored.date === connection.date && stored.ttl === ttl,
+    )
+    if (!committed) throw error
+
+    logger.info(
+      { connectionId: connection.connectionId },
+      'websocket.connect.committed_before_timeout',
+    )
+  }
+}
 
 const removeConnection = (connectionId: string) =>
   dynamoDeleteItem({
@@ -146,18 +179,42 @@ const getConnections = (chatId: string) =>
     ExpressionAttributeValues: { ':chatId': chatId },
   }).then((result) => (result.Items ?? []) as ConnectionIndexRecord[])
 
-const subscribeConnectionToChat = (connectionId: string, chatId: string) =>
-  dynamoUpdateItem({
-    TableName: connectionsTableName,
-    Key: { connectionId },
-    UpdateExpression: 'SET chatId = :chatId, #ttl = :ttl',
-    ConditionExpression: 'attribute_exists(connectionId)',
-    ExpressionAttributeNames: { '#ttl': 'ttl' },
-    ExpressionAttributeValues: {
-      ':chatId': chatId,
-      ':ttl': getExpiresAt(),
-    },
-  })
+const subscribeConnectionToChat = async (
+  connectionId: string,
+  chatId: string,
+) => {
+  const ttl = getExpiresAt()
+
+  try {
+    await dynamoUpdateItem({
+      TableName: connectionsTableName,
+      Key: { connectionId },
+      UpdateExpression: 'SET chatId = :chatId, #ttl = :ttl',
+      ConditionExpression: 'attribute_exists(connectionId)',
+      ExpressionAttributeNames: { '#ttl': 'ttl' },
+      ExpressionAttributeValues: {
+        ':chatId': chatId,
+        ':ttl': ttl,
+      },
+    })
+  } catch (error) {
+    if (isConditionalCheckFailedError(error)) throw error
+
+    if (
+      !(await didConnectionUpdateCommit(
+        connectionId,
+        (stored) => stored.chatId === chatId && stored.ttl === ttl,
+      ))
+    ) {
+      throw error
+    }
+
+    logger.info(
+      { connectionId, chatId },
+      'websocket.stats.subscription_committed_before_timeout',
+    )
+  }
+}
 
 const MESSAGE_COUNT_RANGES: MessageCountRange[] = [
   'day',

@@ -78,6 +78,161 @@ describe('websocket handlers', () => {
     expect(dynamoSendSpy.mock.calls[0][0].input).not.toHaveProperty('Item')
   })
 
+  test('connect succeeds when its update committed before the timeout', async () => {
+    const { connect } = await loadHandlers()
+    const writeError = new Error('timed out')
+    let savedDate: number | undefined
+    let savedTtl: number | undefined
+    const dynamoSendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation((command) => {
+        const input = command.input as Record<string, unknown>
+
+        if (input.UpdateExpression) {
+          const values = input.ExpressionAttributeValues as Record<
+            string,
+            number
+          >
+          savedDate = values[':date']
+          savedTtl = values[':ttl']
+          return Promise.reject(writeError)
+        }
+
+        if (input.ConsistentRead === true) {
+          return Promise.resolve({
+            Item: {
+              connectionId: 'connection-1',
+              date: savedDate,
+              ttl: savedTtl,
+            },
+          })
+        }
+
+        return Promise.reject(new Error('unexpected DynamoDB command'))
+      })
+
+    const response = await connect(createConnectEvent())
+
+    expect(response.statusCode).toBe(200)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(2)
+    expect(dynamoSendSpy.mock.calls[1][0].input).toEqual(
+      expect.objectContaining({
+        TableName: connectionsTableName,
+        Key: { connectionId: 'connection-1' },
+        ConsistentRead: true,
+      }),
+    )
+  })
+
+  test('connect preserves the write error when reconciliation does not match', async () => {
+    const { connect } = await loadHandlers()
+    const writeError = new Error('timed out')
+    const dynamoSendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() => Promise.reject(writeError))
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Item: { connectionId: 'connection-1', date: 0, ttl: 0 },
+        }),
+      )
+
+    await expect(connect(createConnectEvent())).rejects.toBe(writeError)
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(2)
+  })
+
+  test('stats sends its snapshot when the subscription committed before the timeout', async () => {
+    const { stats } = await loadHandlers()
+    const writeError = new Error('timed out')
+    let savedChatId: string | undefined
+    let savedTtl: number | undefined
+    const dynamoSendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementation((command) => {
+        const input = command.input as Record<string, unknown>
+
+        if (
+          input.TableName === connectionsTableName &&
+          input.UpdateExpression
+        ) {
+          const values = input.ExpressionAttributeValues as Record<
+            string,
+            string | number
+          >
+          savedChatId = String(values[':chatId'])
+          savedTtl = Number(values[':ttl'])
+          return Promise.reject(writeError)
+        }
+
+        if (
+          input.TableName === connectionsTableName &&
+          input.ConsistentRead === true
+        ) {
+          return Promise.resolve({
+            Item: {
+              connectionId: 'connection-1',
+              chatId: savedChatId,
+              ttl: savedTtl,
+            },
+          })
+        }
+
+        if (input.Select === 'COUNT') {
+          return Promise.resolve({ Count: 0 })
+        }
+
+        if (
+          input.TableName === 'chat-events' ||
+          input.TableName === 'chat-user-statistics'
+        ) {
+          return Promise.resolve({ Items: [] })
+        }
+
+        return Promise.reject(new Error('unexpected DynamoDB command'))
+      })
+    const apiSendSpy = jest
+      .spyOn(ApiGatewayManagementApiClient.prototype, 'send')
+      .mockImplementation(() => Promise.resolve({}) as never)
+
+    const response = await stats(createStatsEvent({ chatId: '789' }))
+
+    expect(response.statusCode).toBe(200)
+    expect(apiSendSpy).toHaveBeenCalledTimes(1)
+    expect(
+      dynamoSendSpy.mock.calls.some(
+        ([command]) =>
+          (command.input as { ConsistentRead?: boolean }).ConsistentRead ===
+          true,
+      ),
+    ).toBe(true)
+  })
+
+  test('stats preserves the write error when subscription reconciliation does not match', async () => {
+    const { stats } = await loadHandlers()
+    const writeError = new Error('timed out')
+    const dynamoSendSpy = jest
+      .spyOn(DynamoDBDocumentClient.prototype, 'send')
+      .mockImplementationOnce(() => Promise.reject(writeError))
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Item: {
+            connectionId: 'connection-1',
+            chatId: '456',
+            ttl: 0,
+          },
+        }),
+      )
+    const apiSendSpy = jest.spyOn(
+      ApiGatewayManagementApiClient.prototype,
+      'send',
+    )
+
+    await expect(stats(createStatsEvent({ chatId: '123' }))).rejects.toBe(
+      writeError,
+    )
+    expect(dynamoSendSpy).toHaveBeenCalledTimes(2)
+    expect(apiSendSpy).not.toHaveBeenCalled()
+  })
+
   test('stats still sends a snapshot when subscription write finds no connection row', async () => {
     const { stats } = await loadHandlers()
     const dynamoSendSpy = jest
