@@ -549,6 +549,7 @@ export async function runAgenticLoop(
           toolByName,
           chatId,
           chatModel.config,
+          chatModel.reasoningEffort,
         )
 
         // Collect any responses produced by tools (media, text drafts, etc.)

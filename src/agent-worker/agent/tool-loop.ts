@@ -1,6 +1,10 @@
 import type { ModelMessage, ToolSet, UserModelMessage } from 'ai'
 
-import type { AiModelConfig, MetricStatus } from '@tg-bot/common'
+import type {
+  AiModelConfig,
+  AiReasoningEffort,
+  MetricStatus,
+} from '@tg-bot/common'
 import {
   cleanModelMessage,
   formatAiModelConfig,
@@ -19,6 +23,7 @@ import {
   type GenerateModelWithRetryResult,
   generateModelWithRetryWithInfo,
 } from './model-call'
+import { CHAT_FALLBACK_REASONING_EFFORT } from './models'
 import { extractErrorInfo, getChatProviderOptions } from './runtime'
 import { withTimeout } from './utils'
 
@@ -256,11 +261,13 @@ export async function runToolLoop(
   toolByName: Map<string, AgentTool>,
   chatId: number,
   initialModelConfig: AiModelConfig,
+  initialReasoningEffort: AiReasoningEffort,
 ): Promise<{ finalText: string; toolResults: ToolExecutionResult[] }> {
   let finalText = ''
   const toolResults: ToolExecutionResult[] = []
   let activeModelConfig = initialModelConfig
   let activeModel = formatAiModelConfig(initialModelConfig)
+  let activeReasoningEffort = initialReasoningEffort
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     let modelResult: GenerateModelWithRetryResult<ToolSet>
@@ -271,7 +278,11 @@ export async function runToolLoop(
           system: systemInstruction,
           tools: Object.keys(tools).length ? tools : undefined,
           toolChoice: 'auto',
-          providerOptions: getChatProviderOptions(activeModelConfig, chatId),
+          providerOptions: getChatProviderOptions(
+            activeModelConfig,
+            chatId,
+            activeReasoningEffort,
+          ),
         },
         chatId,
         iteration === 0 ? 'routing' : `iteration_${iteration}`,
@@ -300,6 +311,9 @@ export async function runToolLoop(
     }
     activeModelConfig = modelResult.modelConfig
     activeModel = modelResult.model
+    if (modelResult.fallbackFrom) {
+      activeReasoningEffort = CHAT_FALLBACK_REASONING_EFFORT
+    }
     const { response } = modelResult
 
     const responseMessages = response.response.messages as ModelMessage[]
@@ -427,7 +441,11 @@ export async function runToolLoop(
           ],
           system: systemInstruction,
           toolChoice: 'none',
-          providerOptions: getChatProviderOptions(activeModelConfig, chatId),
+          providerOptions: getChatProviderOptions(
+            activeModelConfig,
+            chatId,
+            activeReasoningEffort,
+          ),
         },
         chatId,
         'finalize',

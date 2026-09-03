@@ -107,7 +107,7 @@ describe('recordChatActivity', () => {
     })
   })
 
-  test('does not count a replayed message and skips the broadcast', async () => {
+  test('does not recount a replayed message and refreshes the broadcast', async () => {
     transactSpy.mockRejectedValueOnce(
       Object.assign(new Error('cancelled'), {
         name: 'TransactionCanceledException',
@@ -121,7 +121,7 @@ describe('recordChatActivity', () => {
     await expect(
       recordChatActivity({ userInfo: user, chat, messageId: 42 }),
     ).resolves.toEqual({ recorded: false })
-    expect(invokeLambdaSpy).not.toHaveBeenCalled()
+    expect(invokeLambdaSpy).toHaveBeenCalledTimes(1)
   })
 
   test('rethrows a transaction cancelled for any other reason', async () => {
@@ -178,6 +178,31 @@ describe('recordChatActivity', () => {
       recordChatActivity({ userInfo: user, chat, messageId: 42 }),
     ).rejects.toThrow('operation timed out')
     expect(invokeLambdaSpy).not.toHaveBeenCalled()
+  })
+
+  test('broadcasts on retry when the reconciliation read also failed', async () => {
+    const timeout = Object.assign(new Error('operation timed out'), {
+      name: 'TimeoutError',
+    })
+    const duplicate = Object.assign(new Error('cancelled'), {
+      name: 'TransactionCanceledException',
+      CancellationReasons: [
+        { Code: 'ConditionalCheckFailed' },
+        { Code: 'None' },
+      ],
+    })
+    transactSpy.mockRejectedValueOnce(timeout).mockRejectedValueOnce(duplicate)
+    getItemSpy.mockRejectedValueOnce(new Error('read timed out'))
+
+    await expect(
+      recordChatActivity({ userInfo: user, chat, messageId: 42 }),
+    ).rejects.toThrow('operation timed out')
+    await expect(
+      recordChatActivity({ userInfo: user, chat, messageId: 42 }),
+    ).resolves.toEqual({ recorded: false })
+
+    expect(getItemSpy).toHaveBeenCalledTimes(1)
+    expect(invokeLambdaSpy).toHaveBeenCalledTimes(1)
   })
 
   test('ignores messages without a sender or chat', async () => {

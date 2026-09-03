@@ -5,6 +5,8 @@
  */
 
 import {
+  type AiModelConfig,
+  type AiReasoningEffort,
   DEFAULT_FAST_TEXT_FALLBACK_MODEL,
   DEFAULT_FAST_TEXT_MODEL,
   DEFAULT_HELPER_TEXT_FALLBACK_MODEL,
@@ -52,7 +54,11 @@ export const WEB_SEARCH_FALLBACK_MODEL_CONFIG = getAiModelConfig(
 export const CHAT_MODEL_REASONING_EFFORT = 'none'
 export const CHAT_FALLBACK_REASONING_EFFORT = 'medium'
 
-export function resolveAgentChatModel(commandName?: string) {
+export function resolveAgentChatModel(commandName?: string): {
+  config: AiModelConfig
+  label: string
+  reasoningEffort: AiReasoningEffort
+} {
   const isOpenAiOverride = commandName === 'o'
   const config = isOpenAiOverride
     ? DEFAULT_OPENAI_TEXT_MODEL

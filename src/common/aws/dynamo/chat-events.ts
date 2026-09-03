@@ -107,6 +107,7 @@ export const recordChatActivity = async (params: {
   }
 
   const chatId = String(chat_id)
+  let recorded = true
 
   try {
     await dynamoTransactWrite({
@@ -150,20 +151,20 @@ export const recordChatActivity = async (params: {
   } catch (error) {
     if (isTransactionConditionFailure(error)) {
       logger.info({ chatId, messageId }, 'activity.duplicate_skipped')
-      return { recorded: false }
+      recorded = false
+    } else {
+      if (!(await didActivityTransactionCommit(chatId, date, messageId))) {
+        throw error
+      }
+      logger.info({ chatId, messageId }, 'activity.committed_before_timeout')
     }
-
-    if (!(await didActivityTransactionCommit(chatId, date, messageId))) {
-      throw error
-    }
-    logger.info({ chatId, messageId }, 'activity.committed_before_timeout')
   }
 
   await invokeStatsBroadcast(chatId).catch((error) =>
     logger.error({ chatId, err: error }, 'broadcast invoke error'),
   )
 
-  return { recorded: true }
+  return { recorded }
 }
 
 const DAY = 1000 * 60 * 60 * 24

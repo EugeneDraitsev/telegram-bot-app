@@ -149,6 +149,25 @@ describe('runAgenticLoop integration', () => {
     expect(stopTyping).toHaveBeenCalledTimes(1)
   })
 
+  test('passes slash-o reasoning into the model request', async () => {
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .mockResolvedValue(createModelResult({ text: 'answer' }))
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+      commandName: 'o',
+    })
+
+    expect(modelSpy.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        providerOptions: {
+          openai: expect.objectContaining({ reasoningEffort: 'medium' }),
+        },
+      }),
+    )
+  })
+
   test('executes a tool and feeds its result into the next model round', async () => {
     const execute = jest.fn().mockResolvedValue('lookup result: 42')
     const lookupTool: AgentTool = {
