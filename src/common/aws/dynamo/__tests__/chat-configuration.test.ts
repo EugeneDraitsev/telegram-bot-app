@@ -305,11 +305,15 @@ describe('toggleAgenticChat', () => {
     expect(updateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         Key: { chatId: '123' },
+        UpdateExpression: expect.stringContaining(
+          'lastToggleOperationId = :operationId',
+        ),
         ConditionExpression:
           'aiAllowed = :allowed AND (attribute_not_exists(#version) OR #version = :expectedVersion)',
         ExpressionAttributeValues: expect.objectContaining({
           ':allowed': true,
           ':enabled': true,
+          ':operationId': expect.any(String),
           ':expectedVersion': 4,
           ':nextVersion': 5,
           ':updatedBy': 7,
@@ -371,6 +375,43 @@ describe('toggleAgenticChat', () => {
   })
 
   test('reports success when the write committed before the timeout', async () => {
+    let operationId: string | undefined
+    getSpy
+      .mockResolvedValueOnce({
+        Item: {
+          chatId: '123',
+          aiAllowed: true,
+          agenticEnabled: false,
+          version: 1,
+        },
+      } as never)
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          Item: {
+            chatId: '123',
+            aiAllowed: true,
+            agenticEnabled: true,
+            version: 2,
+            lastToggleOperationId: operationId,
+          },
+        } as never),
+      )
+    updateSpy.mockImplementationOnce((params) => {
+      operationId = String(params.ExpressionAttributeValues?.[':operationId'])
+      return Promise.reject(
+        Object.assign(new Error('operation timed out'), {
+          name: 'TimeoutError',
+        }),
+      )
+    })
+
+    await expect(toggleAgenticChat(123, 7)).resolves.toEqual({ enabled: true })
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    await expect(isAgenticChatEnabled(123)).resolves.toBe(true)
+    expect(getSpy).toHaveBeenCalledTimes(2)
+  })
+
+  test('does not reconcile a failed toggle with another operation', async () => {
     getSpy
       .mockResolvedValueOnce({
         Item: {
@@ -386,15 +427,18 @@ describe('toggleAgenticChat', () => {
           aiAllowed: true,
           agenticEnabled: true,
           version: 2,
+          lastToggleOperationId: 'another-toggle',
         },
       } as never)
     updateSpy.mockRejectedValueOnce(
       Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
     )
 
-    await expect(toggleAgenticChat(123, 7)).resolves.toEqual({ enabled: true })
+    await expect(toggleAgenticChat(123, 7)).resolves.toEqual({
+      enabled: false,
+      error: 'Could not update chat configuration; please try again',
+    })
     expect(updateSpy).toHaveBeenCalledTimes(1)
-    await expect(isAgenticChatEnabled(123)).resolves.toBe(true)
     expect(getSpy).toHaveBeenCalledTimes(2)
   })
 

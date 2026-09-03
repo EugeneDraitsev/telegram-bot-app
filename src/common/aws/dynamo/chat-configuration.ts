@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { logger } from '../../logger'
 import { TtlCache } from '../../ttl-cache'
 import {
@@ -33,6 +35,7 @@ export interface ChatConfiguration {
   allowUpdatedBy?: number
   toggledAt?: number
   toggledBy?: number
+  lastToggleOperationId?: string
 }
 
 export interface ChatConfigurationUpdateResult {
@@ -154,7 +157,10 @@ function isConditionalCheckFailure(error: unknown): boolean {
 }
 
 type ExpectedChatConfiguration = Partial<
-  Pick<ChatConfiguration, 'aiAllowed' | 'agenticEnabled'>
+  Pick<
+    ChatConfiguration,
+    'aiAllowed' | 'agenticEnabled' | 'lastToggleOperationId'
+  >
 >
 
 /**
@@ -175,7 +181,9 @@ async function reconcileChatConfigurationWrite(
       (expected.aiAllowed !== undefined &&
         latest.aiAllowed !== expected.aiAllowed) ||
       (expected.agenticEnabled !== undefined &&
-        latest.agenticEnabled !== expected.agenticEnabled)
+        latest.agenticEnabled !== expected.agenticEnabled) ||
+      (expected.lastToggleOperationId !== undefined &&
+        latest.lastToggleOperationId !== expected.lastToggleOperationId)
     ) {
       return undefined
     }
@@ -381,7 +389,9 @@ export async function toggleAgenticChat(
 
   const cacheKey = String(chatId)
   for (let attempt = 0; attempt < TOGGLE_MAX_ATTEMPTS; attempt++) {
-    let attempted: { version: number; enabled: boolean } | undefined
+    let attempted:
+      | { version: number; enabled: boolean; operationId: string }
+      | undefined
     try {
       const current = await readChatConfiguration(chatId)
       if (!current.aiAllowed) {
@@ -393,17 +403,23 @@ export async function toggleAgenticChat(
       }
 
       const enabled = !current.agenticEnabled
-      attempted = { version: current.version, enabled }
+      const operationId = randomUUID()
+      attempted = { version: current.version, enabled, operationId }
       const now = Date.now()
       const updateExpressionParts = [
         'agenticEnabled = :enabled',
         'toggledAt = :now',
+        'lastToggleOperationId = :operationId',
         '#version = :nextVersion',
       ]
-      const expressionAttributeValues: Record<string, boolean | number> = {
+      const expressionAttributeValues: Record<
+        string,
+        boolean | number | string
+      > = {
         ':allowed': true,
         ':enabled': enabled,
         ':now': now,
+        ':operationId': operationId,
         ':expectedVersion': current.version,
         ':nextVersion': current.version + 1,
       }
@@ -427,6 +443,7 @@ export async function toggleAgenticChat(
         agenticEnabled: enabled,
         version: current.version + 1,
         toggledAt: now,
+        lastToggleOperationId: operationId,
         ...(updatedBy === undefined ? {} : { toggledBy: updatedBy }),
       })
       return { enabled }
@@ -438,7 +455,10 @@ export async function toggleAgenticChat(
       const reconciled = attempted
         ? await reconcileChatConfigurationWrite(
             chatId,
-            { agenticEnabled: attempted.enabled },
+            {
+              agenticEnabled: attempted.enabled,
+              lastToggleOperationId: attempted.operationId,
+            },
             attempted.version,
           )
         : undefined
