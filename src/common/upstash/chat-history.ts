@@ -100,6 +100,9 @@ function getMediaLabels(message: Message): {
     labels.push('video_note')
     hasNonImageMedia = true
   }
+  if (message.dice?.emoji) {
+    labels.push(`dice ${message.dice.emoji} ${message.dice.value}`)
+  }
 
   return { labels, hasNonImageMedia }
 }

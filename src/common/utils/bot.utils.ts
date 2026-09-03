@@ -127,16 +127,21 @@ export async function saveBotMessageMiddleware(
   ] as const
 
   for (const method of historyMethods) {
+    const originalMethod = ctx[method] as unknown
+    if (typeof originalMethod !== 'function') {
+      continue
+    }
     const original = (
-      ctx[method] as (...args: never[]) => Promise<unknown>
+      originalMethod as (...args: never[]) => Promise<unknown>
     ).bind(ctx)
     ;(ctx[method] as (...args: never[]) => Promise<unknown>) = (async (
       ...args: never[]
     ) => {
       const sentMessage = await original(...args)
-      await saveBotReplyToHistory(
-        Array.isArray(sentMessage) ? sentMessage[0] : sentMessage,
-      )
+      const sentMessages = Array.isArray(sentMessage)
+        ? sentMessage
+        : [sentMessage]
+      await Promise.all(sentMessages.map((item) => saveBotReplyToHistory(item)))
       return sentMessage
     }) as (typeof ctx)[typeof method]
   }

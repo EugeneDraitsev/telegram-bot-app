@@ -147,6 +147,19 @@ describe('formatHistoryForDisplay', () => {
     expect(history).not.toContain('[empty message]')
   })
 
+  test('renders dice rolls instead of an empty message marker', () => {
+    const history = formatHistoryForDisplay([
+      createMessage(10, {
+        text: undefined,
+        from: { id: 1, is_bot: true, first_name: 'illuminati chat bot' },
+        dice: { emoji: '🎲', value: 5 },
+      } as Partial<Message>),
+    ])
+
+    expect(history).toContain('[media: dice 🎲 5]')
+    expect(history).not.toContain('[empty message]')
+  })
+
   test('can render the full available history when requested explicitly', () => {
     const messages = Array.from({ length: 3 }, (_, index) =>
       createMessage(index + 1),
