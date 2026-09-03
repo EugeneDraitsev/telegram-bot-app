@@ -5,6 +5,7 @@ import { logger } from '../../logger'
 import type { ChatEvent } from '../../types'
 import {
   dynamoCountAll,
+  dynamoGetItem,
   dynamoQueryAll,
   dynamoTransactWrite,
   getOptionalEnv,
@@ -56,6 +57,31 @@ const invokeStatsBroadcast = (chatId: string) => {
     customEndpoint: true,
     async: true,
   })
+}
+
+/**
+ * A failed transaction response does not mean nothing committed: the writes
+ * may have landed while our abort fired first. Without a check, the SQS
+ * retry observes the conditional event insert as a duplicate and skips the
+ * broadcast below, leaving statistics clients stale until the next message.
+ * The event item is this message's idempotency key, so a consistent read of
+ * it tells unambiguously whether our transaction committed.
+ */
+async function didActivityTransactionCommit(
+  chatId: string,
+  date: number,
+  messageId?: number,
+): Promise<boolean> {
+  try {
+    const result = await dynamoGetItem({
+      TableName: CHAT_EVENTS_TABLE_NAME,
+      Key: { chatId, date: getChatEventSortKey(date, messageId) },
+      ConsistentRead: true,
+    })
+    return Boolean(result.Item)
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -126,7 +152,11 @@ export const recordChatActivity = async (params: {
       logger.info({ chatId, messageId }, 'activity.duplicate_skipped')
       return { recorded: false }
     }
-    throw error
+
+    if (!(await didActivityTransactionCommit(chatId, date, messageId))) {
+      throw error
+    }
+    logger.info({ chatId, messageId }, 'activity.committed_before_timeout')
   }
 
   await invokeStatsBroadcast(chatId).catch((error) =>

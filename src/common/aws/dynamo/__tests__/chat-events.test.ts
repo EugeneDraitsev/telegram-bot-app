@@ -11,6 +11,7 @@ import {
 
 const transactSpy = jest.spyOn(utils, 'dynamoTransactWrite')
 const invokeLambdaSpy = jest.spyOn(utils, 'invokeLambda')
+const getItemSpy = jest.spyOn(utils, 'dynamoGetItem')
 
 describe('shouldSkipStatsBroadcast', () => {
   const originalEnv = process.env
@@ -73,6 +74,7 @@ describe('recordChatActivity', () => {
   beforeEach(() => {
     transactSpy.mockReset().mockResolvedValue({} as never)
     invokeLambdaSpy.mockReset().mockResolvedValue(undefined as never)
+    getItemSpy.mockReset().mockResolvedValue({} as never)
     process.env.WEBSOCKET_BROADCAST_FUNCTION_NAME = 'broadcast-fn'
   })
 
@@ -133,6 +135,49 @@ describe('recordChatActivity', () => {
     await expect(
       recordChatActivity({ userInfo: user, chat, messageId: 42 }),
     ).rejects.toThrow('throttled')
+    expect(invokeLambdaSpy).not.toHaveBeenCalled()
+  })
+
+  test('broadcasts when the transaction committed before the timeout', async () => {
+    transactSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), {
+        name: 'TimeoutError',
+      }),
+    )
+    getItemSpy.mockResolvedValueOnce({
+      Item: { chatId: '-100', date: getChatEventSortKey(1_750_000_000, 42) },
+    } as never)
+
+    await expect(
+      recordChatActivity({
+        userInfo: user,
+        chat,
+        command: '/x',
+        date: 1_750_000_000,
+        messageId: 42,
+      }),
+    ).resolves.toEqual({ recorded: true })
+
+    expect(getItemSpy).toHaveBeenCalledWith({
+      TableName: 'chat-events',
+      Key: { chatId: '-100', date: getChatEventSortKey(1_750_000_000, 42) },
+      ConsistentRead: true,
+    })
+    expect(invokeLambdaSpy).toHaveBeenCalledTimes(1)
+  })
+
+  test('rethrows a timed-out transaction that never committed', async () => {
+    transactSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), {
+        name: 'TimeoutError',
+      }),
+    )
+    getItemSpy.mockResolvedValueOnce({} as never)
+
+    await expect(
+      recordChatActivity({ userInfo: user, chat, messageId: 42 }),
+    ).rejects.toThrow('operation timed out')
+    expect(invokeLambdaSpy).not.toHaveBeenCalled()
   })
 
   test('ignores messages without a sender or chat', async () => {
