@@ -159,6 +159,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
+                  - dynamodb:GetItem
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.chatEventsTableName}
               - Effect: Allow
@@ -233,6 +234,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:UpdateItem
+                  - dynamodb:GetItem
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
 
@@ -266,6 +268,7 @@ Resources:
                 Action:
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
+                  - dynamodb:GetItem
                 Resource:
                   - arn:aws:dynamodb:*:*:table/${self:custom.websocketConnectionsTableName}
               - Effect: Allow

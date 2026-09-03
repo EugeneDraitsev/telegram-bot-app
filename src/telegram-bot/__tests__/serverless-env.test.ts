@@ -8,6 +8,13 @@ const pullRequestWorkflow = readFileSync(
 )
 const iamRoles = readFileSync('iamRoles.yml', 'utf8')
 const resources = readFileSync('resources.yml', 'utf8')
+
+function getRoleStatement(resource: string, role: string): string {
+  return (
+    role.split(resource)[0]?.split('              - Effect: Allow').at(-1) ?? ''
+  )
+}
+
 describe('agentic chat configuration infrastructure', () => {
   test('wires the CloudFormation-owned table and owner controls', () => {
     expect(serverlessConfig).toContain('CHAT_CONFIGURATION_TABLE_NAME:')
@@ -87,6 +94,33 @@ describe('agentic chat configuration infrastructure', () => {
     )
     expect(adminRole).not.toContain('sqs:')
     expect(adminRole).not.toContain('lambda:')
+  })
+
+  test('grants reconciliation reads to DynamoDB writer roles', () => {
+    const activityRole = iamRoles
+      .split('  TelegramActivityWorkerRole:')[1]
+      ?.split('  CurrencySchedulerRole:')[0]
+    const connectRole = iamRoles
+      .split('  WebsocketConnectRole:')[1]
+      ?.split('  WebsocketDisconnectRole:')[0]
+    const statsRole = iamRoles
+      .split('  WebsocketStatsRole:')[1]
+      ?.split('  WebsocketBroadcastStatsRole:')[0]
+
+    expect(
+      getRoleStatement(
+        `\${self:custom.chatEventsTableName}`,
+        activityRole ?? '',
+      ),
+    ).toContain('dynamodb:GetItem')
+    for (const role of [connectRole, statsRole]) {
+      expect(
+        getRoleStatement(
+          `\${self:custom.websocketConnectionsTableName}`,
+          role ?? '',
+        ),
+      ).toContain('dynamodb:GetItem')
+    }
   })
 
   test('keeps the user chat index keys-only', () => {
