@@ -344,6 +344,54 @@ describe('toggleAgenticChat', () => {
       error: 'Could not update chat configuration; please try again',
     })
   })
+
+  test('reports success when the write committed before the timeout', async () => {
+    getSpy
+      .mockResolvedValueOnce({
+        Item: {
+          chatId: '123',
+          aiAllowed: true,
+          agenticEnabled: false,
+          version: 1,
+        },
+      } as never)
+      .mockResolvedValueOnce({
+        Item: {
+          chatId: '123',
+          aiAllowed: true,
+          agenticEnabled: true,
+          version: 2,
+        },
+      } as never)
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
+    )
+
+    await expect(toggleAgenticChat(123, 7)).resolves.toEqual({ enabled: true })
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    await expect(isAgenticChatEnabled(123)).resolves.toBe(true)
+    expect(getSpy).toHaveBeenCalledTimes(2)
+  })
+
+  test('reports failure when a timed-out write did not land', async () => {
+    getSpy.mockResolvedValue({
+      Item: {
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: false,
+        version: 1,
+      },
+    } as never)
+    updateSpy.mockRejectedValueOnce(
+      Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
+    )
+
+    await expect(toggleAgenticChat(123, 7)).resolves.toEqual({
+      enabled: false,
+      error: 'Could not update chat configuration; please try again',
+    })
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('setChatConfigurationFlags', () => {

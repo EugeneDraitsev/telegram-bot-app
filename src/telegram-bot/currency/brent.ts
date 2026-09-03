@@ -26,7 +26,7 @@ const fetchYahoo = async () => {
 const fetchCnbc = async () => {
   const res = await fetch(
     'https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=@LCO.1&output=json',
-    // Добавили User-Agent сюда тоже, чтобы серверные запросы меньше блокировали
+    // User-Agent is set here too so server-side requests get blocked less
     { headers, signal: globalThis.AbortSignal.timeout(timeout) },
   )
 

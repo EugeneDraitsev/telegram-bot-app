@@ -154,6 +154,30 @@ function isConditionalCheckFailure(error: unknown): boolean {
 }
 
 /**
+ * A failed UpdateItem response does not mean the write was lost: the update
+ * may have committed server-side while our abort fired first. Reporting a
+ * blind failure then invites a /toggle retry that flips the committed value
+ * straight back. Re-read once with a consistent read: an advanced version
+ * carrying the attempted value means the intent is satisfied (either this
+ * attempt landed it or an equivalent change did), so report success.
+ */
+async function reconcileToggleWrite(
+  chatId: string | number,
+  baseVersion: number,
+  enabled: boolean,
+): Promise<ChatConfiguration | undefined> {
+  try {
+    const latest = await readChatConfiguration(chatId)
+    if (latest.version <= baseVersion || latest.agenticEnabled !== enabled) {
+      return undefined
+    }
+    return latest
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Change the owner-controlled outer allowlist without overwriting the
  * administrator-controlled fields. Disallowing also turns the inner switch
  * off so re-allowing a chat can never reactivate it unexpectedly.
@@ -321,6 +345,7 @@ export async function toggleAgenticChat(
 
   const cacheKey = String(chatId)
   for (let attempt = 0; attempt < TOGGLE_MAX_ATTEMPTS; attempt++) {
+    let attempted: { version: number; enabled: boolean } | undefined
     try {
       const current = await readChatConfiguration(chatId)
       if (!current.aiAllowed) {
@@ -332,6 +357,7 @@ export async function toggleAgenticChat(
       }
 
       const enabled = !current.agenticEnabled
+      attempted = { version: current.version, enabled }
       const now = Date.now()
       const updateExpressionParts = [
         'agenticEnabled = :enabled',
@@ -371,6 +397,18 @@ export async function toggleAgenticChat(
     } catch (error) {
       if (isConditionalCheckFailure(error)) {
         continue
+      }
+
+      const reconciled = attempted
+        ? await reconcileToggleWrite(
+            chatId,
+            attempted.version,
+            attempted.enabled,
+          )
+        : undefined
+      if (attempted && reconciled) {
+        configurationCache.set(cacheKey, reconciled)
+        return { enabled: attempted.enabled }
       }
 
       logger.error({ chatId, error }, 'chat_configuration.toggle_failed')
