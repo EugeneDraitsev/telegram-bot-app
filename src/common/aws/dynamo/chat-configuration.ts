@@ -159,7 +159,7 @@ function isConditionalCheckFailure(error: unknown): boolean {
 type ExpectedChatConfiguration = Partial<
   Pick<
     ChatConfiguration,
-    'aiAllowed' | 'agenticEnabled' | 'lastToggleOperationId'
+    'aiAllowed' | 'agenticEnabled' | 'allowUpdatedAt' | 'lastToggleOperationId'
   >
 >
 
@@ -182,6 +182,8 @@ async function reconcileChatConfigurationWrite(
         latest.aiAllowed !== expected.aiAllowed) ||
       (expected.agenticEnabled !== undefined &&
         latest.agenticEnabled !== expected.agenticEnabled) ||
+      (expected.allowUpdatedAt !== undefined &&
+        latest.allowUpdatedAt !== expected.allowUpdatedAt) ||
       (expected.lastToggleOperationId !== undefined &&
         latest.lastToggleOperationId !== expected.lastToggleOperationId)
     ) {
@@ -233,7 +235,9 @@ export async function setChatAiAllowed(
   } catch (error) {
     const reconciled = await reconcileChatConfigurationWrite(
       chatId,
-      aiAllowed ? { aiAllowed } : { aiAllowed, agenticEnabled: false },
+      aiAllowed
+        ? { aiAllowed, allowUpdatedAt: now }
+        : { aiAllowed, agenticEnabled: false, allowUpdatedAt: now },
     )
     if (reconciled) {
       configurationCache.set(cacheKey, reconciled)

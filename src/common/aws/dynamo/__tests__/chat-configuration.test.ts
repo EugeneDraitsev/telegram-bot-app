@@ -247,6 +247,7 @@ describe('setChatAiAllowed', () => {
   })
 
   test('reports success when an owner update committed before the timeout', async () => {
+    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456)
     updateSpy.mockRejectedValueOnce(
       Object.assign(new Error('operation timed out'), { name: 'TimeoutError' }),
     )
@@ -256,6 +257,7 @@ describe('setChatAiAllowed', () => {
         aiAllowed: false,
         agenticEnabled: false,
         version: 4,
+        allowUpdatedAt: 123456,
       },
     } as never)
 
@@ -265,10 +267,31 @@ describe('setChatAiAllowed', () => {
         aiAllowed: false,
         agenticEnabled: false,
         version: 4,
+        allowUpdatedAt: 123456,
       },
     })
     await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
     expect(getSpy).toHaveBeenCalledTimes(1)
+    dateNowSpy.mockRestore()
+  })
+
+  test('does not reconcile a failed owner update from an older matching state', async () => {
+    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456)
+    updateSpy.mockRejectedValueOnce(new Error('dynamo unavailable'))
+    getSpy.mockResolvedValueOnce({
+      Item: {
+        chatId: '123',
+        aiAllowed: true,
+        agenticEnabled: false,
+        version: 4,
+        allowUpdatedAt: 123455,
+      },
+    } as never)
+
+    await expect(setChatAiAllowed(123, true, 7)).resolves.toEqual({
+      error: 'Could not update chat configuration; please try again',
+    })
+    dateNowSpy.mockRestore()
   })
 })
 

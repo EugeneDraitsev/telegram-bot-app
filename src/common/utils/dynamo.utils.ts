@@ -57,23 +57,22 @@ const DYNAMO_BATCH_GET_MAX_ATTEMPTS = 5
 const DYNAMO_BATCH_GET_RETRY_DELAY_MS = 25
 
 type DynamoDocumentKey = Record<string, string | number>
+const getRequestOptions = (timeoutMs = DYNAMO_OP_TIMEOUT_MS) => ({
+  abortSignal: AbortSignal.timeout(timeoutMs),
+})
 
 export const dynamoQuery = (
   params: QueryCommandInput,
 ): Promise<QueryCommandOutput> => {
   const command = new QueryCommand(params)
-  return docClient.send(command, {
-    abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-  })
+  return docClient.send(command, getRequestOptions())
 }
 
 export const dynamoGetItem = (
   params: GetCommandInput,
 ): Promise<GetCommandOutput> => {
   const command = new GetCommand(params)
-  return docClient.send(command, {
-    abortSignal: AbortSignal.timeout(DYNAMO_GET_TIMEOUT_MS),
-  })
+  return docClient.send(command, getRequestOptions(DYNAMO_GET_TIMEOUT_MS))
 }
 
 export const dynamoBatchGetAll = async <T = Record<string, unknown>>(
@@ -98,9 +97,7 @@ export const dynamoBatchGetAll = async <T = Record<string, unknown>>(
         new BatchGetCommand({
           RequestItems: { [tableName]: { Keys: pendingKeys } },
         }),
-        {
-          abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-        },
+        getRequestOptions(),
       )
       results.push(...((response.Responses?.[tableName] as T[]) ?? []))
       pendingKeys =
@@ -140,9 +137,7 @@ export const dynamoCountAll = async (
         Select: 'COUNT',
         ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
       }),
-      {
-        abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-      },
+      getRequestOptions(),
     )
     total += result.Count ?? 0
 
@@ -166,9 +161,7 @@ export const dynamoQueryAll = async <T = Record<string, unknown>>(
         ...inputParams,
         ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
       }),
-      {
-        abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-      },
+      getRequestOptions(),
     )
     results.push(...((queryResults.Items as T[]) ?? []))
 
@@ -192,9 +185,7 @@ export const dynamoScanAll = async <T = Record<string, unknown>>(
         ...inputParams,
         ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
       }),
-      {
-        abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-      },
+      getRequestOptions(),
     )
     results.push(...((scanResults.Items as T[]) ?? []))
 
@@ -210,36 +201,28 @@ export const dynamoPutItem = (
   params: PutCommandInput,
 ): Promise<PutCommandOutput> => {
   const command = new PutCommand(params)
-  return docClient.send(command, {
-    abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-  })
+  return docClient.send(command, getRequestOptions())
 }
 
 export const dynamoDeleteItem = (
   params: DeleteCommandInput,
 ): Promise<DeleteCommandOutput> => {
   const command = new DeleteCommand(params)
-  return docClient.send(command, {
-    abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-  })
+  return docClient.send(command, getRequestOptions())
 }
 
 export const dynamoUpdateItem = (
   params: UpdateCommandInput,
 ): Promise<UpdateCommandOutput> => {
   const command = new UpdateCommand(params)
-  return docClient.send(command, {
-    abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-  })
+  return docClient.send(command, getRequestOptions())
 }
 
 export const dynamoTransactWrite = (
   params: TransactWriteCommandInput,
 ): Promise<TransactWriteCommandOutput> => {
   const command = new TransactWriteCommand(params)
-  return docClient.send(command, {
-    abortSignal: AbortSignal.timeout(DYNAMO_OP_TIMEOUT_MS),
-  })
+  return docClient.send(command, getRequestOptions())
 }
 
 /**

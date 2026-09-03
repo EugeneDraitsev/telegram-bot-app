@@ -10,6 +10,24 @@ import { logger } from '../logger'
 import { saveMessage } from '../upstash'
 import { cleanModelMessage } from './ai.utils'
 
+const HISTORY_METHODS = [
+  'reply',
+  'replyWithPhoto',
+  'replyWithDocument',
+  'replyWithVideo',
+  'replyWithAudio',
+  'replyWithVoice',
+  'replyWithAnimation',
+  'replyWithVideoNote',
+  'replyWithSticker',
+  'replyWithDice',
+  'replyWithMediaGroup',
+] as const
+
+type HistoryMethod = (typeof HISTORY_METHODS)[number]
+type HistoryReplyMethod = (...args: unknown[]) => Promise<unknown>
+type SaveBotReply = (messageLike: unknown) => Promise<void>
+
 /**
  * Wrapper that sets `duplex: 'half'` whenever a request has a body
  * Required for Grammy to work properly in serverless environments
@@ -111,39 +129,26 @@ export async function saveBotReplyToHistory(messageLike: unknown) {
 export async function saveBotMessageMiddleware(
   ctx: Context,
   next: NextFunction,
+  saveReply: SaveBotReply = saveBotReplyToHistory,
 ) {
-  const historyMethods = [
-    'reply',
-    'replyWithPhoto',
-    'replyWithDocument',
-    'replyWithVideo',
-    'replyWithAudio',
-    'replyWithVoice',
-    'replyWithAnimation',
-    'replyWithVideoNote',
-    'replyWithSticker',
-    'replyWithDice',
-    'replyWithMediaGroup',
-  ] as const
+  const historyContext = ctx as unknown as Partial<
+    Record<HistoryMethod, HistoryReplyMethod>
+  >
 
-  for (const method of historyMethods) {
-    const originalMethod = ctx[method] as unknown
-    if (typeof originalMethod !== 'function') {
+  for (const method of HISTORY_METHODS) {
+    const original = historyContext[method]
+    if (typeof original !== 'function') {
       continue
     }
-    const original = (
-      originalMethod as (...args: never[]) => Promise<unknown>
-    ).bind(ctx)
-    ;(ctx[method] as (...args: never[]) => Promise<unknown>) = (async (
-      ...args: never[]
-    ) => {
-      const sentMessage = await original(...args)
+
+    historyContext[method] = async (...args) => {
+      const sentMessage = await original.apply(ctx, args)
       const sentMessages = Array.isArray(sentMessage)
         ? sentMessage
         : [sentMessage]
-      await Promise.all(sentMessages.map((item) => saveBotReplyToHistory(item)))
+      await Promise.all(sentMessages.map((item) => saveReply(item)))
       return sentMessage
-    }) as (typeof ctx)[typeof method]
+    }
   }
 
   await next()
