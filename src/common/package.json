@@ -4,18 +4,18 @@
   "license": "MIT",
   "sideEffects": false,
   "dependencies": {
-    "@ai-sdk/google": "^4.0.51",
-    "@ai-sdk/openai": "^4.0.47",
-    "@aws-sdk/client-dynamodb": "^3.1118.0",
-    "@aws-sdk/client-lambda": "^3.1118.0",
-    "@aws-sdk/client-sqs": "^3.1118.0",
-    "@aws-sdk/lib-dynamodb": "^3.1118.0",
-    "ai": "^7.0.79",
+    "@ai-sdk/google": "^4.0.63",
+    "@ai-sdk/openai": "^4.0.58",
+    "@aws-sdk/client-dynamodb": "^3.1126.0",
+    "@aws-sdk/client-lambda": "^3.1126.0",
+    "@aws-sdk/client-sqs": "^3.1126.0",
+    "@aws-sdk/lib-dynamodb": "^3.1126.0",
+    "ai": "^7.0.92",
     "pino": "^10.3.1",
     "telegramify-markdown": "^1.3.3"
   },
   "peerDependencies": {
     "@upstash/redis": "^1.38.3",
-    "grammy": "^1.45.1"
+    "grammy": "^1.46.0"
   }
 }
