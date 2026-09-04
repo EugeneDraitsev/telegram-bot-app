@@ -1,10 +1,12 @@
-import { getErrorMessage } from '@tg-bot/common'
+import { getErrorMessage, logger, type MediaBuffer } from '@tg-bot/common'
 import {
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateLyriaMusic,
-  LYRIA_3_CLIP_MODEL,
-  LYRIA_3_PRO_MODEL,
+  LYRIA_CLIP_MODEL,
+  LYRIA_FALLBACK_MODEL,
+  LYRIA_PRO_MODEL,
   type LyriaModel,
+  LyriaModelUnavailableError,
   prepareLyriaMedia,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
@@ -25,7 +27,25 @@ function getLyriaMode(commandName: string | undefined): LyriaMode {
 }
 
 function getLyriaModel(mode: LyriaMode): LyriaModel {
-  return mode === 'pro' ? LYRIA_3_PRO_MODEL : LYRIA_3_CLIP_MODEL
+  return mode === 'pro' ? LYRIA_PRO_MODEL : LYRIA_CLIP_MODEL
+}
+
+/** Each attempt is its own metric, so a fallback is never billed to the id
+ * that refused the request. */
+function generateTrack(
+  model: LyriaModel,
+  prompt: string,
+  media: MediaBuffer[],
+  fallbackFrom?: LyriaModel,
+) {
+  return trackToolModelCall(
+    {
+      name: 'music_generation',
+      model: `google/${model}`,
+      ...(fallbackFrom ? { fallbackFrom: `google/${fallbackFrom}` } : {}),
+    },
+    () => generateLyriaMusic({ prompt, model, media }),
+  )
 }
 
 export const generateMusicTool: AgentTool = {
@@ -35,7 +55,7 @@ export const generateMusicTool: AgentTool = {
     type: 'function',
     name: 'generate_music_with_lyria',
     description:
-      'Generate an original 30-second high-fidelity stereo music clip with Google Lyria 3. Call only for an explicit request to create music, a song, loop, or soundtrack. Only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to source messages and visible content; select only images the user actually refers to. Do not imitate a living artist or reproduce copyrighted lyrics.',
+      'Generate an original 30-second high-fidelity stereo music clip with Google Lyria 3.5. Call only for an explicit request to create music, a song, loop, or soundtrack. Only one generated media result can be created per request. The structured MEDIA_CONTEXT ties media_id values to source messages and visible content; select only images the user actually refers to. Do not imitate a living artist or reproduce copyrighted lyrics.',
     parameters: {
       type: 'object',
       properties: {
@@ -83,18 +103,22 @@ export const generateMusicTool: AgentTool = {
         mediaSelection.explicit,
       )
       claimGeneratedMedia()
-      const result = await trackToolModelCall(
-        {
-          name: 'music_generation',
-          model: `google/${model}`,
-        },
-        () =>
-          generateLyriaMusic({
-            prompt,
-            model,
-            media: selectedMedia,
-          }),
-      )
+      let result: Awaited<ReturnType<typeof generateTrack>>
+      try {
+        result = await generateTrack(model, prompt, selectedMedia)
+      } catch (error) {
+        if (!(error instanceof LyriaModelUnavailableError)) throw error
+        logger.warn(
+          { model, fallback: LYRIA_FALLBACK_MODEL },
+          'lyria.model_unavailable_fallback',
+        )
+        result = await generateTrack(
+          LYRIA_FALLBACK_MODEL,
+          prompt,
+          selectedMedia,
+          model,
+        )
+      }
 
       addResponse({
         type: 'audio',

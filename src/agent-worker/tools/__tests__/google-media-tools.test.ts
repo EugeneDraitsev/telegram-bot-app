@@ -1,6 +1,16 @@
 import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
+import * as common from '@tg-bot/common'
+
+const mockTimedCall = jest.fn()
+
+class MockLyriaModelUnavailableError extends Error {
+  constructor() {
+    super('Lyria model is not available on this project')
+    this.name = 'LyriaModelUnavailableError'
+  }
+}
 
 const mockGenerateOmniVideo = jest.fn()
 const mockGenerateLyriaMusic = jest.fn()
@@ -17,8 +27,10 @@ const mockPrepareLyriaMedia = jest.fn(
 jest.mock('../../services/google-media', () => ({
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS: 170_000,
   OMNI_VIDEO_TOOL_TIMEOUT_MS: 230_000,
-  LYRIA_3_CLIP_MODEL: 'lyria-3-clip-preview',
-  LYRIA_3_PRO_MODEL: 'lyria-3-pro-preview',
+  LYRIA_CLIP_MODEL: 'lyria-3.5-clip-preview',
+  LYRIA_PRO_MODEL: 'lyria-3.5-pro-preview',
+  LYRIA_FALLBACK_MODEL: 'lyria-3.5',
+  LyriaModelUnavailableError: MockLyriaModelUnavailableError,
   OMNI_VIDEO_MODEL: 'gemini-omni-1.1-flash',
   MIN_OMNI_VIDEO_SECONDS: 3,
   MAX_OMNI_VIDEO_SECONDS: 10,
@@ -297,7 +309,7 @@ describe('Google media agent tools', () => {
 
     expect(mockGenerateLyriaMusic).toHaveBeenCalledWith({
       prompt: 'A full synth-pop song',
-      model: 'lyria-3-pro-preview',
+      model: 'lyria-3.5-pro-preview',
       media: [requestImage],
     })
     expect(responses).toEqual([
@@ -326,7 +338,7 @@ describe('Google media agent tools', () => {
 
     expect(mockGenerateLyriaMusic).toHaveBeenCalledWith({
       prompt: 'A full-length multi-section synth-pop song',
-      model: 'lyria-3-clip-preview',
+      model: 'lyria-3.5-clip-preview',
       media: [],
     })
     expect(responses).toEqual([
@@ -336,6 +348,56 @@ describe('Google media agent tools', () => {
         delivery: 'voice',
       }),
     ])
+  })
+
+  test('bills a fallback generation to the model that actually ran', async () => {
+    mockTimedCall.mockClear()
+    const timedCall = jest
+      .spyOn(common, 'timedCall')
+      .mockImplementation((options, fn) => {
+        mockTimedCall(options)
+        return fn()
+      })
+    mockGenerateLyriaMusic
+      .mockRejectedValueOnce(new MockLyriaModelUnavailableError())
+      .mockResolvedValueOnce({
+        buffer: Buffer.from('music'),
+        mimeType: 'audio/mpeg',
+        text: '[Verse]\nhello',
+      })
+
+    const responses = await runWithToolContext(message, [], async () => {
+      await generateMusicTool.execute({
+        prompt: 'A synth-pop song',
+        title: 'Neon Night',
+        caption: 'A sweeping synth-pop track.',
+      })
+      return getCollectedResponses()
+    })
+
+    expect(mockGenerateLyriaMusic).toHaveBeenCalledTimes(2)
+    expect(mockGenerateLyriaMusic.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ model: 'lyria-3.5-clip-preview' }),
+    )
+    expect(mockGenerateLyriaMusic.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ model: 'lyria-3.5' }),
+    )
+
+    const modelCalls = mockTimedCall.mock.calls
+      .map(([options]) => options as Record<string, unknown>)
+      .filter((options) => options.name === 'music_generation')
+    expect(modelCalls).toEqual([
+      expect.objectContaining({ model: 'google/lyria-3.5-clip-preview' }),
+      expect.objectContaining({
+        model: 'google/lyria-3.5',
+        fallbackFrom: 'google/lyria-3.5-clip-preview',
+      }),
+    ])
+    expect(modelCalls[0]?.fallbackFrom).toBeUndefined()
+    expect(responses).toEqual([
+      expect.objectContaining({ type: 'audio', fileName: 'lyria-clip.mp3' }),
+    ])
+    timedCall.mockRestore()
   })
 
   test('uses exact history media only when the model selects its media_id', async () => {
