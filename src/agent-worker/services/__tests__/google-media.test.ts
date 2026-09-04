@@ -10,6 +10,7 @@ import { type MediaBuffer, resetAiSdkProvidersForTests } from '@tg-bot/common'
 import {
   generateLyriaMusic,
   generateOmniVideo,
+  getLyriaRetryTimeoutMs,
   LYRIA_CLIP_MODEL,
   LyriaModelUnavailableError,
   OMNI_VIDEO_MODEL,
@@ -382,6 +383,15 @@ describe('Google media through the AI SDK', () => {
       }),
     ).rejects.toBeInstanceOf(LyriaModelUnavailableError)
     expect(mockGenerateText).toHaveBeenCalledTimes(1)
+  })
+
+  test('leaves a retry only the unspent part of the tool budget', () => {
+    // 170s tool cap, 160s per request: a retry starting immediately keeps the
+    // same 10s slack a single attempt has, and shrinks from there.
+    expect(getLyriaRetryTimeoutMs(0)).toBe(160_000)
+    expect(getLyriaRetryTimeoutMs(20_000)).toBe(140_000)
+    expect(getLyriaRetryTimeoutMs(130_000)).toBe(30_000)
+    expect(getLyriaRetryTimeoutMs(165_000)).toBeLessThanOrEqual(0)
   })
 
   test('keeps other Lyria failures generic and unretried', async () => {

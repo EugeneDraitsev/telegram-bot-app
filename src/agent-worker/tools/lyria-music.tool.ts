@@ -2,6 +2,7 @@ import { getErrorMessage, logger, type MediaBuffer } from '@tg-bot/common'
 import {
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS,
   generateLyriaMusic,
+  getLyriaRetryTimeoutMs,
   LYRIA_CLIP_MODEL,
   LYRIA_FALLBACK_MODEL,
   LYRIA_PRO_MODEL,
@@ -18,6 +19,10 @@ import {
 } from './context'
 import { getMediaIdsParameter, selectMediaForTool } from './media-selection'
 import { getMediaCaption, getTrackTitle } from './media-text'
+
+// A generation observed at 20-40s; below this a retry only burns a paid call
+// whose result the tool timeout would discard anyway.
+const MIN_LYRIA_RETRY_MS = 45_000
 
 type LyriaMode = 'clip' | 'pro'
 
@@ -37,6 +42,7 @@ function generateTrack(
   prompt: string,
   media: MediaBuffer[],
   fallbackFrom?: LyriaModel,
+  timeoutMs?: number,
 ) {
   return trackToolModelCall(
     {
@@ -44,7 +50,7 @@ function generateTrack(
       model: `google/${model}`,
       ...(fallbackFrom ? { fallbackFrom: `google/${fallbackFrom}` } : {}),
     },
-    () => generateLyriaMusic({ prompt, model, media }),
+    () => generateLyriaMusic({ prompt, model, media, timeoutMs }),
   )
 }
 
@@ -103,13 +109,16 @@ export const generateMusicTool: AgentTool = {
         mediaSelection.explicit,
       )
       claimGeneratedMedia()
+      const startedAt = Date.now()
       let result: Awaited<ReturnType<typeof generateTrack>>
       try {
         result = await generateTrack(model, prompt, selectedMedia)
       } catch (error) {
         if (!(error instanceof LyriaModelUnavailableError)) throw error
+        const retryTimeoutMs = getLyriaRetryTimeoutMs(Date.now() - startedAt)
+        if (retryTimeoutMs < MIN_LYRIA_RETRY_MS) throw error
         logger.warn(
-          { model, fallback: LYRIA_FALLBACK_MODEL },
+          { model, fallback: LYRIA_FALLBACK_MODEL, retryTimeoutMs },
           'lyria.model_unavailable_fallback',
         )
         result = await generateTrack(
@@ -117,6 +126,7 @@ export const generateMusicTool: AgentTool = {
           prompt,
           selectedMedia,
           model,
+          retryTimeoutMs,
         )
       }
 

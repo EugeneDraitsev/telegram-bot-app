@@ -454,10 +454,25 @@ function explainLyriaFailure(error: unknown): Error | undefined {
     : undefined
 }
 
+/**
+ * executeToolCall kills the whole tool GOOGLE_MEDIA_TOOL_TIMEOUT_MS after its
+ * first attempt, so a retry may only use what is left, minus the same slack a
+ * single attempt already gets. Without this a fallback generation could finish
+ * inside its own timeout and still be discarded, billed but never delivered.
+ */
+export function getLyriaRetryTimeoutMs(elapsedMs: number): number {
+  const slack = GOOGLE_MEDIA_TOOL_TIMEOUT_MS - GOOGLE_MEDIA_REQUEST_TIMEOUT_MS
+  return Math.min(
+    GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+    GOOGLE_MEDIA_TOOL_TIMEOUT_MS - elapsedMs - slack,
+  )
+}
+
 export async function generateLyriaMusic(options: {
   prompt: string
   model: LyriaModel
   media?: MediaBuffer[]
+  timeoutMs?: number
 }): Promise<GeneratedMusic> {
   const response = await runGoogleInteraction(
     () =>
@@ -465,7 +480,7 @@ export async function generateLyriaMusic(options: {
         model: getAiSdkGoogleProvider().interactions(options.model),
         prompt: createPrompt(options.prompt.trim(), options.media ?? []),
         maxRetries: 0,
-        timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+        timeout: options.timeoutMs ?? GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
         include: { responseBody: true },
         providerOptions: {
           google: { store: false, responseModalities: ['audio'] },

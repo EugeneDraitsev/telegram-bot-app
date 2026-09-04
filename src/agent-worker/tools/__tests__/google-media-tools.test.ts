@@ -12,6 +12,7 @@ class MockLyriaModelUnavailableError extends Error {
   }
 }
 
+const mockGetLyriaRetryTimeoutMs = jest.fn((_elapsedMs: number) => 160_000)
 const mockGenerateOmniVideo = jest.fn()
 const mockGenerateLyriaMusic = jest.fn()
 const mockPrepareOmniMedia = jest.fn(
@@ -30,6 +31,8 @@ jest.mock('../../services/google-media', () => ({
   LYRIA_CLIP_MODEL: 'lyria-3.5-clip-preview',
   LYRIA_PRO_MODEL: 'lyria-3.5-pro-preview',
   LYRIA_FALLBACK_MODEL: 'lyria-3.5',
+  getLyriaRetryTimeoutMs: (elapsedMs: number) =>
+    mockGetLyriaRetryTimeoutMs(elapsedMs),
   LyriaModelUnavailableError: MockLyriaModelUnavailableError,
   OMNI_VIDEO_MODEL: 'gemini-omni-1.1-flash',
   MIN_OMNI_VIDEO_SECONDS: 3,
@@ -90,6 +93,8 @@ describe('Google media agent tools', () => {
     mockShortenOmniVideos.mockClear()
     mockShortenOmniVideos.mockImplementation(async (media) => media)
 
+    mockGetLyriaRetryTimeoutMs.mockClear()
+    mockGetLyriaRetryTimeoutMs.mockReturnValue(160_000)
     mockPrepareLyriaMedia.mockClear()
     mockPrepareLyriaMedia.mockImplementation((media) => media ?? [])
   })
@@ -398,6 +403,49 @@ describe('Google media agent tools', () => {
       expect.objectContaining({ type: 'audio', fileName: 'lyria-clip.mp3' }),
     ])
     timedCall.mockRestore()
+  })
+
+  test('caps the fallback generation with the time the tool has left', async () => {
+    mockGetLyriaRetryTimeoutMs.mockReturnValue(90_000)
+    mockGenerateLyriaMusic
+      .mockRejectedValueOnce(new MockLyriaModelUnavailableError())
+      .mockResolvedValueOnce({
+        buffer: Buffer.from('music'),
+        mimeType: 'audio/mpeg',
+      })
+
+    await runWithToolContext(message, [], () =>
+      generateMusicTool.execute({
+        prompt: 'A synth-pop song',
+        title: 'Neon Night',
+        caption: 'A sweeping synth-pop track.',
+      }),
+    )
+
+    expect(mockGenerateLyriaMusic.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ timeoutMs: undefined }),
+    )
+    expect(mockGenerateLyriaMusic.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ model: 'lyria-3.5', timeoutMs: 90_000 }),
+    )
+  })
+
+  test('skips a fallback the tool timeout would discard anyway', async () => {
+    mockGetLyriaRetryTimeoutMs.mockReturnValue(9_000)
+    mockGenerateLyriaMusic.mockRejectedValue(
+      new MockLyriaModelUnavailableError(),
+    )
+
+    await expect(
+      runWithToolContext(message, [], () =>
+        generateMusicTool.execute({
+          prompt: 'A synth-pop song',
+          title: 'Neon Night',
+          caption: 'A sweeping synth-pop track.',
+        }),
+      ),
+    ).rejects.toThrow('Error generating music')
+    expect(mockGenerateLyriaMusic).toHaveBeenCalledTimes(1)
   })
 
   test('uses exact history media only when the model selects its media_id', async () => {
