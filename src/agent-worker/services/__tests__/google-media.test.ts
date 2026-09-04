@@ -10,7 +10,9 @@ import { type MediaBuffer, resetAiSdkProvidersForTests } from '@tg-bot/common'
 import {
   generateLyriaMusic,
   generateOmniVideo,
-  LYRIA_3_CLIP_MODEL,
+  getLyriaRetryTimeoutMs,
+  LYRIA_CLIP_MODEL,
+  LyriaModelUnavailableError,
   OMNI_VIDEO_MODEL,
   prepareLyriaMedia,
   prepareOmniMedia,
@@ -60,7 +62,7 @@ function generatedMusic(value: string) {
     response: {
       body: {
         id: 'interaction-3',
-        model: LYRIA_3_CLIP_MODEL,
+        model: LYRIA_CLIP_MODEL,
         outputs: [
           { type: 'text', text: '[Verse]\nHello' },
           {
@@ -317,7 +319,7 @@ describe('Google media through the AI SDK', () => {
 
     const result = await generateLyriaMusic({
       prompt: ' Cheerful synth pop ',
-      model: LYRIA_3_CLIP_MODEL,
+      model: LYRIA_CLIP_MODEL,
       media: [
         {
           buffer: Buffer.from('current-image'),
@@ -334,7 +336,7 @@ describe('Google media through the AI SDK', () => {
     })
 
     expect(mockGenerateText).toHaveBeenCalledWith({
-      model: expect.objectContaining({ modelId: LYRIA_3_CLIP_MODEL }),
+      model: expect.objectContaining({ modelId: LYRIA_CLIP_MODEL }),
       prompt: [
         {
           role: 'user',
@@ -365,6 +367,43 @@ describe('Google media through the AI SDK', () => {
       mimeType: 'audio/mpeg',
       text: '[Verse]\nHello',
     })
+  })
+
+  test('flags a Lyria id Google has not enabled on this project', async () => {
+    mockGenerateText.mockRejectedValue(
+      new Error(
+        "Model 'lyria-3.5-clip-preview' not found. Did you mean 'lyria-3-clip-preview'?",
+      ),
+    )
+
+    await expect(
+      generateLyriaMusic({
+        prompt: 'Cheerful synth pop',
+        model: LYRIA_CLIP_MODEL,
+      }),
+    ).rejects.toBeInstanceOf(LyriaModelUnavailableError)
+    expect(mockGenerateText).toHaveBeenCalledTimes(1)
+  })
+
+  test('leaves a retry only the unspent part of the tool budget', () => {
+    // 170s tool cap, 160s per request: a retry starting immediately keeps the
+    // same 10s slack a single attempt has, and shrinks from there.
+    expect(getLyriaRetryTimeoutMs(0)).toBe(160_000)
+    expect(getLyriaRetryTimeoutMs(20_000)).toBe(140_000)
+    expect(getLyriaRetryTimeoutMs(130_000)).toBe(30_000)
+    expect(getLyriaRetryTimeoutMs(165_000)).toBeLessThanOrEqual(0)
+  })
+
+  test('keeps other Lyria failures generic and unretried', async () => {
+    mockGenerateText.mockRejectedValue(new Error('Input blocked'))
+
+    await expect(
+      generateLyriaMusic({
+        prompt: 'Cheerful synth pop',
+        model: LYRIA_CLIP_MODEL,
+      }),
+    ).rejects.toThrow('Google media generation failed')
+    expect(mockGenerateText).toHaveBeenCalledTimes(1)
   })
 
   test('strictly validates explicitly selected Lyria media', () => {
@@ -514,7 +553,7 @@ describe('Google media through the AI SDK', () => {
     await expect(
       generateLyriaMusic({
         prompt: 'Ambient loop',
-        model: LYRIA_3_CLIP_MODEL,
+        model: LYRIA_CLIP_MODEL,
       }),
     ).rejects.toThrow('Google media generation failed')
 

@@ -26,8 +26,8 @@
     "prepare:ffmpeg-layer": "bun tools/prepare-ffmpeg-layer.mts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.10",
-    "@types/aws-lambda": "^8.10.162",
+    "@biomejs/biome": "^2.5.12",
+    "@types/aws-lambda": "^8.10.163",
     "@types/jest": "^30.0.0",
     "esbuild": "0.28.2",
     "serverless": "^4.41.1",

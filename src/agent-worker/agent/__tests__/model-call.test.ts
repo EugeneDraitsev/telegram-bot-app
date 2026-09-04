@@ -23,19 +23,6 @@ jest.mock('../config', () => ({
   RETRY_BASE_DELAY_MS: 0,
 }))
 
-jest.mock('../models', () => ({
-  CHAT_FALLBACK_MODEL_CONFIG: {
-    provider: 'google',
-    model: 'gemini-3.6-flash',
-  },
-  CHAT_FALLBACK_REASONING_EFFORT: 'none',
-  CHAT_MODEL_CONFIG: {
-    provider: 'openai',
-    model: 'gpt-5.6-luna',
-  },
-  CHAT_MODEL_TIMEOUT_MS: 45_000,
-}))
-
 import {
   generateModelWithRetryWithInfo,
   isRetryableModelError,

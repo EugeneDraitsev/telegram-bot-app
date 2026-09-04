@@ -31,8 +31,13 @@ export const OMNI_VIDEO_TOOL_TIMEOUT_MS =
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS + VIDEO_TRIM_TIMEOUT_MS
 
 export const OMNI_VIDEO_MODEL = 'gemini-omni-1.1-flash'
-export const LYRIA_3_CLIP_MODEL = 'lyria-3-clip-preview'
-export const LYRIA_3_PRO_MODEL = 'lyria-3-pro-preview'
+export const LYRIA_CLIP_MODEL = 'lyria-3.5-clip-preview'
+export const LYRIA_PRO_MODEL = 'lyria-3.5-pro-preview'
+// Both 3.5 ids shipped on 2026-09-03 as the documented replacements for
+// lyria-3-*-preview, but they are not enabled on every project yet: this one
+// still gets a 404 for them while the unlisted `lyria-3.5` resolves and
+// generates. Drop the fallback once the rollout reaches us.
+export const LYRIA_FALLBACK_MODEL = 'lyria-3.5'
 
 // 360p keeps generation fast and costs a third of 720p.
 const OMNI_VIDEO_RESOLUTION = '360p'
@@ -44,7 +49,10 @@ const MAX_OMNI_INPUT_VIDEO_SECONDS = 10
 const UNSUPPORTED_OMNI_MIME_TYPES = new Set(['image/gif'])
 
 export type OmniAspectRatio = '9:16' | '16:9'
-export type LyriaModel = typeof LYRIA_3_CLIP_MODEL | typeof LYRIA_3_PRO_MODEL
+export type LyriaModel =
+  | typeof LYRIA_CLIP_MODEL
+  | typeof LYRIA_PRO_MODEL
+  | typeof LYRIA_FALLBACK_MODEL
 
 interface GeneratedMedia {
   buffer: Buffer
@@ -68,6 +76,14 @@ class OmniVideoInputRefusedError extends Error {
 
 interface GeneratedMusic extends GeneratedMedia {
   text?: string
+}
+
+/** A Lyria id Google documents but has not enabled on this project yet. */
+export class LyriaModelUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super('Lyria model is not available on this project', { cause })
+    this.name = 'LyriaModelUnavailableError'
+  }
 }
 
 function prepareInlineMedia(
@@ -427,23 +443,50 @@ export async function generateOmniVideo(
   }
 }
 
+/**
+ * Matched on wording alone rather than on the requested id: a narrower check
+ * would stop recognizing the 404 the day Google rephrases it, which breaks
+ * music entirely, while a stray match only costs one extra generation call.
+ */
+function explainLyriaFailure(error: unknown): Error | undefined {
+  return /not found/i.test(getErrorMessage(error))
+    ? new LyriaModelUnavailableError(error)
+    : undefined
+}
+
+/**
+ * executeToolCall kills the whole tool GOOGLE_MEDIA_TOOL_TIMEOUT_MS after its
+ * first attempt, so a retry may only use what is left, minus the same slack a
+ * single attempt already gets. Without this a fallback generation could finish
+ * inside its own timeout and still be discarded, billed but never delivered.
+ */
+export function getLyriaRetryTimeoutMs(elapsedMs: number): number {
+  const slack = GOOGLE_MEDIA_TOOL_TIMEOUT_MS - GOOGLE_MEDIA_REQUEST_TIMEOUT_MS
+  return Math.min(
+    GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+    GOOGLE_MEDIA_TOOL_TIMEOUT_MS - elapsedMs - slack,
+  )
+}
+
 export async function generateLyriaMusic(options: {
   prompt: string
   model: LyriaModel
   media?: MediaBuffer[]
+  timeoutMs?: number
 }): Promise<GeneratedMusic> {
-  const images = options.media ?? []
-  const response = await runGoogleInteraction(() =>
-    generateText({
-      model: getAiSdkGoogleProvider().interactions(options.model),
-      prompt: createPrompt(options.prompt.trim(), images),
-      maxRetries: 0,
-      timeout: GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
-      include: { responseBody: true },
-      providerOptions: {
-        google: { store: false, responseModalities: ['audio'] },
-      },
-    }),
+  const response = await runGoogleInteraction(
+    () =>
+      generateText({
+        model: getAiSdkGoogleProvider().interactions(options.model),
+        prompt: createPrompt(options.prompt.trim(), options.media ?? []),
+        maxRetries: 0,
+        timeout: options.timeoutMs ?? GOOGLE_MEDIA_REQUEST_TIMEOUT_MS,
+        include: { responseBody: true },
+        providerOptions: {
+          google: { store: false, responseModalities: ['audio'] },
+        },
+      }),
+    explainLyriaFailure,
   )
   const output = extractLyriaInteractionOutput(response.response.body)
   if (!output) throw new Error('Lyria returned no audio output')
