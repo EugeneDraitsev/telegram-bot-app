@@ -70,6 +70,15 @@ Redis leases prevent duplicate Telegram replies when SQS redelivers a message;
 activity writes are independently replay-safe. Worker queues use one-message
 batches, partial batch responses, and separate dead-letter queues.
 
+If both an agent response and its failure notice cannot be delivered, the job
+is retried. Once any response part has been acknowledged by Telegram, a later
+delivery failure does not replay the whole job, avoiding duplicate response
+parts. Delivery errors remain in the logs.
+
+Permanent chat events and user statistics are retained on stack deletion or
+resource replacement, with DynamoDB deletion protection and point-in-time
+recovery enabled.
+
 ## Agent media
 
 Current, replied-to, and album media is registered in structured
@@ -78,6 +87,12 @@ message metadata. Historical media remains text-only until the model selects an
 exact Telegram `message_id`; `load_chat_media` then downloads only that
 message's images and exposes them on the next model round. Old images are never
 preloaded automatically.
+
+The agent waits for album messages and downloads request media only after the
+reply gate accepts the message (or an explicit agent command bypasses it).
+Downloads run at most three at a time, each with a 10-second deadline covering
+metadata and body transfer. The 19 MiB per-file limit is checked before and
+during streaming; unavailable or oversized files are skipped.
 
 Media tools use exact ids for explicit selection, omit `mediaIds` for current
 request media, and use `[]` for text-only generation. Inline inputs are limited

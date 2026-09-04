@@ -99,7 +99,14 @@ describe('runAgenticLoop integration', () => {
       .mockResolvedValue({ matched: true, name: 'hello', result: 'world' })
     const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetryWithInfo')
 
-    await runAgenticLoop(createMessage('/hello'), createApi())
+    const loadMedia = jest.fn()
+    await runAgenticLoop(
+      createMessage('/hello'),
+      createApi(),
+      undefined,
+      undefined,
+      { loadMedia },
+    )
 
     expect(delivery.sendResponses).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -110,17 +117,95 @@ describe('runAgenticLoop integration', () => {
     )
     expect(common.getChatMemory).not.toHaveBeenCalled()
     expect(modelSpy).not.toHaveBeenCalled()
+    expect(loadMedia).not.toHaveBeenCalled()
   })
 
   test('stops after the reply gate rejects a message', async () => {
     jest.spyOn(replyGate, 'shouldEngageWithMessage').mockResolvedValue(false)
     const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetryWithInfo')
 
-    await runAgenticLoop(createMessage('group chatter'), createApi())
+    const loadMedia = jest.fn()
+    await runAgenticLoop(
+      createMessage('group chatter'),
+      createApi(),
+      undefined,
+      undefined,
+      { loadMedia },
+    )
 
     expect(modelSpy).not.toHaveBeenCalled()
     expect(agentTools.getAgentTools).not.toHaveBeenCalled()
     expect(delivery.sendResponses).not.toHaveBeenCalled()
+    expect(loadMedia).not.toHaveBeenCalled()
+  })
+
+  test.each([false, true])(
+    'loads media after engagement (bypass=%s) and exposes it to tools and the model',
+    async (bypassReplyGate) => {
+      const media = {
+        buffer: Buffer.from('image'),
+        mimeType: 'image/jpeg',
+        mediaType: 'image' as const,
+      }
+      const loadMedia = jest.fn(async () => {
+        if (!bypassReplyGate)
+          expect(replyGate.shouldEngageWithMessage).toHaveBeenCalledTimes(1)
+        return [media]
+      })
+      const modelSpy = jest
+        .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+        .mockImplementation(async () => {
+          expect(agentTools.requireToolContext().mediaBuffers).toEqual([media])
+          return createModelResult({ text: 'answer' })
+        })
+      await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+        loadMedia,
+        bypassReplyGate,
+      })
+      expect(loadMedia).toHaveBeenCalledTimes(1)
+      expect(JSON.stringify(modelSpy.mock.calls[0]?.[0].messages)).toContain(
+        '"type":"image"',
+      )
+    },
+  )
+
+  test('propagates a completely undelivered failure for SQS retry', async () => {
+    const error = new Error('delivery unavailable')
+    jest
+      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .mockResolvedValue(createModelResult({ text: 'answer' }))
+    jest.spyOn(delivery, 'sendResponses').mockRejectedValue(error)
+    const api = createApi()
+    ;(api.sendMessage as jest.Mock).mockRejectedValue(
+      new Error('Telegram down'),
+    )
+    await expect(
+      runAgenticLoop(createMessage(), api, undefined, undefined, {
+        bypassReplyGate: true,
+      }),
+    ).rejects.toBe(error)
+    expect(stopThinking).toHaveBeenCalledTimes(1)
+    expect(stopTyping).toHaveBeenCalledTimes(1)
+  })
+
+  test('does not replay acknowledged response parts if the failure notice also fails', async () => {
+    jest
+      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .mockResolvedValue(createModelResult({ text: 'answer' }))
+    jest.spyOn(delivery, 'sendResponses').mockImplementation(async (params) => {
+      params.onDelivered?.()
+      throw new Error('second message failed')
+    })
+    const api = createApi()
+    ;(api.sendMessage as jest.Mock).mockRejectedValue(
+      new Error('Telegram down'),
+    )
+    await expect(
+      runAgenticLoop(createMessage(), api, undefined, undefined, {
+        bypassReplyGate: true,
+      }),
+    ).resolves.toBeUndefined()
+    expect(delivery.sendResponses).toHaveBeenCalledTimes(1)
   })
 
   test('loads context and delivers a plain model response', async () => {

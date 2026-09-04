@@ -117,6 +117,20 @@ describe('agentic chat configuration infrastructure', () => {
     expect(resources.match(/TimeToLiveSpecification:/g)).toHaveLength(1)
   })
 
+  test.each([
+    ['ChatEventsTable', 'ChatUserStatisticsTable'],
+    ['ChatUserStatisticsTable', 'ChatConfigurationTable'],
+  ])(
+    'protects permanent data in %s against deletion and enables recovery',
+    (name, next) => {
+      const table = resources.split(`  ${name}:`)[1]?.split(`  ${next}:`)[0]
+      expect(table).toContain('DeletionPolicy: Retain')
+      expect(table).toContain('UpdateReplacePolicy: Retain')
+      expect(table).toContain('DeletionProtectionEnabled: true')
+      expect(table).toContain('PointInTimeRecoveryEnabled: true')
+    },
+  )
+
   test('alarms on fail-closed configuration reads without runtime metric calls', () => {
     expect(
       resources.match(/FilterPattern: '"chat_configuration\.read_failed"'/g),

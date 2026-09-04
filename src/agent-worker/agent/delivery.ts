@@ -25,6 +25,12 @@ interface DeliveryParams {
   api: TelegramApi
   chatId: number
   replyToMessageId?: number
+  onDelivered?: () => void
+}
+
+async function recordDelivery(params: DeliveryParams, message: unknown) {
+  params.onDelivered?.()
+  await saveBotReplyToHistory(message)
 }
 
 interface DeliveryBundle {
@@ -226,7 +232,7 @@ async function sendPlainText(params: DeliveryParams & { text: string }) {
     params.text.slice(0, MAX_TEXT_LENGTH),
     getReplyOptions(params.replyToMessageId),
   )
-  await saveBotReplyToHistory(sentMessage)
+  await recordDelivery(params, sentMessage)
   return sentMessage
 }
 
@@ -278,7 +284,7 @@ async function sendRichResponse(
     richOptions: getReplyOptions(params.replyToMessageId),
     fallbackOptions: getReplyOptions(params.replyToMessageId),
   })
-  await saveBotReplyToHistory(sentMessage)
+  await recordDelivery(params, sentMessage)
   return sentMessage
 }
 
@@ -314,7 +320,7 @@ async function sendText(params: DeliveryParams & { text: string }) {
         richOptions: getReplyOptions(replyToMessageId),
         fallbackOptions,
       })
-      await saveBotReplyToHistory(sentMessage)
+      await recordDelivery(params, sentMessage)
       replyToMessageId = getSentMessageId(sentMessage) ?? replyToMessageId
     } catch (err) {
       logger.warn(
@@ -367,7 +373,7 @@ async function sendImage(
         options,
       )
     }
-    await saveBotReplyToHistory(sentMessage)
+    await recordDelivery(params, sentMessage)
     return
   }
 
@@ -382,7 +388,7 @@ async function sendImage(
       params.image.url,
       options,
     )
-    await saveBotReplyToHistory(sentMessage)
+    await recordDelivery(params, sentMessage)
   } catch {
     await sendText({
       ...params,
@@ -440,7 +446,7 @@ async function sendVideo(
         options,
       )
     }
-    await saveBotReplyToHistory(sentMessage)
+    await recordDelivery(params, sentMessage)
     const extraText = params.text.trim()
     if (extraText && extraText !== rawCaption.trim()) {
       await sendText({
@@ -550,7 +556,7 @@ async function sendGeneratedAudio(
       )
     }
   }
-  await saveBotReplyToHistory(sentMessage)
+  await recordDelivery(params, sentMessage)
 
   const extraText = params.text.trim()
   const deliveredMetadata = new Set([
@@ -584,7 +590,7 @@ async function sendAnimation(
       params.animation.url,
       options,
     )
-    await saveBotReplyToHistory(sentMessage)
+    await recordDelivery(params, sentMessage)
   } catch {
     await sendText({
       ...params,
@@ -612,7 +618,7 @@ async function sendVoice(
     new InputFile(params.voice, 'voice.opus'),
     options,
   )
-  await saveBotReplyToHistory(sentMessage)
+  await recordDelivery(params, sentMessage)
 }
 
 async function sendSticker(
@@ -623,7 +629,7 @@ async function sendSticker(
     params.sticker.fileId,
     getReplyOptions(params.replyToMessageId),
   )
-  await saveBotReplyToHistory(sentMessage)
+  await recordDelivery(params, sentMessage)
 }
 
 async function sendDice(params: DeliveryParams & { dice: DiceResponse }) {
@@ -632,7 +638,7 @@ async function sendDice(params: DeliveryParams & { dice: DiceResponse }) {
     params.dice.emoji,
     getReplyOptions(params.replyToMessageId),
   )
-  await saveBotReplyToHistory(sentMessage)
+  await recordDelivery(params, sentMessage)
 }
 
 async function sendResponsesOnce(
@@ -646,6 +652,7 @@ async function sendResponsesOnce(
     api: params.api,
     chatId: params.chatId,
     replyToMessageId: params.replyToMessageId,
+    onDelivered: params.onDelivered,
   }
   const mediaParams = { ...base, text: bundle.text }
   const bufferedMediaType = BUFFERED_MEDIA_ORDER.find((type) =>
@@ -750,10 +757,19 @@ async function sendResponsesOnce(
 export async function sendResponses(
   params: DeliveryParams & { responses: AgentResponse[] },
 ): Promise<void> {
+  let delivered = false
+  const trackedParams = {
+    ...params,
+    onDelivered: () => {
+      delivered = true
+      params.onDelivered?.()
+    },
+  }
   try {
-    await sendResponsesOnce(params)
+    await sendResponsesOnce(trackedParams)
   } catch (error) {
     if (
+      delivered ||
       params.replyToMessageId === undefined ||
       !isTelegramReplyTargetMissingError(error)
     ) {
@@ -767,6 +783,6 @@ export async function sendResponses(
       },
       'delivery.reply_target_missing',
     )
-    await sendResponsesOnce({ ...params, replyToMessageId: undefined })
+    await sendResponsesOnce({ ...trackedParams, replyToMessageId: undefined })
   }
 }

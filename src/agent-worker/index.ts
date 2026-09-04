@@ -122,20 +122,22 @@ export const processAgentWorker = async (
       chat: message.chat,
       api: bot.api,
     } as unknown as Context
-    const extraMessages = await getMediaGroupMessages(ctx)
-    const mediaData = await getMultimodalMediaData(ctx, extraMessages)
+    let mediaCount = 0
 
     // Run the agentic loop with bot API
-    await runAgenticLoop(
-      message,
-      bot.api,
-      mediaData.mediaBuffers,
-      effectiveBotInfo,
-      {
-        bypassReplyGate,
-        commandName,
+    await runAgenticLoop(message, bot.api, undefined, effectiveBotInfo, {
+      bypassReplyGate,
+      commandName,
+      loadMedia: async () => {
+        const extraMessages = await getMediaGroupMessages(ctx)
+        const { mediaBuffers } = await getMultimodalMediaData(
+          ctx,
+          extraMessages,
+        )
+        mediaCount = mediaBuffers.length
+        return mediaBuffers
       },
-    )
+    })
     logger.info(
       {
         ...messageMeta,
@@ -143,7 +145,7 @@ export const processAgentWorker = async (
         reasoningEffort: chatModel.reasoningEffort,
         replyGateModel: REPLY_GATE_MODEL,
         durationMs: Date.now() - startedAt,
-        mediaCount: mediaData.mediaBuffers.length,
+        mediaCount,
         bypassReplyGate: Boolean(bypassReplyGate),
         commandName,
       },

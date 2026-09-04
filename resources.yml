@@ -232,6 +232,8 @@ Resources:
 
   ChatEventsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     # PERMANENT DATA — never add TimeToLiveSpecification here. One event per
     # message, kept since 2018; this is the only per-day history there is.
     # Writes must not set a ttl attribute either: an armed TTL would then
@@ -249,9 +251,14 @@ Resources:
         - AttributeName: date
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
 
   ChatUserStatisticsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     # PERMANENT DATA — never add TimeToLiveSpecification here. These are the
     # lifetime per-user counters, the least recoverable data in the stack: they
     # predate the events table, so they cannot be re-aggregated from anything.
@@ -279,6 +286,9 @@ Resources:
           Projection:
             ProjectionType: KEYS_ONLY
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
 
   ChatConfigurationTable:
     Type: AWS::DynamoDB::Table
