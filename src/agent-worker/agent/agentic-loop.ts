@@ -278,6 +278,7 @@ async function runDynamicCommand(params: {
   replyToMessageId?: number
   messageMeta: Record<string, unknown>
   startedAt: number
+  onDelivered: () => void
 }): Promise<boolean> {
   const command = await executeDynamicCommandFromMessage(params.message)
   if (!command.matched) return false
@@ -298,6 +299,7 @@ async function runDynamicCommand(params: {
     chatId: params.chatId,
     replyToMessageId: params.replyToMessageId,
     api: params.api,
+    onDelivered: params.onDelivered,
   })
 
   logger.info(
@@ -354,6 +356,7 @@ export async function runAgenticLoop(
   options: {
     bypassReplyGate?: boolean
     commandName?: string
+    loadMedia?: () => Promise<MediaBuffer[]>
   } = {},
 ): Promise<void> {
   const startedAt = Date.now()
@@ -386,6 +389,10 @@ export async function runAgenticLoop(
 
   let stopTyping: (() => void) | undefined
   let stopThinkingDraft: (() => void) | undefined
+  let delivered = false
+  const onDelivered = () => {
+    delivered = true
+  }
   const runInToolContext = <T>(callback: () => Promise<T>): Promise<T> =>
     runWithToolContext(
       message,
@@ -408,6 +415,7 @@ export async function runAgenticLoop(
         replyToMessageId: deliveryReplyMessageId,
         messageMeta,
         startedAt,
+        onDelivered,
       })
       if (handledByDynamicCommand) return
 
@@ -472,7 +480,7 @@ export async function runAgenticLoop(
       // Load tools + history in parallel (only after gate confirms we'll respond)
       const preloadStartedAt = Date.now()
       logger.info({ ...messageMeta }, 'loop.preload_start')
-      const [agentTools, rawHistory] = await Promise.all([
+      const [agentTools, rawHistory, loadedMedia] = await Promise.all([
         preloadWithFallback({
           chatId,
           name: 'agent_tools',
@@ -486,6 +494,7 @@ export async function runAgenticLoop(
             getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1),
           fallback: [] as Message[],
         }),
+        mediaBuffers ?? options.loadMedia?.() ?? [],
       ])
       logger.info(
         {
@@ -506,7 +515,7 @@ export async function runAgenticLoop(
       // intentionally selects one message through load_chat_media. Only media
       // attached to the current message, its reply target, or their albums is
       // visible to the routing model.
-      const requestMediaBuffers = [...(mediaBuffers ?? [])]
+      const requestMediaBuffers = [...loadedMedia]
       const inputMediaCount = requestMediaBuffers.length
       await withToolMediaBuffers(requestMediaBuffers, async () => {
         const contextBlock = buildContextBlock(
@@ -600,6 +609,7 @@ export async function runAgenticLoop(
           chatId,
           replyToMessageId: deliveryReplyMessageId,
           api,
+          onDelivered,
         })
 
         logger.info(
@@ -638,6 +648,10 @@ export async function runAgenticLoop(
       )
     } catch (sendError) {
       logger.error({ chatId, sendError }, 'loop.error_reply_failed')
+      // Retry only a completely undelivered request. Replaying a partially
+      // delivered response would duplicate its already acknowledged messages.
+      if (!delivered) throw error
+      logger.warn(messageMeta, 'loop.partial_delivery_not_retried')
     }
   } finally {
     stopThinkingDraft?.()

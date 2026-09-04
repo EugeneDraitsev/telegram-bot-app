@@ -92,6 +92,58 @@ function createMissingReplyError() {
 }
 
 describe('sendResponses', () => {
+  test('reports an acknowledged media send before a later delivery fails', async () => {
+    const api = createApi()
+    const onDelivered = jest.fn()
+    api.sendVoice.mockRejectedValue(new Error('voice unavailable'))
+    await expect(
+      sendResponses({
+        api,
+        chatId: 123,
+        onDelivered,
+        responses: [
+          { type: 'image', buffer: Buffer.from('image') },
+          { type: 'voice', buffer: Buffer.from('voice') },
+        ],
+      }),
+    ).rejects.toThrow('voice unavailable')
+    expect(onDelivered).toHaveBeenCalledTimes(1)
+    expect(api.sendPhoto).toHaveBeenCalledTimes(1)
+  })
+
+  test('does not resend acknowledged media when a later reply target disappears', async () => {
+    const api = createApi()
+    api.sendVoice.mockRejectedValue(createMissingReplyError())
+    await expect(
+      sendResponses({
+        api,
+        chatId: 123,
+        replyToMessageId: 10,
+        responses: [
+          { type: 'image', buffer: Buffer.from('image') },
+          { type: 'voice', buffer: Buffer.from('voice') },
+        ],
+      }),
+    ).rejects.toThrow('missing reply')
+    expect(api.sendPhoto).toHaveBeenCalledTimes(1)
+  })
+
+  test('does not report delivery when all attempts fail', async () => {
+    const api = createApi()
+    const onDelivered = jest.fn()
+    api.sendRichMessage.mockRejectedValue(new Error('unavailable'))
+    api.sendMessage.mockRejectedValue(new Error('unavailable'))
+    await expect(
+      sendResponses({
+        api,
+        chatId: 123,
+        onDelivered,
+        responses: [{ type: 'text', text: 'hello' }],
+      }),
+    ).rejects.toThrow('unavailable')
+    expect(onDelivered).not.toHaveBeenCalled()
+  })
+
   beforeEach(() => {
     mockSaveBotReplyToHistory.mockClear()
     mockSaveBotReplyToHistory.mockResolvedValue(undefined)

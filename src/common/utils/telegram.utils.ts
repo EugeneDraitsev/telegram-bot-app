@@ -393,6 +393,8 @@ export function collectMediaFileRefs(
 
 /** Maximum file size for inline Gemini input (19 MB to stay under 20 MB API limit) */
 const MAX_INLINE_BYTES = 19 * 1024 * 1024
+const MEDIA_DOWNLOAD_TIMEOUT_MS = 10_000
+const MEDIA_DOWNLOAD_CONCURRENCY = 3
 
 export interface MediaBuffer {
   buffer: Buffer
@@ -452,6 +454,62 @@ export async function getMultimodalMediaData(
 
 export type MediaResolverApi = Pick<Api, 'getFile'>
 
+async function downloadMedia(
+  ref: MediaFileRef,
+  api: MediaResolverApi,
+  token: string,
+): Promise<MediaBuffer | undefined> {
+  // One deadline covers Telegram metadata, response headers and the body.
+  const signal = AbortSignal.timeout(MEDIA_DOWNLOAD_TIMEOUT_MS)
+  // grammY's Node types reference the AbortSignal polyfill; the web runtime
+  // used by createBot accepts the native signal.
+  const file = await api.getFile(
+    ref.fileId,
+    signal as unknown as Parameters<MediaResolverApi['getFile']>[1],
+  )
+  if (!file.file_path) return undefined
+  if (file.file_size !== undefined && file.file_size > MAX_INLINE_BYTES) {
+    throw new Error('Media file exceeds inline size limit')
+  }
+
+  const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`
+  const res = await fetch(url, { signal })
+  const reader = res.body?.getReader()
+  try {
+    if (!res.ok) throw new Error(`Media download returned HTTP ${res.status}`)
+    if (Number(res.headers.get('content-length')) > MAX_INLINE_BYTES) {
+      throw new Error('Media file exceeds inline size limit')
+    }
+    if (!reader) return undefined
+
+    const chunks: Uint8Array[] = []
+    let size = 0
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > MAX_INLINE_BYTES) {
+        throw new Error('Media file exceeds inline size limit')
+      }
+      chunks.push(value)
+    }
+
+    return {
+      buffer: Buffer.concat(chunks, size),
+      mimeType: ref.mimeType,
+      mediaType: ref.mediaType,
+      fileId: ref.fileId,
+      fileUniqueId: ref.fileUniqueId,
+      ...getDimensions(ref),
+      ...getDuration(ref.durationSeconds),
+      label: ref.label,
+      context: ref.context,
+    }
+  } finally {
+    await reader?.cancel().catch(() => undefined)
+  }
+}
+
 export async function resolveMediaBuffers(
   refs: MediaFileRef[],
   api: MediaResolverApi,
@@ -464,59 +522,25 @@ export async function resolveMediaBuffers(
     return []
   }
 
-  const results = await Promise.allSettled(
-    refs.map(async (ref): Promise<MediaBuffer | undefined> => {
-      const file = await api.getFile(ref.fileId)
-      const filePath = (file as { file_path?: string }).file_path
-      if (!filePath) return undefined
-
-      const url = `https://api.telegram.org/file/bot${token}/${filePath}`
-      const res = await fetch(url)
-
-      if (!res.ok) {
-        logger.warn(
-          `Skipping file ${ref.fileId}: HTTP ${res.status} ${res.statusText}`,
-        )
-        return undefined
-      }
-
-      const arrayBuffer = await res.arrayBuffer()
-
-      if (arrayBuffer.byteLength > MAX_INLINE_BYTES) {
-        logger.warn(
-          `Skipping file ${ref.fileId}: ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)} MB exceeds limit`,
-        )
-        return undefined
-      }
-
-      return {
-        buffer: Buffer.from(arrayBuffer),
-        mimeType: ref.mimeType,
-        mediaType: ref.mediaType,
-        fileId: ref.fileId,
-        fileUniqueId: ref.fileUniqueId,
-        ...getDimensions(ref),
-        ...getDuration(ref.durationSeconds),
-        label: ref.label,
-        context: ref.context,
-      }
-    }),
-  )
-
   const buffers: MediaBuffer[] = []
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i]
-    if (r.status === 'fulfilled' && r.value) {
-      buffers.push(r.value)
-    } else if (r.status === 'rejected') {
-      logger.warn(
-        {
-          err:
-            r.reason instanceof Error ? r.reason : new Error(String(r.reason)),
-          fileId: refs[i]?.fileId,
-        },
-        `resolveMediaBuffers: download failed for ${refs[i]?.fileId}`,
-      )
+  for (
+    let offset = 0;
+    offset < refs.length;
+    offset += MEDIA_DOWNLOAD_CONCURRENCY
+  ) {
+    const batch = refs.slice(offset, offset + MEDIA_DOWNLOAD_CONCURRENCY)
+    const results = await Promise.allSettled(
+      batch.map((ref) => downloadMedia(ref, api, token)),
+    )
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'fulfilled' && result.value) {
+        buffers.push(result.value)
+      } else if (result.status === 'rejected') {
+        logger.warn(
+          { err: result.reason, fileId: batch[index]?.fileId },
+          'resolveMediaBuffers: download failed',
+        )
+      }
     }
   }
   return buffers
