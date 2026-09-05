@@ -5,6 +5,7 @@
  */
 
 import {
+  type AiModelConfig,
   DEFAULT_FAST_TEXT_FALLBACK_MODEL,
   DEFAULT_FAST_TEXT_MODEL,
   DEFAULT_HELPER_TEXT_FALLBACK_MODEL,
@@ -53,6 +54,16 @@ export const WEB_SEARCH_FALLBACK_MODEL_CONFIG = getAiModelConfig(
 export const CHAT_MODEL_REASONING_EFFORT = 'none'
 export const CHAT_FALLBACK_REASONING_EFFORT = 'medium'
 
+export function getChatModelReasoningEffort(config: AiModelConfig) {
+  if (isSameAiModel(config, DEFAULT_OPENAI_TEXT_MODEL)) return 'low'
+  if (isSameAiModel(config, CHAT_MODEL_CONFIG))
+    return CHAT_MODEL_REASONING_EFFORT
+  if (isSameAiModel(config, HELPER_TEXT_MODEL_CONFIG)) {
+    return HELPER_TEXT_MODEL_REASONING_EFFORT
+  }
+  return CHAT_FALLBACK_REASONING_EFFORT
+}
+
 export function resolveAgentChatModel(commandName?: string) {
   const config =
     commandName === 'o' ? DEFAULT_OPENAI_TEXT_MODEL : CHAT_MODEL_CONFIG
@@ -60,9 +71,7 @@ export function resolveAgentChatModel(commandName?: string) {
   return {
     config,
     label: formatAiModelConfig(config),
-    reasoningEffort: isSameAiModel(config, CHAT_MODEL_CONFIG)
-      ? CHAT_MODEL_REASONING_EFFORT
-      : CHAT_FALLBACK_REASONING_EFFORT,
+    reasoningEffort: getChatModelReasoningEffort(config),
   }
 }
 export const REPLY_GATE_MODEL = formatAiModelConfig(REPLY_GATE_MODEL_CONFIG)

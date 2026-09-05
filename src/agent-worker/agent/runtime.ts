@@ -1,12 +1,6 @@
 import type { AiModelConfig } from '@tg-bot/common'
-import { getAiSdkProviderOptions, isSameAiModel } from '@tg-bot/common'
-import {
-  CHAT_FALLBACK_REASONING_EFFORT,
-  CHAT_MODEL_CONFIG,
-  CHAT_MODEL_REASONING_EFFORT,
-  HELPER_TEXT_MODEL_CONFIG,
-  HELPER_TEXT_MODEL_REASONING_EFFORT,
-} from './models'
+import { getAiSdkProviderOptions } from '@tg-bot/common'
+import { getChatModelReasoningEffort } from './models'
 
 export function extractErrorInfo(error: unknown): unknown {
   if (!(error instanceof Error)) return error
@@ -25,11 +19,7 @@ export function getChatProviderOptions(
   chatId: number,
 ) {
   return getAiSdkProviderOptions(modelConfig, {
-    reasoningEffort: isSameAiModel(modelConfig, CHAT_MODEL_CONFIG)
-      ? CHAT_MODEL_REASONING_EFFORT
-      : isSameAiModel(modelConfig, HELPER_TEXT_MODEL_CONFIG)
-        ? HELPER_TEXT_MODEL_REASONING_EFFORT
-        : CHAT_FALLBACK_REASONING_EFFORT,
+    reasoningEffort: getChatModelReasoningEffort(modelConfig),
     chatId,
     store: false,
     serviceTier: modelConfig.provider === 'google' ? 'priority' : undefined,

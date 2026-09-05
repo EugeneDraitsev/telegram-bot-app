@@ -8,18 +8,23 @@ import {
 } from '../agentic-loop'
 import { buildModelToolRegistry } from '../model-tools'
 import { CHAT_MODEL_CONFIG, resolveAgentChatModel } from '../models'
+import { getChatProviderOptions } from '../runtime'
 import {
   extractFallbackTextFromToolResults,
   getExecutableFunctionCalls,
 } from '../tool-loop'
 
 describe('resolveAgentChatModel', () => {
-  test('routes /o to GPT-5.6 with medium reasoning', () => {
+  test('routes /o to GPT-6 Astra with low reasoning in API requests', () => {
     expect(resolveAgentChatModel('o')).toEqual({
-      config: { provider: 'openai', model: 'gpt-5.6' },
-      label: 'openai/gpt-5.6',
-      reasoningEffort: 'medium',
+      config: { provider: 'openai', model: 'gpt-6-astra' },
+      label: 'openai/gpt-6-astra',
+      reasoningEffort: 'low',
     })
+    expect(
+      getChatProviderOptions(resolveAgentChatModel('o').config, 123).openai
+        ?.reasoningEffort,
+    ).toBe('low')
   })
 
   test('keeps other commands on the default chat model', () => {

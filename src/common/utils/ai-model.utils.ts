@@ -34,7 +34,7 @@ export const DEFAULT_HELPER_TEXT_FALLBACK_MODEL: AiModelConfig = {
 
 export const DEFAULT_OPENAI_TEXT_MODEL: AiModelConfig = {
   provider: 'openai',
-  model: 'gpt-5.6',
+  model: 'gpt-6-astra',
 }
 
 export const DEFAULT_OPENAI_NANO_MODEL: AiModelConfig = {
