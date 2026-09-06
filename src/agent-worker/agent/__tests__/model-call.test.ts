@@ -24,7 +24,7 @@ jest.mock('../config', () => ({
 }))
 
 import { generateModelWithRetry, isRetryableModelError } from '../model-call'
-import { CHAT_ROLE } from '../models'
+import { CHAT_ROLE, getModelProviderOptions } from '../models'
 
 // Callers only need the response; keep assertions focused on it.
 const generate = async (...args: Parameters<typeof generateModelWithRetry>) =>
@@ -123,14 +123,9 @@ describe('model-call', () => {
       1,
       expect.objectContaining({
         model: 'openai/gpt-6-astra',
-        providerOptions: {
-          openai: {
-            reasoningEffort: 'low',
-            safetyIdentifier: '1305082',
-            store: false,
-            passThroughUnsupportedFiles: true,
-          },
-        },
+        providerOptions: getModelProviderOptions(CHAT_ROLE.primary, {
+          chatId: 1305082,
+        }),
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
@@ -141,7 +136,9 @@ describe('model-call', () => {
       3,
       expect.objectContaining({
         model: 'google/gemini-3.8-flash',
-        providerOptions: { google: { serviceTier: 'priority' } },
+        providerOptions: getModelProviderOptions(CHAT_ROLE.fallback, {
+          chatId: 1305082,
+        }),
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(

@@ -58,6 +58,10 @@ describe('codeExecutionTool', () => {
     mockCodeInterpreter.mockClear()
   })
 
+  test('budgets the tool for both model attempts', () => {
+    expect(codeExecutionTool.timeoutMs).toBe(41_000)
+  })
+
   test('rejects an empty task', async () => {
     await expect(executeTool({ task: '   ' })).rejects.toThrow(
       'Task cannot be empty',
@@ -76,7 +80,7 @@ describe('codeExecutionTool', () => {
         tools: { code_interpreter: { type: 'provider' } },
         toolChoice: 'auto',
         maxRetries: 0,
-        timeout: 25_000,
+        timeout: 20_000,
         providerOptions: {
           openai: {
             reasoningEffort: 'low',

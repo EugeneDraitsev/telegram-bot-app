@@ -11,7 +11,6 @@ import {
   getAiSdkOpenAiTools,
   getErrorMessage,
 } from '@tg-bot/common'
-import { TOOL_CALL_TIMEOUT_MS } from '../agent/config'
 import {
   CHAT_ROLE,
   getModelProviderOptions,
@@ -19,6 +18,10 @@ import {
 } from '../agent/models'
 import type { AgentTool } from '../types'
 import { requireToolContext, trackToolModelCall } from './context'
+
+// The tool budget has to cover both attempts, otherwise the generic per-tool
+// timeout expires together with the primary attempt and the fallback never runs.
+const CODE_EXECUTION_TOOL_TIMEOUT_MS = CHAT_ROLE.timeoutMs * 2 + 1_000
 
 function getCodeExecutionTools(choice: ModelChoice): ToolSet {
   if (choice.config.provider === 'google') {
@@ -49,13 +52,14 @@ async function executeCodeWithModel(
         tools: getCodeExecutionTools(choice),
         toolChoice: 'auto',
         maxRetries: 0,
-        timeout: TOOL_CALL_TIMEOUT_MS,
+        timeout: CHAT_ROLE.timeoutMs,
         providerOptions: getModelProviderOptions(choice, { chatId }),
       }),
   )
 }
 
 export const codeExecutionTool: AgentTool = {
+  timeoutMs: CODE_EXECUTION_TOOL_TIMEOUT_MS,
   declaration: {
     type: 'function',
     name: 'code_execution',
