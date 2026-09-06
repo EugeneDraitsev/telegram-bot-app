@@ -44,10 +44,12 @@
   3. run a matching dynamic command, bypass the reply gate for a registered
      agent command, or run the reply gate for an ordinary candidate
   4. run main response generation and tools when needed
-- `src/agent-worker/agent/models.ts` is the source of truth for every model,
-  its reasoning effort, its fallback and its timeout. Do not duplicate model
-  names here or hardcode them anywhere else.
+- `src/agent-worker/agent/models.ts` is the source of truth for every language
+  model the agent calls, with its reasoning effort, fallback and timeout. Do
+  not duplicate model names here or hardcode them anywhere else.
 - Reasoning effort reaches OpenAI only; the Google provider drops it.
+- Media models (image, video, music, speech) are not roles. They live with
+  their service, which owns their provider-specific fallbacks.
 
 ## Reliability Rules
 - Webhook/incoming lambda must finish under 10 seconds.

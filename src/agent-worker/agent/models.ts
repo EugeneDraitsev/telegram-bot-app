@@ -1,5 +1,5 @@
 /**
- * Every model the agent worker calls, in one table.
+ * Every language model the agent worker calls, in one table.
  *
  * | role       | primary             | effort | fallback                     | timeout |
  * | ---------- | ------------------- | ------ | ---------------------------- | ------- |
@@ -9,6 +9,13 @@
  *
  * Reasoning effort reaches OpenAI only - the Google provider drops it - so
  * Gemini entries never declare one.
+ *
+ * Media models are deliberately not roles: they carry no reasoning effort, and
+ * their fallbacks are provider quirks rather than a shared shape - Lyria falls
+ * back on a 404 for an id not yet enabled, images fall back across providers.
+ * Each lives with the code that knows its quirks: `services/google-media.ts`
+ * (video, music), `services/openai-image.ts`, `services/openai-tts.ts`, and
+ * `GEMINI_FLASH_LITE_IMAGE_MODEL` in common, shared with the currency lambda.
  */
 
 import {
