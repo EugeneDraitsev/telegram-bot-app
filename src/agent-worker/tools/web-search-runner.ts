@@ -1,14 +1,5 @@
-import {
-  formatAiModelConfig,
-  getErrorMessage,
-  isSameAiModel,
-  logger,
-  type MetricSource,
-} from '@tg-bot/common'
-import {
-  WEB_SEARCH_FALLBACK_MODEL_CONFIG,
-  WEB_SEARCH_MODEL_CONFIG,
-} from '../agent/models'
+import { getErrorMessage, logger, type MetricSource } from '@tg-bot/common'
+import { WEB_SEARCH_ROLE } from '../agent/models'
 import {
   type SearchWebOptions,
   searchWebOpenAi,
@@ -31,25 +22,18 @@ export async function searchWebWithFallback(
   search: SearchWebAttempt = searchWebOpenAi,
 ): Promise<string> {
   const name = tracking.name ?? 'web_search'
-  const primaryModel = formatAiModelConfig(WEB_SEARCH_MODEL_CONFIG)
+  const { primary, fallback } = WEB_SEARCH_ROLE
 
   try {
     return await trackToolModelCall(
-      { name, model: primaryModel, attribution: tracking.attribution },
-      () => search(query, format, options, WEB_SEARCH_MODEL_CONFIG),
+      { name, model: primary.label, attribution: tracking.attribution },
+      () => search(query, format, options, primary),
     )
   } catch (error) {
-    if (
-      isSameAiModel(WEB_SEARCH_MODEL_CONFIG, WEB_SEARCH_FALLBACK_MODEL_CONFIG)
-    ) {
-      throw error
-    }
-
-    const fallbackModel = formatAiModelConfig(WEB_SEARCH_FALLBACK_MODEL_CONFIG)
     logger.warn(
       {
-        primaryModel,
-        fallbackModel,
+        primaryModel: primary.label,
+        fallbackModel: fallback.label,
         error: getErrorMessage(error),
       },
       'web_search.fallback_invoked',
@@ -58,11 +42,11 @@ export async function searchWebWithFallback(
     return trackToolModelCall(
       {
         name,
-        model: fallbackModel,
-        fallbackFrom: primaryModel,
+        model: fallback.label,
+        fallbackFrom: primary.label,
         attribution: tracking.attribution,
       },
-      () => search(query, format, options, WEB_SEARCH_FALLBACK_MODEL_CONFIG),
+      () => search(query, format, options, fallback),
     )
   }
 }

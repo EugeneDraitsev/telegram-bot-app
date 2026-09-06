@@ -22,3 +22,16 @@ export async function withTimeout<T>(
     if (handle) clearTimeout(handle)
   }
 }
+
+/** Trims a thrown value down to the fields worth logging. */
+export function extractErrorInfo(error: unknown): unknown {
+  if (!(error instanceof Error)) return error
+  const record = error as unknown as Record<string, unknown>
+  return {
+    name: error.name,
+    message: error.message,
+    ...('status' in error ? { status: record.status } : {}),
+    ...('statusText' in error ? { statusText: record.statusText } : {}),
+    ...('errorDetails' in error ? { errorDetails: record.errorDetails } : {}),
+  }
+}

@@ -11,6 +11,3 @@ export const TOOL_CALL_TIMEOUT_MS = 25_000
 // Model retry
 export const MAX_RETRIES = 1
 export const RETRY_BASE_DELAY_MS = 1_000
-
-// Reply gate
-export const REPLY_GATE_TIMEOUT_MS = 15_000

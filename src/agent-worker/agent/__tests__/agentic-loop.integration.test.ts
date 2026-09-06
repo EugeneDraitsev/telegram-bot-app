@@ -6,7 +6,7 @@ import type { AgentTool, TelegramApi } from '../../types'
 import { runAgenticLoop } from '../agentic-loop'
 import * as delivery from '../delivery'
 import * as modelCall from '../model-call'
-import { CHAT_MODEL_CONFIG } from '../models'
+import { CHAT_ROLE } from '../models'
 import * as replyGate from '../reply-gate'
 
 const stopThinking = jest.fn()
@@ -53,17 +53,14 @@ function createModelResult(options: {
   const text = options.text ?? ''
   const toolCalls = options.toolCalls ?? []
   return {
-    model: 'openai/gpt-5.6-luna',
-    modelConfig: CHAT_MODEL_CONFIG,
+    choice: CHAT_ROLE.primary,
     response: {
       text,
       content: text ? [{ type: 'text', text }] : [],
       toolCalls,
       response: { messages: [] },
     },
-  } as unknown as Awaited<
-    ReturnType<typeof modelCall.generateModelWithRetryWithInfo>
-  >
+  } as unknown as Awaited<ReturnType<typeof modelCall.generateModelWithRetry>>
 }
 
 describe('runAgenticLoop integration', () => {
@@ -97,7 +94,7 @@ describe('runAgenticLoop integration', () => {
     jest
       .spyOn(agentTools, 'executeDynamicCommandFromMessage')
       .mockResolvedValue({ matched: true, name: 'hello', result: 'world' })
-    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetryWithInfo')
+    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
 
     const loadMedia = jest.fn()
     await runAgenticLoop(
@@ -122,7 +119,7 @@ describe('runAgenticLoop integration', () => {
 
   test('stops after the reply gate rejects a message', async () => {
     jest.spyOn(replyGate, 'shouldEngageWithMessage').mockResolvedValue(false)
-    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetryWithInfo')
+    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
 
     const loadMedia = jest.fn()
     await runAgenticLoop(
@@ -153,7 +150,7 @@ describe('runAgenticLoop integration', () => {
         return [media]
       })
       const modelSpy = jest
-        .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+        .spyOn(modelCall, 'generateModelWithRetry')
         .mockImplementation(async () => {
           expect(agentTools.requireToolContext().mediaBuffers).toEqual([media])
           return createModelResult({ text: 'answer' })
@@ -172,7 +169,7 @@ describe('runAgenticLoop integration', () => {
   test('propagates a completely undelivered failure for SQS retry', async () => {
     const error = new Error('delivery unavailable')
     jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValue(createModelResult({ text: 'answer' }))
     jest.spyOn(delivery, 'sendResponses').mockRejectedValue(error)
     const api = createApi()
@@ -190,7 +187,7 @@ describe('runAgenticLoop integration', () => {
 
   test('does not replay acknowledged response parts if the failure notice also fails', async () => {
     jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValue(createModelResult({ text: 'answer' }))
     jest.spyOn(delivery, 'sendResponses').mockImplementation(async (params) => {
       params.onDelivered?.()
@@ -213,7 +210,7 @@ describe('runAgenticLoop integration', () => {
       .spyOn(common, 'getChatMemory')
       .mockRejectedValue(new Error('redis down'))
     jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValue(createModelResult({ text: 'final answer' }))
     const api = createApi()
 
@@ -246,7 +243,7 @@ describe('runAgenticLoop integration', () => {
     }
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([lookupTool])
     const modelSpy = jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValueOnce(
         createModelResult({
           toolCalls: [
@@ -310,7 +307,7 @@ describe('runAgenticLoop integration', () => {
     }
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([loadTool])
     const modelSpy = jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValueOnce(
         createModelResult({
           toolCalls: [
@@ -366,7 +363,7 @@ describe('runAgenticLoop integration', () => {
     }
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([lookupTool])
     const modelSpy = jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValueOnce(
         createModelResult({
           toolCalls: [
@@ -433,7 +430,7 @@ describe('runAgenticLoop integration', () => {
     ]
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue(tools)
     const modelSpy = jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValueOnce(
         createModelResult({
           toolCalls: [
@@ -494,7 +491,7 @@ describe('runAgenticLoop integration', () => {
     }
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([lookupTool])
     jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValueOnce(
         createModelResult({
           toolCalls: [
@@ -521,7 +518,7 @@ describe('runAgenticLoop integration', () => {
 
   test('uses the explicit no-response fallback after empty model output', async () => {
     jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValue(createModelResult({}))
 
     await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
@@ -555,7 +552,7 @@ describe('runAgenticLoop integration', () => {
     }
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([renderTool])
     const modelSpy = jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValueOnce(
         createModelResult({
           toolCalls: [
@@ -614,7 +611,7 @@ describe('runAgenticLoop integration', () => {
       .spyOn(agentTools, 'getAgentTools')
       .mockResolvedValue([searchTool, renderTool])
     const modelSpy = jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValue(createModelResult({ text: 'done' }))
 
     await runAgenticLoop(
@@ -648,7 +645,7 @@ describe('runAgenticLoop integration', () => {
       .spyOn(common, 'getRecentRawHistory')
       .mockResolvedValue([historyMessage])
     const modelSpy = jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValue(createModelResult({ text: 'answer' }))
 
     await runAgenticLoop(
@@ -667,9 +664,7 @@ describe('runAgenticLoop integration', () => {
 
   test('sends a user-facing failure and always stops indicators', async () => {
     const error = Object.assign(new Error('model overloaded'), { status: 503 })
-    jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
-      .mockRejectedValue(error)
+    jest.spyOn(modelCall, 'generateModelWithRetry').mockRejectedValue(error)
     const api = createApi()
 
     await runAgenticLoop(createMessage(), api, undefined, undefined, {
@@ -688,7 +683,7 @@ describe('runAgenticLoop integration', () => {
 
   test('retries a failure reply without reply parameters when target is gone', async () => {
     jest
-      .spyOn(modelCall, 'generateModelWithRetryWithInfo')
+      .spyOn(modelCall, 'generateModelWithRetry')
       .mockRejectedValue(new Error('unexpected failure'))
     const api = createApi()
     const sendMessage = api.sendMessage as jest.Mock
@@ -717,7 +712,7 @@ describe('runAgenticLoop integration', () => {
   })
 
   test('returns early for malformed messages without a chat id', async () => {
-    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetryWithInfo')
+    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
 
     await runAgenticLoop({ message_id: 10 } as Message, createApi())
 

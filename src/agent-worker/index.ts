@@ -12,11 +12,7 @@ import {
   isAgenticChatEnabled,
   logger,
 } from '@tg-bot/common'
-import {
-  REPLY_GATE_MODEL,
-  resolveAgentChatModel,
-  runAgenticLoop,
-} from './agent'
+import { REPLY_GATE_ROLE, resolveAgentChatModel, runAgenticLoop } from './agent'
 import { prepareAgentCommandMessage } from './commands'
 import { type AgentWorkerLease, acquireAgentWorkerLease } from './idempotency'
 
@@ -108,7 +104,7 @@ export const processAgentWorker = async (
         ...messageMeta,
         model: chatModel.label,
         reasoningEffort: chatModel.reasoningEffort,
-        replyGateModel: REPLY_GATE_MODEL,
+        replyGateModel: REPLY_GATE_ROLE.primary.label,
         bypassReplyGate: Boolean(bypassReplyGate),
         commandName,
       },
@@ -143,7 +139,7 @@ export const processAgentWorker = async (
         ...messageMeta,
         model: chatModel.label,
         reasoningEffort: chatModel.reasoningEffort,
-        replyGateModel: REPLY_GATE_MODEL,
+        replyGateModel: REPLY_GATE_ROLE.primary.label,
         durationMs: Date.now() - startedAt,
         mediaCount,
         bypassReplyGate: Boolean(bypassReplyGate),
@@ -177,7 +173,7 @@ export const processAgentWorker = async (
         ...(event.message ? getMessageLogMeta(event.message) : {}),
         model: chatModel.label,
         reasoningEffort: chatModel.reasoningEffort,
-        replyGateModel: REPLY_GATE_MODEL,
+        replyGateModel: REPLY_GATE_ROLE.primary.label,
         durationMs: Date.now() - startedAt,
         commandName: event.commandName,
         error,

@@ -6,31 +6,25 @@
 import { generateText, type ToolSet } from 'ai'
 
 import {
-  type AiModelConfig,
-  type AiReasoningEffort,
-  formatAiModelConfig,
   getAiSdkGoogleTools,
   getAiSdkLanguageModel,
   getAiSdkOpenAiTools,
-  getAiSdkProviderOptions,
   getErrorMessage,
 } from '@tg-bot/common'
-import { TOOL_CALL_TIMEOUT_MS } from '../agent/config'
 import {
-  HELPER_TEXT_FALLBACK_MODEL_CONFIG,
-  HELPER_TEXT_FALLBACK_REASONING_EFFORT,
-  HELPER_TEXT_MODEL_CONFIG,
-  HELPER_TEXT_MODEL_REASONING_EFFORT,
+  CHAT_ROLE,
+  getModelProviderOptions,
+  type ModelChoice,
 } from '../agent/models'
 import type { AgentTool } from '../types'
 import { requireToolContext, trackToolModelCall } from './context'
 
-function isSameModel(a: AiModelConfig, b: AiModelConfig): boolean {
-  return a.provider === b.provider && a.model === b.model
-}
+// The tool budget has to cover both attempts, otherwise the generic per-tool
+// timeout expires together with the primary attempt and the fallback never runs.
+const CODE_EXECUTION_TOOL_TIMEOUT_MS = CHAT_ROLE.timeoutMs * 2 + 1_000
 
-function getCodeExecutionTools(modelConfig: AiModelConfig): ToolSet {
-  if (modelConfig.provider === 'google') {
+function getCodeExecutionTools(choice: ModelChoice): ToolSet {
+  if (choice.config.provider === 'google') {
     return { code_execution: getAiSdkGoogleTools().codeExecution({}) }
   }
 
@@ -40,38 +34,32 @@ function getCodeExecutionTools(modelConfig: AiModelConfig): ToolSet {
 async function executeCodeWithModel(
   task: string,
   chatId: number,
-  modelConfig: AiModelConfig,
-  reasoningEffort: AiReasoningEffort,
+  choice: ModelChoice,
   fallbackFrom?: string,
 ) {
   return trackToolModelCall(
     {
       name: 'code_execution',
-      model: formatAiModelConfig(modelConfig),
+      model: choice.label,
       fallbackFrom,
       classifyResult: (response) =>
         response.text.trim() ? 'success' : 'error',
     },
     () =>
       generateText({
-        model: getAiSdkLanguageModel(modelConfig),
+        model: getAiSdkLanguageModel(choice.config),
         prompt: task,
-        tools: getCodeExecutionTools(modelConfig),
+        tools: getCodeExecutionTools(choice),
         toolChoice: 'auto',
         maxRetries: 0,
-        timeout: TOOL_CALL_TIMEOUT_MS,
-        providerOptions: getAiSdkProviderOptions(modelConfig, {
-          reasoningEffort,
-          chatId,
-          store: false,
-          serviceTier:
-            modelConfig.provider === 'google' ? 'priority' : undefined,
-        }),
+        timeout: CHAT_ROLE.timeoutMs,
+        providerOptions: getModelProviderOptions(choice, { chatId }),
       }),
   )
 }
 
 export const codeExecutionTool: AgentTool = {
+  timeoutMs: CODE_EXECUTION_TOOL_TIMEOUT_MS,
   declaration: {
     type: 'function',
     name: 'code_execution',
@@ -102,25 +90,14 @@ export const codeExecutionTool: AgentTool = {
         result = await executeCodeWithModel(
           task,
           message.chat.id,
-          HELPER_TEXT_MODEL_CONFIG,
-          HELPER_TEXT_MODEL_REASONING_EFFORT,
+          CHAT_ROLE.primary,
         )
-      } catch (primaryError) {
-        if (
-          isSameModel(
-            HELPER_TEXT_MODEL_CONFIG,
-            HELPER_TEXT_FALLBACK_MODEL_CONFIG,
-          )
-        ) {
-          throw primaryError
-        }
-
+      } catch {
         result = await executeCodeWithModel(
           task,
           message.chat.id,
-          HELPER_TEXT_FALLBACK_MODEL_CONFIG,
-          HELPER_TEXT_FALLBACK_REASONING_EFFORT,
-          formatAiModelConfig(HELPER_TEXT_MODEL_CONFIG),
+          CHAT_ROLE.fallback,
+          CHAT_ROLE.primary.label,
         )
       }
 

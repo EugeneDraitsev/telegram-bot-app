@@ -23,15 +23,18 @@ jest.mock('../config', () => ({
   RETRY_BASE_DELAY_MS: 0,
 }))
 
-import {
-  generateModelWithRetryWithInfo,
-  isRetryableModelError,
-} from '../model-call'
+import { generateModelWithRetry, isRetryableModelError } from '../model-call'
+import { CHAT_ROLE, getModelProviderOptions } from '../models'
 
 // Callers only need the response; keep assertions focused on it.
-const generateModelWithRetry = async (
-  ...args: Parameters<typeof generateModelWithRetryWithInfo>
-) => (await generateModelWithRetryWithInfo(...args)).response
+const generate = async (...args: Parameters<typeof generateModelWithRetry>) =>
+  (await generateModelWithRetry(...args)).response
+
+const nano = {
+  config: { provider: 'openai' as const, model: 'gpt-5.4-nano' },
+  reasoningEffort: 'none' as const,
+  label: 'openai/gpt-5.4-nano',
+}
 
 describe('model-call', () => {
   afterAll(() => {
@@ -56,10 +59,15 @@ describe('model-call', () => {
       .mockResolvedValueOnce(response)
 
     await expect(
-      generateModelWithRetry({ prompt: 'hello' }, 1305082, 'routing', {
-        provider: 'openai',
-        model: 'gpt-5.4-nano',
-      }),
+      generate(
+        { prompt: 'hello' },
+        {
+          chatId: 1305082,
+          metricName: 'routing',
+          choice: nano,
+          timeoutMs: 45_000,
+        },
+      ),
     ).resolves.toEqual(response)
 
     expect(mockGenerateText).toHaveBeenCalledTimes(2)
@@ -82,7 +90,7 @@ describe('model-call', () => {
     )
   })
 
-  test('falls back from Luna to the previous Gemini chat model', async () => {
+  test('falls back from the chat model to its Gemini fallback', async () => {
     const overloadedError = Object.assign(new Error('model overloaded'), {
       status: 503,
     })
@@ -98,19 +106,15 @@ describe('model-call', () => {
       .mockResolvedValueOnce(response)
 
     await expect(
-      generateModelWithRetry(
+      generate(
+        { prompt: 'hello' },
         {
-          prompt: 'hello',
-          providerOptions: {
-            openai: {
-              reasoningEffort: 'none',
-              safetyIdentifier: '1305082',
-              store: false,
-            },
-          },
+          chatId: 1305082,
+          metricName: 'routing',
+          choice: CHAT_ROLE.primary,
+          fallback: CHAT_ROLE.fallback,
+          timeoutMs: CHAT_ROLE.timeoutMs,
         },
-        1305082,
-        'routing',
       ),
     ).resolves.toEqual(response)
 
@@ -118,47 +122,41 @@ describe('model-call', () => {
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        model: 'openai/gpt-5.6-luna',
-        providerOptions: {
-          openai: {
-            reasoningEffort: 'none',
-            safetyIdentifier: '1305082',
-            store: false,
-          },
-        },
+        model: 'openai/gpt-6-astra',
+        providerOptions: getModelProviderOptions(CHAT_ROLE.primary, {
+          chatId: 1305082,
+        }),
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({
-        model: 'openai/gpt-5.6-luna',
-      }),
+      expect.objectContaining({ model: 'openai/gpt-6-astra' }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({
-        model: 'google/gemini-3.6-flash',
-        providerOptions: { google: { serviceTier: 'priority' } },
+        model: 'google/gemini-3.8-flash',
+        providerOptions: getModelProviderOptions(CHAT_ROLE.fallback, {
+          chatId: 1305082,
+        }),
       }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       4,
-      expect.objectContaining({
-        model: 'google/gemini-3.6-flash',
-      }),
+      expect.objectContaining({ model: 'google/gemini-3.8-flash' }),
     )
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/gpt-6-astra',
         success: false,
       }),
     )
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'google/gemini-3.6-flash',
-        fallbackFrom: 'openai/gpt-5.6-luna',
+        model: 'google/gemini-3.8-flash',
+        fallbackFrom: 'openai/gpt-6-astra',
         success: true,
       }),
     )
@@ -170,51 +168,38 @@ describe('model-call', () => {
     )
   })
 
-  test('uses an explicit role-specific fallback instead of the chat fallback', async () => {
-    mockGenerateText
-      .mockRejectedValueOnce(
-        Object.assign(new Error('helper failed'), { status: 400 }),
-      )
-      .mockResolvedValueOnce({ text: '<svg />', output: [] })
+  test('fails without retrying when no fallback is configured', async () => {
+    mockGenerateText.mockRejectedValue(
+      Object.assign(new Error('helper failed'), { status: 400 }),
+    )
 
     await expect(
-      generateModelWithRetry(
+      generate(
         { prompt: 'draw' },
-        1305082,
-        'direct_svg',
-        { provider: 'openai', model: 'gpt-5.6-luna' },
-        45_000,
-        { source: 'agentic' },
         {
-          modelConfig: {
-            provider: 'google',
-            model: 'gemini-3.5-flash-lite',
-          },
-          reasoningEffort: 'none',
+          chatId: 1305082,
+          metricName: 'direct_svg',
+          choice: CHAT_ROLE.primary,
+          timeoutMs: CHAT_ROLE.timeoutMs,
         },
       ),
-    ).resolves.toEqual({ text: '<svg />', output: [] })
+    ).rejects.toThrow('helper failed')
 
-    expect(mockGenerateText).toHaveBeenCalledTimes(2)
-    expect(mockGenerateText).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        model: 'google/gemini-3.5-flash-lite',
-        providerOptions: { google: { serviceTier: 'priority' } },
-      }),
-    )
+    expect(mockGenerateText).toHaveBeenCalledTimes(1)
   })
 
   test('records explicit commands separately from agentic traffic', async () => {
     mockGenerateText.mockResolvedValue({ text: 'ok', output: [] })
 
-    await generateModelWithRetry(
+    await generate(
       { prompt: 'hello' },
-      1305082,
-      'routing',
-      { provider: 'openai', model: 'gpt-5.4-nano' },
-      45_000,
-      { source: 'command', command: 'o' },
+      {
+        chatId: 1305082,
+        metricName: 'routing',
+        choice: nano,
+        timeoutMs: 45_000,
+        attribution: { source: 'command', command: 'o' },
+      },
     )
 
     expect(mockRecordMetric).toHaveBeenCalledWith(

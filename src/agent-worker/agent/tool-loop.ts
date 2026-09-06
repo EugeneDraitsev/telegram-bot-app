@@ -1,12 +1,7 @@
 import type { ModelMessage, ToolSet, UserModelMessage } from 'ai'
 
-import type { AiModelConfig, MetricStatus } from '@tg-bot/common'
-import {
-  cleanModelMessage,
-  formatAiModelConfig,
-  logger,
-  recordMetric,
-} from '@tg-bot/common'
+import type { MetricStatus } from '@tg-bot/common'
+import { cleanModelMessage, logger, recordMetric } from '@tg-bot/common'
 import {
   getCollectedResponses,
   getToolMetricAttribution,
@@ -15,15 +10,11 @@ import {
 } from '../tools'
 import type { AgentTool, AgentToolExecutionPolicy } from '../types'
 import { MAX_TOOL_ITERATIONS, TOOL_CALL_TIMEOUT_MS } from './config'
-import {
-  type GenerateModelWithRetryResult,
-  generateModelWithRetryWithInfo,
-} from './model-call'
-import { extractErrorInfo, getChatProviderOptions } from './runtime'
-import { withTimeout } from './utils'
+import { generateModelWithRetry, type ModelCallResult } from './model-call'
+import { CHAT_ROLE, type ModelChoice } from './models'
+import { extractErrorInfo, withTimeout } from './utils'
 
 const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
-const AGENT_ROUTING_MODEL_TIMEOUT_MS = 20_000
 
 export type ExecutableFunctionCall = {
   toolCallId: string
@@ -255,29 +246,33 @@ export async function runToolLoop(
   tools: ToolSet,
   toolByName: Map<string, AgentTool>,
   chatId: number,
-  initialModelConfig: AiModelConfig,
+  initialChoice: ModelChoice,
 ): Promise<{ finalText: string; toolResults: ToolExecutionResult[] }> {
   let finalText = ''
   const toolResults: ToolExecutionResult[] = []
-  let activeModelConfig = initialModelConfig
-  let activeModel = formatAiModelConfig(initialModelConfig)
+  let activeChoice = initialChoice
+  // Once the loop has switched to the fallback there is nothing left to fall
+  // back to, so later iterations retry the fallback itself.
+  let fallback: ModelChoice | undefined = CHAT_ROLE.fallback
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-    let modelResult: GenerateModelWithRetryResult<ToolSet>
+    let modelResult: ModelCallResult<ToolSet>
     try {
-      modelResult = await generateModelWithRetryWithInfo(
+      modelResult = await generateModelWithRetry(
         {
           messages: input,
           system: systemInstruction,
           tools: Object.keys(tools).length ? tools : undefined,
           toolChoice: 'auto',
-          providerOptions: getChatProviderOptions(activeModelConfig, chatId),
         },
-        chatId,
-        iteration === 0 ? 'routing' : `iteration_${iteration}`,
-        activeModelConfig,
-        AGENT_ROUTING_MODEL_TIMEOUT_MS,
-        getToolMetricAttribution(),
+        {
+          chatId,
+          metricName: iteration === 0 ? 'routing' : `iteration_${iteration}`,
+          choice: activeChoice,
+          fallback,
+          timeoutMs: CHAT_ROLE.timeoutMs,
+          attribution: getToolMetricAttribution(),
+        },
       )
     } catch (error) {
       if (
@@ -288,7 +283,7 @@ export async function runToolLoop(
           {
             chatId,
             iteration,
-            model: activeModel,
+            model: activeChoice.label,
             error: extractErrorInfo(error),
           },
           'loop.model_iteration_failed_after_tools',
@@ -298,8 +293,8 @@ export async function runToolLoop(
 
       throw error
     }
-    activeModelConfig = modelResult.modelConfig
-    activeModel = modelResult.model
+    activeChoice = modelResult.choice
+    if (modelResult.fallbackFrom) fallback = undefined
     const { response } = modelResult
 
     const responseMessages = response.response.messages as ModelMessage[]
@@ -307,7 +302,7 @@ export async function runToolLoop(
     logger.info(
       {
         chatId,
-        model: activeModel,
+        model: activeChoice.label,
         ...(modelResult.fallbackFrom
           ? { fallbackFrom: modelResult.fallbackFrom }
           : {}),
@@ -338,7 +333,7 @@ export async function runToolLoop(
       logger.info(
         {
           chatId,
-          model: activeModel,
+          model: activeChoice.label,
           iteration,
           deferred: contentCalls.map((call) => call.name),
         },
@@ -382,7 +377,7 @@ export async function runToolLoop(
       logger.info(
         {
           chatId,
-          model: activeModel,
+          model: activeChoice.label,
           tools: callsToExecute.map((call) => call.name),
         },
         'loop.terminal_tools_skip',
@@ -411,7 +406,7 @@ export async function runToolLoop(
   // pass without tools. Terminal tools already collected their own response.
   if (!finalText.trim() && getCollectedResponses().length === 0) {
     try {
-      const finalizeResult = await generateModelWithRetryWithInfo(
+      const finalizeResult = await generateModelWithRetry(
         {
           messages: [
             ...input,
@@ -427,24 +422,29 @@ export async function runToolLoop(
           ],
           system: systemInstruction,
           toolChoice: 'none',
-          providerOptions: getChatProviderOptions(activeModelConfig, chatId),
         },
-        chatId,
-        'finalize',
-        activeModelConfig,
-        AGENT_ROUTING_MODEL_TIMEOUT_MS,
-        getToolMetricAttribution(),
+        {
+          chatId,
+          metricName: 'finalize',
+          choice: activeChoice,
+          fallback,
+          timeoutMs: CHAT_ROLE.timeoutMs,
+          attribution: getToolMetricAttribution(),
+        },
       )
-      activeModel = finalizeResult.model
+      activeChoice = finalizeResult.choice
       const finalizeText = finalizeResult.response.text.trim()
       if (finalizeText) {
         finalText = finalizeText
       } else {
-        logger.warn({ chatId, model: activeModel }, 'loop.finalize_empty')
+        logger.warn(
+          { chatId, model: activeChoice.label },
+          'loop.finalize_empty',
+        )
       }
     } catch (error) {
       logger.warn(
-        { chatId, model: activeModel, error: extractErrorInfo(error) },
+        { chatId, model: activeChoice.label, error: extractErrorInfo(error) },
         'loop.finalize_failed',
       )
     }
