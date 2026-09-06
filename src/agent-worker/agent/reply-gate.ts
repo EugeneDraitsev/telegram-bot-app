@@ -7,11 +7,8 @@ import { z } from 'zod'
 import type { Message } from 'grammy/types'
 
 import {
-  type AiModelConfig,
-  type AiReasoningEffort,
   type BotIdentity,
   getAiSdkLanguageModel,
-  getAiSdkProviderOptions,
   getMessageText,
   getMetricStatusFromError,
   isReplyToAnotherBot,
@@ -21,14 +18,10 @@ import {
   mentionsOurBot,
   recordMetric,
 } from '@tg-bot/common'
-import { REPLY_GATE_TIMEOUT_MS } from './config'
 import {
-  REPLY_GATE_FALLBACK_MODEL,
-  REPLY_GATE_FALLBACK_MODEL_CONFIG,
-  REPLY_GATE_FALLBACK_REASONING_EFFORT,
-  REPLY_GATE_MODEL,
-  REPLY_GATE_MODEL_CONFIG,
-  REPLY_GATE_REASONING_EFFORT,
+  getModelProviderOptions,
+  type ModelChoice,
+  REPLY_GATE_ROLE,
 } from './models'
 import { withTimeout } from './utils'
 
@@ -164,22 +157,22 @@ async function recordReplyGateMetric(params: {
 async function callReplyGateModel(params: {
   chatId?: number
   attempt: 'primary' | 'fallback'
-  model: string
-  modelConfig: AiModelConfig
-  reasoningEffort: AiReasoningEffort
+  choice: ModelChoice
   instructions: string
   prompt: string
   fallbackFrom?: string
 }): Promise<boolean> {
   const startedAt = Date.now()
+  const { choice } = params
+  const { timeoutMs } = REPLY_GATE_ROLE
 
   logger.info(
     {
       chatId: params.chatId,
       attempt: params.attempt,
-      model: params.model,
-      reasoningEffort: params.reasoningEffort,
-      timeoutMs: REPLY_GATE_TIMEOUT_MS,
+      model: choice.label,
+      reasoningEffort: choice.reasoningEffort,
+      timeoutMs,
       fallbackFrom: params.fallbackFrom,
     },
     'reply_gate.model_call',
@@ -188,22 +181,17 @@ async function callReplyGateModel(params: {
   try {
     const response = await withTimeout(
       generateText({
-        model: getAiSdkLanguageModel(params.modelConfig),
+        model: getAiSdkLanguageModel(choice.config),
         system: params.instructions,
         prompt: params.prompt,
         output: replyGateOutput,
-        ...(params.modelConfig.provider === 'openai' ? {} : { temperature: 0 }),
+        ...(choice.config.provider === 'openai' ? {} : { temperature: 0 }),
         maxRetries: 0,
-        timeout: REPLY_GATE_TIMEOUT_MS + 1_000,
-        providerOptions: getAiSdkProviderOptions(params.modelConfig, {
-          reasoningEffort: params.reasoningEffort,
-          serviceTier:
-            params.modelConfig.provider === 'google' ? 'priority' : undefined,
-          store: false,
-        }),
+        timeout: timeoutMs + 1_000,
+        providerOptions: getModelProviderOptions(choice),
       }),
-      REPLY_GATE_TIMEOUT_MS,
-      new ReplyGateTimeoutError(params.model, REPLY_GATE_TIMEOUT_MS),
+      timeoutMs,
+      new ReplyGateTimeoutError(choice.label, timeoutMs),
     )
 
     const decision = response.output.decision
@@ -213,7 +201,7 @@ async function callReplyGateModel(params: {
       {
         chatId: params.chatId,
         attempt: params.attempt,
-        model: params.model,
+        model: choice.label,
         decision,
         durationMs,
         fallbackFrom: params.fallbackFrom,
@@ -223,7 +211,7 @@ async function callReplyGateModel(params: {
     await recordReplyGateMetric({
       chatId: params.chatId,
       durationMs,
-      model: params.model,
+      model: choice.label,
       fallbackFrom: params.fallbackFrom,
       success: true,
     })
@@ -235,7 +223,7 @@ async function callReplyGateModel(params: {
       {
         chatId: params.chatId,
         attempt: params.attempt,
-        model: params.model,
+        model: choice.label,
         fallbackFrom: params.fallbackFrom,
         durationMs,
         error,
@@ -247,7 +235,7 @@ async function callReplyGateModel(params: {
     await recordReplyGateMetric({
       chatId: params.chatId,
       durationMs,
-      model: params.model,
+      model: choice.label,
       fallbackFrom: params.fallbackFrom,
       success: false,
       error,
@@ -292,9 +280,7 @@ export async function shouldEngageWithMessage(params: {
     return await callReplyGateModel({
       chatId,
       attempt: 'primary',
-      model: REPLY_GATE_MODEL,
-      modelConfig: REPLY_GATE_MODEL_CONFIG,
-      reasoningEffort: REPLY_GATE_REASONING_EFFORT,
+      choice: REPLY_GATE_ROLE.primary,
       instructions,
       prompt,
     })
@@ -303,8 +289,8 @@ export async function shouldEngageWithMessage(params: {
   logger.warn(
     {
       chatId,
-      model: REPLY_GATE_FALLBACK_MODEL,
-      fallbackFrom: REPLY_GATE_MODEL,
+      model: REPLY_GATE_ROLE.fallback.label,
+      fallbackFrom: REPLY_GATE_ROLE.primary.label,
     },
     'reply_gate.fallback_invoked',
   )
@@ -313,12 +299,10 @@ export async function shouldEngageWithMessage(params: {
     return await callReplyGateModel({
       chatId,
       attempt: 'fallback',
-      model: REPLY_GATE_FALLBACK_MODEL,
-      modelConfig: REPLY_GATE_FALLBACK_MODEL_CONFIG,
-      reasoningEffort: REPLY_GATE_FALLBACK_REASONING_EFFORT,
+      choice: REPLY_GATE_ROLE.fallback,
       instructions,
       prompt,
-      fallbackFrom: REPLY_GATE_MODEL,
+      fallbackFrom: REPLY_GATE_ROLE.primary.label,
     })
   } catch {
     return false

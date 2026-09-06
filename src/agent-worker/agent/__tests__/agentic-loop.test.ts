@@ -7,28 +7,33 @@ import {
   getAgentDeliveryReplyMessageId,
 } from '../agentic-loop'
 import { buildModelToolRegistry } from '../model-tools'
-import { CHAT_MODEL_CONFIG, resolveAgentChatModel } from '../models'
-import { getChatProviderOptions } from '../runtime'
+import {
+  CHAT_ROLE,
+  getModelProviderOptions,
+  resolveAgentChatModel,
+} from '../models'
 import {
   extractFallbackTextFromToolResults,
   getExecutableFunctionCalls,
 } from '../tool-loop'
 
 describe('resolveAgentChatModel', () => {
-  test('routes /o to GPT-6 Astra with low reasoning in API requests', () => {
-    expect(resolveAgentChatModel('o')).toEqual({
+  test('runs the chat model on GPT-6 Astra with low reasoning', () => {
+    expect(CHAT_ROLE.primary).toEqual({
       config: { provider: 'openai', model: 'gpt-6-astra' },
       label: 'openai/gpt-6-astra',
       reasoningEffort: 'low',
     })
-    expect(
-      getChatProviderOptions(resolveAgentChatModel('o').config, 123).openai
-        ?.reasoningEffort,
-    ).toBe('low')
+    expect(CHAT_ROLE.fallback.label).toBe('google/gemini-3.8-flash')
   })
 
-  test('keeps other commands on the default chat model', () => {
-    expect(resolveAgentChatModel('q').config).toBe(CHAT_MODEL_CONFIG)
+  test('raises the reasoning effort in API requests for /o only', () => {
+    expect(
+      getModelProviderOptions(resolveAgentChatModel('o'), { chatId: 123 })
+        .openai?.reasoningEffort,
+    ).toBe('medium')
+    expect(resolveAgentChatModel('q')).toBe(CHAT_ROLE.primary)
+    expect(resolveAgentChatModel()).toBe(CHAT_ROLE.primary)
   })
 })
 

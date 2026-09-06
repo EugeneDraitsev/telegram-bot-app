@@ -33,12 +33,11 @@ import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { isRetryableModelError, ModelCallTimeoutError } from './model-call'
 import { buildModelToolRegistry } from './model-tools'
-import { REPLY_GATE_MODEL, resolveAgentChatModel } from './models'
+import { REPLY_GATE_ROLE, resolveAgentChatModel } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
-import { extractErrorInfo } from './runtime'
 import { agentSystemInstructions } from './system-instructions'
 import { extractFallbackTextFromToolResults, runToolLoop } from './tool-loop'
-import { withTimeout } from './utils'
+import { extractErrorInfo, withTimeout } from './utils'
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -381,7 +380,7 @@ export async function runAgenticLoop(
       ...messageMeta,
       model: chatModel.label,
       reasoningEffort: chatModel.reasoningEffort,
-      replyGateModel: REPLY_GATE_MODEL,
+      replyGateModel: REPLY_GATE_ROLE.primary.label,
       ...attribution,
     },
     'loop.start',
@@ -451,7 +450,11 @@ export async function runAgenticLoop(
         })
         if (!shouldRespond) {
           logger.info(
-            { ...messageMeta, reason: 'reply_gate', model: REPLY_GATE_MODEL },
+            {
+              ...messageMeta,
+              reason: 'reply_gate',
+              model: REPLY_GATE_ROLE.primary.label,
+            },
             'loop.skipped',
           )
           return
@@ -557,7 +560,7 @@ export async function runAgenticLoop(
           tools,
           toolByName,
           chatId,
-          chatModel.config,
+          chatModel,
         )
 
         // Collect any responses produced by tools (media, text drafts, etc.)

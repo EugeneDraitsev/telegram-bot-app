@@ -38,19 +38,6 @@ jest.mock('@tg-bot/common', () => ({
   timedCall: (_options: unknown, fn: () => Promise<unknown>) => fn(),
 }))
 
-jest.mock('../../agent/models', () => ({
-  HELPER_TEXT_FALLBACK_MODEL_CONFIG: {
-    provider: 'google',
-    model: 'gemini-3.5-flash-lite',
-  },
-  HELPER_TEXT_FALLBACK_REASONING_EFFORT: 'none',
-  HELPER_TEXT_MODEL_CONFIG: {
-    provider: 'openai',
-    model: 'gpt-5.6-luna',
-  },
-  HELPER_TEXT_MODEL_REASONING_EFFORT: 'none',
-}))
-
 import { codeExecutionTool } from '../code-execution.tool'
 import { runWithToolContext } from '../context'
 
@@ -84,7 +71,7 @@ describe('codeExecutionTool', () => {
     await expect(executeTool({ task: '6 * 7' })).resolves.toBe('42')
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/gpt-6-astra',
         prompt: '6 * 7',
         tools: { code_interpreter: { type: 'provider' } },
         toolChoice: 'auto',
@@ -92,7 +79,7 @@ describe('codeExecutionTool', () => {
         timeout: 25_000,
         providerOptions: {
           openai: {
-            reasoningEffort: 'none',
+            reasoningEffort: 'low',
             safetyIdentifier: '1',
             store: false,
           },
@@ -101,9 +88,9 @@ describe('codeExecutionTool', () => {
     )
   })
 
-  test('falls back to Gemini code execution when Luna fails', async () => {
+  test('falls back to Gemini code execution when Astra fails', async () => {
     mockGenerateText
-      .mockRejectedValueOnce(new Error('Luna unavailable'))
+      .mockRejectedValueOnce(new Error('Astra unavailable'))
       .mockResolvedValueOnce({ text: '42' })
 
     await expect(executeTool({ task: '6 * 7' })).resolves.toBe('42')
@@ -111,7 +98,7 @@ describe('codeExecutionTool', () => {
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        model: 'google/gemini-3.5-flash-lite',
+        model: 'google/gemini-3.8-flash',
         tools: { code_execution: { type: 'provider' } },
         providerOptions: { google: { serviceTier: 'priority' } },
       }),

@@ -1,92 +1,95 @@
 /**
- * AI model configuration for the agent.
+ * Every model the agent worker calls, in one table.
  *
- * Model values are provider-neutral and resolved through the AI SDK helpers.
+ * | role       | primary             | effort | fallback                     | timeout |
+ * | ---------- | ------------------- | ------ | ---------------------------- | ------- |
+ * | reply gate | openai/gpt-5.6-luna | none   | google/gemini-3.5-flash-lite | 15s     |
+ * | chat       | openai/gpt-6-astra  | low    | google/gemini-3.8-flash      | 20s     |
+ * | web search | openai/gpt-5.6-luna | low    | openai/gpt-5.4-nano          | 24s     |
+ *
+ * Reasoning effort reaches OpenAI only - the Google provider drops it - so
+ * Gemini entries never declare one.
  */
 
 import {
   type AiModelConfig,
-  DEFAULT_FAST_TEXT_FALLBACK_MODEL,
-  DEFAULT_FAST_TEXT_MODEL,
-  DEFAULT_HELPER_TEXT_FALLBACK_MODEL,
-  DEFAULT_HELPER_TEXT_MODEL,
-  DEFAULT_OPENAI_NANO_MODEL,
-  DEFAULT_OPENAI_TEXT_MODEL,
-  DEFAULT_WEB_SEARCH_MODEL,
+  type AiReasoningEffort,
   formatAiModelConfig,
-  getAiModelConfig,
-  isSameAiModel,
+  getAiSdkProviderOptions,
 } from '@tg-bot/common'
 
-export const CHAT_MODEL_CONFIG = getAiModelConfig(
-  'AGENT_CHAT_MODEL',
-  DEFAULT_FAST_TEXT_MODEL,
-)
-export const CHAT_FALLBACK_MODEL_CONFIG = getAiModelConfig(
-  'AGENT_CHAT_FALLBACK_MODEL',
-  DEFAULT_FAST_TEXT_FALLBACK_MODEL,
-)
-export const REPLY_GATE_MODEL_CONFIG = getAiModelConfig(
-  'REPLY_GATE_MODEL',
-  DEFAULT_HELPER_TEXT_MODEL,
-)
-export const REPLY_GATE_FALLBACK_MODEL_CONFIG = getAiModelConfig(
-  'REPLY_GATE_FALLBACK_MODEL',
-  DEFAULT_HELPER_TEXT_FALLBACK_MODEL,
-)
-export const HELPER_TEXT_MODEL_CONFIG = getAiModelConfig(
-  'HELPER_TEXT_MODEL',
-  DEFAULT_HELPER_TEXT_MODEL,
-)
-export const HELPER_TEXT_FALLBACK_MODEL_CONFIG = getAiModelConfig(
-  'HELPER_TEXT_FALLBACK_MODEL',
-  DEFAULT_HELPER_TEXT_FALLBACK_MODEL,
-)
-export const WEB_SEARCH_MODEL_CONFIG = getAiModelConfig(
-  'WEB_SEARCH_MODEL',
-  DEFAULT_WEB_SEARCH_MODEL,
-)
-export const WEB_SEARCH_FALLBACK_MODEL_CONFIG = getAiModelConfig(
-  'WEB_SEARCH_FALLBACK_MODEL',
-  DEFAULT_OPENAI_NANO_MODEL,
-)
-/** Main agent model used for routing/tool loop and final synthesis. */
-export const CHAT_MODEL_REASONING_EFFORT = 'none'
-export const CHAT_FALLBACK_REASONING_EFFORT = 'medium'
-
-export function getChatModelReasoningEffort(config: AiModelConfig) {
-  if (isSameAiModel(config, DEFAULT_OPENAI_TEXT_MODEL)) return 'low'
-  if (isSameAiModel(config, CHAT_MODEL_CONFIG))
-    return CHAT_MODEL_REASONING_EFFORT
-  if (isSameAiModel(config, HELPER_TEXT_MODEL_CONFIG)) {
-    return HELPER_TEXT_MODEL_REASONING_EFFORT
-  }
-  return CHAT_FALLBACK_REASONING_EFFORT
+/** A model together with the reasoning effort it is called with. */
+export interface ModelChoice {
+  config: AiModelConfig
+  reasoningEffort: AiReasoningEffort
+  /** `provider/model`, used for logs and metrics. */
+  label: string
 }
 
-export function resolveAgentChatModel(commandName?: string) {
-  const config =
-    commandName === 'o' ? DEFAULT_OPENAI_TEXT_MODEL : CHAT_MODEL_CONFIG
-
-  return {
-    config,
-    label: formatAiModelConfig(config),
-    reasoningEffort: getChatModelReasoningEffort(config),
-  }
+export interface ModelRole {
+  primary: ModelChoice
+  /** Tried once when the primary model fails or times out. */
+  fallback: ModelChoice
+  /** Budget for a single attempt. */
+  timeoutMs: number
 }
-export const REPLY_GATE_MODEL = formatAiModelConfig(REPLY_GATE_MODEL_CONFIG)
-export const REPLY_GATE_FALLBACK_MODEL = formatAiModelConfig(
-  REPLY_GATE_FALLBACK_MODEL_CONFIG,
-)
-export const REPLY_GATE_REASONING_EFFORT = 'none'
-export const REPLY_GATE_FALLBACK_REASONING_EFFORT = 'low'
 
-export const HELPER_TEXT_MODEL_REASONING_EFFORT = 'none'
-export const HELPER_TEXT_FALLBACK_REASONING_EFFORT = 'none'
+const choose = (
+  config: AiModelConfig,
+  reasoningEffort: AiReasoningEffort,
+): ModelChoice => ({
+  config,
+  reasoningEffort,
+  label: formatAiModelConfig(config),
+})
 
-export const CHAT_MODEL_TIMEOUT_MS = 45_000
+const openai = (model: string, reasoningEffort: AiReasoningEffort) =>
+  choose({ provider: 'openai', model }, reasoningEffort)
 
-/** Model reserved for web-backed search tools. */
-export const OPENAI_WEB_SEARCH_REASONING_EFFORT = 'low'
-export const WEB_SEARCH_ATTEMPT_TIMEOUT_MS = 24_000
+const google = (model: string) => choose({ provider: 'google', model }, 'none')
+
+/** Engage/ignore decision on every eligible message: the hot path. */
+export const REPLY_GATE_ROLE: ModelRole = {
+  primary: openai('gpt-5.6-luna', 'none'),
+  fallback: google('gemini-3.5-flash-lite'),
+  timeoutMs: 15_000,
+}
+
+/** Routing, tool loop, final synthesis and the code_execution tool. */
+export const CHAT_ROLE: ModelRole = {
+  primary: openai('gpt-6-astra', 'low'),
+  fallback: google('gemini-3.8-flash'),
+  timeoutMs: 20_000,
+}
+
+/** Web-backed search tools. */
+export const WEB_SEARCH_ROLE: ModelRole = {
+  primary: openai('gpt-5.6-luna', 'low'),
+  fallback: openai('gpt-5.4-nano', 'low'),
+  timeoutMs: 24_000,
+}
+
+/** Budget for a web search including its fallback attempt. */
 export const WEB_SEARCH_TOTAL_TIMEOUT_MS = 50_000
+
+/** `/o` asks the chat model to think longer; every other command uses the default. */
+export function resolveAgentChatModel(commandName?: string): ModelChoice {
+  return commandName === 'o'
+    ? { ...CHAT_ROLE.primary, reasoningEffort: 'medium' }
+    : CHAT_ROLE.primary
+}
+
+export function getModelProviderOptions(
+  choice: ModelChoice,
+  options: { chatId?: string | number; truncation?: string } = {},
+) {
+  return getAiSdkProviderOptions(choice.config, {
+    ...options,
+    reasoningEffort: choice.reasoningEffort,
+    store: false,
+    serviceTier: choice.config.provider === 'google' ? 'priority' : undefined,
+    // Telegram audio is a file part. Let OpenAI Responses forward media types
+    // beyond the provider's conservative allowlist; Gemini accepts them natively.
+    passThroughUnsupportedFiles: true,
+  })
+}

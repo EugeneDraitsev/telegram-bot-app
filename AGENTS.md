@@ -42,10 +42,12 @@
   1. repeat the chat enabled check for stale/direct/retried deliveries
   2. acquire the idempotency lease
   3. run a matching dynamic command, bypass the reply gate for a registered
-     agent command, or run the reply gate for an ordinary candidate (GPT-5.6
-     Luna; Gemini 3.5 Flash-Lite fallback)
-  4. run main response generation and tools when needed (GPT-5.6 Luna; Gemini
-     3.6 Flash fallback)
+     agent command, or run the reply gate for an ordinary candidate
+  4. run main response generation and tools when needed
+- `src/agent-worker/agent/models.ts` is the source of truth for every model,
+  its reasoning effort, its fallback and its timeout. Do not duplicate model
+  names here or hardcode them anywhere else.
+- Reasoning effort reaches OpenAI only; the Google provider drops it.
 
 ## Reliability Rules
 - Webhook/incoming lambda must finish under 10 seconds.

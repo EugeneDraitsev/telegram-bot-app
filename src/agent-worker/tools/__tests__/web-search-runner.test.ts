@@ -1,9 +1,6 @@
 import type { Message } from 'grammy/types'
 
-import {
-  WEB_SEARCH_FALLBACK_MODEL_CONFIG,
-  WEB_SEARCH_MODEL_CONFIG,
-} from '../../agent/models'
+import { WEB_SEARCH_ROLE } from '../../agent/models'
 import type { searchWebOpenAi } from '../../services/openai-web-search'
 import { runWithToolContext } from '../context'
 import { searchWebWithFallback } from '../web-search-runner'
@@ -15,14 +12,8 @@ const message = {
 
 describe('searchWebWithFallback', () => {
   test('uses Luna as the default web search model', () => {
-    expect(WEB_SEARCH_MODEL_CONFIG).toEqual({
-      provider: 'openai',
-      model: 'gpt-5.6-luna',
-    })
-    expect(WEB_SEARCH_FALLBACK_MODEL_CONFIG).toEqual({
-      provider: 'openai',
-      model: 'gpt-5.4-nano',
-    })
+    expect(WEB_SEARCH_ROLE.primary.label).toBe('openai/gpt-5.6-luna')
+    expect(WEB_SEARCH_ROLE.fallback.label).toBe('openai/gpt-5.4-nano')
   })
 
   test('returns the primary result without invoking fallback', async () => {
@@ -50,7 +41,7 @@ describe('searchWebWithFallback', () => {
       'latest news',
       'brief',
       { chatId: 777 },
-      WEB_SEARCH_MODEL_CONFIG,
+      WEB_SEARCH_ROLE.primary,
     )
   })
 
@@ -81,7 +72,7 @@ describe('searchWebWithFallback', () => {
       'latest news',
       'brief',
       { chatId: 777 },
-      WEB_SEARCH_FALLBACK_MODEL_CONFIG,
+      WEB_SEARCH_ROLE.fallback,
     )
   })
 })
