@@ -69,8 +69,8 @@ export const WEB_SEARCH_ROLE: ModelRole = {
   timeoutMs: 24_000,
 }
 
-/** Budget for a web search including its fallback attempt. */
-export const WEB_SEARCH_TOTAL_TIMEOUT_MS = 50_000
+/** Budget for a web search tool call: both attempts plus room between them. */
+export const WEB_SEARCH_TOTAL_TIMEOUT_MS = WEB_SEARCH_ROLE.timeoutMs * 2 + 2_000
 
 /** `/o` asks the chat model to think longer; every other command uses the default. */
 export function resolveAgentChatModel(commandName?: string): ModelChoice {
