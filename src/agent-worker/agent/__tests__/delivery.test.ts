@@ -1,3 +1,7 @@
+import {
+  formatTelegramMarkdownV2,
+  normalizeTelegramMarkdown,
+} from '../../../common/utils/telegram-format.utils'
 import type { TelegramApi } from '../../types'
 
 type TestTelegramApi = TelegramApi & {
@@ -49,7 +53,8 @@ const mockLogger = {
 
 jest.mock('@tg-bot/common', () => ({
   cleanModelMessage: (text: string) => text,
-  formatTelegramMarkdownV2: (text: string) => text,
+  formatTelegramMarkdownV2,
+  normalizeTelegramMarkdown,
   isTelegramReplyTargetMissingError: (error: unknown) => {
     const candidate = error as { error_code?: unknown; description?: unknown }
     return (
@@ -175,6 +180,23 @@ describe('sendResponses', () => {
     expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 9 })
   })
 
+  test('sends bullet lines as a Markdown list instead of one rich paragraph', async () => {
+    const api = createApi()
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        { type: 'text', text: '**Вывод**\n\n• Первый пункт\n• Второй пункт' },
+      ],
+    })
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: '**Вывод**\n\n- Первый пункт\n- Второй пункт' },
+      {},
+      undefined,
+    )
+  })
+
   test('sends rich responses directly with plain text fallback', async () => {
     const api = createApi()
     api.sendRichMessage.mockResolvedValueOnce({ message_id: 10 })
@@ -228,7 +250,7 @@ describe('sendResponses', () => {
       123,
       expect.anything(),
       expect.objectContaining({
-        caption: 'hello there',
+        caption: 'hello there\n',
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 456 },
       }),
@@ -262,7 +284,7 @@ describe('sendResponses', () => {
       123,
       expect.objectContaining({ filename: 'omni.webm' }),
       {
-        caption: 'Omni with audio',
+        caption: 'Omni with audio\n',
         parse_mode: 'MarkdownV2',
         supports_streaming: true,
         reply_parameters: { message_id: 456 },
@@ -300,7 +322,7 @@ describe('sendResponses', () => {
       123,
       expect.objectContaining({ filename: 'generated-video.webm' }),
       {
-        caption: 'A running fox',
+        caption: 'A running fox\n',
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 456 },
       },
@@ -352,7 +374,7 @@ describe('sendResponses', () => {
     expect(api.sendVideo).toHaveBeenCalledWith(
       123,
       expect.anything(),
-      expect.objectContaining({ caption: 'Generated video is ready' }),
+      expect.objectContaining({ caption: 'Generated video is ready\n' }),
     )
     expect(api.sendRichMessage).not.toHaveBeenCalled()
     expect(api.sendMessage).not.toHaveBeenCalled()
@@ -378,7 +400,7 @@ describe('sendResponses', () => {
     expect(api.sendVideo).toHaveBeenCalledWith(
       123,
       expect.objectContaining({ filename: 'generated-video.mp4' }),
-      expect.objectContaining({ caption: 'Generated result' }),
+      expect.objectContaining({ caption: 'Generated result\n' }),
     )
     expect(api.sendRichMessage).not.toHaveBeenCalled()
     expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -417,7 +439,7 @@ describe('sendResponses', () => {
       123,
       expect.objectContaining({ filename: 'lyria.mp3' }),
       {
-        caption: 'Midnight Cats\nAn emo song about two cats',
+        caption: 'Midnight Cats\nAn emo song about two cats\n',
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 456 },
       },
@@ -458,7 +480,7 @@ describe('sendResponses', () => {
       expect.objectContaining({ filename: 'lyria-song.mp3' }),
       {
         title: 'Midnight Cats',
-        caption: 'A full-length emo song',
+        caption: 'A full\\-length emo song\n',
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 456 },
       },
@@ -590,7 +612,7 @@ describe('sendResponses', () => {
     expect(api.sendAudio).toHaveBeenCalledTimes(1)
     expect(api.sendAudio).toHaveBeenCalledWith(123, expect.anything(), {
       title: 'Midnight Cats',
-      caption: 'An emo song about two cats',
+      caption: 'An emo song about two cats\n',
       parse_mode: 'MarkdownV2',
       reply_parameters: { message_id: 456 },
     })
@@ -657,7 +679,7 @@ describe('sendResponses', () => {
       123,
       expect.objectContaining({ filename: 'lyria.wav' }),
       {
-        caption: 'Night Run\nA cinematic track',
+        caption: 'Night Run\nA cinematic track\n',
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 456 },
       },
@@ -771,7 +793,7 @@ describe('sendResponses', () => {
       123,
       expect.objectContaining({ filename: 'generated-image.png' }),
       {
-        caption: 'Generated image',
+        caption: 'Generated image\n',
         parse_mode: 'MarkdownV2',
         reply_parameters: { message_id: 456 },
       },
@@ -901,7 +923,7 @@ describe('sendResponses', () => {
     })
 
     expect(api.sendMessage).toHaveBeenCalledTimes(2)
-    expect(api.sendMessage).toHaveBeenNthCalledWith(1, 123, 'hello there', {
+    expect(api.sendMessage).toHaveBeenNthCalledWith(1, 123, 'hello there\n', {
       parse_mode: 'MarkdownV2',
       reply_parameters: { message_id: 456 },
     })

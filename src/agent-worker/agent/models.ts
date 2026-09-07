@@ -4,7 +4,7 @@
  * | role       | primary             | effort | fallback                     | timeout |
  * | ---------- | ------------------- | ------ | ---------------------------- | ------- |
  * | reply gate | openai/gpt-5.6-luna | none   | google/gemini-3.5-flash-lite | 15s     |
- * | chat       | openai/gpt-6-astra  | low    | google/gemini-3.8-flash      | 20s     |
+ * | chat       | openai/gpt-6-astra  | low    | google/gemini-3.8-flash      | 25s     |
  * | web search | openai/gpt-5.6-luna | low    | openai/gpt-5.4-nano          | 24s     |
  *
  * Reasoning effort reaches OpenAI only - the Google provider drops it - so
@@ -66,7 +66,7 @@ export const REPLY_GATE_ROLE: ModelRole = {
 export const CHAT_ROLE: ModelRole = {
   primary: openai('gpt-6-astra', 'low'),
   fallback: google('gemini-3.8-flash'),
-  timeoutMs: 20_000,
+  timeoutMs: 25_000,
 }
 
 /** Web-backed search tools. */

@@ -67,10 +67,23 @@ interface GeneratedOmniVideo extends GeneratedMedia {
 class OmniVideoInputRefusedError extends Error {
   constructor(cause: unknown) {
     super(
-      'Gemini Omni Flash cannot edit or extend an uploaded video on this account: it refuses every video input.',
+      `Google refused the uploaded video input: ${getErrorMessage(cause)}`,
       { cause },
     )
     this.name = 'OmniVideoInputRefusedError'
+  }
+}
+
+class GoogleMediaInteractionError extends Error {
+  constructor(
+    status: number,
+    readonly providerCode: string | undefined,
+    reason: string,
+  ) {
+    super(
+      `Google media generation failed (HTTP ${status}${providerCode ? `, ${providerCode}` : ''}): ${reason}`,
+    )
+    this.name = 'GoogleMediaInteractionError'
   }
 }
 
@@ -313,9 +326,15 @@ async function postGoogleInteraction(
     signal: AbortSignal.timeout(GOOGLE_MEDIA_REQUEST_TIMEOUT_MS),
   })
   if (!response.ok) {
-    const details = (await response.text().catch(() => '')).slice(0, 300)
-    throw new Error(
-      `Google interaction failed: ${response.status} ${response.statusText} ${details}`.trim(),
+    const body = await response.json().catch(() => null)
+    const details = body?.error
+    // Return the provider's reason to the tool loop, without raw response bodies.
+    throw new GoogleMediaInteractionError(
+      response.status,
+      typeof details?.code === 'string' ? details.code.slice(0, 80) : undefined,
+      typeof details?.message === 'string'
+        ? details.message.slice(0, 1000)
+        : response.statusText || 'Request rejected',
     )
   }
 
@@ -333,25 +352,32 @@ async function runGoogleInteraction<T>(
       { error: getErrorMessage(error) },
       'google_media.interaction_failed',
     )
-    // Google's own wording is never forwarded to the chat; only our summary is.
+    // The tool loop lets the model explain provider refusals in the user's language.
     throw (
       explain?.(error) ??
-      new Error('Google media generation failed', { cause: error })
+      (error instanceof GoogleMediaInteractionError
+        ? error
+        : new Error('Google media generation failed', { cause: error }))
     )
   }
 }
 
 /**
- * Omni rejects every request carrying a video input with a 400 blaming the
- * prompt for prohibited content, even when the request has no prompt at all and
- * the video is a test pattern. Video input is simply not enabled, so say that
- * rather than repeating an excuse that sends the user hunting for a bad word.
+ * Older video-input refusals also occurred for neutral test clips. Keep the
+ * still-frame fallback for those, but propagate explicit content moderation
+ * refusals so the model can explain them without silently changing the input.
  */
 function explainOmniFailure(
   error: unknown,
   hasVideoInput: boolean,
 ): Error | undefined {
   const message = getErrorMessage(error)
+  if (
+    error instanceof GoogleMediaInteractionError &&
+    error.providerCode === 'content_blocked'
+  ) {
+    return error
+  }
   if (!hasVideoInput || !message.includes('Input blocked')) return undefined
 
   return new OmniVideoInputRefusedError(error)

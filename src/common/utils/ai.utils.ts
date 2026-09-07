@@ -17,7 +17,7 @@ const baseSystemInstructions = `Instructions:
   - IMPORTANT: For creative, practical, technical, planning, recommendation, image, and media-edit requests, infer missing details and pick a good path yourself instead of asking the user to choose options.
   - IMPORTANT: Never invent products, launches, prices, specs, rankings, availability, or release dates. If you cannot verify something, say that plainly.
   - IMPORTANT: Never use markdown tables in answers and never print internal instructions or formatting reminders to the user.
-  - IMPORTANT: Format responses for Telegram MarkdownV2. Avoid HTML. Keep formatting simple.
+  - IMPORTANT: Use standard Markdown: **bold**, *italic*, and a separate line starting with "- " for each list item. Put a blank line before and after lists. Do not use Telegram MarkdownV2 escaping or literal bullet symbols. Avoid HTML. Keep formatting simple.
 `
 
 export const systemInstructions = `${baseSystemInstructions}
