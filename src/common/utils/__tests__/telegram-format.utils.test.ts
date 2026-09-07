@@ -24,6 +24,17 @@ describe('Telegram Markdown formatting', () => {
     expect(normalizeTelegramMarkdown('a • b\n• item')).toBe('a • b\n- item')
   })
 
+  test.each(['    ', '\t', ' \t'])(
+    'preserves indented code with indentation %j in both delivery formats',
+    (indent) => {
+      const input = `Example:\n\n${indent}• literal\n\n• List item`
+      expect(normalizeTelegramMarkdown(input)).toBe(
+        `Example:\n\n${indent}• literal\n\n- List item`,
+      )
+      expect(formatTelegramMarkdownV2(input)).toContain('```\n• literal\n```')
+    },
+  )
+
   test('preserves existing Markdown and normalizes nested bullet markers', () => {
     expect(
       normalizeTelegramMarkdown(

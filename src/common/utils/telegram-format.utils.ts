@@ -19,7 +19,8 @@ export const normalizeTelegramMarkdown = (input: string): string => {
         }
         return line
       }
-      return fence ? line : line.replace(/^(\s*)[•●▪][ \t]+/, '$1- ')
+      // Four spaces or a tab can introduce code, so leave deeper indentation intact.
+      return fence ? line : line.replace(/^( {0,3})[•●▪][ \t]+/, '$1- ')
     })
     .join('\n')
 }
