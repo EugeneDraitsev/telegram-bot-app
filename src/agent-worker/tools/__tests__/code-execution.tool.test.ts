@@ -59,7 +59,7 @@ describe('codeExecutionTool', () => {
   })
 
   test('budgets the tool for both model attempts', () => {
-    expect(codeExecutionTool.timeoutMs).toBe(41_000)
+    expect(codeExecutionTool.timeoutMs).toBe(51_000)
   })
 
   test('rejects an empty task', async () => {
@@ -80,7 +80,7 @@ describe('codeExecutionTool', () => {
         tools: { code_interpreter: { type: 'provider' } },
         toolChoice: 'auto',
         maxRetries: 0,
-        timeout: 20_000,
+        timeout: 25_000,
         providerOptions: {
           openai: {
             reasoningEffort: 'low',

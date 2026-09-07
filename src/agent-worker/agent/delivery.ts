@@ -5,6 +5,7 @@ import {
   formatTelegramMarkdownV2,
   isTelegramReplyTargetMissingError,
   logger,
+  normalizeTelegramMarkdown,
   saveBotReplyToHistory,
   sendRichMessageWithFallback,
 } from '@tg-bot/common'
@@ -289,7 +290,7 @@ async function sendRichResponse(
 }
 
 async function sendText(params: DeliveryParams & { text: string }) {
-  const text = params.text.trim()
+  const text = normalizeTelegramMarkdown(params.text).trim()
   if (!text) {
     return
   }

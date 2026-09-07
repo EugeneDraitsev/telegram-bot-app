@@ -198,7 +198,9 @@ describe('Google media through the AI SDK', () => {
         aspectRatio: '9:16',
         durationSeconds: 8,
       }),
-    ).rejects.toThrow('Google media generation failed')
+    ).rejects.toThrow(
+      'Google media generation failed (HTTP 400): unsupported region',
+    )
   })
 
   test('strictly validates explicitly selected Omni media', () => {
@@ -446,7 +448,7 @@ describe('Google media through the AI SDK', () => {
     )
   })
 
-  test('names the real reason when Omni refuses a video input', async () => {
+  test('preserves the provider reason when Omni refuses a video input', async () => {
     // Verified against the live API: any video input is refused this way, even
     // a 1-second test pattern sent with no prompt at all.
     const inputBlocked = new Response(
@@ -477,15 +479,90 @@ describe('Google media through the AI SDK', () => {
     mockFetch.mockResolvedValue(inputBlocked.clone())
     await expect(
       generateOmniVideo({ ...request, media: [video] }),
-    ).rejects.toThrow('cannot edit or extend an uploaded video on this account')
+    ).rejects.toThrow(
+      'Google refused the uploaded video input: Google media generation failed (HTTP 400): Input blocked:',
+    )
 
-    // Without a video input the same 400 really is about the request content,
-    // so the generic message stands.
+    // The same provider reason is also available for image input.
     mockFetch.mockResolvedValue(inputBlocked.clone())
     await expect(
       generateOmniVideo({ ...request, media: [image] }),
-    ).rejects.toThrow('Google media generation failed')
+    ).rejects.toThrow('The prompt contains sensitive words')
   })
+
+  test.each(['image', 'video'] as const)(
+    'returns real-person moderation details for %s without a frame retry',
+    async (mediaType) => {
+      const reason =
+        "Input blocked: Sorry, we can't create videos with real people's names or likenesses."
+      mockFetch.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: { code: 'content_blocked', message: reason },
+          }),
+          { status: 400 },
+        ),
+      )
+      const trimmer = jest.spyOn(LambdaClient.prototype, 'send')
+      try {
+        await expect(
+          generateOmniVideo({
+            prompt: 'Animate the reference',
+            aspectRatio: '16:9',
+            durationSeconds: 8,
+            media: [
+              {
+                buffer: Buffer.from('reference'),
+                mediaType,
+                mimeType: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+                fileId: 'reference-file',
+              },
+            ],
+          }),
+        ).rejects.toThrow(
+          `Google media generation failed (HTTP 400, content_blocked): ${reason}`,
+        )
+        expect(mockFetch).toHaveBeenCalledTimes(1)
+        expect(trimmer).not.toHaveBeenCalled()
+      } finally {
+        trimmer.mockRestore()
+      }
+    },
+  )
+
+  test.each([
+    [
+      429,
+      'Too Many Requests',
+      JSON.stringify({ error: { message: 'Quota exceeded', code: 429 } }),
+      'Quota exceeded',
+    ],
+    [
+      503,
+      'Service Unavailable',
+      '<html>internal proxy details</html>',
+      'Service Unavailable',
+    ],
+  ])(
+    'preserves HTTP %s without exposing a raw error page',
+    async (status, statusText, body, reason) => {
+      mockFetch.mockResolvedValue(
+        new Response(body as string, {
+          status: status as number,
+          statusText: statusText as string,
+        }),
+      )
+      await expect(
+        generateOmniVideo({
+          prompt: 'Ocean',
+          aspectRatio: '16:9',
+          durationSeconds: 5,
+        }),
+      ).rejects.toThrow(
+        `Google media generation failed (HTTP ${status}): ${reason}`,
+      )
+    },
+  )
 
   test('rebuilds from stills when Omni refuses the video input', async () => {
     const inputBlocked = () =>

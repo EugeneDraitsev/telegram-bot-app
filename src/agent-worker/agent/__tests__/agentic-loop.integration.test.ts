@@ -1,7 +1,9 @@
 import type { Message } from 'grammy/types'
 
 import * as common from '@tg-bot/common'
+import * as googleMedia from '../../services/google-media'
 import * as agentTools from '../../tools'
+import { generateVideoTool } from '../../tools/omni-video.tool'
 import type { AgentTool, TelegramApi } from '../../types'
 import { runAgenticLoop } from '../agentic-loop'
 import * as delivery from '../delivery'
@@ -400,6 +402,68 @@ describe('runAgenticLoop integration', () => {
         ]),
       }),
     )
+  })
+
+  test('lets the model explain a failed terminal video generation', async () => {
+    const reason =
+      "Google media generation failed (HTTP 400, content_blocked): Input blocked: real people's names or likenesses"
+    jest
+      .spyOn(googleMedia, 'generateOmniVideo')
+      .mockRejectedValue(new Error(reason))
+    jest
+      .spyOn(agentTools, 'getAgentTools')
+      .mockResolvedValue([generateVideoTool])
+    const explanation =
+      'Google отклонил видео из-за изображения реального человека.'
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            {
+              toolCallId: 'video-call',
+              toolName: 'generate_video_with_omni',
+              input: { prompt: 'Animate the reference', mediaIds: [] },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(createModelResult({ text: explanation }))
+
+    await runAgenticLoop(
+      createMessage('Animate a video'),
+      createApi(),
+      undefined,
+      undefined,
+      {
+        bypassReplyGate: true,
+      },
+    )
+
+    expect(modelSpy).toHaveBeenCalledTimes(2)
+    expect(modelSpy.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: 'tool',
+            content: [
+              expect.objectContaining({
+                output: {
+                  type: 'error-text',
+                  value: `Error generating video: ${reason}`,
+                },
+              }),
+            ],
+          }),
+        ]),
+      }),
+    )
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [{ type: 'text', text: explanation }],
+      }),
+    )
+    expect(googleMedia.generateOmniVideo).toHaveBeenCalledTimes(1)
   })
 
   test('defers content tools until data tools finish and stops after terminal media', async () => {
