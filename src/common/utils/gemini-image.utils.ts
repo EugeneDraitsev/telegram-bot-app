@@ -1,10 +1,13 @@
 import { generateImage } from 'ai'
 
-import {
-  type AiModelConfig,
-  GEMINI_FLASH_LITE_IMAGE_MODEL,
-} from './ai-model.utils'
+import type { AiModelConfig } from './ai-model.utils'
 import { getAiSdkGoogleProvider } from './ai-sdk.utils'
+
+/** Shared by agent images and the currency background. */
+export const GEMINI_FLASH_LITE_IMAGE_MODEL = {
+  provider: 'google',
+  model: 'gemini-3.1-flash-lite-image',
+} as const satisfies AiModelConfig
 
 export type GeminiImageAspectRatio =
   | '1:1'
@@ -20,25 +23,16 @@ export type GeminiImageAspectRatio =
 
 type GenerateGeminiImageOptions = {
   readonly aspectRatio?: GeminiImageAspectRatio
-  readonly model?: AiModelConfig
   readonly timeoutMs?: number
 }
 
 export async function generateGeminiImage(
   prompt: string,
   inputImages?: Buffer[],
-  {
-    aspectRatio,
-    model = GEMINI_FLASH_LITE_IMAGE_MODEL,
-    timeoutMs = 60_000,
-  }: GenerateGeminiImageOptions = {},
-): Promise<{ image?: Buffer; text?: string }> {
-  if (model.provider !== 'google') {
-    throw new Error('Gemini image generation requires a Google model')
-  }
-
+  { aspectRatio, timeoutMs = 60_000 }: GenerateGeminiImageOptions = {},
+): Promise<{ image: Buffer }> {
   const response = await generateImage({
-    model: getAiSdkGoogleProvider().image(model.model),
+    model: getAiSdkGoogleProvider().image(GEMINI_FLASH_LITE_IMAGE_MODEL.model),
     prompt: inputImages?.length
       ? { text: prompt, images: inputImages }
       : prompt,

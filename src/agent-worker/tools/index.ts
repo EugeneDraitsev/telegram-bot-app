@@ -42,6 +42,7 @@ export {
   queueModelInspectionImages,
   registerToolMediaBuffers,
   requireToolContext,
+  runWithToolCallContext,
   runWithToolContext,
   setToolHistoryMessages,
   takePendingModelInspectionImages,

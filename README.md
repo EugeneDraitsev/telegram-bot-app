@@ -31,6 +31,7 @@ How one Telegram update becomes a reply:
   </picture>
 </a>
 
+
 ### Statistics and live UI
 
 What the activity worker writes and how the stats page stays live:
@@ -111,6 +112,26 @@ The ffmpeg layer is built by `bun run prepare:ffmpeg-layer`, which `build` and
 Delivery uses Telegram's native media methods with document fallback. Google
 media calls use the Vercel AI SDK and `GEMINI_API_KEY`
 (`GOOGLE_GENERATIVE_AI_API_KEY` also works).
+
+### Model selection
+
+Language models, reasoning effort and fallbacks are configured in
+`src/agent-worker/agent/models.ts`. Media models belong to their services;
+the shared Gemini image model is defined in `src/common/utils/gemini-image.utils.ts`.
+
+Image routing and quality are configured in
+`src/agent-worker/services/image-generation.ts`:
+
+| Request | Model | Quality | Fallback |
+| --- | --- | --- | --- |
+| Ordinary image request | Gemini 3.1 Flash Lite Image | Provider default | GPT Image 2.5 Flare (low) |
+| `/e`, `/ee`, `/gp`, `/de` | GPT Image 2.5 Sunburst | medium | None |
+| `/ge` | Gemini 3.1 Flash Lite Image | Provider default | None |
+
+Each image model is called once. Ordinary requests reserve 55 seconds for
+each provider; explicit commands allow 110 seconds for the selected model.
+The tool has a 120-second total budget. `tool.model_call` records each actual
+model, with `fallbackFrom` and `toolCallId` to connect related calls.
 
 ## Local development
 

@@ -1,6 +1,10 @@
 import sharp from 'sharp'
 
-import { buildMetricsReport, type MetricEntry } from '@tg-bot/common'
+import {
+  buildMetricsReport,
+  formatMetricsReport,
+  type MetricEntry,
+} from '@tg-bot/common'
 import { getMetricsDashboardSvg } from '../metrics-dashboard.component'
 
 const NOW = Date.UTC(2026, 6, 30, 12)
@@ -20,6 +24,37 @@ function metric(
 }
 
 describe('getMetricsDashboardSvg', () => {
+  test('keeps every model, including a rarely used Sunburst, in the report and image', async () => {
+    const models = [
+      ...Array.from({ length: 10 }, (_, index) => `openai/test-model-${index}`),
+      'google/gemini-3.1-flash-lite-image',
+      'openai/gpt-image-2.5-sunburst',
+    ]
+    const report = buildMetricsReport(
+      models.flatMap((model, index) =>
+        Array.from({ length: models.length - index }, () =>
+          metric({ type: 'model_call', name: 'image_generation', model }),
+        ),
+      ),
+      24,
+      NOW,
+    )
+    const svg = getMetricsDashboardSvg(report)
+    const png = await sharp(Buffer.from(svg)).png().toBuffer()
+    const metadata = await sharp(png).metadata()
+
+    expect(report.models.map(({ label }) => label)).toEqual(models)
+    for (const model of models) expect(svg).toContain(model)
+    expect(formatMetricsReport(report)).toContain('gpt-image-2.5-sunburst')
+    expect(metadata.width).toBe(1200)
+    expect(metadata.height).toBeGreaterThan(980)
+    // The final row and footer must both stay inside the expanded canvas.
+    const textPositions = [...svg.matchAll(/<text\b[^>]*\by="([\d.]+)"/g)].map(
+      (match) => Number(match[1]),
+    )
+    expect(Math.max(...textPositions)).toBeLessThan(metadata.height ?? 0)
+  })
+
   test('renders a readable 1200x980 PNG dashboard', async () => {
     const report = buildMetricsReport(
       [
