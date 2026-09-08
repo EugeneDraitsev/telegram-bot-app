@@ -234,6 +234,7 @@ describe('runAgenticLoop integration', () => {
   })
 
   test('executes a tool and feeds its result into the next model round', async () => {
+    const log = jest.spyOn(common.logger, 'info').mockImplementation(() => {})
     const execute = jest.fn().mockResolvedValue('lookup result: 42')
     const lookupTool: AgentTool = {
       declaration: {
@@ -265,6 +266,16 @@ describe('runAgenticLoop integration', () => {
     })
 
     expect(execute).toHaveBeenCalledWith({ query: 'value' })
+    for (const event of ['tool.call', 'tool.done']) {
+      expect(log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tool: 'lookup',
+          toolCallId: 'call-1',
+          model: CHAT_ROLE.primary.label,
+        }),
+        event,
+      )
+    }
     expect(modelSpy).toHaveBeenCalledTimes(2)
     expect(modelSpy.mock.calls[1]?.[0]).toEqual(
       expect.objectContaining({

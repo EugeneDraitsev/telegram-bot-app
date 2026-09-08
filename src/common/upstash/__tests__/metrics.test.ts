@@ -178,7 +178,7 @@ describe('buildMetricsReport', () => {
           source: 'command',
           command: 'e',
           name: 'image_generation',
-          model: 'openai/gpt-image-2',
+          model: 'openai/gpt-image-2.5-flare',
           chatId: 1,
           durationMs: 9000,
           success: true,
@@ -207,7 +207,7 @@ describe('buildMetricsReport', () => {
     expect(report.commandCalls).toBe(2)
     expect(report.commands[0]?.label).toBe('/e')
     expect(report.models.map(({ label }) => label)).toEqual([
-      'openai/gpt-image-2',
+      'openai/gpt-image-2.5-flare',
     ])
   })
 })

@@ -304,6 +304,7 @@ function getOutcomeCounts(entries: MetricEntry[]): MetricOutcomeCounts {
 function summarizeGroups(
   entries: MetricEntry[],
   getLabel: (entry: MetricEntry) => string | undefined,
+  limit = MAX_REPORT_GROUPS,
 ): MetricGroupSummary[] {
   const groups = new Map<string, MetricEntry[]>()
   for (const entry of entries) {
@@ -323,7 +324,7 @@ function summarizeGroups(
       (left, right) =>
         right.count - left.count || right.medianMs - left.medianMs,
     )
-    .slice(0, MAX_REPORT_GROUPS)
+    .slice(0, limit)
 }
 
 function getTimeline(
@@ -387,7 +388,7 @@ export function buildMetricsReport(
     commandCalls: inRange.filter((entry) => entry.source === 'command').length,
     modelStages: summarizeGroups(modelEntries, (entry) => entry.name),
     tools: summarizeGroups(toolEntries, (entry) => entry.name),
-    models: summarizeGroups(modelEntries, (entry) => entry.model),
+    models: summarizeGroups(modelEntries, (entry) => entry.model, Infinity),
     commands: summarizeGroups(
       inRange.filter((entry) => entry.source === 'command'),
       (entry) => (entry.command ? `/${entry.command}` : undefined),

@@ -6,6 +6,7 @@ import {
   getCollectedResponses,
   getToolMetricAttribution,
   type RegisteredToolMedia,
+  runWithToolCallContext,
   takePendingModelInspectionImages,
 } from '../tools'
 import type { AgentTool, AgentToolExecutionPolicy } from '../types'
@@ -88,6 +89,7 @@ async function executeToolCall(
   toolCall: ExecutableFunctionCall,
   toolByName: Map<string, AgentTool>,
   chatId: number,
+  model: string,
 ): Promise<ToolExecutionResult> {
   const name = toolCall.name
   const tool = toolByName.get(name)
@@ -101,25 +103,29 @@ async function executeToolCall(
 
   const attribution = getToolMetricAttribution()
   const args = toolCall.args
-  logger.info(
-    { chatId, tool: name, ...attribution, payload: args },
-    'tool.call',
-  )
+  const logContext = {
+    chatId,
+    tool: name,
+    toolCallId: toolCall.toolCallId,
+    model,
+    ...attribution,
+  }
+  logger.info({ ...logContext, payload: args }, 'tool.call')
 
   const toolStart = Date.now()
   try {
     const timeout = tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS
     const result = await withTimeout(
-      tool.execute(args),
+      runWithToolCallContext(
+        { tool: name, toolCallId: toolCall.toolCallId, callerModel: model },
+        () => tool.execute(args),
+      ),
       timeout,
       new ToolCallTimeoutError(timeout),
     )
 
     const durationMs = Date.now() - toolStart
-    logger.info(
-      { chatId, tool: name, ...attribution, durationMs, result },
-      'tool.done',
-    )
+    logger.info({ ...logContext, durationMs, result }, 'tool.done')
     await recordMetric({
       type: 'tool_call',
       ...attribution,
@@ -137,9 +143,7 @@ async function executeToolCall(
     const status = error instanceof ToolCallTimeoutError ? 'timeout' : 'error'
     logger.error(
       {
-        chatId,
-        tool: name,
-        ...attribution,
+        ...logContext,
         durationMs,
         error: errorMsg,
         status,
@@ -164,9 +168,10 @@ async function executeToolCalls(
   calls: ExecutableFunctionCall[],
   toolByName: Map<string, AgentTool>,
   chatId: number,
+  model: string,
 ): Promise<Array<{ call: ExecutableFunctionCall } & ToolExecutionResult>> {
   const run = (call: ExecutableFunctionCall) =>
-    executeToolCall(call, toolByName, chatId).then((result) => ({
+    executeToolCall(call, toolByName, chatId, model).then((result) => ({
       call,
       ...result,
     }))
@@ -347,6 +352,7 @@ export async function runToolLoop(
       callsToExecute,
       toolByName,
       chatId,
+      activeChoice.label,
     )
     toolResults.push(
       ...executionResults.map(({ name, result, status }) => ({

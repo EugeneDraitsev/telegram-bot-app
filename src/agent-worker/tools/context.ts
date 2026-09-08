@@ -3,6 +3,7 @@ import type { Message } from 'grammy/types'
 
 import {
   type ChatAdminApi,
+  logger,
   type MediaBuffer,
   type MediaResolverApi,
   type MetricSource,
@@ -31,6 +32,21 @@ interface ToolContext {
 }
 
 const contextStorage = new AsyncLocalStorage<ToolContext>()
+
+interface ToolCallContext {
+  tool: string
+  toolCallId: string
+  callerModel: string
+}
+
+const toolCallStorage = new AsyncLocalStorage<ToolCallContext>()
+
+export function runWithToolCallContext<T>(
+  context: ToolCallContext,
+  callback: () => Promise<T>,
+): Promise<T> {
+  return toolCallStorage.run(context, callback)
+}
 
 export function requireToolContext(): ToolContext {
   const context = contextStorage.getStore()
@@ -136,6 +152,18 @@ export async function trackToolModelCall<T>(
 ): Promise<T> {
   const { message } = requireToolContext()
   const { attribution, ...metricOptions } = options
+  logger.info(
+    {
+      chatId: message.chat.id,
+      messageId: message.message_id,
+      ...toolCallStorage.getStore(),
+      ...(attribution ?? getToolMetricAttribution()),
+      name: options.name,
+      model: options.model,
+      ...(options.fallbackFrom ? { fallbackFrom: options.fallbackFrom } : {}),
+    },
+    'tool.model_call',
+  )
   return timedCall(
     {
       type: 'model_call',

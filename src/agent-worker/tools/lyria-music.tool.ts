@@ -24,17 +24,6 @@ import { getMediaCaption, getTrackTitle } from './media-text'
 // whose result the tool timeout would discard anyway.
 const MIN_LYRIA_RETRY_MS = 45_000
 
-type LyriaMode = 'clip' | 'pro'
-
-function getLyriaMode(commandName: string | undefined): LyriaMode {
-  if (commandName === 'lyriapro') return 'pro'
-  return 'clip'
-}
-
-function getLyriaModel(mode: LyriaMode): LyriaModel {
-  return mode === 'pro' ? LYRIA_PRO_MODEL : LYRIA_CLIP_MODEL
-}
-
 /** Each attempt is its own metric, so a fallback is never billed to the id
  * that refused the request. */
 function generateTrack(
@@ -99,8 +88,8 @@ export const generateMusicTool: AgentTool = {
       const title = getTrackTitle(args.title)
       const caption = getMediaCaption(args.caption)
 
-      const mode = getLyriaMode(commandName)
-      const model = getLyriaModel(mode)
+      const isPro = commandName === 'lyriapro'
+      const model = isPro ? LYRIA_PRO_MODEL : LYRIA_CLIP_MODEL
       const mediaSelection = selectMediaForTool(mediaBuffers, args.mediaIds, [
         'image',
       ])
@@ -134,10 +123,10 @@ export const generateMusicTool: AgentTool = {
         type: 'audio',
         buffer: result.buffer,
         mimeType: result.mimeType,
-        fileName: mode === 'pro' ? 'lyria-song.mp3' : 'lyria-clip.mp3',
+        fileName: isPro ? 'lyria-song.mp3' : 'lyria-clip.mp3',
         title,
         caption,
-        delivery: mode === 'pro' ? 'audio' : 'voice',
+        delivery: isPro ? 'audio' : 'voice',
       })
       if (args.includeLyrics === true && result.text) {
         addResponse({ type: 'text', text: result.text.slice(0, 3_800) })

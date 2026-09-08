@@ -4,6 +4,8 @@ import type { MetricGroupSummary, MetricsReport } from '@tg-bot/common'
 
 const WIDTH = 1200
 const HEIGHT = 980
+const MODEL_ROWS_Y = 614
+const MODEL_ROW_HEIGHT = 64
 const PADDING = 56
 const CONTENT_WIDTH = WIDTH - PADDING * 2
 const CARD_GAP = 18
@@ -319,7 +321,7 @@ function ModelRows({ report }: { report: MetricsReport }) {
   const x = 626
   const y = 580
   const width = WIDTH - PADDING - x
-  const rows = report.models.slice(0, 6)
+  const rows = report.models
 
   return (
     <g>
@@ -336,7 +338,7 @@ function ModelRows({ report }: { report: MetricsReport }) {
         health · calls · p50
       </text>
       {rows.map((row, index) => {
-        const rowY = y + 34 + index * 55
+        const rowY = MODEL_ROWS_Y + index * MODEL_ROW_HEIGHT
         const percent = successPercent(row)
         const healthColor =
           percent >= 95
@@ -349,11 +351,11 @@ function ModelRows({ report }: { report: MetricsReport }) {
           <g key={row.label}>
             <circle cx={x + 7} cy={rowY + 12} r={6} fill={healthColor} />
             <text x={x + 24} y={rowY + 18} fill={COLORS.text} fontSize={16}>
-              {truncateLabel(row.label, 29)}
+              {row.label}
             </text>
             <text
               x={x + width}
-              y={rowY + 18}
+              y={rowY + 38}
               fill={COLORS.muted}
               fontSize={15}
               textAnchor="end"
@@ -362,7 +364,7 @@ function ModelRows({ report }: { report: MetricsReport }) {
             </text>
             <rect
               x={x + 24}
-              y={rowY + 34}
+              y={rowY + 47}
               width={width - 24}
               height={5}
               rx={2.5}
@@ -370,7 +372,7 @@ function ModelRows({ report }: { report: MetricsReport }) {
             />
             <rect
               x={x + 24}
-              y={rowY + 34}
+              y={rowY + 47}
               width={((width - 24) * percent) / 100}
               height={5}
               rx={2.5}
@@ -386,12 +388,16 @@ function ModelRows({ report }: { report: MetricsReport }) {
 export function MetricsDashboard({ report }: { report: MetricsReport }) {
   const success = Math.round(report.successRate * 100)
   const incidents = report.outcomes.timeout + report.outcomes.error
+  const height = Math.max(
+    HEIGHT,
+    MODEL_ROWS_Y + report.models.length * MODEL_ROW_HEIGHT + 56,
+  )
 
   return (
     <svg
       width={WIDTH}
-      height={HEIGHT}
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      height={height}
+      viewBox={`0 0 ${WIDTH} ${height}`}
       xmlns="http://www.w3.org/2000/svg"
       fontFamily="Roboto, Arial, sans-serif"
     >
@@ -410,8 +416,8 @@ export function MetricsDashboard({ report }: { report: MetricsReport }) {
           <stop offset="1" stopColor={COLORS.blue} stopOpacity={0} />
         </radialGradient>
       </defs>
-      <rect width={WIDTH} height={HEIGHT} fill="url(#metrics-bg)" />
-      <rect width={WIDTH} height={HEIGHT} fill="url(#metrics-glow)" />
+      <rect width={WIDTH} height={height} fill="url(#metrics-bg)" />
+      <rect width={WIDTH} height={height} fill="url(#metrics-glow)" />
 
       <text
         x={PADDING}
@@ -482,17 +488,17 @@ export function MetricsDashboard({ report }: { report: MetricsReport }) {
 
       <line
         x1={PADDING}
-        y1={932}
+        y1={height - 48}
         x2={WIDTH - PADDING}
-        y2={932}
+        y2={height - 48}
         stroke={COLORS.border}
       />
-      <text x={PADDING} y={960} fill={COLORS.muted} fontSize={15}>
+      <text x={PADDING} y={height - 20} fill={COLORS.muted} fontSize={15}>
         Agentic {report.agenticCalls} ops · Commands {report.commandCalls} ops
       </text>
       <text
         x={WIDTH - PADDING}
-        y={960}
+        y={height - 20}
         fill={COLORS.muted}
         fontSize={15}
         textAnchor="end"

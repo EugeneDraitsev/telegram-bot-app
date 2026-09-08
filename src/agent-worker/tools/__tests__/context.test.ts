@@ -1,13 +1,16 @@
 import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
+import { logger } from '@tg-bot/common'
 import {
   claimGeneratedMedia,
   queueModelInspectionImages,
   registerToolMediaBuffers,
   requireToolContext,
+  runWithToolCallContext,
   runWithToolContext,
   takePendingModelInspectionImages,
+  trackToolModelCall,
   withToolMediaBuffers,
 } from '../context'
 
@@ -26,6 +29,52 @@ function image(label: string): MediaBuffer {
 }
 
 describe('tool context', () => {
+  test('keeps model-call logs isolated for parallel tools and their fallbacks', async () => {
+    const log = jest.spyOn(logger, 'info').mockImplementation(() => {})
+    try {
+      await runWithToolContext(message, undefined, () =>
+        Promise.all(
+          ['first', 'second'].map((tool) =>
+            runWithToolCallContext(
+              { tool, toolCallId: `${tool}-id`, callerModel: 'caller' },
+              async () => {
+                await Promise.resolve()
+                await trackToolModelCall(
+                  { name: tool, model: `${tool}-primary` },
+                  async () => 'primary',
+                )
+                await trackToolModelCall(
+                  {
+                    name: tool,
+                    model: `${tool}-fallback`,
+                    fallbackFrom: `${tool}-primary`,
+                  },
+                  async () => 'fallback',
+                )
+              },
+            ),
+          ),
+        ),
+      )
+      for (const tool of ['first', 'second']) {
+        expect(log).toHaveBeenCalledWith(
+          expect.objectContaining({
+            chatId: 123,
+            messageId: 55,
+            tool,
+            toolCallId: `${tool}-id`,
+            callerModel: 'caller',
+            model: `${tool}-fallback`,
+            fallbackFrom: `${tool}-primary`,
+          }),
+          'tool.model_call',
+        )
+      }
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   test('allows only one generated media result per context', async () => {
     await runWithToolContext(message, undefined, async () => {
       claimGeneratedMedia()

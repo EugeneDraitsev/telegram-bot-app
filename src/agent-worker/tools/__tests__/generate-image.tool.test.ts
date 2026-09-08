@@ -1,25 +1,11 @@
 import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
+import * as imageService from '../../services/image-generation'
+import { getCollectedResponses, runWithToolContext } from '../context'
+import { generateImageTool } from '../generate-image.tool'
 
-const mockGenerateImage = jest.fn()
-const mockGenerateImageOpenAi = jest.fn()
-
-jest.mock('../../services', () => ({
-  generateImage: (...args: unknown[]) => mockGenerateImage(...args),
-  generateImageOpenAi: (...args: unknown[]) => mockGenerateImageOpenAi(...args),
-}))
-
-import { runWithToolContext } from '../context'
-import {
-  generateImageTool,
-  getImageGenerationRoute,
-} from '../generate-image.tool'
-
-const message = {
-  chat: { id: 123 },
-  message_id: 55,
-} as Message
+const message = { chat: { id: 123 }, message_id: 55 } as Message
 
 function image(
   label: string,
@@ -37,11 +23,12 @@ function image(
 
 describe('generateImageTool', () => {
   beforeEach(() => {
-    mockGenerateImage.mockReset()
-    mockGenerateImage.mockResolvedValue({ image: Buffer.from('out') })
-    mockGenerateImageOpenAi.mockReset()
-    mockGenerateImageOpenAi.mockResolvedValue({ image: Buffer.from('out') })
+    jest
+      .spyOn(imageService, 'generateAgentImage')
+      .mockResolvedValue(Buffer.from('out'))
   })
+
+  afterEach(() => jest.restoreAllMocks())
 
   test('uses direct reply/current media before history media for edits', async () => {
     await runWithToolContext(
@@ -49,23 +36,19 @@ describe('generateImageTool', () => {
       [
         image('Reply message image (message_id=41)', 'reply-image'),
         image(
-          'Context image from recent chat history. Related message text: old screenshot',
+          'Context image from recent chat history: old screenshot',
           'history-image',
           'history',
         ),
       ],
-      async () => {
-        await generateImageTool.execute({
-          prompt: 'make it brighter',
-        })
-      },
+      () => generateImageTool.execute({ prompt: 'make it brighter' }),
     )
 
-    expect(mockGenerateImage).toHaveBeenCalledWith(
+    expect(imageService.generateAgentImage).toHaveBeenCalledWith(
       expect.stringContaining('Reply message image (message_id=41)'),
       [Buffer.from('reply-image')],
+      undefined,
     )
-    expect(mockGenerateImage.mock.calls[0]?.[0]).not.toContain('old screenshot')
   })
 
   test('does not use history images by default when there is no direct media', async () => {
@@ -73,28 +56,27 @@ describe('generateImageTool', () => {
       message,
       [
         image(
-          'Context image from recent chat history. Related message text: older image',
+          'Context image from recent chat history: older image',
           'older-history',
           'history',
         ),
         image(
-          'Context image from recent chat history. Related message text: newest image',
+          'Context image from recent chat history: newest image',
           'newest-history',
           'history',
         ),
       ],
-      async () => {
-        await generateImageTool.execute({
+      () =>
+        generateImageTool.execute({
           prompt: 'turn the last photo into a poster',
-        })
-      },
+        }),
     )
 
-    expect(mockGenerateImage).toHaveBeenCalledWith(
-      expect.not.stringContaining('newest image'),
+    expect(imageService.generateAgentImage).toHaveBeenCalledWith(
+      'turn the last photo into a poster',
+      undefined,
       undefined,
     )
-    expect(mockGenerateImage.mock.calls[0]?.[0]).not.toContain('older image')
   })
 
   test('uses newest history image only when explicitly requested', async () => {
@@ -102,157 +84,50 @@ describe('generateImageTool', () => {
       message,
       [
         image(
-          'Context image from recent chat history. Related message text: older image',
+          'Context image from recent chat history: older image',
           'older-history',
           'history',
         ),
         image(
-          'Context image from recent chat history. Related message text: newest image',
+          'Context image from recent chat history: newest image',
           'newest-history',
           'history',
         ),
       ],
-      async () => {
-        await generateImageTool.execute({
+      () =>
+        generateImageTool.execute({
           prompt: 'turn the last photo into a poster',
           mediaIds: [2],
-        })
-      },
+        }),
     )
 
-    expect(mockGenerateImage).toHaveBeenCalledWith(
+    expect(imageService.generateAgentImage).toHaveBeenCalledWith(
       expect.stringContaining('newest image'),
       [Buffer.from('newest-history')],
-    )
-    expect(mockGenerateImage.mock.calls[0]?.[0]).not.toContain('older image')
-  })
-
-  test('routes agentic image generation through Gemini by default', async () => {
-    await runWithToolContext(message, undefined, () =>
-      generateImageTool.execute({
-        prompt: 'draw a fox',
-        mediaIds: [],
-      }),
-    )
-
-    expect(mockGenerateImage).toHaveBeenCalledWith(
-      expect.stringContaining('draw a fox'),
-      undefined,
-    )
-    expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
-  })
-
-  test('routes /ge image generation through Gemini', async () => {
-    await runWithToolContext(
-      message,
-      undefined,
-      () =>
-        generateImageTool.execute({
-          prompt: 'draw a fox',
-          mediaIds: [],
-        }),
-      undefined,
-      'ge',
-    )
-
-    expect(mockGenerateImage).toHaveBeenCalledWith(
-      expect.stringContaining('draw a fox'),
-      undefined,
-    )
-    expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
-  })
-
-  test('does not fall back to GPT Image for /ge', async () => {
-    mockGenerateImage.mockRejectedValueOnce(new Error('banana unavailable'))
-
-    const result = runWithToolContext(
-      message,
-      undefined,
-      () =>
-        generateImageTool.execute({
-          prompt: 'draw a fox',
-          mediaIds: [],
-        }),
-      undefined,
-      'ge',
-    )
-
-    expect(mockGenerateImageOpenAi).not.toHaveBeenCalled()
-    await expect(result).rejects.toThrow('banana unavailable')
-  })
-
-  test('falls back to GPT Image when Gemini fails', async () => {
-    mockGenerateImage.mockRejectedValueOnce(new Error('banana unavailable'))
-
-    const result = await runWithToolContext(message, undefined, () =>
-      generateImageTool.execute({
-        prompt: 'draw a fox',
-        mediaIds: [],
-      }),
-    )
-
-    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
-      expect.stringContaining('draw a fox'),
-      undefined,
-    )
-    expect(result).toContain('Successfully generated image')
-  })
-
-  test('falls back to GPT Image when Gemini returns no image', async () => {
-    mockGenerateImage.mockResolvedValueOnce({})
-
-    await runWithToolContext(message, undefined, () =>
-      generateImageTool.execute({
-        prompt: 'draw a fox',
-        mediaIds: [],
-      }),
-    )
-
-    expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
-      expect.stringContaining('draw a fox'),
       undefined,
     )
   })
 
-  test.each(['e', 'ee', 'gp', 'de'])(
-    'keeps /%s on GPT Image',
-    async (commandName) => {
-      await runWithToolContext(
+  test.each([undefined, 'e', 'ee', 'gp', 'de', 'ge'])(
+    'passes command %s to the image service and collects its result',
+    async (command) => {
+      const responses = await runWithToolContext(
         message,
         undefined,
-        () =>
-          generateImageTool.execute({
-            prompt: 'draw a fox',
-            mediaIds: [],
-          }),
+        async () => {
+          await generateImageTool.execute({ prompt: 'draw a fox' })
+          return getCollectedResponses()
+        },
         undefined,
-        commandName,
+        command,
       )
 
-      expect(mockGenerateImageOpenAi).toHaveBeenCalledWith(
-        expect.stringContaining('draw a fox'),
+      expect(imageService.generateAgentImage).toHaveBeenCalledWith(
+        'draw a fox',
         undefined,
+        command,
       )
-      expect(mockGenerateImage).not.toHaveBeenCalled()
+      expect(responses).toEqual([{ type: 'image', buffer: Buffer.from('out') }])
     },
   )
-
-  test('keeps provider routing and metric labels in one definition', () => {
-    expect(getImageGenerationRoute()).toEqual([
-      {
-        provider: 'gemini',
-        model: 'google/gemini-3.1-flash-lite-image',
-      },
-      { provider: 'openai', model: 'openai/gpt-image-2' },
-    ])
-    expect(getImageGenerationRoute('ge')).toEqual([
-      {
-        provider: 'gemini',
-        model: 'google/gemini-3.1-flash-lite-image',
-      },
-    ])
-    expect(getImageGenerationRoute('e')).toEqual([
-      { provider: 'openai', model: 'openai/gpt-image-2' },
-    ])
-  })
 })
