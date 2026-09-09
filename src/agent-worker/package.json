@@ -6,8 +6,8 @@
   "dependencies": {
     "@giphy/js-fetch-api": "^5.8.0",
     "@tg-bot/common": "workspace:*",
-    "@upstash/redis": "^1.38.3",
-    "ai": "^7.0.92",
+    "@upstash/redis": "^1.38.4",
+    "ai": "^7.0.94",
     "grammy": "^1.46.0",
     "zod": "^4.5.4"
   }

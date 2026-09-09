@@ -9,7 +9,7 @@
   "license": "MIT",
   "dependencies": {
     "@tg-bot/common": "workspace:*",
-    "@upstash/redis": "^1.38.3",
+    "@upstash/redis": "^1.38.4",
     "grammy": "^1.46.0"
   }
 }
