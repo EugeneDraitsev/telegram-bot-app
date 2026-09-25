@@ -24,7 +24,7 @@ describe('OpenAI audio wire request', () => {
     })
 
     await expect(
-      provider.responses('gpt-5.6-luna').doGenerate({
+      provider.responses('test-model').doGenerate({
         prompt: [
           {
             role: 'user',

@@ -1,10 +1,7 @@
 /**
- * Tool for finding GIFs via Giphy SDK.
+ * Tool for finding GIFs via the Giphy API.
  * Requires GIPHY_API_KEY environment variable.
  */
-
-import { GiphyFetch } from '@giphy/js-fetch-api'
-import type { IGif } from '@giphy/js-types'
 
 import { getErrorMessage, sample } from '@tg-bot/common'
 import type { AgentTool } from '../types'
@@ -12,20 +9,38 @@ import { addResponse, requireToolContext } from './context'
 
 const GIPHY_RESULTS_LIMIT = 20
 
-let giphyClient: GiphyFetch | null = null
+type GiphyImage = { url?: string; mp4?: string }
 
-export function getGiphyClient(): GiphyFetch {
+export type GiphyGif = {
+  images?: Partial<
+    Record<
+      'original_mp4' | 'original' | 'downsized' | 'fixed_height',
+      GiphyImage
+    >
+  >
+}
+
+export async function fetchGiphyGifs(
+  path: string,
+  params: Record<string, string | number>,
+): Promise<GiphyGif[]> {
   const apiKey = process.env.GIPHY_API_KEY
   if (!apiKey) {
     throw new Error('Giphy API key not configured')
   }
-  if (!giphyClient) {
-    giphyClient = new GiphyFetch(apiKey)
+  const query = new URLSearchParams({ api_key: apiKey })
+  for (const [key, value] of Object.entries(params)) {
+    query.set(key, String(value))
   }
-  return giphyClient
+  const response = await fetch(`https://api.giphy.com/v1/${path}?${query}`)
+  if (!response.ok) {
+    throw new Error(`Giphy API error: ${response.status}`)
+  }
+  const { data } = (await response.json()) as { data?: GiphyGif[] }
+  return data ?? []
 }
 
-export function getMediaUrl(gif: IGif): string | null {
+export function getMediaUrl(gif: GiphyGif): string | null {
   const images = gif.images
   return (
     images?.original_mp4?.mp4 ||
@@ -38,14 +53,14 @@ export function getMediaUrl(gif: IGif): string | null {
 }
 
 export async function searchGiphyGif(query: string): Promise<string | null> {
-  const gf = getGiphyClient()
-  const { data } = await gf.search(query, {
+  const data = await fetchGiphyGifs('gifs/search', {
+    q: query,
     limit: GIPHY_RESULTS_LIMIT,
     rating: 'g',
     lang: 'en',
   })
 
-  const picked = sample(data ?? [])
+  const picked = sample(data)
   return picked ? getMediaUrl(picked) : null
 }
 

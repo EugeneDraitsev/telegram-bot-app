@@ -4,11 +4,10 @@
   "license": "MIT",
   "sideEffects": false,
   "dependencies": {
-    "@giphy/js-fetch-api": "^5.8.0",
     "@tg-bot/common": "workspace:*",
-    "@upstash/redis": "^1.38.4",
-    "ai": "^7.0.94",
+    "@upstash/redis": "^1.39.0",
+    "ai": "^7.0.114",
     "grammy": "^1.46.0",
-    "zod": "^4.5.4"
+    "zod": "^4.6.5"
   }
 }

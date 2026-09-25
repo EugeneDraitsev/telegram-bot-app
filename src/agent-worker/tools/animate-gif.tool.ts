@@ -1,19 +1,21 @@
 /**
- * Tool for generating animated text GIFs via Giphy SDK.
+ * Tool for generating animated text GIFs via the Giphy API.
  */
 
 import { getErrorMessage, sample } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
-import { getGiphyClient, getMediaUrl } from './search-gif.tool'
+import { fetchGiphyGifs, getMediaUrl } from './search-gif.tool'
 
 const ANIMATE_RESULTS_LIMIT = 10
 
 export async function animateGiphyText(text: string): Promise<string | null> {
-  const gf = getGiphyClient()
-  const { data } = await gf.animate(text, { limit: ANIMATE_RESULTS_LIMIT })
+  const data = await fetchGiphyGifs('text/animate', {
+    m: text,
+    limit: ANIMATE_RESULTS_LIMIT,
+  })
 
-  const picked = sample(data ?? [])
+  const picked = sample(data)
   return picked ? getMediaUrl(picked) : null
 }
 
