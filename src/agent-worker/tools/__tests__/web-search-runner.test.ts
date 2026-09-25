@@ -15,7 +15,7 @@ const message = {
 
 describe('searchWebWithFallback', () => {
   test('uses Luna as the default web search model', () => {
-    expect(WEB_SEARCH_ROLE.primary.label).toBe('openai/gpt-5.6-luna')
+    expect(WEB_SEARCH_ROLE.primary.label).toBe('openai/gpt-6-luna')
     expect(WEB_SEARCH_ROLE.fallback.label).toBe('openai/gpt-5.4-nano')
   })
 

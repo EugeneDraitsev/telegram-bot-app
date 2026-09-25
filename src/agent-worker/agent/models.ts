@@ -44,7 +44,7 @@ const google = (model: string) => choose({ provider: 'google', model }, 'none')
 
 /** Engage/ignore decision on every eligible message: the hot path. */
 export const REPLY_GATE_ROLE: ModelRole = {
-  primary: openai('gpt-5.6-luna', 'none'),
+  primary: openai('gpt-6-luna', 'none'),
   fallback: google('gemini-3.5-flash-lite'),
   timeoutMs: 15_000,
 }
@@ -58,7 +58,7 @@ export const CHAT_ROLE: ModelRole = {
 
 /** Web-backed search tools. */
 export const WEB_SEARCH_ROLE: ModelRole = {
-  primary: openai('gpt-5.6-luna', 'low'),
+  primary: openai('gpt-6-luna', 'low'),
   fallback: openai('gpt-5.4-nano', 'low'),
   timeoutMs: 24_000,
 }

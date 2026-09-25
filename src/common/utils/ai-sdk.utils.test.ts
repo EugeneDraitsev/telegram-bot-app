@@ -26,7 +26,7 @@ describe('ai-sdk.utils', () => {
   test('passes unsupported OpenAI file types through when requested', () => {
     expect(
       getAiSdkProviderOptions(
-        { provider: 'openai', model: 'gpt-5.6-luna' },
+        { provider: 'openai', model: 'gpt-6-luna' },
         { passThroughUnsupportedFiles: true },
       ).openai?.passThroughUnsupportedFiles,
     ).toBe(true)
