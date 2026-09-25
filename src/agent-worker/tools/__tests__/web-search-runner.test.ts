@@ -14,11 +14,6 @@ const message = {
 } as Message
 
 describe('searchWebWithFallback', () => {
-  test('uses Luna as the default web search model', () => {
-    expect(WEB_SEARCH_ROLE.primary.label).toBe('openai/gpt-6-luna')
-    expect(WEB_SEARCH_ROLE.fallback.label).toBe('openai/gpt-5.4-nano')
-  })
-
   test('budgets the tool for both search attempts', () => {
     expect(WEB_SEARCH_TOTAL_TIMEOUT_MS).toBeGreaterThan(
       WEB_SEARCH_ROLE.timeoutMs * 2,

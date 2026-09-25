@@ -80,7 +80,7 @@ describe('getMetricsDashboardSvg', () => {
           source: 'command',
           command: 'o',
           name: 'finalize',
-          model: 'openai/gpt-6-luna',
+          model: 'openai/test-model',
           durationMs: 20_000,
           success: false,
           status: 'timeout',

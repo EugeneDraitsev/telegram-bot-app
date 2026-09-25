@@ -2,54 +2,30 @@ import type { Message } from 'grammy/types'
 
 import type { MediaBuffer } from '@tg-bot/common'
 import * as common from '@tg-bot/common'
-
-const mockTimedCall = jest.fn()
-
-class MockLyriaModelUnavailableError extends Error {
-  constructor() {
-    super('Lyria model is not available on this project')
-    this.name = 'LyriaModelUnavailableError'
-  }
-}
-
-const mockGetLyriaRetryTimeoutMs = jest.fn((_elapsedMs: number) => 160_000)
-const mockGenerateOmniVideo = jest.fn()
-const mockGenerateLyriaMusic = jest.fn()
-const mockPrepareOmniMedia = jest.fn(
-  (media: MediaBuffer[] | undefined, _explicit: boolean) => media ?? [],
-)
-const mockShortenOmniVideos = jest.fn(
-  async (media: MediaBuffer[], _aspectRatio: string) => media,
-)
-const mockPrepareLyriaMedia = jest.fn(
-  (media: MediaBuffer[] | undefined, _explicit: boolean) => media ?? [],
-)
-
-jest.mock('../../services/google-media', () => ({
-  GOOGLE_MEDIA_TOOL_TIMEOUT_MS: 170_000,
-  OMNI_VIDEO_TOOL_TIMEOUT_MS: 230_000,
-  LYRIA_CLIP_MODEL: 'lyria-3.5-clip-preview',
-  LYRIA_PRO_MODEL: 'lyria-3.5-pro-preview',
-  LYRIA_FALLBACK_MODEL: 'lyria-3.5',
-  getLyriaRetryTimeoutMs: (elapsedMs: number) =>
-    mockGetLyriaRetryTimeoutMs(elapsedMs),
-  LyriaModelUnavailableError: MockLyriaModelUnavailableError,
-  OMNI_VIDEO_MODEL: 'gemini-omni-1.1-flash',
-  MIN_OMNI_VIDEO_SECONDS: 3,
-  MAX_OMNI_VIDEO_SECONDS: 10,
-  generateOmniVideo: (...args: unknown[]) => mockGenerateOmniVideo(...args),
-  generateLyriaMusic: (...args: unknown[]) => mockGenerateLyriaMusic(...args),
-  prepareOmniMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
-    mockPrepareOmniMedia(media, explicit),
-  shortenOmniVideos: (media: MediaBuffer[], aspectRatio: string) =>
-    mockShortenOmniVideos(media, aspectRatio),
-  prepareLyriaMedia: (media: MediaBuffer[] | undefined, explicit: boolean) =>
-    mockPrepareLyriaMedia(media, explicit),
-}))
-
+import * as googleMedia from '../../services/google-media'
 import { getCollectedResponses, runWithToolContext } from '../context'
 import { generateMusicTool } from '../lyria-music.tool'
 import { generateVideoTool } from '../omni-video.tool'
+
+const mockTimedCall = jest.fn()
+
+// Spies, not jest.mock: Bun module mocks leak into later test files.
+const mockGetLyriaRetryTimeoutMs = jest.spyOn(
+  googleMedia,
+  'getLyriaRetryTimeoutMs',
+)
+const mockGenerateOmniVideo = jest.spyOn(googleMedia, 'generateOmniVideo')
+const mockGenerateLyriaMusic = jest.spyOn(googleMedia, 'generateLyriaMusic')
+const mockPrepareOmniMedia = jest.spyOn(googleMedia, 'prepareOmniMedia')
+const mockShortenOmniVideos = jest.spyOn(googleMedia, 'shortenOmniVideos')
+const mockPrepareLyriaMedia = jest.spyOn(googleMedia, 'prepareLyriaMedia')
+
+const lyriaUnavailable = () =>
+  new googleMedia.LyriaModelUnavailableError(undefined)
+
+afterAll(() => {
+  jest.restoreAllMocks()
+})
 
 const message = {
   chat: { id: 123 },
@@ -364,7 +340,7 @@ describe('Google media agent tools', () => {
         return fn()
       })
     mockGenerateLyriaMusic
-      .mockRejectedValueOnce(new MockLyriaModelUnavailableError())
+      .mockRejectedValueOnce(lyriaUnavailable())
       .mockResolvedValueOnce({
         buffer: Buffer.from('music'),
         mimeType: 'audio/mpeg',
@@ -408,7 +384,7 @@ describe('Google media agent tools', () => {
   test('caps the fallback generation with the time the tool has left', async () => {
     mockGetLyriaRetryTimeoutMs.mockReturnValue(90_000)
     mockGenerateLyriaMusic
-      .mockRejectedValueOnce(new MockLyriaModelUnavailableError())
+      .mockRejectedValueOnce(lyriaUnavailable())
       .mockResolvedValueOnce({
         buffer: Buffer.from('music'),
         mimeType: 'audio/mpeg',
@@ -432,9 +408,7 @@ describe('Google media agent tools', () => {
 
   test('skips a fallback the tool timeout would discard anyway', async () => {
     mockGetLyriaRetryTimeoutMs.mockReturnValue(9_000)
-    mockGenerateLyriaMusic.mockRejectedValue(
-      new MockLyriaModelUnavailableError(),
-    )
+    mockGenerateLyriaMusic.mockRejectedValue(lyriaUnavailable())
 
     await expect(
       runWithToolContext(message, [], () =>
