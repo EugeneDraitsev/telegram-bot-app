@@ -15,6 +15,9 @@
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "audit": "bun audit",
+    "audit:fix": "bun audit fix",
+    "outdated": "bun outdated --recursive",
+    "update:dependencies": "bun update --recursive",
     "biome": "biome check ./src ./tools",
     "biome:fix": "biome check ./src ./tools --fix --unsafe",
     "logs": "sls logs -f telegram-bot -t",
@@ -26,8 +29,8 @@
     "prepare:ffmpeg-layer": "bun tools/prepare-ffmpeg-layer.mts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.14",
-    "@types/aws-lambda": "^8.10.163",
+    "@biomejs/biome": "^2.5.15",
+    "@types/aws-lambda": "^8.10.164",
     "@types/jest": "^30.0.0",
     "esbuild": "0.28.2",
     "serverless": "^4.43.0",

@@ -133,6 +133,8 @@ functions:
     timeout: 300
     memorySize: 1536
     reservedConcurrency: 5
+    layers:
+      - Ref: FfmpegLambdaLayer
     events:
       - sqs:
           arn:

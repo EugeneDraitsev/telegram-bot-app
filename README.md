@@ -110,8 +110,18 @@ The ffmpeg layer is built by `bun run prepare:ffmpeg-layer`, which `build` and
 `deploy` run for you.
 
 Delivery uses Telegram's native media methods with document fallback. Google
-media calls use the Vercel AI SDK and `GEMINI_API_KEY`
+media calls use `GEMINI_API_KEY`
 (`GOOGLE_GENERATIVE_AI_API_KEY` also works).
+
+Voice messages use Gemini 3.8 Flash TTS through the Google Interactions API,
+with `Kore` as the default voice. The `generate_voice` tool accepts a built-in
+voice or reusable `voice_...` ID, a delivery `style`, and a `voice_description`
+for a fictional character's timbre. Described voices are created for one
+request and deleted after synthesis, including on failure; cleanup failures
+are logged. Existing voice IDs are never deleted. Voice design and speech
+generation each get a 90-second deadline, with a 240-second total tool budget
+including encoding and cleanup. Audio is converted from WAV to Ogg/Opus by
+the shared ffmpeg layer attached to the agent worker.
 
 ### Model selection
 
@@ -141,8 +151,8 @@ Docker must be running. Start Serverless Offline and its ElasticMQ container:
 bun run start
 ```
 
-The `video-trimmer` lambda has no layer outside AWS, so it runs whatever
-`ffmpeg` is on `PATH`; point `FFMPEG_PATH` at a binary to override that.
+Outside AWS, video trimming and voice encoding use `ffmpeg` on `PATH`;
+point `FFMPEG_PATH` at a binary to override that.
 
 During `serverless-offline`, the read-only chat authorization gates are open,
 FIFO deduplication ids include a nonce, and Redis worker leases are bypassed.
@@ -174,6 +184,7 @@ Stop with `Ctrl+C` so Serverless can remove ElasticMQ cleanly.
 ## Checks
 
 ```sh
+bun run audit
 bun run biome
 bun run tsc
 bun test

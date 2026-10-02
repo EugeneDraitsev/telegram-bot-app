@@ -1,11 +1,3 @@
-import { spawn } from 'node:child_process'
-import {
-  accessSync,
-  chmodSync,
-  constants,
-  copyFileSync,
-  existsSync,
-} from 'node:fs'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -14,8 +6,11 @@ import {
   getErrorMessage,
   getRequiredEnv,
   logger,
+  runFfmpeg,
   TRIMMED_VIDEO_MAX_BYTES,
 } from '@tg-bot/common'
+
+export { getFfmpegPath } from '@tg-bot/common'
 
 type AspectRatio = '9:16' | '16:9'
 
@@ -26,9 +21,6 @@ interface VideoTrimmerEvent {
   /** 'frames' returns the clip's first and last still instead of the video. */
   output?: unknown
 }
-
-const LAYER_FFMPEG_PATH = '/opt/bin/ffmpeg'
-const RUNTIME_FFMPEG_PATH = path.join(tmpdir(), 'ffmpeg')
 
 const DEFAULT_MAX_DURATION_SECONDS = 10
 const MAX_DURATION_SECONDS = 60
@@ -43,32 +35,6 @@ const CROP_RATIOS: Record<AspectRatio, [number, number]> = {
 // an opening frame is often a fade from black and a closing one a fade to it.
 const FRAME_WINDOW_SECONDS = 2
 const FRAME_WINDOW_BATCH = 50
-const FFMPEG_TIMEOUT_MS = 45_000
-const MAX_FFMPEG_STDERR_CHARS = 2_000
-
-/**
- * Lambda mounts layers read-only at /opt. A layer zipped on a filesystem
- * without a POSIX exec bit (Windows) arrives non-executable, so fall back to an
- * executable /tmp copy that lives as long as the container. Outside Lambda the
- * layer is absent altogether and ffmpeg comes from PATH, which is what
- * `serverless offline` runs against. `FFMPEG_PATH` overrides all of it.
- */
-export function getFfmpegPath(): string {
-  const configured = process.env.FFMPEG_PATH?.trim()
-  if (configured) return configured
-  if (existsSync(RUNTIME_FFMPEG_PATH)) return RUNTIME_FFMPEG_PATH
-  if (!existsSync(LAYER_FFMPEG_PATH)) return 'ffmpeg'
-
-  try {
-    accessSync(LAYER_FFMPEG_PATH, constants.X_OK)
-    return LAYER_FFMPEG_PATH
-  } catch {
-    copyFileSync(LAYER_FFMPEG_PATH, RUNTIME_FFMPEG_PATH)
-    chmodSync(RUNTIME_FFMPEG_PATH, 0o755)
-    return RUNTIME_FFMPEG_PATH
-  }
-}
-
 export function getAspectRatio(value: unknown): AspectRatio | undefined {
   return value === '9:16' || value === '16:9' ? value : undefined
 }
@@ -177,41 +143,6 @@ export function getFfmpegArgs(
     'mp4',
     outputPath,
   ]
-}
-
-function runFfmpeg(args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const binary = getFfmpegPath()
-    const child = spawn(binary, args, {
-      timeout: FFMPEG_TIMEOUT_MS,
-      stdio: ['ignore', 'ignore', 'pipe'],
-    })
-
-    let stderr = ''
-    child.stderr?.on('data', (chunk: Buffer | string) => {
-      stderr = `${stderr}${chunk}`.slice(-MAX_FFMPEG_STDERR_CHARS)
-    })
-    child.on('error', (error: NodeJS.ErrnoException) => {
-      reject(
-        error.code === 'ENOENT'
-          ? new Error(
-              `ffmpeg not found at ${binary}; install it or set FFMPEG_PATH to run outside Lambda`,
-            )
-          : error,
-      )
-    })
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve()
-        return
-      }
-
-      const details = stderr.trim().slice(0, 300)
-      reject(
-        new Error(`ffmpeg exited with ${code}${details ? `: ${details}` : ''}`),
-      )
-    })
-  })
 }
 
 /**

@@ -51,6 +51,14 @@ export function extractOmniInteractionVideo(
   return findMediaOutput(getOutputBlocks(value), 'video', 'video/mp4')
 }
 
+export function extractInteractionAudio(
+  value: unknown,
+  fallbackMimeType: string,
+): InteractionMediaOutput | undefined {
+  if (!isRecord(value)) return undefined
+  return findMediaOutput(getOutputBlocks(value), 'audio', fallbackMimeType)
+}
+
 export function extractLyriaInteractionOutput(
   value: unknown,
 ): LyriaInteractionOutput | undefined {

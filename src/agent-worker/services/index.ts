@@ -4,5 +4,5 @@
  */
 
 export { searchImage } from './google-search'
-export { generateVoice } from './openai-tts'
+export { generateVoice } from './google-tts'
 export { searchWebOpenAi as searchWeb } from './openai-web-search'
