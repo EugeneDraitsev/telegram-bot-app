@@ -231,4 +231,17 @@ describe('Gemini speech and voice design', () => {
     )
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  test('allows corrected arguments after preflight errors without consuming the media slot', async () => {
+    await runWithToolContext(message, undefined, async () => {
+      await expect(generateVoice('hello', { voice: 'nova' })).rejects.toThrow(
+        'Unsupported voice',
+      )
+      await expect(generateVoice('x'.repeat(4097))).rejects.toThrow('4096')
+      await expect(generateVoice('hello', { voice: 'Kore' })).resolves.toEqual(
+        opus,
+      )
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+  })
 })

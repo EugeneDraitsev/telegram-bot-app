@@ -2,11 +2,11 @@ import { logger } from '../logger'
 import { isOffline } from '../utils/env.utils'
 import { getRedisClient } from './client'
 
-// The agent worker has the longest Lambda timeout, at 12 minutes. Keeping the
+// The agent worker has the longest Lambda timeout, at 13 minutes. Keeping the
 // processing marker alive for one extra minute means it cannot expire while a
 // healthy invocation is still able to produce Telegram side effects. That
 // removes the need for command-heavy Lua heartbeats.
-export const WORKER_LEASE_TTL_SECONDS = 13 * 60
+export const WORKER_LEASE_TTL_SECONDS = 14 * 60
 // Deliberately generous rather than derived: nothing bounds redelivery lag to a
 // few hours. maxReceiveCount limits attempts, not the time between them, a
 // message can wait out the whole MessageRetentionPeriod behind a throttled or

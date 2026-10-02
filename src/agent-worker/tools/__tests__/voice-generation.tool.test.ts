@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs'
 import type { Message } from 'grammy/types'
 
-import { MAX_TOOL_ITERATIONS, TOOL_CALL_TIMEOUT_MS } from '../../agent/config'
+import * as common from '@tg-bot/common'
+import {
+  MAX_SERIAL_TOOL_CALLS_PER_ROUND,
+  MAX_TOOL_ITERATIONS,
+  TOOL_CALL_TIMEOUT_MS,
+} from '../../agent/config'
 import {
   CHAT_ROLE,
   REPLY_GATE_ROLE,
@@ -51,7 +56,9 @@ describe('generate_voice tool', () => {
     const workflowTimeoutMs =
       REPLY_GATE_ROLE.timeoutMs * 2 +
       CHAT_ROLE.timeoutMs * 2 * (MAX_TOOL_ITERATIONS + 1) +
-      dataRoundTimeoutMs * (MAX_TOOL_ITERATIONS - 1) +
+      dataRoundTimeoutMs *
+        MAX_SERIAL_TOOL_CALLS_PER_ROUND *
+        (MAX_TOOL_ITERATIONS - 1) +
       tts.VOICE_TOOL_TIMEOUT_MS +
       60_000
     expect(workerTimeoutMs).toBeGreaterThan(workflowTimeoutMs)
@@ -94,13 +101,16 @@ describe('generate_voice tool', () => {
   })
 
   test('does not spend a voice call after another tool claims media generation', async () => {
-    const generate = jest.spyOn(tts, 'generateVoice')
+    jest.spyOn(common, 'getGoogleApiKey').mockReturnValue('test-key')
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({}))
     await runWithToolContext(message, undefined, async () => {
       claimGeneratedMedia()
       await expect(
         generateVoiceTool.execute({ text: 'hello' }),
       ).rejects.toThrow('Only one generated media result')
-      expect(generate).not.toHaveBeenCalled()
+      expect(fetchSpy).not.toHaveBeenCalled()
     })
   })
 })

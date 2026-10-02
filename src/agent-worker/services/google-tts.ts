@@ -7,7 +7,7 @@ import {
   logger,
   runFfmpeg,
 } from '@tg-bot/common'
-import { trackToolModelCall } from '../tools/context'
+import { claimGeneratedMedia, trackToolModelCall } from '../tools/context'
 import { extractInteractionAudio } from './google-interactions.adapter'
 
 export const VOICE_MODEL = 'gemini-3.8-flash-tts'
@@ -106,6 +106,7 @@ export async function generateVoice(
     throw new Error(`Unsupported voice: ${voice}`)
   }
   const style = options.style?.trim().slice(0, 500)
+  claimGeneratedMedia()
   let createdVoice: string | undefined
 
   try {

@@ -92,6 +92,76 @@ describe('runAgenticLoop integration', () => {
     jest.restoreAllMocks()
   })
 
+  test('caps serial batches and reports every skipped call to the next model round', async () => {
+    const execute = jest.fn().mockResolvedValue('search result')
+    const searchTool: AgentTool = {
+      declaration: {
+        type: 'function',
+        name: 'web_search',
+        description: 'Search',
+      },
+      execution: ['serial'],
+      execute,
+    }
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([searchTool])
+    const model = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: ['first', 'second', 'third'].map((query) => ({
+            toolCallId: query,
+            toolName: 'web_search',
+            input: { query },
+          })),
+        }),
+      )
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            {
+              toolCallId: 'retry-third',
+              toolName: 'web_search',
+              input: { query: 'third' },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(createModelResult({ text: 'done' }))
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+    })
+    expect(execute.mock.calls).toEqual([
+      [{ query: 'first' }],
+      [{ query: 'second' }],
+      [{ query: 'third' }],
+    ])
+    const nextInput = model.mock.calls[1]?.[0].messages
+    expect(nextInput).toEqual(
+      expect.arrayContaining([
+        {
+          role: 'tool',
+          content: expect.arrayContaining([
+            expect.objectContaining({
+              toolCallId: 'first',
+              output: expect.objectContaining({ type: 'text' }),
+            }),
+            expect.objectContaining({
+              toolCallId: 'second',
+              output: expect.objectContaining({ type: 'text' }),
+            }),
+            expect.objectContaining({
+              toolCallId: 'third',
+              output: expect.objectContaining({
+                type: 'error-text',
+                value: expect.stringContaining('NOT EXECUTED'),
+              }),
+            }),
+          ]),
+        },
+      ]),
+    )
+  })
+
   test('delivers a dynamic command without loading memory or calling a model', async () => {
     jest
       .spyOn(agentTools, 'executeDynamicCommandFromMessage')

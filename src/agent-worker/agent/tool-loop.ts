@@ -10,7 +10,11 @@ import {
   takePendingModelInspectionImages,
 } from '../tools'
 import type { AgentTool, AgentToolExecutionPolicy } from '../types'
-import { MAX_TOOL_ITERATIONS, TOOL_CALL_TIMEOUT_MS } from './config'
+import {
+  MAX_SERIAL_TOOL_CALLS_PER_ROUND,
+  MAX_TOOL_ITERATIONS,
+  TOOL_CALL_TIMEOUT_MS,
+} from './config'
 import { generateModelWithRetry, type ModelCallResult } from './model-call'
 import { CHAT_ROLE, type ModelChoice } from './models'
 import { extractErrorInfo, withTimeout } from './utils'
@@ -182,7 +186,18 @@ async function executeToolCalls(
         call: ExecutableFunctionCall
       } & ToolExecutionResult
     > = []
-    for (const call of calls) results.push(await run(call))
+    for (const [index, call] of calls.entries()) {
+      results.push(
+        index < MAX_SERIAL_TOOL_CALLS_PER_ROUND
+          ? await run(call)
+          : {
+              call,
+              name: call.name,
+              result: `NOT EXECUTED - at most ${MAX_SERIAL_TOOL_CALLS_PER_ROUND} calls can run in a serial round. Combine queries or request this call in the next round if still needed.`,
+              status: 'error',
+            },
+      )
+    }
     return results
   }
 

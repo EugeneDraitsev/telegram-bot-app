@@ -10,7 +10,7 @@ import {
   VOICES,
 } from '../services/google-tts'
 import type { AgentTool } from '../types'
-import { addResponse, claimGeneratedMedia, requireToolContext } from './context'
+import { addResponse, requireToolContext } from './context'
 
 export const generateVoiceTool: AgentTool = {
   execution: ['after-data', 'terminal'],
@@ -57,7 +57,6 @@ export const generateVoiceTool: AgentTool = {
         throw new Error('Text cannot be empty')
       }
 
-      claimGeneratedMedia()
       const buffer = await generateVoice(text, {
         voice: typeof args.voice === 'string' ? args.voice : undefined,
         style: typeof args.style === 'string' ? args.style : undefined,

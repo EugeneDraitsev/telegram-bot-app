@@ -125,10 +125,12 @@ the shared ffmpeg layer attached to the agent worker. The 32 MiB WAV and 8 MiB
 encoded-audio bounds cover the model's full audio output budget, including
 long passages spoken slowly.
 
-The agent worker has a 12-minute deadline to accommodate model fallbacks,
+The agent worker has a 13-minute deadline to accommodate model fallbacks,
 data-gathering rounds and voice generation before delivery. Its Redis
-processing lease lasts 13 minutes; the agent queue's visibility timeout is
-72 minutes (six times the worker deadline).
+processing lease lasts 14 minutes; the agent queue's visibility timeout is
+78 minutes (six times the worker deadline). Serial tool batches execute at
+most two calls per round, returning explicit tool results for excess calls
+so the model can combine queries or request them in a later round.
 
 ### Model selection
 
