@@ -2,7 +2,7 @@
  * Language models, reasoning effort, fallback and timeout for each agent role.
  * Reasoning effort reaches OpenAI only; the Google provider drops it.
  * Media model selection belongs to services/image-generation.ts,
- * services/google-media.ts and services/openai-tts.ts.
+ * services/google-media.ts and services/google-tts.ts.
  */
 
 import {
@@ -59,7 +59,7 @@ export const CHAT_ROLE: ModelRole = {
 /** Web-backed search tools. */
 export const WEB_SEARCH_ROLE: ModelRole = {
   primary: openai('gpt-6-luna', 'low'),
-  fallback: openai('gpt-5.4-nano', 'low'),
+  fallback: openai('gpt-5.6-luna', 'low'),
   timeoutMs: 24_000,
 }
 

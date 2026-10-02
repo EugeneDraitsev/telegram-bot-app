@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
-import type { ImageModel, JSONValue, LanguageModel, SpeechModel } from 'ai'
+import type { ImageModel, JSONValue, LanguageModel } from 'ai'
 
 import type { AiModelConfig, AiReasoningEffort } from './ai-model.utils'
 
@@ -62,10 +62,6 @@ export function getAiSdkOpenAiTools() {
 
 export function getAiSdkOpenAiImageModel(model: string): ImageModel {
   return getAiSdkOpenAiProvider().image(model)
-}
-
-export function getAiSdkOpenAiSpeechModel(model: string): SpeechModel {
-  return getAiSdkOpenAiProvider().speech(model)
 }
 
 export function getAiSdkProviderOptions(

@@ -130,9 +130,11 @@ functions:
       Fn::GetAtt:
         - TelegramAgentWorkerRole
         - Arn
-    timeout: 300
+    timeout: 780
     memorySize: 1536
     reservedConcurrency: 5
+    layers:
+      - Ref: FfmpegLambdaLayer
     events:
       - sqs:
           arn:

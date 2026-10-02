@@ -49,7 +49,7 @@ describe('searchWebWithFallback', () => {
     )
   })
 
-  test('falls back to nano after a failed Luna attempt', async () => {
+  test('falls back after a failed primary search attempt', async () => {
     const search = jest
       .fn<
         ReturnType<typeof searchWebOpenAi>,

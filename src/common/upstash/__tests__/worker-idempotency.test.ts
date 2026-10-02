@@ -89,7 +89,7 @@ describe('worker idempotency', () => {
     expect(mockSet).toHaveBeenCalledWith(
       'reply-worker:message:-100:42',
       'request-1',
-      { ex: 360, nx: true },
+      { ex: WORKER_LEASE_TTL_SECONDS, nx: true },
     )
     expect(await lease?.complete()).toBe(true)
     expect(mockSet).toHaveBeenLastCalledWith(
