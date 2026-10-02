@@ -125,6 +125,11 @@ the shared ffmpeg layer attached to the agent worker. The 32 MiB WAV and 8 MiB
 encoded-audio bounds cover the model's full audio output budget, including
 long passages spoken slowly.
 
+The agent worker has a 12-minute deadline to accommodate model fallbacks,
+data-gathering rounds and voice generation before delivery. Its Redis
+processing lease lasts 13 minutes; the agent queue's visibility timeout is
+72 minutes (six times the worker deadline).
+
 ### Model selection
 
 Language models, reasoning effort and fallbacks are configured in

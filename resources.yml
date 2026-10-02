@@ -36,7 +36,7 @@ Resources:
       QueueName: ${self:custom.agentWorkerQueueName}
       FifoQueue: true
       MessageRetentionPeriod: 345600
-      VisibilityTimeout: 1800
+      VisibilityTimeout: 4320
       SqsManagedSseEnabled: true
       RedrivePolicy:
         deadLetterTargetArn:

@@ -130,7 +130,7 @@ functions:
       Fn::GetAtt:
         - TelegramAgentWorkerRole
         - Arn
-    timeout: 300
+    timeout: 720
     memorySize: 1536
     reservedConcurrency: 5
     layers:
