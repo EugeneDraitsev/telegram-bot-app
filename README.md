@@ -121,7 +121,9 @@ request and deleted after synthesis, including on failure; cleanup failures
 are logged. Existing voice IDs are never deleted. Voice design and speech
 generation each get a 90-second deadline, with a 240-second total tool budget
 including encoding and cleanup. Audio is converted from WAV to Ogg/Opus by
-the shared ffmpeg layer attached to the agent worker.
+the shared ffmpeg layer attached to the agent worker. The 32 MiB WAV and 8 MiB
+encoded-audio bounds cover the model's full audio output budget, including
+long passages spoken slowly.
 
 ### Model selection
 

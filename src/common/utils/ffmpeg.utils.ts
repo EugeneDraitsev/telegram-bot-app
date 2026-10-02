@@ -13,7 +13,7 @@ export const FFMPEG_TIMEOUT_MS = 45_000
 const LAYER_FFMPEG_PATH = '/opt/bin/ffmpeg'
 const RUNTIME_FFMPEG_PATH = path.join(tmpdir(), 'ffmpeg')
 const MAX_FFMPEG_STDERR_CHARS = 2_000
-const MAX_FFMPEG_STDOUT_BYTES = 4 * 1024 * 1024
+const MAX_FFMPEG_STDOUT_BYTES = 8 * 1024 * 1024
 
 /** Windows-built layers may need an executable copy on Lambda's /tmp. */
 export function getFfmpegPath(): string {

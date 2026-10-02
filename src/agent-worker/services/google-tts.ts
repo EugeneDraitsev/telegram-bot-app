@@ -52,7 +52,8 @@ export const VOICE_TOOL_TIMEOUT_MS =
   FFMPEG_TIMEOUT_MS +
   VOICE_CLEANUP_TIMEOUT_MS +
   5_000
-const MAX_VOICE_AUDIO_BYTES = 9 * 1024 * 1024
+// Covers the serving limit of 16,384 audio tokens (~11 minutes of mono WAV).
+const MAX_VOICE_AUDIO_BYTES = 32 * 1024 * 1024
 const DESIGNED_VOICE_ID = /^voice_[a-zA-Z0-9_-]{1,80}$/
 
 interface VoiceOptions {

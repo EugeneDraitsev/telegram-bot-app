@@ -46,4 +46,30 @@ describe('runFfmpeg', () => {
 
     await expect(result).rejects.toThrow('ffmpeg exited with 1: Invalid audio')
   })
+
+  test('accepts encoded speech beyond the old four-MiB limit', async () => {
+    const child = new FakeChild()
+    jest
+      .spyOn(childProcess, 'spawn')
+      .mockReturnValue(
+        child as unknown as ReturnType<typeof childProcess.spawn>,
+      )
+    const result = runFfmpeg(['pipe:1'], Buffer.from('wav'))
+    child.stdout.emit('data', Buffer.alloc(5 * 1024 * 1024))
+    child.emit('close', 0)
+    expect((await result).byteLength).toBe(5 * 1024 * 1024)
+  })
+
+  test('kills the encoder when its output exceeds the eight-MiB bound', async () => {
+    const child = new FakeChild()
+    jest
+      .spyOn(childProcess, 'spawn')
+      .mockReturnValue(
+        child as unknown as ReturnType<typeof childProcess.spawn>,
+      )
+    const result = runFfmpeg(['pipe:1'], Buffer.from('wav'))
+    child.stdout.emit('data', Buffer.alloc(8 * 1024 * 1024 + 1))
+    await expect(result).rejects.toThrow('output exceeds the byte limit')
+    expect(child.kill).toHaveBeenCalledWith('SIGKILL')
+  })
 })

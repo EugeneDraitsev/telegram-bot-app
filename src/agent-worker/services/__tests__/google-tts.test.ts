@@ -186,13 +186,28 @@ describe('Gemini speech and voice design', () => {
     fetchMock.mockResolvedValueOnce(
       speechResponse(
         'completed',
-        Buffer.alloc(9 * 1024 * 1024 + 1).toString('base64'),
+        Buffer.alloc(32 * 1024 * 1024 + 1).toString('base64'),
       ),
     )
     await expect(run('hello')).rejects.toThrow('byte limit')
     expect(common.runFfmpeg).not.toHaveBeenCalled()
     ;(common.runFfmpeg as jest.Mock).mockResolvedValue(Buffer.alloc(0))
     await expect(run('hello')).rejects.toThrow('empty voice audio')
+  })
+
+  test('accepts a full-length passage rendered as a long, slowly spoken recording', async () => {
+    const longWav = Buffer.alloc(24_000 * 2 * 600 + 44)
+    fetchMock.mockResolvedValueOnce(
+      speechResponse('completed', longWav.toString('base64')),
+    )
+    const longOpus = Buffer.alloc(5 * 1024 * 1024)
+    ;(common.runFfmpeg as jest.Mock).mockResolvedValue(longOpus)
+    const text = 'a'.repeat(4096)
+    expect(
+      await run(text, { style: 'Read very slowly, with long pauses.' }),
+    ).toBe(longOpus)
+    expect(request().body.input[0].content[0].text).toBe(text)
+    expect(common.runFfmpeg).toHaveBeenCalledWith(expect.any(Array), longWav)
   })
 
   test('redacts credentials from provider errors', async () => {
