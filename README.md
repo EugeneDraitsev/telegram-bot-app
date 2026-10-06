@@ -200,6 +200,18 @@ bun test
 bun run build
 ```
 
+`braces@3.0.3`, used by the build tooling, has a local Bun patch for
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
+The parser caps nesting at 256 levels and treats deeper input as literal text,
+following [the upstream fix proposal](https://github.com/micromatch/braces/pull/79).
+The patch is reapplied on install through `patchedDependencies`.
+
+`bun run audit` first runs regression tests against the installed package,
+then excludes only this locally fixed advisory because the registry still
+identifies the patched dependency as version 3.0.3. Other advisories continue
+to fail the audit. Remove the patch and this exclusion when a fixed upstream
+release becomes available.
+
 ## Related projects
 
 - [telegram-bot-ui](https://github.com/EugeneDraitsev/telegram-bot-ui)
