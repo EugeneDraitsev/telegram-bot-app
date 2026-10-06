@@ -18,7 +18,7 @@ const geminiMock = jest.fn(
   async (
     _prompt: string,
     _images?: Buffer[],
-    _options?: { timeoutMs?: number },
+    _options?: { model?: common.GeminiImageModel; timeoutMs?: number },
   ) => ({ image: png }),
 )
 
@@ -62,18 +62,18 @@ describe('agent image generation', () => {
   afterEach(() => jest.restoreAllMocks())
 
   test.each([undefined, 'q', 'custom'])(
-    'uses Gemini for ordinary requests (%s)',
+    'uses Gemini Lite for ordinary requests (%s)',
     async (command) => {
       expect(await run(command)).toEqual(png)
       expect(fetchMock).not.toHaveBeenCalled()
       expect(common.generateGeminiImage).toHaveBeenCalledWith(
         expect.stringContaining('draw a fox'),
         undefined,
-        { timeoutMs: 55_000 },
+        { model: common.GEMINI_FLASH_LITE_IMAGE_MODEL, timeoutMs: 55_000 },
       )
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'google/gemini-nano-banana-2.1',
+          model: 'google/gemini-3.1-flash-lite-image',
         }),
         'tool.model_call',
       )
@@ -94,10 +94,15 @@ describe('agent image generation', () => {
     },
   )
 
-  test('uses Gemini directly for /ge', async () => {
+  test('uses Nano Banana 2.1 directly for /ge', async () => {
     expect(await run('ge')).toEqual(png)
     expect(fetchMock).not.toHaveBeenCalled()
     expect(common.generateGeminiImage).toHaveBeenCalledTimes(1)
+    expect(common.generateGeminiImage).toHaveBeenCalledWith(
+      expect.stringContaining('draw a fox'),
+      undefined,
+      { model: common.GEMINI_NANO_BANANA_IMAGE_MODEL, timeoutMs: 110_000 },
+    )
     expect(common.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'google/gemini-nano-banana-2.1',
@@ -145,7 +150,7 @@ describe('agent image generation', () => {
       expect(common.generateGeminiImage).toHaveBeenCalledWith(
         expect.stringContaining('draw a fox'),
         [png],
-        { timeoutMs: 55_000 },
+        { model: common.GEMINI_FLASH_LITE_IMAGE_MODEL, timeoutMs: 55_000 },
       )
       const form = fetchMock.mock.calls[0]?.[1]?.body as FormData
       expect(form.get('model')).toBe('gpt-image-2.5-flare')
@@ -155,7 +160,7 @@ describe('agent image generation', () => {
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'openai/gpt-image-2.5-flare',
-          fallbackFrom: 'google/gemini-nano-banana-2.1',
+          fallbackFrom: 'google/gemini-3.1-flash-lite-image',
         }),
         'tool.model_call',
       )

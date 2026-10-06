@@ -1,5 +1,5 @@
 import {
-  GEMINI_IMAGE_MODEL,
+  GEMINI_FLASH_LITE_IMAGE_MODEL,
   generateGeminiImage,
   getErrorMessage,
   logger,
@@ -41,7 +41,7 @@ export async function getCurrencyBackgroundImage(): Promise<CurrencyBackground> 
         }
       }
 
-      lastError = `${GEMINI_IMAGE_MODEL.model} returned no image`
+      lastError = `${GEMINI_FLASH_LITE_IMAGE_MODEL.model} returned no image`
       logger.warn(
         { attempt, maxRetries: MAX_IMAGE_RETRIES },
         'currency.background_no_image',
@@ -58,7 +58,8 @@ export async function getCurrencyBackgroundImage(): Promise<CurrencyBackground> 
   return {
     news,
     prompt,
-    error: lastError ?? `${GEMINI_IMAGE_MODEL.model} returned no image`,
+    error:
+      lastError ?? `${GEMINI_FLASH_LITE_IMAGE_MODEL.model} returned no image`,
   }
 }
 

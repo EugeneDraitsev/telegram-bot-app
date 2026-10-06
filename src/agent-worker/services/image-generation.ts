@@ -3,7 +3,9 @@ import { generateImage } from 'ai'
 import {
   buildImageGenerationPrompt,
   formatAiModelConfig,
-  GEMINI_IMAGE_MODEL,
+  GEMINI_FLASH_LITE_IMAGE_MODEL,
+  GEMINI_NANO_BANANA_IMAGE_MODEL,
+  type GeminiImageModel,
   generateGeminiImage,
   getAiSdkOpenAiImageModel,
   getErrorMessage,
@@ -22,7 +24,7 @@ const SUNBURST = {
   quality: 'medium',
 } as const
 
-type ImageModel = typeof FLARE | typeof SUNBURST | typeof GEMINI_IMAGE_MODEL
+type ImageModel = typeof FLARE | typeof SUNBURST | GeminiImageModel
 
 const IMAGE_ATTEMPT_TIMEOUT_MS = 55_000
 export const IMAGE_TOOL_TIMEOUT_MS = IMAGE_ATTEMPT_TIMEOUT_MS * 2 + 10_000
@@ -35,9 +37,9 @@ function getImageModels(commandName?: string): [ImageModel, ImageModel?] {
     case 'de':
       return [SUNBURST]
     case 'ge':
-      return [GEMINI_IMAGE_MODEL]
+      return [GEMINI_NANO_BANANA_IMAGE_MODEL]
     default:
-      return [GEMINI_IMAGE_MODEL, FLARE]
+      return [GEMINI_FLASH_LITE_IMAGE_MODEL, FLARE]
   }
 }
 
@@ -58,6 +60,7 @@ function generateWithModel(
       let image: Buffer | undefined
       if (model.provider === 'google') {
         const result = await generateGeminiImage(prompt, inputImages, {
+          model,
           timeoutMs,
         })
         image = result.image
