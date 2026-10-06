@@ -18,7 +18,7 @@ const geminiMock = jest.fn(
   async (
     _prompt: string,
     _images?: Buffer[],
-    _options?: { model?: common.GeminiImageModel; timeoutMs?: number },
+    _options?: { model?: string; timeoutMs?: number },
   ) => ({ image: png }),
 )
 
@@ -69,7 +69,10 @@ describe('agent image generation', () => {
       expect(common.generateGeminiImage).toHaveBeenCalledWith(
         expect.stringContaining('draw a fox'),
         undefined,
-        { model: common.GEMINI_FLASH_LITE_IMAGE_MODEL, timeoutMs: 55_000 },
+        {
+          model: common.GEMINI_FLASH_LITE_IMAGE_MODEL.model,
+          timeoutMs: 55_000,
+        },
       )
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -101,7 +104,7 @@ describe('agent image generation', () => {
     expect(common.generateGeminiImage).toHaveBeenCalledWith(
       expect.stringContaining('draw a fox'),
       undefined,
-      { model: common.GEMINI_NANO_BANANA_IMAGE_MODEL, timeoutMs: 110_000 },
+      { model: 'gemini-nano-banana-2.1', timeoutMs: 110_000 },
     )
     expect(common.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -150,7 +153,10 @@ describe('agent image generation', () => {
       expect(common.generateGeminiImage).toHaveBeenCalledWith(
         expect.stringContaining('draw a fox'),
         [png],
-        { model: common.GEMINI_FLASH_LITE_IMAGE_MODEL, timeoutMs: 55_000 },
+        {
+          model: common.GEMINI_FLASH_LITE_IMAGE_MODEL.model,
+          timeoutMs: 55_000,
+        },
       )
       const form = fetchMock.mock.calls[0]?.[1]?.body as FormData
       expect(form.get('model')).toBe('gpt-image-2.5-flare')

@@ -9,15 +9,6 @@ export const GEMINI_FLASH_LITE_IMAGE_MODEL = {
   model: 'gemini-3.1-flash-lite-image',
 } as const satisfies AiModelConfig
 
-export const GEMINI_NANO_BANANA_IMAGE_MODEL = {
-  provider: 'google',
-  model: 'gemini-nano-banana-2.1',
-} as const satisfies AiModelConfig
-
-export type GeminiImageModel =
-  | typeof GEMINI_FLASH_LITE_IMAGE_MODEL
-  | typeof GEMINI_NANO_BANANA_IMAGE_MODEL
-
 export type GeminiImageAspectRatio =
   | '1:1'
   | '2:3'
@@ -31,7 +22,7 @@ export type GeminiImageAspectRatio =
   | '21:9'
 
 type GenerateGeminiImageOptions = {
-  readonly model?: GeminiImageModel
+  readonly model?: string
   readonly aspectRatio?: GeminiImageAspectRatio
   readonly timeoutMs?: number
 }
@@ -40,13 +31,13 @@ export async function generateGeminiImage(
   prompt: string,
   inputImages?: Buffer[],
   {
-    model = GEMINI_FLASH_LITE_IMAGE_MODEL,
+    model = GEMINI_FLASH_LITE_IMAGE_MODEL.model,
     aspectRatio,
     timeoutMs = 60_000,
   }: GenerateGeminiImageOptions = {},
 ): Promise<{ image: Buffer }> {
   const response = await generateImage({
-    model: getAiSdkGoogleProvider().image(model.model),
+    model: getAiSdkGoogleProvider().image(model),
     prompt: inputImages?.length
       ? { text: prompt, images: inputImages }
       : prompt,
