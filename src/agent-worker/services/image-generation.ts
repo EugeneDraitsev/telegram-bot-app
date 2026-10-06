@@ -21,10 +21,15 @@ const SUNBURST = {
   model: 'gpt-image-2.5-sunburst',
   quality: 'medium',
 } as const
+const NANO_BANANA = {
+  provider: 'google',
+  model: 'gemini-nano-banana-2.1',
+} as const
 
 type ImageModel =
   | typeof FLARE
   | typeof SUNBURST
+  | typeof NANO_BANANA
   | typeof GEMINI_FLASH_LITE_IMAGE_MODEL
 
 const IMAGE_ATTEMPT_TIMEOUT_MS = 55_000
@@ -38,7 +43,7 @@ function getImageModels(commandName?: string): [ImageModel, ImageModel?] {
     case 'de':
       return [SUNBURST]
     case 'ge':
-      return [GEMINI_FLASH_LITE_IMAGE_MODEL]
+      return [NANO_BANANA]
     default:
       return [GEMINI_FLASH_LITE_IMAGE_MODEL, FLARE]
   }
@@ -61,6 +66,7 @@ function generateWithModel(
       let image: Buffer | undefined
       if (model.provider === 'google') {
         const result = await generateGeminiImage(prompt, inputImages, {
+          model: model.model,
           timeoutMs,
         })
         image = result.image

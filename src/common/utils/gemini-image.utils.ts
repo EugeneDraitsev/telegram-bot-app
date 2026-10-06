@@ -22,6 +22,7 @@ export type GeminiImageAspectRatio =
   | '21:9'
 
 type GenerateGeminiImageOptions = {
+  readonly model?: string
   readonly aspectRatio?: GeminiImageAspectRatio
   readonly timeoutMs?: number
 }
@@ -29,10 +30,14 @@ type GenerateGeminiImageOptions = {
 export async function generateGeminiImage(
   prompt: string,
   inputImages?: Buffer[],
-  { aspectRatio, timeoutMs = 60_000 }: GenerateGeminiImageOptions = {},
+  {
+    model = GEMINI_FLASH_LITE_IMAGE_MODEL.model,
+    aspectRatio,
+    timeoutMs = 60_000,
+  }: GenerateGeminiImageOptions = {},
 ): Promise<{ image: Buffer }> {
   const response = await generateImage({
-    model: getAiSdkGoogleProvider().image(GEMINI_FLASH_LITE_IMAGE_MODEL.model),
+    model: getAiSdkGoogleProvider().image(model),
     prompt: inputImages?.length
       ? { text: prompt, images: inputImages }
       : prompt,

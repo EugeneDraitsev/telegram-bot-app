@@ -28,6 +28,7 @@ describe('getMetricsDashboardSvg', () => {
     const models = [
       ...Array.from({ length: 10 }, (_, index) => `openai/test-model-${index}`),
       'google/gemini-3.1-flash-lite-image',
+      'google/gemini-nano-banana-2.1',
       'openai/gpt-image-2.5-sunburst',
     ]
     const report = buildMetricsReport(
@@ -95,7 +96,7 @@ describe('getMetricsDashboardSvg', () => {
 
     expect(svg).toContain('AI OPERATIONS')
     expect(svg).toContain('generate_or_edit_image')
-    expect(svg).toContain('google/gemini-3.1')
+    expect(svg).toContain('google/gemini-3.1-flash-lite-image')
     expect(metadata.format).toBe('png')
     expect(metadata.width).toBe(1200)
     expect(metadata.height).toBe(980)
