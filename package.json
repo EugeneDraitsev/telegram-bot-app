@@ -14,7 +14,7 @@
     "tsc": "tsc --noEmit",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
-    "audit": "bun audit",
+    "audit": "bun test tools/braces-security.test.ts && bun audit --ignore GHSA-vfj7-8cjw-p6xm",
     "audit:fix": "bun audit fix",
     "outdated": "bun outdated --recursive",
     "update:dependencies": "bun update --recursive",
@@ -41,5 +41,8 @@
   },
   "workspaces": [
     "src/*"
-  ]
+  ],
+  "patchedDependencies": {
+    "braces@3.0.3": "patches/braces@3.0.3.patch"
+  }
 }

@@ -1,1 +1,3 @@
 * text=auto eol=lf
+# Empty context lines in unified dependency patches contain a single space.
+patches/*.patch whitespace=-blank-at-eol
