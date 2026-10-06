@@ -3,7 +3,7 @@ import { generateImage } from 'ai'
 import {
   buildImageGenerationPrompt,
   formatAiModelConfig,
-  GEMINI_FLASH_LITE_IMAGE_MODEL,
+  GEMINI_IMAGE_MODEL,
   generateGeminiImage,
   getAiSdkOpenAiImageModel,
   getErrorMessage,
@@ -22,10 +22,7 @@ const SUNBURST = {
   quality: 'medium',
 } as const
 
-type ImageModel =
-  | typeof FLARE
-  | typeof SUNBURST
-  | typeof GEMINI_FLASH_LITE_IMAGE_MODEL
+type ImageModel = typeof FLARE | typeof SUNBURST | typeof GEMINI_IMAGE_MODEL
 
 const IMAGE_ATTEMPT_TIMEOUT_MS = 55_000
 export const IMAGE_TOOL_TIMEOUT_MS = IMAGE_ATTEMPT_TIMEOUT_MS * 2 + 10_000
@@ -38,9 +35,9 @@ function getImageModels(commandName?: string): [ImageModel, ImageModel?] {
     case 'de':
       return [SUNBURST]
     case 'ge':
-      return [GEMINI_FLASH_LITE_IMAGE_MODEL]
+      return [GEMINI_IMAGE_MODEL]
     default:
-      return [GEMINI_FLASH_LITE_IMAGE_MODEL, FLARE]
+      return [GEMINI_IMAGE_MODEL, FLARE]
   }
 }
 

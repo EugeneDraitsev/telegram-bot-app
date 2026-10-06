@@ -73,7 +73,7 @@ describe('agent image generation', () => {
       )
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'google/gemini-3.1-flash-lite-image',
+          model: 'google/gemini-nano-banana-2.1',
         }),
         'tool.model_call',
       )
@@ -100,7 +100,7 @@ describe('agent image generation', () => {
     expect(common.generateGeminiImage).toHaveBeenCalledTimes(1)
     expect(common.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'google/gemini-3.1-flash-lite-image',
+        model: 'google/gemini-nano-banana-2.1',
         command: 'ge',
       }),
       'tool.model_call',
@@ -155,7 +155,7 @@ describe('agent image generation', () => {
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'openai/gpt-image-2.5-flare',
-          fallbackFrom: 'google/gemini-3.1-flash-lite-image',
+          fallbackFrom: 'google/gemini-nano-banana-2.1',
         }),
         'tool.model_call',
       )
