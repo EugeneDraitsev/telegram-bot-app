@@ -157,9 +157,10 @@ across chats. Anonymous/channel messages use their sender-chat identity, with a
 chat identity as the last fallback. Chat IDs remain separate in logs and metrics.
 
 `bun run eval:command-safety` runs a small labelled live evaluation with
-`OPENAI_API_KEY` (and an optional `GEMINI_API_KEY` for refusal fallback).
-It makes classification calls and one generic refusal call; it never invokes
-Astra or executes the labelled requests. An optional output path saves the report.
+`OPENAI_API_KEY`.
+It makes classification calls only, without writing production metrics; it never
+invokes Astra or executes the labelled requests. An optional output path saves
+the report.
 
 ### Model selection
 

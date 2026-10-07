@@ -5,7 +5,6 @@ import { logger } from '@tg-bot/common'
 import {
   COMMAND_CYBER_RISK_THRESHOLD,
   checkCommandSafety,
-  createCommandSafetyReply,
 } from '../src/agent-worker/agent/command-safety.js'
 import { COMMAND_SAFETY_ROLE } from '../src/agent-worker/agent/models.js'
 
@@ -224,11 +223,6 @@ for (let offset = 0; offset < cases.length; offset += 4) {
     )),
   )
 }
-const sampleReply = await createCommandSafetyReply(
-  { allowed: false, cyberRisk: 1, reason: 'cyber_abuse' },
-  0,
-  'q',
-)
 const report = {
   model: COMMAND_SAFETY_ROLE.primary.label,
   threshold: COMMAND_CYBER_RISK_THRESHOLD,
@@ -236,7 +230,6 @@ const report = {
   passed: results.filter((result) => result.passed).length,
   failed: results.filter((result) => !result.passed),
   durationMs: Date.now() - startedAt,
-  sampleReply,
   results,
 }
 if (process.argv[2]) {
