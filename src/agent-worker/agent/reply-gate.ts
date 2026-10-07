@@ -9,6 +9,7 @@ import type { Message } from 'grammy/types'
 import {
   type BotIdentity,
   getAiSdkLanguageModel,
+  getMessageSafetyIdentifier,
   getMessageText,
   getMetricStatusFromError,
   isReplyToAnotherBot,
@@ -174,6 +175,7 @@ async function recordReplyGateMetric(params: {
 async function callReplyGateModel(params: {
   chatId?: number
   attempt: 'primary' | 'fallback'
+  safetyIdentifier?: string
   choice: ModelChoice
   instructions: string
   prompt: string
@@ -205,7 +207,9 @@ async function callReplyGateModel(params: {
         ...(choice.config.provider === 'openai' ? {} : { temperature: 0 }),
         maxRetries: 0,
         timeout: timeoutMs + 1_000,
-        providerOptions: getModelProviderOptions(choice),
+        providerOptions: getModelProviderOptions(choice, {
+          safetyIdentifier: params.safetyIdentifier,
+        }),
       }),
       timeoutMs,
       new ReplyGateTimeoutError(choice.label, timeoutMs),
@@ -298,6 +302,7 @@ export async function shouldEngageWithMessage(params: {
       chatId,
       attempt: 'primary',
       choice: REPLY_GATE_ROLE.primary,
+      safetyIdentifier: getMessageSafetyIdentifier(message),
       instructions,
       prompt,
     })
@@ -317,6 +322,7 @@ export async function shouldEngageWithMessage(params: {
       chatId,
       attempt: 'fallback',
       choice: REPLY_GATE_ROLE.fallback,
+      safetyIdentifier: getMessageSafetyIdentifier(message),
       instructions,
       prompt,
       fallbackFrom: REPLY_GATE_ROLE.primary.label,

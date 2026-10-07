@@ -29,6 +29,7 @@ import {
   withToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, TelegramApi } from '../types'
+import { checkCommandSafety, createCommandSafetyReply } from './command-safety'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { isRetryableModelError, ModelCallTimeoutError } from './model-call'
@@ -406,6 +407,25 @@ export async function runAgenticLoop(
       const textContent = message.text || message.caption || ''
       const hasMedia =
         !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
+
+      if (options.bypassReplyGate) {
+        const safety = await checkCommandSafety(message, options.commandName)
+        if (!safety.allowed) {
+          const text = await createCommandSafetyReply(
+            safety,
+            chatId,
+            options.commandName,
+          )
+          await sendResponses({
+            responses: [{ type: 'text', text }],
+            chatId,
+            replyToMessageId: deliveryReplyMessageId,
+            api,
+            onDelivered,
+          })
+          return
+        }
+      }
 
       const handledByDynamicCommand = await runDynamicCommand({
         message,

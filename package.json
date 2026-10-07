@@ -13,6 +13,7 @@
     "build": "bun run prepare:layers && sls package",
     "tsc": "tsc --noEmit",
     "test": "bun test",
+    "eval:command-safety": "bun tools/evaluate-command-safety.mts",
     "test:coverage": "bun test --coverage",
     "audit": "bun test tools/braces-security.test.ts && bun audit --ignore GHSA-vfj7-8cjw-p6xm",
     "audit:fix": "bun audit fix",
