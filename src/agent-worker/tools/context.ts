@@ -3,6 +3,7 @@ import type { Message } from 'grammy/types'
 
 import {
   type ChatAdminApi,
+  getMessageSafetyIdentifier,
   logger,
   type MediaBuffer,
   type MediaResolverApi,
@@ -32,6 +33,10 @@ interface ToolContext {
 }
 
 const contextStorage = new AsyncLocalStorage<ToolContext>()
+
+export function getToolSafetyIdentifier(): string | undefined {
+  return getMessageSafetyIdentifier(contextStorage.getStore()?.message)
+}
 
 interface ToolCallContext {
   tool: string

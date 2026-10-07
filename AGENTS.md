@@ -27,6 +27,8 @@
 - `AGENT_COMMANDS` in `src/telegram-bot/agent/index.ts` is the source of truth
   for registered agent commands. They go to the agent worker with the command
   stripped and the reply gate bypassed; do not duplicate the command list here.
+  Registered agent commands must still pass the command cyber-safety check
+  before dynamic execution, main response generation or tools.
 - Other registered commands go to the reply worker. Non-command messages and
   unregistered slash commands go to the agent worker, where a matching dynamic
   command is resolved before reply gating.
@@ -41,8 +43,9 @@
 - Agent worker flow:
   1. repeat the chat enabled check for stale/direct/retried deliveries
   2. acquire the idempotency lease
-  3. run a matching dynamic command, bypass the reply gate for a registered
-     agent command, or run the reply gate for an ordinary candidate
+  3. check registered agent commands for cyber abuse, then run a matching dynamic
+     command, bypass engagement gating for an accepted registered agent command,
+     or run the reply gate for an ordinary candidate
   4. run main response generation and tools when needed
 - `src/agent-worker/agent/models.ts` is the source of truth for every language
   model the agent calls, with its reasoning effort, fallback and timeout. Do

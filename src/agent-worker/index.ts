@@ -13,7 +13,6 @@ import {
   logger,
 } from '@tg-bot/common'
 import { REPLY_GATE_ROLE, resolveAgentChatModel, runAgenticLoop } from './agent'
-import { prepareAgentCommandMessage } from './commands'
 import { type AgentWorkerLease, acquireAgentWorkerLease } from './idempotency'
 
 const bot = createBot()
@@ -74,7 +73,7 @@ export const processAgentWorker = async (
       return { statusCode: 200, body: 'Invalid payload' }
     }
 
-    const message = prepareAgentCommandMessage(incomingMessage, commandName)
+    const message = incomingMessage
 
     const messageMeta = getMessageLogMeta(message)
     if (!(await isAgenticChatEnabled(message.chat.id))) {

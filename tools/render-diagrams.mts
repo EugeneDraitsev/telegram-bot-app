@@ -6,7 +6,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const diagramDir = path.join(rootDir, '.github', 'diagram')
 const outputDir = path.join(rootDir, '.github')
 
-const diagrams = ['overview', 'message-path', 'stats-ui']
+const diagrams = ['overview', 'message-path', 'command-safety', 'stats-ui']
 const themes = ['light', 'dark']
 
 for (const diagram of diagrams) {
@@ -14,7 +14,7 @@ for (const diagram of diagrams) {
     const result = spawnSync(
       'bunx',
       [
-        '@mermaid-js/mermaid-cli@11',
+        '@mermaid-js/mermaid-cli@12.0.0',
         '-i',
         path.join(diagramDir, `${diagram}.mmd`),
         '-o',
@@ -23,9 +23,10 @@ for (const diagram of diagrams) {
         path.join(diagramDir, `${theme}.json`),
         '-b',
         'transparent',
-        '--iconPacks',
-        '@iconify-json/logos',
-        '@iconify-json/simple-icons',
+        '--no-font-embed',
+        '--iconPacksNamesAndUrls',
+        'logos#https://unpkg.com/@iconify-json/logos/icons.json',
+        'simple-icons#https://unpkg.com/@iconify-json/simple-icons/icons.json',
       ],
       { cwd: rootDir, stdio: 'inherit', shell: true },
     )

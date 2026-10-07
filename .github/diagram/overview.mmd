@@ -14,7 +14,7 @@ flowchart TB
   Q@{ icon: "logos:aws-sqs", label: "3 FIFO queues + DLQs<br/>ordered per chat", h: 42 }
   W@{ icon: "logos:aws-lambda", label: "3 async workers<br/>activity · reply · agent", h: 44 }
 
-  AIB@{ icon: "simple-icons:openai", label: "AI models + external APIs<br/>GPT-5.6 Luna · Gemini<br/>search · weather · media", h: 40 }
+  AIB@{ icon: "simple-icons:openai", label: "AI models + external APIs<br/>Luna · Astra · Gemini<br/>checks · search · media", h: 40 }
   REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>memory · history · metrics · leases", h: 40 }
   DDB@{ icon: "logos:aws-dynamodb", label: "DynamoDB<br/>stats · chat events<br/>ws connections", h: 40 }
   IMG@{ icon: "logos:aws-lambda", label: "sharp-renderer<br/>SVG → PNG", h: 40 }
@@ -29,7 +29,7 @@ flowchart TB
   Q ==> W
   Q -.-> ALERT
   CFG -.-> ALERT
-  W <==>|"generate"| AIB
+  W <==>|"classify · generate"| AIB
   W <-->|"state"| REDIS
   W <-->|"stats · events"| DDB
   W <-.->|"render PNG"| IMG

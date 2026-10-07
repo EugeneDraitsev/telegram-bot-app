@@ -11,6 +11,7 @@ import {
   formatAiModelConfig,
   getAiSdkProviderOptions,
 } from '@tg-bot/common'
+import { getToolSafetyIdentifier } from '../tools/context'
 
 /** A model together with the reasoning effort it is called with. */
 export interface ModelChoice {
@@ -49,6 +50,12 @@ export const REPLY_GATE_ROLE: ModelRole = {
   timeoutMs: 15_000,
 }
 
+/** Command cyber classification and short refusals; never uses the chat role. */
+export const COMMAND_SAFETY_ROLE: ModelRole = {
+  ...REPLY_GATE_ROLE,
+  timeoutMs: 8_000,
+}
+
 /** Routing, tool loop, final synthesis and the code_execution tool. */
 export const CHAT_ROLE: ModelRole = {
   primary: openai('gpt-6-astra', 'low'),
@@ -75,10 +82,15 @@ export function resolveAgentChatModel(commandName?: string): ModelChoice {
 
 export function getModelProviderOptions(
   choice: ModelChoice,
-  options: { chatId?: string | number; truncation?: string } = {},
+  options: {
+    chatId?: string | number
+    safetyIdentifier?: string
+    truncation?: string
+  } = {},
 ) {
   return getAiSdkProviderOptions(choice.config, {
     ...options,
+    safetyIdentifier: options.safetyIdentifier ?? getToolSafetyIdentifier(),
     reasoningEffort: choice.reasoningEffort,
     store: false,
     serviceTier: choice.config.provider === 'google' ? 'priority' : undefined,

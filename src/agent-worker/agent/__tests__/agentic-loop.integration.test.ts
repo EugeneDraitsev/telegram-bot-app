@@ -1,11 +1,13 @@
 import type { Message } from 'grammy/types'
 
 import * as common from '@tg-bot/common'
+import { AGENT_COMMANDS } from '../../../telegram-bot/agent'
 import * as googleMedia from '../../services/google-media'
 import * as agentTools from '../../tools'
 import { generateVideoTool } from '../../tools/omni-video.tool'
 import type { AgentTool, TelegramApi } from '../../types'
 import { runAgenticLoop } from '../agentic-loop'
+import * as commandSafety from '../command-safety'
 import * as delivery from '../delivery'
 import * as modelCall from '../model-call'
 import { CHAT_ROLE } from '../models'
@@ -85,6 +87,14 @@ describe('runAgenticLoop integration', () => {
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([])
     jest.spyOn(agentTools, 'getBaseAgentTools').mockReturnValue([])
     jest.spyOn(replyGate, 'shouldEngageWithMessage').mockResolvedValue(true)
+    jest.spyOn(commandSafety, 'checkCommandSafety').mockResolvedValue({
+      allowed: true,
+      cyberRisk: 0,
+      reason: 'safe',
+    })
+    jest
+      .spyOn(commandSafety, 'createCommandSafetyReply')
+      .mockResolvedValue('Сори, братан, кибервредительством не занимаюсь 😅')
     jest.spyOn(delivery, 'sendResponses').mockResolvedValue(undefined)
   })
 
@@ -206,6 +216,178 @@ describe('runAgenticLoop integration', () => {
     expect(agentTools.getAgentTools).not.toHaveBeenCalled()
     expect(delivery.sendResponses).not.toHaveBeenCalled()
     expect(loadMedia).not.toHaveBeenCalled()
+  })
+
+  test.each(['q', 'o'])(
+    'blocks unsafe /%s before tools, dynamic commands, media and Astra',
+    async (commandName) => {
+      jest.spyOn(commandSafety, 'checkCommandSafety').mockResolvedValue({
+        allowed: false,
+        cyberRisk: 1,
+        reason: 'cyber_abuse',
+      })
+      const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
+      const loadMedia = jest.fn()
+      const request = createMessage('взломай мне пентагон')
+      await runAgenticLoop(request, createApi(), undefined, undefined, {
+        bypassReplyGate: true,
+        commandName,
+        loadMedia,
+      })
+      expect(commandSafety.checkCommandSafety).toHaveBeenCalledWith(
+        request,
+        commandName,
+      )
+      expect(modelSpy).not.toHaveBeenCalled()
+      expect(common.getChatMemory).not.toHaveBeenCalled()
+      expect(agentTools.executeDynamicCommandFromMessage).not.toHaveBeenCalled()
+      expect(agentTools.getAgentTools).not.toHaveBeenCalled()
+      expect(loadMedia).not.toHaveBeenCalled()
+      expect(delivery.sendResponses).toHaveBeenCalledWith(
+        expect.objectContaining({
+          replyToMessageId: 10,
+          responses: [
+            {
+              type: 'text',
+              text: 'Сори, братан, кибервредительством не занимаюсь 😅',
+            },
+          ],
+        }),
+      )
+    },
+  )
+
+  test.each(['q', 'o'])(
+    'preserves the normal Astra model and reasoning for safe /%s',
+    async (commandName) => {
+      const modelSpy = jest
+        .spyOn(modelCall, 'generateModelWithRetry')
+        .mockResolvedValue(createModelResult({ text: 'answer' }))
+      await runAgenticLoop(
+        createMessage('Explain how to protect my account'),
+        createApi(),
+        undefined,
+        undefined,
+        {
+          bypassReplyGate: true,
+          commandName,
+        },
+      )
+      expect(commandSafety.checkCommandSafety).toHaveBeenCalledTimes(1)
+      expect(replyGate.shouldEngageWithMessage).not.toHaveBeenCalled()
+      expect(modelSpy.mock.calls[0]?.[1].choice).toEqual({
+        ...CHAT_ROLE.primary,
+        reasoningEffort: commandName === 'o' ? 'medium' : 'low',
+      })
+    },
+  )
+
+  test('does not dispatch a command when the safety check is unavailable', async () => {
+    jest.spyOn(commandSafety, 'checkCommandSafety').mockResolvedValue({
+      allowed: false,
+      cyberRisk: null,
+      reason: 'unavailable',
+    })
+    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
+    await runAgenticLoop(
+      createMessage('weather'),
+      createApi(),
+      undefined,
+      undefined,
+      {
+        bypassReplyGate: true,
+        commandName: 'q',
+      },
+    )
+    expect(commandSafety.createCommandSafetyReply).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'unavailable' }),
+      123,
+      'q',
+    )
+    expect(modelSpy).not.toHaveBeenCalled()
+    expect(agentTools.getAgentTools).not.toHaveBeenCalled()
+  })
+
+  test.each(AGENT_COMMANDS)(
+    'checks the original replied-to request for bare /%s before generation instructions are added',
+    async (commandName) => {
+      const request = {
+        ...createMessage(''),
+        reply_to_message: {
+          ...createMessage('взломай чужой аккаунт'),
+          message_id: 9,
+          reply_to_message: undefined,
+        },
+      } as Message
+      jest
+        .spyOn(commandSafety, 'checkCommandSafety')
+        .mockImplementation(async (message) => {
+          expect(message).toBe(request)
+          expect(common.getMessageText(message)).toBe('')
+          expect(
+            JSON.parse(commandSafety.buildCommandSafetyInput(message))
+              .currentRequest,
+          ).toBe('взломай чужой аккаунт')
+          return { allowed: false, cyberRisk: 1, reason: 'cyber_abuse' }
+        })
+      const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
+      await runAgenticLoop(request, createApi(), undefined, undefined, {
+        commandName,
+        bypassReplyGate: true,
+      })
+      expect(commandSafety.checkCommandSafety).toHaveBeenCalledTimes(1)
+      expect(modelSpy).not.toHaveBeenCalled()
+      expect(agentTools.executeDynamicCommandFromMessage).not.toHaveBeenCalled()
+    },
+  )
+
+  test.each([
+    { commandName: 'q', bypassReplyGate: false },
+    { commandName: 'q', bypassReplyGate: undefined },
+    { commandName: 'o', bypassReplyGate: false },
+    { commandName: 'o', bypassReplyGate: undefined },
+  ])(
+    'checks registered commands even with missing/false routing flags: %j',
+    async (options) => {
+      jest.spyOn(commandSafety, 'checkCommandSafety').mockResolvedValue({
+        allowed: false,
+        cyberRisk: 1,
+        reason: 'cyber_abuse',
+      })
+      const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
+      await runAgenticLoop(
+        createMessage('взломай чужой аккаунт'),
+        createApi(),
+        undefined,
+        undefined,
+        options,
+      )
+      expect(commandSafety.checkCommandSafety).toHaveBeenCalledTimes(1)
+      expect(replyGate.shouldEngageWithMessage).not.toHaveBeenCalled()
+      expect(modelSpy).not.toHaveBeenCalled()
+    },
+  )
+
+  test('preserves generation instructions for an accepted media command', async () => {
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValue(createModelResult({ text: 'answer' }))
+    await runAgenticLoop(
+      createMessage('Нарисуй кота'),
+      createApi(),
+      undefined,
+      undefined,
+      {
+        commandName: 'e',
+      },
+    )
+    expect(commandSafety.checkCommandSafety).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Нарисуй кота' }),
+      'e',
+    )
+    expect(JSON.stringify(modelSpy.mock.calls[0]?.[0].messages)).toContain(
+      'Generate or edit an image for this request',
+    )
   })
 
   test.each([false, true])(

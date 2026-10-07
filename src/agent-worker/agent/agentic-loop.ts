@@ -19,6 +19,8 @@ import {
   startThinkingRichDraftIndicator,
   startTypingIndicator,
 } from '@tg-bot/common'
+import { isAgentCommand } from '../../telegram-bot/agent'
+import { prepareAgentCommandMessage } from '../commands'
 import {
   executeDynamicCommandFromMessage,
   getAgentTools,
@@ -29,6 +31,7 @@ import {
   withToolMediaBuffers,
 } from '../tools'
 import type { AgentResponse, TelegramApi } from '../types'
+import { checkCommandSafety, createCommandSafetyReply } from './command-safety'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { isRetryableModelError, ModelCallTimeoutError } from './model-call'
@@ -348,7 +351,7 @@ async function sendLoopFailureReply(
 // ── Main entry ───────────────────────────────────────────────
 
 export async function runAgenticLoop(
-  message: Message,
+  incomingMessage: Message,
   api: TelegramApi,
   mediaBuffers?: MediaBuffer[],
   botInfo?: BotIdentity,
@@ -358,6 +361,15 @@ export async function runAgenticLoop(
     loadMedia?: () => Promise<MediaBuffer[]>
   } = {},
 ): Promise<void> {
+  const message = prepareAgentCommandMessage(
+    incomingMessage,
+    options.commandName,
+  )
+  // Direct/retried deliveries may omit the ingress routing flag.
+  const bypassReplyGate = Boolean(
+    options.bypassReplyGate ||
+      (options.commandName && isAgentCommand(options.commandName)),
+  )
   const startedAt = Date.now()
   const chatId = message.chat?.id
   if (!chatId) {
@@ -373,7 +385,7 @@ export async function runAgenticLoop(
   const messageMeta = getMessageLogMeta(message)
   const deliveryReplyMessageId = getAgentDeliveryReplyMessageId(
     message,
-    Boolean(options.bypassReplyGate),
+    bypassReplyGate,
   )
   logger.info(
     {
@@ -407,6 +419,28 @@ export async function runAgenticLoop(
       const hasMedia =
         !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
 
+      if (bypassReplyGate) {
+        const safety = await checkCommandSafety(
+          incomingMessage,
+          options.commandName,
+        )
+        if (!safety.allowed) {
+          const text = await createCommandSafetyReply(
+            safety,
+            chatId,
+            options.commandName,
+          )
+          await sendResponses({
+            responses: [{ type: 'text', text }],
+            chatId,
+            replyToMessageId: deliveryReplyMessageId,
+            api,
+            onDelivered,
+          })
+          return
+        }
+      }
+
       const handledByDynamicCommand = await runDynamicCommand({
         message,
         chatId,
@@ -435,7 +469,7 @@ export async function runAgenticLoop(
       ])
       const memoryBlock = buildMemoryBlock(chatMemory, globalMemory)
 
-      if (options.bypassReplyGate) {
+      if (bypassReplyGate) {
         logger.info(
           { ...messageMeta, reason: 'explicit_command' },
           'loop.reply_gate_bypassed',
