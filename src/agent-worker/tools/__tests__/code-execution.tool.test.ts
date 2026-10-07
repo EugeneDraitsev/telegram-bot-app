@@ -1,42 +1,11 @@
+import * as ai from 'ai'
 import type { Message } from 'grammy/types'
+
+import * as common from '@tg-bot/common'
 
 const mockGenerateText = jest.fn()
 const mockCodeExecution = jest.fn(() => ({ type: 'provider' }))
 const mockCodeInterpreter = jest.fn(() => ({ type: 'provider' }))
-
-jest.mock('ai', () => ({
-  generateText: (...args: unknown[]) => mockGenerateText(...args),
-}))
-
-jest.mock('@tg-bot/common', () => ({
-  formatAiModelConfig: (config: { provider: string; model: string }) =>
-    `${config.provider}/${config.model}`,
-  getAiSdkGoogleTools: () => ({ codeExecution: mockCodeExecution }),
-  getAiSdkLanguageModel: (config: { provider: string; model: string }) =>
-    `${config.provider}/${config.model}`,
-  getAiSdkOpenAiTools: () => ({ codeInterpreter: mockCodeInterpreter }),
-  getAiSdkProviderOptions: (
-    config: { provider: string },
-    options: {
-      reasoningEffort?: string
-      chatId?: string | number
-      serviceTier?: string
-      store?: boolean
-    },
-  ) =>
-    config.provider === 'google'
-      ? { google: { serviceTier: options.serviceTier } }
-      : {
-          openai: {
-            reasoningEffort: options.reasoningEffort,
-            safetyIdentifier: String(options.chatId),
-            store: options.store,
-          },
-        },
-  getErrorMessage: (error: unknown) =>
-    error instanceof Error ? error.message : String(error),
-  timedCall: (_options: unknown, fn: () => Promise<unknown>) => fn(),
-}))
 
 import { codeExecutionTool } from '../code-execution.tool'
 import { runWithToolContext } from '../context'
@@ -44,6 +13,7 @@ import { runWithToolContext } from '../context'
 const TEST_MESSAGE = {
   chat: { id: 1 },
   message_id: 1,
+  from: { id: 7 },
 } as Message
 
 const executeTool = (args: Record<string, unknown>) =>
@@ -56,6 +26,27 @@ describe('codeExecutionTool', () => {
     mockGenerateText.mockReset()
     mockCodeExecution.mockClear()
     mockCodeInterpreter.mockClear()
+    // Scoped spies avoid leaking fake provider options into other Bun tests.
+    jest.spyOn(ai, 'generateText').mockImplementation(mockGenerateText)
+    jest
+      .spyOn(common, 'getAiSdkLanguageModel')
+      .mockImplementation(
+        (config) =>
+          common.formatAiModelConfig(config) as unknown as ReturnType<
+            typeof common.getAiSdkLanguageModel
+          >,
+      )
+    jest.spyOn(common, 'getAiSdkGoogleTools').mockReturnValue({
+      codeExecution: mockCodeExecution,
+    } as unknown as ReturnType<typeof common.getAiSdkGoogleTools>)
+    jest.spyOn(common, 'getAiSdkOpenAiTools').mockReturnValue({
+      codeInterpreter: mockCodeInterpreter,
+    } as unknown as ReturnType<typeof common.getAiSdkOpenAiTools>)
+    jest.spyOn(common, 'timedCall').mockImplementation((_options, fn) => fn())
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   test('budgets the tool for both model attempts', () => {
@@ -84,8 +75,9 @@ describe('codeExecutionTool', () => {
         providerOptions: {
           openai: {
             reasoningEffort: 'low',
-            safetyIdentifier: '1',
+            safetyIdentifier: common.getMessageSafetyIdentifier(TEST_MESSAGE),
             store: false,
+            passThroughUnsupportedFiles: true,
           },
         },
       }),

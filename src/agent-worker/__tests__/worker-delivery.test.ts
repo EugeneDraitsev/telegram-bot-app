@@ -80,3 +80,34 @@ test('loads album media only when requested by the engaged loop', async () => {
   expect(common.getMediaGroupMessages).toHaveBeenCalledTimes(1)
   expect(common.getMultimodalMediaData).toHaveBeenCalledTimes(1)
 })
+
+test('passes original stripped media-command text to the loop for safety classification', async () => {
+  const run = jest.spyOn(agent, 'runAgenticLoop').mockResolvedValue(undefined)
+  const commandEvent = {
+    Records: [
+      {
+        ...event.Records[0],
+        body: JSON.stringify({
+          message: {
+            message_id: 10,
+            chat: { id: 123 },
+            text: '',
+            reply_to_message: { message_id: 9, text: 'взломай чужой аккаунт' },
+          },
+          botInfo: { id: 99, username: 'test_bot' },
+          commandName: 'e',
+          bypassReplyGate: true,
+        }),
+      },
+    ],
+  } as SQSEvent
+  expect(await worker(commandEvent, context)).toEqual({ batchItemFailures: [] })
+  expect(run.mock.calls[0]?.[0]).toEqual(
+    expect.objectContaining({
+      text: '',
+      reply_to_message: expect.objectContaining({
+        text: 'взломай чужой аккаунт',
+      }),
+    }),
+  )
+})

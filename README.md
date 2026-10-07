@@ -139,6 +139,9 @@ but first pass a text cyber-abuse check using the
 [OpenAI Decisions API](https://developers.openai.com/api/reference/resources/decisions/methods/create)
 with Luna. A custom predicate evaluates the current request and its replied-to
 text; a cyber-abuse probability of 0.5 or above blocks further processing.
+Classification keeps the original stripped request before media instructions are
+added. A registered command identity triggers the check even when a direct or
+retried delivery omits the ingress bypass flag.
 This is the application's classification rubric, not an official OpenAI ban-risk
 score. Classification refusals, invalid responses and API errors fail closed.
 
