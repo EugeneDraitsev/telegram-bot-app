@@ -13,6 +13,8 @@ import {
   CHAT_ROLE,
   COMMAND_SAFETY_ROLE,
   getModelProviderOptions,
+  REPLY_GATE_ROLE,
+  WEB_SEARCH_ROLE,
 } from '../models'
 
 const originalApiKey = process.env.OPENAI_API_KEY
@@ -63,6 +65,7 @@ describe('command cyber safety', () => {
       expect(body.safety_identifier).toBe(
         common.getMessageSafetyIdentifier(message),
       )
+      expect(body.safety_identifier).toHaveLength(64)
       expect(body.questions).toEqual([
         expect.objectContaining({ type: 'predicate', name: 'cyber_abuse' }),
       ])
@@ -190,18 +193,22 @@ describe('command cyber safety', () => {
     expect(modelSpy).not.toHaveBeenCalled()
   })
 
-  test('keeps Decisions and both response roles attributed to the same original actor', async () => {
+  test('keeps Decisions and all OpenAI roles within the same actor identifier limit', async () => {
     await runWithToolContext(message, undefined, async () => {
       await Promise.resolve()
       const identifier = common.getMessageSafetyIdentifier(message)
-      expect(
-        getModelProviderOptions(CHAT_ROLE.primary, { chatId: 123 }).openai
-          ?.safetyIdentifier,
-      ).toBe(identifier)
-      expect(
-        getModelProviderOptions(COMMAND_SAFETY_ROLE.primary).openai
-          ?.safetyIdentifier,
-      ).toBe(identifier)
+      for (const role of [
+        COMMAND_SAFETY_ROLE,
+        REPLY_GATE_ROLE,
+        CHAT_ROLE,
+        WEB_SEARCH_ROLE,
+      ]) {
+        const providerIdentifier = getModelProviderOptions(role.primary, {
+          chatId: 123,
+        }).openai?.safetyIdentifier
+        expect(providerIdentifier).toBe(identifier)
+        expect(providerIdentifier).toHaveLength(64)
+      }
     })
   })
 })

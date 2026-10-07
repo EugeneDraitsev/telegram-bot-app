@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { Message } from 'grammy/types'
 
-/** Stable actor attribution, shared across chats and model endpoints. */
+/** Stable actor attribution within the API's 64-character identifier limit. */
 export function getMessageSafetyIdentifier(
   message?: Message,
 ): string | undefined {
@@ -13,7 +13,5 @@ export function getMessageSafetyIdentifier(
       : message.chat
         ? `chat:${message.chat.id}`
         : undefined
-  return actor
-    ? `tg:${createHash('sha256').update(actor).digest('hex')}`
-    : undefined
+  return actor ? createHash('sha256').update(actor).digest('hex') : undefined
 }

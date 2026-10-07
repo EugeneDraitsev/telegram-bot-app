@@ -8,9 +8,17 @@ const message = (userId: number, chatId = 123) =>
 describe('message safety identifier', () => {
   test('attributes different users separately and keeps one user stable across chats', () => {
     const id = getMessageSafetyIdentifier(message(7))
-    expect(id).toMatch(/^tg:[a-f0-9]{64}$/)
+    expect(id).toMatch(/^[a-f0-9]{64}$/)
     expect(id).toBe(getMessageSafetyIdentifier(message(7, 456)))
     expect(id).not.toBe(getMessageSafetyIdentifier(message(8)))
+  })
+
+  test.each([
+    ['user', message(7)],
+    ['sender chat', { ...message(7), sender_chat: { id: -100123 } } as Message],
+    ['chat fallback', { chat: { id: 123 } } as Message],
+  ])('keeps %s attribution within the Responses API limit', (_, input) => {
+    expect(getMessageSafetyIdentifier(input as Message)).toHaveLength(64)
   })
 
   test('uses the sender chat for anonymous/channel messages instead of a shared bot user', () => {
