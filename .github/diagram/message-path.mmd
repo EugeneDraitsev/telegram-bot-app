@@ -14,7 +14,7 @@ flowchart TB
     AGENTQ@{ icon: "logos:aws-sqs", label: "agent jobs", h: 28 }
     REPLYQ@{ icon: "logos:aws-sqs", label: "reply jobs", h: 28 }
     ACTQ@{ icon: "logos:aws-sqs", label: "activity jobs", h: 28 }
-    AGENT@{ icon: "logos:aws-lambda", label: "agent-worker<br/>reply gate · dynamic cmds<br/>AI loop · tools", h: 38 }
+    AGENT@{ icon: "logos:aws-lambda", label: "agent-worker<br/>enabled recheck + lease<br/>original stripped request", h: 38 }
     REPLY@{ icon: "logos:aws-lambda", label: "reply-worker<br/>registered commands", h: 38 }
     ACT@{ icon: "logos:aws-lambda", label: "activity-worker<br/>stats · chat events · AI history", h: 38 }
     AGENTQ --> AGENT
@@ -22,11 +22,31 @@ flowchart TB
     ACTQ --> ACT
   end
 
-  subgraph AI["AI providers + external APIs"]
-    GPT@{ icon: "simple-icons:openai", label: "GPT-5.6 Luna<br/>gate / loop / helpers", h: 32 }
-    GEM@{ icon: "logos:google-gemini", label: "Gemini<br/>fallback / images", h: 32 }
-    APIS["Search · YouTube · Weather<br/>Tavily · Giphy"]:::ext
+  subgraph FLOW["agent processing · OpenAI calls share a stable hashed sender ID"]
+    COMMAND{"Registered agent command<br/>or explicit bypass?"}:::decision
+    CYBER@{ icon: "simple-icons:openai", label: "GPT-6 Luna · Decisions API<br/>cyber-abuse probability<br/>original text + reply text only", h: 32 }
+    DENY@{ icon: "simple-icons:openai", label: "Short refusal<br/>Luna / Gemini Lite fallback<br/>generic prompt · no original request", h: 32 }
+    WAIT(["Retry-later reply<br/>no main model or tools"]):::note
+    DYNAMIC{"Dynamic command matched?"}:::decision
+    DIRECT["Execute dynamic command<br/>deliver its result"]:::decision
+    MODE{"Engagement gate required?"}:::decision
+    GATE@{ icon: "simple-icons:openai", label: "GPT-6 Luna · reply gate<br/>engage / ignore<br/>Gemini Lite fallback", h: 32 }
+    IGNORE(["No reply"]):::note
+    GPT@{ icon: "simple-icons:openai", label: "Main model + tools<br/>GPT-6 Astra · /q low · /o medium<br/>Gemini Flash fallback", h: 32 }
+    COMMAND -->|"yes"| CYBER
+    COMMAND -->|"ordinary candidate"| DYNAMIC
+    CYBER -->|"risk below 0.5"| DYNAMIC
+    CYBER -->|"risk ≥ 0.5 or refusal"| DENY
+    CYBER -->|"error · timeout · invalid response"| WAIT
+    DYNAMIC -->|"matched"| DIRECT
+    DYNAMIC -->|"no match"| MODE
+    MODE -->|"command: bypass engagement"| GPT
+    MODE -->|"ordinary: yes"| GATE
+    GATE -->|"engage"| GPT
+    GATE -->|"ignore / unavailable"| IGNORE
   end
+
+  APIS["Search · YouTube · Weather<br/>Tavily · Giphy · media APIs"]:::ext
 
   REDIS@{ icon: "logos:redis", label: "Upstash Redis<br/>memory · history · metrics · leases", h: 36 }
   STATS(["stats + live UI → second diagram"]):::note
@@ -42,13 +62,16 @@ flowchart TB
   CONFIG -.-> ALERT
   PIPE -->|"recheck / toggle"| CONFIG
   PIPE <-->|"history · metrics · leases"| REDIS
-  AGENT <==>|"gate + loop"| AI
+  AGENT ==> COMMAND
+  GPT <==>|"tools"| APIS
+  DIRECT <-->|"optional lookup"| APIS
   REPLY <-->|"tools"| APIS
   ACT ==> STATS
-  AGENT & REPLY ==>|"reply"| TGOUT
+  GPT & DIRECT & DENY & WAIT & REPLY ==>|"reply"| TGOUT
 
   classDef ext fill:#059669,stroke:#064e3b,color:#ffffff,font-weight:bold
   classDef alert fill:#8b4a52,stroke:#63343a,color:#ffffff,font-weight:bold
   classDef note fill:transparent,stroke:#6e7681,stroke-dasharray:4 4,color:#8b949e
+  classDef decision fill:transparent,stroke:#6e7681
   style PIPE fill:transparent,stroke-dasharray:6 6
-  style AI fill:transparent,stroke-dasharray:6 6
+  style FLOW fill:transparent,stroke-dasharray:6 6
