@@ -37,12 +37,14 @@ shown in the overview above:
 
 Agent commands pass the cyber check before the main model or tools:
 
+<p align="center">
 <a href=".github/architecture-command-safety-light.svg">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-command-safety-dark.svg">
-    <img alt="Command cyber-safety flow" src=".github/architecture-command-safety-light.svg">
+    <img alt="Command cyber-safety flow" src=".github/architecture-command-safety-light.svg" width="480">
   </picture>
 </a>
+</p>
 
 ### Statistics and live UI
 
