@@ -22,7 +22,8 @@ Everything at a glance:
 
 ### Message path
 
-How one Telegram update becomes a reply:
+How one Telegram update becomes a reply. Configuration, state and alarms are
+shown in the overview above:
 
 <a href=".github/architecture-message-path-light.svg">
   <picture>
@@ -31,6 +32,17 @@ How one Telegram update becomes a reply:
   </picture>
 </a>
 
+
+### Command safety
+
+Agent commands pass the cyber check before the main model or tools:
+
+<a href=".github/architecture-command-safety-light.svg">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/architecture-command-safety-dark.svg">
+    <img alt="Command cyber-safety flow" src=".github/architecture-command-safety-light.svg">
+  </picture>
+</a>
 
 ### Statistics and live UI
 

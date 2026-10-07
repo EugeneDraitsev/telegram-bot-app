@@ -6,7 +6,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const diagramDir = path.join(rootDir, '.github', 'diagram')
 const outputDir = path.join(rootDir, '.github')
 
-const diagrams = ['overview', 'message-path', 'stats-ui']
+const diagrams = ['overview', 'message-path', 'command-safety', 'stats-ui']
 const themes = ['light', 'dark']
 
 for (const diagram of diagrams) {

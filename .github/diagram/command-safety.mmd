@@ -1,0 +1,19 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+  CMD["Agent command<br/>e.g. /q or /o"]:::step
+  CHECK["Luna · Decisions API<br/>original text + reply"]:::step
+  RUN["Continue processing<br/>commands · Astra · tools"]:::allow
+  REFUSE["Short refusal<br/>Luna / Gemini Lite"]:::deny
+  RETRY["Ask to retry later"]:::step
+
+  CMD --> CHECK
+  CHECK -->|"score < 0.5"| RUN
+  CHECK -->|"score ≥ 0.5 / refusal"| REFUSE
+  CHECK -->|"error / timeout"| RETRY
+
+  classDef step fill:transparent,stroke:#6e7681
+  classDef allow fill:#059669,stroke:#064e3b,color:#ffffff
+  classDef deny fill:#8b4a52,stroke:#63343a,color:#ffffff
