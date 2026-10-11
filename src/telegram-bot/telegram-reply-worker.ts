@@ -7,13 +7,10 @@ import {
   handleSqsWorkerEvent,
   logger,
   runIdempotentWorkerTask,
-  saveBotMessageMiddleware,
 } from '@tg-bot/common'
 import { setupAllCommands } from './setup-commands'
 
 const bot = createBot()
-
-bot.use(saveBotMessageMiddleware)
 
 // Setup all commands with sync mode (no Lambda deferral)
 setupAllCommands(bot, false)

@@ -3,12 +3,11 @@
  * Shared between telegram-bot and agent-worker
  */
 
-import { Bot, type Context, type NextFunction } from 'grammy/web'
+import { Bot } from 'grammy/web'
 import type { Message } from 'grammy/types'
 
 import { logger } from '../logger'
 import { saveMessage } from '../upstash'
-import { cleanModelMessage } from './ai.utils'
 
 /**
  * Wrapper that sets `duplex: 'half'` whenever a request has a body
@@ -23,15 +22,35 @@ const fetchWithDuplex = (input: any, init: any = {}) => {
 }
 
 /**
- * Create a new Grammy bot instance with proper fetch configuration
+ * Capture outgoing messages once for commands, the agent and scheduled sends.
+ * Ingress opts out: incoming history is persisted by the activity worker.
  */
-export const createBot = () =>
-  new Bot(process.env.TOKEN || '', {
+export const createBot = ({ saveHistory = true } = {}) => {
+  const bot = new Bot(process.env.TOKEN || '', {
     client: {
       // biome-ignore lint/suspicious/noExplicitAny: Grammy fetch typing is incorrect
       fetch: fetchWithDuplex as any,
     },
   })
+
+  if (saveHistory) {
+    bot.api.config.use(async (prev, method, payload, signal) => {
+      const response = await prev(method, payload, signal)
+      if (
+        response.ok &&
+        (method.startsWith('send') || method === 'forwardMessage')
+      ) {
+        const messages: unknown[] = Array.isArray(response.result)
+          ? response.result
+          : [response.result]
+        await Promise.all(messages.map(saveBotReplyToHistory))
+      }
+      return response
+    })
+  }
+
+  return bot
+}
 
 function parseChatId(message: Message): number | null {
   const rawId = message.chat?.id
@@ -81,7 +100,7 @@ function asTelegramMessage(value: unknown): Message | null {
 /**
  * Save sent bot message to Redis chat history (AI-enabled chats only).
  */
-export async function saveBotReplyToHistory(messageLike: unknown) {
+async function saveBotReplyToHistory(messageLike: unknown) {
   const message = asTelegramMessage(messageLike)
   if (!message) {
     return
@@ -92,33 +111,7 @@ export async function saveBotReplyToHistory(messageLike: unknown) {
     return
   }
 
-  if (typeof message.text === 'string') {
-    message.text = cleanModelMessage(message.text)
-  }
-  if (typeof message.caption === 'string') {
-    message.caption = cleanModelMessage(message.caption)
-  }
-
   await saveMessage(message, chatId).catch((error) =>
     logger.error({ err: error }, 'saveHistory error'),
   )
-}
-
-/**
- * Middleware that saves bot text replies to chat history.
- * Agent worker saves responses through saveBotReplyToHistory directly.
- */
-export async function saveBotMessageMiddleware(
-  ctx: Context,
-  next: NextFunction,
-) {
-  const originalReply = ctx.reply.bind(ctx)
-
-  ctx.reply = async (text, ...args) => {
-    const sentMessage = await originalReply(text, ...args)
-    await saveBotReplyToHistory(sentMessage)
-    return sentMessage
-  }
-
-  await next()
 }

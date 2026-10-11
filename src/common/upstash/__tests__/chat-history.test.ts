@@ -60,6 +60,35 @@ afterAll(() => {
 })
 
 describe('formatHistoryForDisplay', () => {
+  test('keeps media markers visible after a long caption', () => {
+    const history = formatHistoryForDisplay([
+      createMessage(1, {
+        text: undefined,
+        caption: 'x'.repeat(300),
+        from: { id: 99, is_bot: true, first_name: 'Bot' },
+        photo: [
+          {
+            file_id: 'photo',
+            file_unique_id: 'photo',
+            width: 100,
+            height: 100,
+          },
+        ],
+      }),
+    ])
+
+    expect(history).toContain(`Bot: ${'x'.repeat(200)}… [media: photo]`)
+  })
+
+  test('shows the bot dice result instead of an empty message', () => {
+    const history = formatHistoryForDisplay([
+      createMessage(1, { text: undefined, dice: { emoji: '🎲', value: 6 } }),
+    ])
+
+    expect(history).toContain('[dice: 🎲 6]')
+    expect(history).not.toContain('[empty message]')
+  })
+
   test('returns the last 40 messages by default', () => {
     const messages = Array.from({ length: 45 }, (_, index) =>
       createMessage(index + 1),

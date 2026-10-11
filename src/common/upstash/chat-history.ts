@@ -105,8 +105,12 @@ function getMediaLabels(message: Message): {
 }
 
 function getHistoryLineText(message: Message): string {
+  if (message.dice) {
+    return `[dice: ${message.dice.emoji} ${message.dice.value}]`
+  }
   const { labels: mediaLabels, hasNonImageMedia } = getMediaLabels(message)
-  const text = getMessageText(message)
+  const fullText = getMessageText(message)
+  const text = fullText.length > 200 ? `${fullText.slice(0, 200)}…` : fullText
   const mediaMarker = `[media: ${mediaLabels.join(', ')}${
     hasNonImageMedia ? '; load_chat_media: images only' : ''
   }]`
@@ -270,7 +274,7 @@ export function formatHistoryForDisplay(
     ]
       .filter(Boolean)
       .join(' ')
-    return `[${metadata}] ${from}: ${text.slice(0, 200)}`
+    return `[${metadata}] ${from}: ${text}`
   })
 
   if (options.includeHeader === false) {

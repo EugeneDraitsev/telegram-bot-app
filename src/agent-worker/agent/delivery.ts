@@ -6,7 +6,6 @@ import {
   isTelegramReplyTargetMissingError,
   logger,
   normalizeTelegramMarkdown,
-  saveBotReplyToHistory,
   sendRichMessageWithFallback,
 } from '@tg-bot/common'
 import type {
@@ -27,11 +26,6 @@ interface DeliveryParams {
   chatId: number
   replyToMessageId?: number
   onDelivered?: () => void
-}
-
-async function recordDelivery(params: DeliveryParams, message: unknown) {
-  params.onDelivered?.()
-  await saveBotReplyToHistory(message)
 }
 
 interface DeliveryBundle {
@@ -233,7 +227,7 @@ async function sendPlainText(params: DeliveryParams & { text: string }) {
     params.text.slice(0, MAX_TEXT_LENGTH),
     getReplyOptions(params.replyToMessageId),
   )
-  await recordDelivery(params, sentMessage)
+  params.onDelivered?.()
   return sentMessage
 }
 
@@ -285,7 +279,7 @@ async function sendRichResponse(
     richOptions: getReplyOptions(params.replyToMessageId),
     fallbackOptions: getReplyOptions(params.replyToMessageId),
   })
-  await recordDelivery(params, sentMessage)
+  params.onDelivered?.()
   return sentMessage
 }
 
@@ -321,7 +315,7 @@ async function sendText(params: DeliveryParams & { text: string }) {
         richOptions: getReplyOptions(replyToMessageId),
         fallbackOptions,
       })
-      await recordDelivery(params, sentMessage)
+      params.onDelivered?.()
       replyToMessageId = getSentMessageId(sentMessage) ?? replyToMessageId
     } catch (err) {
       logger.warn(
@@ -352,29 +346,17 @@ async function sendImage(
   const imageBuffer = params.image.buffer
   if (imageBuffer) {
     const inputFile = () => new InputFile(imageBuffer, 'generated-image.png')
-    let sentMessage:
-      | Awaited<ReturnType<TelegramApi['sendPhoto']>>
-      | Awaited<ReturnType<TelegramApi['sendDocument']>>
-
     try {
-      sentMessage = await params.api.sendPhoto(
-        params.chatId,
-        inputFile(),
-        options,
-      )
+      await params.api.sendPhoto(params.chatId, inputFile(), options)
     } catch (error) {
       if (isTelegramReplyTargetMissingError(error)) throw error
       logger.warn(
         { chatId: params.chatId, error },
         'delivery.image_failed_document_fallback',
       )
-      sentMessage = await params.api.sendDocument(
-        params.chatId,
-        inputFile(),
-        options,
-      )
+      await params.api.sendDocument(params.chatId, inputFile(), options)
     }
-    await recordDelivery(params, sentMessage)
+    params.onDelivered?.()
     return
   }
 
@@ -384,12 +366,8 @@ async function sendImage(
   }
 
   try {
-    const sentMessage = await params.api.sendPhoto(
-      params.chatId,
-      params.image.url,
-      options,
-    )
-    await recordDelivery(params, sentMessage)
+    await params.api.sendPhoto(params.chatId, params.image.url, options)
+    params.onDelivered?.()
   } catch {
     await sendText({
       ...params,
@@ -447,7 +425,7 @@ async function sendVideo(
         options,
       )
     }
-    await recordDelivery(params, sentMessage)
+    params.onDelivered?.()
     const extraText = params.text.trim()
     if (extraText && extraText !== rawCaption.trim()) {
       await sendText({
@@ -557,7 +535,7 @@ async function sendGeneratedAudio(
       )
     }
   }
-  await recordDelivery(params, sentMessage)
+  params.onDelivered?.()
 
   const extraText = params.text.trim()
   const deliveredMetadata = new Set([
@@ -586,12 +564,8 @@ async function sendAnimation(
   }
 
   try {
-    const sentMessage = await params.api.sendAnimation(
-      params.chatId,
-      params.animation.url,
-      options,
-    )
-    await recordDelivery(params, sentMessage)
+    await params.api.sendAnimation(params.chatId, params.animation.url, options)
+    params.onDelivered?.()
   } catch {
     await sendText({
       ...params,
@@ -614,32 +588,32 @@ async function sendVoice(
         }
       : {}),
   }
-  const sentMessage = await params.api.sendVoice(
+  await params.api.sendVoice(
     params.chatId,
     new InputFile(params.voice, 'voice.opus'),
     options,
   )
-  await recordDelivery(params, sentMessage)
+  params.onDelivered?.()
 }
 
 async function sendSticker(
   params: DeliveryParams & { sticker: StickerResponse },
 ) {
-  const sentMessage = await params.api.sendSticker(
+  await params.api.sendSticker(
     params.chatId,
     params.sticker.fileId,
     getReplyOptions(params.replyToMessageId),
   )
-  await recordDelivery(params, sentMessage)
+  params.onDelivered?.()
 }
 
 async function sendDice(params: DeliveryParams & { dice: DiceResponse }) {
-  const sentMessage = await params.api.sendDice(
+  await params.api.sendDice(
     params.chatId,
     params.dice.emoji,
     getReplyOptions(params.replyToMessageId),
   )
-  await recordDelivery(params, sentMessage)
+  params.onDelivered?.()
 }
 
 async function sendResponsesOnce(

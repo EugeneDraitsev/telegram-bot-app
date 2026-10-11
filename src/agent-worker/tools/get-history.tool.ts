@@ -34,7 +34,7 @@ export const getHistoryTool: AgentTool = {
         raw: {
           type: 'boolean',
           description:
-            'Set to true to return raw message JSON instead of human-readable text. Use this when you need exact media metadata like sticker.file_id.',
+            'Set to true to return raw message JSON instead of human-readable previews. Use this for full text or captions and exact media metadata like sticker.file_id.',
         },
       },
     },

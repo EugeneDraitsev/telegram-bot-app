@@ -10,7 +10,6 @@ import {
   getStoredChatUsers,
   isAiAllowedChat,
   logger,
-  saveBotReplyToHistory,
   sendRichMessageWithFallback,
   setUserOptOut,
 } from '@tg-bot/common'
@@ -123,7 +122,7 @@ const setupUsersCommands = (bot: Bot) => {
         ? { message_thread_id: messageThreadId }
         : undefined
 
-    const sentMessage = await sendRichMessageWithFallback({
+    return sendRichMessageWithFallback({
       api: ctx.api,
       chatId,
       richMessage: {
@@ -134,8 +133,6 @@ const setupUsersCommands = (bot: Bot) => {
       richOptions: options,
       fallbackOptions: options,
     })
-    await saveBotReplyToHistory(sentMessage)
-    return sentMessage
   })
 
   bot.command('s', async (ctx) => {
