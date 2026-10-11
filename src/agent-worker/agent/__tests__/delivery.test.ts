@@ -1,7 +1,4 @@
-import {
-  formatTelegramMarkdownV2,
-  normalizeTelegramMarkdown,
-} from '../../../common/utils/telegram-format.utils'
+import * as common from '@tg-bot/common'
 import type { TelegramApi } from '../../types'
 
 type TestTelegramApi = TelegramApi & {
@@ -19,54 +16,20 @@ type TestTelegramApi = TelegramApi & {
   sendRichMessageDraft: jest.Mock
 }
 
-const mockSaveBotReplyToHistory = jest.fn()
-const mockSendRichMessageWithFallback = jest.fn(
-  async (params: {
-    api: TestTelegramApi
-    chatId: number
-    richMessage: unknown
-    fallbackText: string
-    richOptions?: Record<string, unknown>
-    fallbackOptions?: Record<string, unknown>
-  }) => {
-    try {
-      return await params.api.sendRichMessage(
-        params.chatId,
-        params.richMessage,
-        params.richOptions,
-        undefined,
-      )
-    } catch {
-      return params.api.sendMessage(
-        params.chatId,
-        params.fallbackText,
-        params.fallbackOptions,
-      )
-    }
-  },
+const mockSendRichMessageWithFallback = jest.spyOn(
+  common,
+  'sendRichMessageWithFallback',
 )
 const mockLogger = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+  info: jest.spyOn(common.logger, 'info').mockImplementation(() => {}),
+  warn: jest.spyOn(common.logger, 'warn').mockImplementation(() => {}),
+  error: jest.spyOn(common.logger, 'error').mockImplementation(() => {}),
 }
 
-jest.mock('@tg-bot/common', () => ({
-  cleanModelMessage: (text: string) => text,
-  formatTelegramMarkdownV2,
-  normalizeTelegramMarkdown,
-  isTelegramReplyTargetMissingError: (error: unknown) => {
-    const candidate = error as { error_code?: unknown; description?: unknown }
-    return (
-      candidate?.error_code === 400 &&
-      typeof candidate.description === 'string' &&
-      candidate.description.includes('message to be replied not found')
-    )
-  },
-  logger: mockLogger,
-  saveBotReplyToHistory: mockSaveBotReplyToHistory,
-  sendRichMessageWithFallback: mockSendRichMessageWithFallback,
-}))
+afterAll(() => {
+  mockSendRichMessageWithFallback.mockRestore()
+  for (const mock of Object.values(mockLogger)) mock.mockRestore()
+})
 
 import { sendResponses } from '../delivery'
 
@@ -150,8 +113,6 @@ describe('sendResponses', () => {
   })
 
   beforeEach(() => {
-    mockSaveBotReplyToHistory.mockClear()
-    mockSaveBotReplyToHistory.mockResolvedValue(undefined)
     mockLogger.info.mockClear()
     mockLogger.warn.mockClear()
     mockLogger.error.mockClear()
@@ -177,7 +138,6 @@ describe('sendResponses', () => {
       undefined,
     )
     expect(api.sendMessage).not.toHaveBeenCalled()
-    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 9 })
   })
 
   test('sends bullet lines as a Markdown list instead of one rich paragraph', async () => {
@@ -229,7 +189,6 @@ describe('sendResponses', () => {
       fallbackOptions: { reply_parameters: { message_id: 456 } },
     })
     expect(api.sendMessage).not.toHaveBeenCalled()
-    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
   })
 
   test('sends voice with text as a single captioned message', async () => {
@@ -327,7 +286,6 @@ describe('sendResponses', () => {
         reply_parameters: { message_id: 456 },
       },
     )
-    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
     expect(mockLogger.warn).toHaveBeenCalledWith(
       { chatId: 123, error: videoError, mimeType: 'video/webm' },
       'delivery.video_failed_document_fallback',
@@ -798,7 +756,6 @@ describe('sendResponses', () => {
         reply_parameters: { message_id: 456 },
       },
     )
-    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 10 })
     expect(mockLogger.warn).toHaveBeenCalledWith(
       { chatId: 123, error: imageError },
       'delivery.image_failed_document_fallback',
@@ -966,7 +923,6 @@ describe('sendResponses', () => {
       { chatId: 123, replyToMessageId: 900001 },
       'delivery.reply_target_missing',
     )
-    expect(mockSaveBotReplyToHistory).toHaveBeenCalledWith({ message_id: 13 })
   })
 
   test('does not swallow text delivery failure', async () => {

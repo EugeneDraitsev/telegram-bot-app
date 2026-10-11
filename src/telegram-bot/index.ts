@@ -14,7 +14,7 @@ import {
 import { setupAllCommands } from './setup-commands'
 import { hasValidTelegramWebhookSecret } from './webhook-auth'
 
-const bot = createBot()
+const bot = createBot({ saveHistory: false })
 
 let commandRegistry: CommandRegistry = new Set<string>()
 

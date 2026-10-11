@@ -11,6 +11,7 @@ import {
 export interface ActivityWorkerPayload {
   message?: Message
   command?: string
+  historyOnly?: boolean
 }
 
 /**
@@ -35,17 +36,20 @@ export const processActivityWorker = async (event: ActivityWorkerPayload) => {
   }
 
   const tasks: Promise<unknown>[] = [
-    recordChatActivity({
-      userInfo: message.from,
-      chat,
-      command: event.command ?? '',
-      date: message.date,
-      messageId: message.message_id,
-    }),
-    // saveMessage owns the allowlist check, so activity tracking has one
-    // authorization boundary instead of checking the same flag twice.
+    // saveMessage owns the allowlist check for incoming and outgoing messages.
     saveMessage(message, chat.id),
   ]
+  if (!event.historyOnly) {
+    tasks.push(
+      recordChatActivity({
+        userInfo: message.from,
+        chat,
+        command: event.command ?? '',
+        date: message.date,
+        messageId: message.message_id,
+      }),
+    )
+  }
 
   const results = await Promise.allSettled(tasks)
   const failures: unknown[] = []
