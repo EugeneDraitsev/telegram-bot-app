@@ -9,6 +9,29 @@ const pullRequestWorkflow = readFileSync(
 const iamRoles = readFileSync('iamRoles.yml', 'utf8')
 const resources = readFileSync('resources.yml', 'utf8')
 describe('agentic chat configuration infrastructure', () => {
+  test('provides the activity queue to every outgoing Telegram producer', () => {
+    const provider = serverlessConfig.split('functions:')[0]
+    expect(provider).toContain('ACTIVITY_WORKER_QUEUE_URL:')
+    expect(provider).toContain('Ref: TelegramActivityWorkerQueue')
+    expect(provider).toContain('ACTIVITY_WORKER_QUEUE_NAME:')
+    expect(provider).toContain('SQS_ENDPOINT:')
+
+    const replyRole = iamRoles
+      .split('  TelegramReplyWorkerRole:')[1]
+      ?.split('  TelegramAgentWorkerRole:')[0]
+    expect(replyRole).toContain('&enqueueActivityHistory')
+    expect(replyRole).toContain('sqs:SendMessage')
+    expect(replyRole).toContain('TelegramActivityWorkerQueue')
+
+    for (const [name, next] of [
+      ['TelegramAgentWorkerRole', 'TelegramActivityWorkerRole'],
+      ['CurrencySchedulerRole', 'SharpRendererRole'],
+    ]) {
+      const role = iamRoles.split(`  ${name}:`)[1]?.split(`  ${next}:`)[0]
+      expect(role).toContain('*enqueueActivityHistory')
+    }
+  })
+
   test('wires the CloudFormation-owned table and owner controls', () => {
     expect(serverlessConfig).toContain('CHAT_CONFIGURATION_TABLE_NAME:')
     expect(serverlessConfig).toContain('AGENTIC_BOT_ENABLED:')

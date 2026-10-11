@@ -85,6 +85,13 @@ Redis leases prevent duplicate Telegram replies when SQS redelivers a message;
 activity writes are independently replay-safe. Worker queues use one-message
 batches, partial batch responses, and separate dead-letter queues.
 
+The shared Telegram client queues successful outgoing messages for the activity
+worker, including command media, agent replies and failure notices, and scheduled
+currency posts. These history-only jobs preserve Telegram text, captions, rich
+content and media file IDs without adding bot messages to user statistics. History
+uses the existing AI allowlist and 24-hour retention; raw history exposes full
+messages while recent context contains previews and media markers.
+
 If both an agent response and its failure notice cannot be delivered, the job
 is retried. Once any response part has been acknowledged by Telegram, a later
 delivery failure does not replay the whole job, avoiding duplicate response

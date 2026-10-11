@@ -32,6 +32,11 @@ provider:
     CHAT_EVENTS_TABLE_NAME: ${self:custom.runtimeChatEventsTableNameByStage.${sls:stage}, self:custom.chatEventsTableName}
     SHARP_RENDERER_FUNCTION_NAME: ${self:service}-${sls:stage}-sharp-renderer
     VIDEO_TRIMMER_FUNCTION_NAME: ${self:service}-${sls:stage}-video-trimmer
+    ACTIVITY_WORKER_QUEUE_URL:
+      Ref: TelegramActivityWorkerQueue
+    ACTIVITY_WORKER_QUEUE_NAME: ${self:custom.activityWorkerQueueName}
+    SQS_ENDPOINT: ${self:custom.sqsEndpointByStage.${sls:stage}, ''}
+    SQS_ACCOUNT_ID: ${self:custom.sqsAccountIdByStage.${sls:stage}, ''}
     WEBSOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.websocketConnectionsTableName}
     WEBSOCKET_CONNECTIONS_CHAT_ID_INDEX_NAME: ${self:custom.websocketConnectionsChatIdIndexName}
 functions:
@@ -51,11 +56,6 @@ functions:
       AGENT_WORKER_QUEUE_URL:
         Ref: TelegramAgentWorkerQueue
       AGENT_WORKER_QUEUE_NAME: ${self:custom.agentWorkerQueueName}
-      ACTIVITY_WORKER_QUEUE_URL:
-        Ref: TelegramActivityWorkerQueue
-      ACTIVITY_WORKER_QUEUE_NAME: ${self:custom.activityWorkerQueueName}
-      SQS_ENDPOINT: ${self:custom.sqsEndpointByStage.${sls:stage}, ''}
-      SQS_ACCOUNT_ID: ${self:custom.sqsAccountIdByStage.${sls:stage}, ''}
     events:
       - http:
           path: /

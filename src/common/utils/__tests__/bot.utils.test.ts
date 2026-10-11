@@ -2,8 +2,9 @@ import type { Message, Update, UserFromGetMe } from 'grammy/types'
 import type { Context } from 'grammy/web'
 
 import { logger } from '../../logger'
-import * as history from '../../upstash'
+import { formatHistoryForDisplay } from '../../upstash'
 import { createBot } from '../bot.utils'
+import * as queue from '../sqs.utils'
 
 const botInfo: UserFromGetMe = {
   id: 99,
@@ -58,15 +59,15 @@ function createTestBot(result: unknown, ok = true, saveHistory = true) {
 }
 
 describe('bot reply history', () => {
-  let saveMessageMock: jest.SpyInstance
+  let enqueueMock: jest.SpyInstance
   let loggerErrorMock: jest.SpyInstance
   const originalToken = process.env.TOKEN
 
   beforeEach(() => {
     process.env.TOKEN = 'test-token'
-    saveMessageMock = jest
-      .spyOn(history, 'saveMessage')
-      .mockResolvedValue(undefined)
+    enqueueMock = jest
+      .spyOn(queue, 'enqueueActivityWorker')
+      .mockResolvedValue({ $metadata: {} })
     loggerErrorMock = jest.spyOn(logger, 'error').mockImplementation(() => {})
   })
 
@@ -74,7 +75,7 @@ describe('bot reply history', () => {
     if (originalToken === undefined) delete process.env.TOKEN
     else process.env.TOKEN = originalToken
     jest.spyOn(globalThis, 'fetch').mockRestore()
-    saveMessageMock.mockRestore()
+    enqueueMock.mockRestore()
     loggerErrorMock.mockRestore()
   })
 
@@ -101,10 +102,10 @@ describe('bot reply history', () => {
 
     await bot.handleUpdate(update)
 
-    expect(saveMessageMock).toHaveBeenCalledTimes(1)
-    expect(saveMessageMock).toHaveBeenCalledWith(message, 123)
-    const saved = saveMessageMock.mock.calls[0][0] as Message
-    expect(history.formatHistoryForDisplay([saved])).toContain(
+    expect(enqueueMock).toHaveBeenCalledTimes(1)
+    expect(enqueueMock).toHaveBeenCalledWith({ message, historyOnly: true })
+    const saved = enqueueMock.mock.calls[0][0].message as Message
+    expect(formatHistoryForDisplay([saved])).toContain(
       'Bot: 24h chat statistics: https://example.com/chat/123 [media: photo]',
     )
   })
@@ -221,9 +222,15 @@ describe('bot reply history', () => {
     await bot.handleUpdate(update)
     await bot.handleUpdate({ ...update, update_id: 2 })
 
-    expect(saveMessageMock).toHaveBeenCalledTimes(2)
-    expect(saveMessageMock).toHaveBeenNthCalledWith(1, message, 123)
-    expect(saveMessageMock).toHaveBeenNthCalledWith(2, message, 123)
+    expect(enqueueMock).toHaveBeenCalledTimes(2)
+    expect(enqueueMock).toHaveBeenNthCalledWith(1, {
+      message,
+      historyOnly: true,
+    })
+    expect(enqueueMock).toHaveBeenNthCalledWith(2, {
+      message,
+      historyOnly: true,
+    })
   })
 
   test('saves every message in a media group', async () => {
@@ -243,9 +250,15 @@ describe('bot reply history', () => {
 
     await bot.handleUpdate(update)
 
-    expect(saveMessageMock).toHaveBeenCalledTimes(2)
-    expect(saveMessageMock).toHaveBeenCalledWith(messages[0], 123)
-    expect(saveMessageMock).toHaveBeenCalledWith(messages[1], 123)
+    expect(enqueueMock).toHaveBeenCalledTimes(2)
+    expect(enqueueMock).toHaveBeenCalledWith({
+      message: messages[0],
+      historyOnly: true,
+    })
+    expect(enqueueMock).toHaveBeenCalledWith({
+      message: messages[1],
+      historyOnly: true,
+    })
   })
 
   test('saves sends without an update, including scheduler and agent notices', async () => {
@@ -264,9 +277,12 @@ describe('bot reply history', () => {
     )
     await bot.api.sendMessage(123, 'Try again later')
 
-    expect(saveMessageMock).toHaveBeenCalledTimes(2)
-    expect(saveMessageMock).toHaveBeenCalledWith(message, 123)
-    expect(saveMessageMock).toHaveBeenCalledWith(failureNotice, 123)
+    expect(enqueueMock).toHaveBeenCalledTimes(2)
+    expect(enqueueMock).toHaveBeenCalledWith({ message, historyOnly: true })
+    expect(enqueueMock).toHaveBeenCalledWith({
+      message: failureNotice,
+      historyOnly: true,
+    })
   })
 
   test('preserves the complete Telegram text and metadata without cleaning', async () => {
@@ -279,7 +295,7 @@ describe('bot reply history', () => {
 
     await expect(bot.api.sendMessage(123, text)).resolves.toEqual(message)
 
-    expect(saveMessageMock).toHaveBeenCalledWith(message, 123)
+    expect(enqueueMock).toHaveBeenCalledWith({ message, historyOnly: true })
   })
 
   test('ingress does not persist history', async () => {
@@ -288,7 +304,7 @@ describe('bot reply history', () => {
 
     await bot.handleUpdate(update)
 
-    expect(saveMessageMock).not.toHaveBeenCalled()
+    expect(enqueueMock).not.toHaveBeenCalled()
   })
 
   test('does not save unsuccessful sends', async () => {
@@ -297,7 +313,7 @@ describe('bot reply history', () => {
 
     await expect(bot.handleUpdate(update)).rejects.toThrow('send failed')
 
-    expect(saveMessageMock).not.toHaveBeenCalled()
+    expect(enqueueMock).not.toHaveBeenCalled()
   })
 
   test('ignores typing acknowledgements and message edits', async () => {
@@ -312,24 +328,33 @@ describe('bot reply history', () => {
 
     await bot.handleUpdate(update)
 
-    expect(saveMessageMock).not.toHaveBeenCalled()
+    expect(enqueueMock).not.toHaveBeenCalled()
   })
 
-  test('logs history failure without retrying an already delivered reply', async () => {
-    const error = new Error('Redis unavailable')
-    saveMessageMock.mockRejectedValueOnce(error)
-    const message = sentMessage({ caption: 'stats' })
-    const { bot, fetchMock } = createTestBot(message)
-    bot.on('message', async (ctx) => {
-      expect(await ctx.replyWithPhoto('photo-file')).toEqual(message)
-    })
+  test.each(['rejected', 'synchronous'])(
+    'logs %s enqueue failure without resending a delivered reply',
+    async (failure) => {
+      const error = new Error('SQS unavailable')
+      if (failure === 'synchronous') {
+        enqueueMock.mockImplementationOnce(() => {
+          throw error
+        })
+      } else {
+        enqueueMock.mockRejectedValueOnce(error)
+      }
+      const message = sentMessage({ caption: 'stats' })
+      const { bot, fetchMock } = createTestBot(message)
+      bot.on('message', async (ctx) => {
+        expect(await ctx.replyWithPhoto('photo-file')).toEqual(message)
+      })
 
-    await bot.handleUpdate(update)
+      await bot.handleUpdate(update)
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(loggerErrorMock).toHaveBeenCalledWith(
-      { err: error },
-      'saveHistory error',
-    )
-  })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(loggerErrorMock).toHaveBeenCalledWith(
+        { err: error, chatId: 123, messageId: 11 },
+        'bot_history.enqueue_failed',
+      )
+    },
+  )
 })

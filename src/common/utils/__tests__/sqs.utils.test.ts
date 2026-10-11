@@ -111,6 +111,34 @@ describe('worker queue producers', () => {
     expect(secondDeduplicationId).not.toBe(firstDeduplicationId)
   })
 
+  test('queues history-only bot media with the chat FIFO group and stable deduplication', async () => {
+    let capturedCommand: SendMessageCommand | undefined
+    mockSqsSend((command) => {
+      capturedCommand = command
+      return Promise.resolve({ MessageId: 'history-1' })
+    })
+    const payload = {
+      message: {
+        message_id: 11,
+        chat: { id: 123 },
+        caption: 'stats',
+        photo: [{ file_id: 'stats-photo', file_unique_id: 'stats' }],
+      },
+      historyOnly: true,
+    }
+
+    await enqueueActivityWorker(payload)
+
+    expect(capturedCommand?.input).toMatchObject({
+      QueueUrl: 'https://sqs/activity.fifo',
+      MessageGroupId: '123',
+      MessageDeduplicationId: 'activity:123:11',
+    })
+    expect(JSON.parse(capturedCommand?.input.MessageBody ?? '')).toEqual(
+      payload,
+    )
+  })
+
   test('rejects a job without chat and message ids', () => {
     expect(() => enqueueActivityWorker({})).toThrow(
       'Cannot enqueue activity worker without chat/message id',

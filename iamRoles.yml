@@ -73,6 +73,14 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              - &enqueueActivityHistory
+                Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - Fn::GetAtt:
+                      - TelegramActivityWorkerQueue
+                      - Arn
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
@@ -117,6 +125,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              - *enqueueActivityHistory
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
@@ -192,6 +201,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              - *enqueueActivityHistory
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
