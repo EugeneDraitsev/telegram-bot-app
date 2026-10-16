@@ -272,7 +272,6 @@ functions:
             - /${sls:stage}
 
 plugins:
-  - serverless-esbuild
   - serverless-offline-sqs
   - serverless-offline
 
@@ -294,7 +293,23 @@ layers:
       - arm64
 
 build:
-  esbuild: false
+  esbuild:
+    target: node24
+    platform: node
+    format: esm
+    sourcemap: false
+    outExtension:
+      .js: .mjs
+    banner:
+      js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+    external: &lambdaExternals
+      - sharp
+      - "@aws-sdk/client-apigatewaymanagementapi"
+      - "@aws-sdk/client-dynamodb"
+      - "@aws-sdk/client-lambda"
+      - "@aws-sdk/client-sqs"
+      - "@aws-sdk/lib-dynamodb"
+    exclude: *lambdaExternals
 
 custom:
   replyWorkerQueueName: ${self:service}-${sls:stage}-reply-worker-jobs.fifo
@@ -314,8 +329,6 @@ custom:
     local: chat-user-statistics
   runtimeChatEventsTableNameByStage:
     local: chat-events
-  esbuildTargetByStage:
-    local: node24
   websocketConnectionsTableName: ${self:service}-${sls:stage}-websocket-connections
   websocketConnectionsChatIdIndexName: ${self:service}-${sls:stage}-websocket-connections-chat-id
   chatUserStatisticsTableName: ${param:chatUserStatisticsTableName}
@@ -333,20 +346,6 @@ custom:
     autoStart: true
     region: ${self:provider.region}
     accountId: '000000000000'
-  esbuild:
-    target: ${self:custom.esbuildTargetByStage.${sls:stage}, 'node24'}
-    platform: node
-    format: esm
-    outputFileExtension: .mjs
-    banner:
-      js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
-    exclude:
-      - sharp
-      - "@aws-sdk/client-apigatewaymanagementapi"
-      - "@aws-sdk/client-dynamodb"
-      - "@aws-sdk/client-lambda"
-      - "@aws-sdk/client-sqs"
-      - "@aws-sdk/lib-dynamodb"
 
 resources:
   - ${file(resources.yml)}

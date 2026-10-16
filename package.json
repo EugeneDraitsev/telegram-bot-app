@@ -15,7 +15,7 @@
     "test": "bun test",
     "eval:command-safety": "bun tools/evaluate-command-safety.mts",
     "test:coverage": "bun test --coverage",
-    "audit": "bun test tools/braces-security.test.ts && bun audit --ignore GHSA-vfj7-8cjw-p6xm",
+    "audit": "bun audit",
     "audit:fix": "bun audit fix",
     "outdated": "bun outdated --recursive",
     "update:dependencies": "bun update --recursive",
@@ -33,17 +33,12 @@
     "@biomejs/biome": "^2.5.15",
     "@types/aws-lambda": "^8.10.164",
     "@types/jest": "^30.0.0",
-    "esbuild": "0.28.2",
     "serverless": "^4.43.0",
-    "serverless-esbuild": "^1.57.2",
     "serverless-offline": "^14.8.2",
     "serverless-offline-sqs": "^9.0.1",
     "typescript": "^7.0.2"
   },
   "workspaces": [
     "src/*"
-  ],
-  "patchedDependencies": {
-    "braces@3.0.3": "patches/braces@3.0.3.patch"
-  }
+  ]
 }
