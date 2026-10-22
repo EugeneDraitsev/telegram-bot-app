@@ -112,7 +112,7 @@ functions:
     environment:
       TOKEN: ${env:TOKEN}
       STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
-      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
+      BRAVE_API_KEY: ${env:BRAVE_API_KEY}
       COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
       YOUTUBE_TOKEN: ${env:YOUTUBE_TOKEN}
@@ -145,8 +145,7 @@ functions:
           functionResponseType: ReportBatchItemFailures
     environment:
       TOKEN: ${env:TOKEN}
-      GOOGLE_CX_TOKEN: ${env:GOOGLE_CX_TOKEN}
-      COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
+      BRAVE_API_KEY: ${env:BRAVE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
       OPENAI_API_KEY: ${env:OPENAI_API_KEY}
       GEMINI_API_KEY: ${env:GEMINI_API_KEY}
