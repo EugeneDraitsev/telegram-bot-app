@@ -20,6 +20,7 @@ export const translate = async (
     const inputLanguage = await fetch(detectUrl, {
       signal: globalThis.AbortSignal.timeout(timeout),
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ q: text }),
     })
       .then((x) => x.json())
@@ -33,6 +34,7 @@ export const translate = async (
     const translateResponse = await fetch(translateUrl, {
       signal: globalThis.AbortSignal.timeout(timeout),
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ q: text, target }),
     })
     const translateData = await translateResponse.json()
