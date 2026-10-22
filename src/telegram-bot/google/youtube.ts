@@ -5,10 +5,10 @@
 import { sample } from '@tg-bot/common'
 
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN || 'set-youtube-token'
-const BASE_URL =
-  'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video'
+const BASE_URL = 'https://www.googleapis.com/youtube/v3/search'
 const RESULT_PREFIX = 'https://youtu.be/'
-const MAX_RESULTS = 3
+const MAX_RESULTS = '3'
+const TIMEOUT_MS = 5_000
 const NOT_FOUND_MESSAGE = 'No videos found'
 
 type YoutubeVideo = {
@@ -19,11 +19,16 @@ type YoutubeVideo = {
 
 export async function searchYoutube(query: string): Promise<string> {
   try {
-    const response = await fetch(
-      `${BASE_URL}&key=${YOUTUBE_TOKEN}&q=${encodeURI(
-        query,
-      )}&maxResults=${MAX_RESULTS}`,
-    )
+    const params = new URLSearchParams({
+      part: 'snippet',
+      type: 'video',
+      key: YOUTUBE_TOKEN,
+      q: query,
+      maxResults: MAX_RESULTS,
+    })
+    const response = await fetch(`${BASE_URL}?${params}`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
     const json = await response.json()
     const videoIds = json.items
       ?.map((item: YoutubeVideo) => item?.id?.videoId)
