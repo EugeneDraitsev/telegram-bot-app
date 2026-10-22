@@ -4,10 +4,12 @@ import { getRequiredEnv } from './env.utils'
 const BRAVE_IMAGE_SEARCH_URL =
   'https://api.search.brave.com/res/v1/images/search'
 const TIMEOUT_MS = 5000
-// The Brave free plan allows one request per second, so parallel searches
-// from different chats or agent tool calls wait for the next slot.
-const RATE_LIMIT_RETRIES = 2
-const RATE_LIMIT_DELAY_MS = 1100
+// The Brave free plan allows one request per second. Parallel searches from
+// different chats or agent tool calls retry after a random 1-2 s delay, so a
+// burst spreads over later slots instead of colliding again. The worst case
+// stays well inside the 25 s agent tool timeout.
+const RATE_LIMIT_RETRIES = 5
+const RATE_LIMIT_DELAY_MS = 1000
 
 interface BraveImage {
   thumbnail?: { src?: string }
@@ -45,7 +47,7 @@ export async function searchImage(query: string): Promise<ImageSearchResult> {
     })
 
     if (response.status === 429 && attempt < RATE_LIMIT_RETRIES) {
-      await wait(RATE_LIMIT_DELAY_MS)
+      await wait(RATE_LIMIT_DELAY_MS * (1 + Math.random()))
       continue
     }
     if (!response.ok) {
