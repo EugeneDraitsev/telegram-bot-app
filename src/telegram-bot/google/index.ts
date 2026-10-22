@@ -1,7 +1,6 @@
 import type { Bot } from 'grammy/web'
 
-import { getCommandData } from '@tg-bot/common'
-import { searchImage } from './image-search'
+import { getCommandData, searchImage } from '@tg-bot/common'
 import { translate } from './translate'
 import { searchYoutube } from './youtube'
 
@@ -9,20 +8,23 @@ const setupGoogleCommands = (bot: Bot) => {
   bot.command('g', async (ctx) => {
     const { text, replyId } = getCommandData(ctx.message)
     try {
-      const { url, tbUrl } = await searchImage(text)
+      const { url, thumbnailUrl } = await searchImage(text)
       return await ctx
         .replyWithPhoto(url, {
           reply_parameters: { message_id: replyId },
         })
         .catch(() =>
-          ctx.replyWithPhoto(tbUrl, {
+          ctx.replyWithPhoto(thumbnailUrl, {
             reply_parameters: { message_id: replyId },
           }),
         )
         .catch(() => {
-          ctx.reply(`Can't load ${url} to telegram (tabUrl: ${tbUrl})`, {
-            reply_parameters: { message_id: replyId },
-          })
+          ctx.reply(
+            `Can't load ${url} to telegram (thumbnail: ${thumbnailUrl})`,
+            {
+              reply_parameters: { message_id: replyId },
+            },
+          )
         })
     } catch (e) {
       return ctx.reply(e instanceof Error ? e.message : String(e), {

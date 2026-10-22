@@ -34,7 +34,7 @@ jobs:
           SERVERLESS_ACCESS_KEY: ${{secrets.SERVERLESS_ACCESS_KEY}}
           TOKEN: ci-placeholder
           TELEGRAM_WEBHOOK_SECRET: ci-placeholder
-          GOOGLE_CX_TOKEN: ci-placeholder
+          BRAVE_API_KEY: ci-placeholder
           COMMON_GOOGLE_API_KEY: ci-placeholder
           OPEN_WEATHER_MAP_TOKEN: ci-placeholder
           YOUTUBE_TOKEN: ci-placeholder

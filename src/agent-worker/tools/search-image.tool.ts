@@ -1,9 +1,8 @@
 /**
- * Tool for searching images on Google
+ * Tool for searching images on the web
  */
 
-import { getErrorMessage } from '@tg-bot/common'
-import { searchImage } from '../services'
+import { getErrorMessage, searchImage } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
@@ -12,7 +11,7 @@ export const searchImageTool: AgentTool = {
     type: 'function',
     name: 'search_image',
     description:
-      'Search for an existing image on the internet using Google. Use when user wants to FIND, SHOW, or SEE an existing picture/photo. NOT for creating new images.',
+      'Search for an existing image on the internet. Use when user wants to FIND, SHOW, or SEE an existing picture/photo. NOT for creating new images.',
     parameters: {
       type: 'object',
       properties: {
