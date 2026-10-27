@@ -4,6 +4,7 @@ import * as common from '@tg-bot/common'
 import { AGENT_COMMANDS } from '../../../telegram-bot/agent'
 import * as googleMedia from '../../services/google-media'
 import * as agentTools from '../../tools'
+import { generateMusicTool } from '../../tools/lyria-music.tool'
 import { generateVideoTool } from '../../tools/omni-video.tool'
 import type { AgentTool, TelegramApi } from '../../types'
 import { runAgenticLoop } from '../agentic-loop'
@@ -727,6 +728,99 @@ describe('runAgenticLoop integration', () => {
       }),
     )
     expect(googleMedia.generateOmniVideo).toHaveBeenCalledTimes(1)
+  })
+
+  test('rewrites a refused music prompt and notes the change on the track', async () => {
+    jest
+      .spyOn(googleMedia, 'generateLyriaMusic')
+      .mockRejectedValueOnce(
+        new googleMedia.LyriaPromptRefusedError(
+          'Input blocked: The prompt contains sensitive words.',
+        ),
+      )
+      .mockResolvedValueOnce({
+        buffer: Buffer.from('music'),
+        mimeType: 'audio/mpeg',
+      })
+    jest
+      .spyOn(agentTools, 'getAgentTools')
+      .mockResolvedValue([generateMusicTool])
+    const caption =
+      'Убойный битбокс. «Терминатора» фильтр не пропустил, сделал «железного бойца».'
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            {
+              toolCallId: 'music-call',
+              toolName: 'generate_music_with_lyria',
+              input: {
+                prompt: 'Битбокс с хуком «Вадя терминатор»',
+                title: 'Вадя терминатор',
+                caption: 'Убойный битбокс.',
+              },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            {
+              toolCallId: 'music-retry',
+              toolName: 'generate_music_with_lyria',
+              input: {
+                prompt: 'Битбокс с хуком «Вадя железный боец»',
+                title: 'Вадя железный боец',
+                caption,
+              },
+            },
+          ],
+        }),
+      )
+
+    await runAgenticLoop(
+      createMessage('Сделай битбокс про Вадю'),
+      createApi(),
+      undefined,
+      undefined,
+      { bypassReplyGate: true },
+    )
+
+    expect(modelSpy).toHaveBeenCalledTimes(2)
+    expect(modelSpy.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: 'tool',
+            content: [
+              expect.objectContaining({
+                output: {
+                  type: 'error-text',
+                  value: expect.stringContaining(
+                    "Google's content filter refused this music prompt",
+                  ),
+                },
+              }),
+            ],
+          }),
+        ]),
+      }),
+    )
+    expect(googleMedia.generateLyriaMusic).toHaveBeenCalledTimes(2)
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [
+          expect.objectContaining({
+            type: 'audio',
+            title: 'Вадя железный боец',
+            caption,
+            delivery: 'voice',
+          }),
+        ],
+      }),
+    )
   })
 
   test('defers content tools until data tools finish and stops after terminal media', async () => {

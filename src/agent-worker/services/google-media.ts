@@ -78,13 +78,51 @@ class GoogleMediaInteractionError extends Error {
   constructor(
     status: number,
     readonly providerCode: string | undefined,
-    reason: string,
+    readonly reason: string,
   ) {
     super(
       `Google media generation failed (HTTP ${status}${providerCode ? `, ${providerCode}` : ''}): ${reason}`,
     )
     this.name = 'GoogleMediaInteractionError'
   }
+}
+
+/** Interactions errors arrive as `{ error: { message, code: 'not_found' } }`. */
+function createInteractionError(
+  status: number,
+  body: unknown,
+  statusText: string,
+): GoogleMediaInteractionError {
+  const details = (body as { error?: Record<string, unknown> } | null)?.error
+  // Return the provider's reason to the tool loop, without raw response bodies.
+  return new GoogleMediaInteractionError(
+    status,
+    typeof details?.code === 'string' ? details.code.slice(0, 80) : undefined,
+    typeof details?.message === 'string'
+      ? details.message.slice(0, 1000)
+      : statusText || 'Request rejected',
+  )
+}
+
+/**
+ * The AI SDK only parses the Gemini error shape, so an Interactions failure
+ * reaches us as its bare status text ("Bad Request"). The provider's code and
+ * reason are still in the raw body of the APICallError.
+ */
+function recoverInteractionError(error: unknown): unknown {
+  const { statusCode, responseBody } = (error ?? {}) as {
+    statusCode?: unknown
+    responseBody?: unknown
+  }
+  if (typeof statusCode !== 'number' || typeof responseBody !== 'string') {
+    return error
+  }
+
+  let body: unknown = null
+  try {
+    body = JSON.parse(responseBody)
+  } catch {}
+  return createInteractionError(statusCode, body, getErrorMessage(error))
 }
 
 interface GeneratedMusic extends GeneratedMedia {
@@ -98,6 +136,19 @@ export class LyriaModelUnavailableError extends Error {
     this.name = 'LyriaModelUnavailableError'
   }
 }
+
+/** Google's prompt filter refused the brief; nothing was generated or billed. */
+export class LyriaPromptRefusedError extends Error {
+  constructor(readonly reason: string) {
+    super(`Google refused the music prompt: ${reason}`)
+    this.name = 'LyriaPromptRefusedError'
+  }
+}
+
+const GOOGLE_CONTENT_REFUSAL_CODES = new Set([
+  'prohibited_content',
+  'content_blocked',
+])
 
 function prepareInlineMedia(
   media: MediaBuffer[] | undefined,
@@ -327,15 +378,7 @@ async function postGoogleInteraction(
   })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    const details = body?.error
-    // Return the provider's reason to the tool loop, without raw response bodies.
-    throw new GoogleMediaInteractionError(
-      response.status,
-      typeof details?.code === 'string' ? details.code.slice(0, 80) : undefined,
-      typeof details?.message === 'string'
-        ? details.message.slice(0, 1000)
-        : response.statusText || 'Request rejected',
-    )
+    throw createInteractionError(response.status, body, response.statusText)
   }
 
   return response.json()
@@ -347,7 +390,8 @@ async function runGoogleInteraction<T>(
 ): Promise<T> {
   try {
     return await run()
-  } catch (error) {
+  } catch (caught) {
+    const error = recoverInteractionError(caught)
     logger.error(
       { error: getErrorMessage(error) },
       'google_media.interaction_failed',
@@ -475,6 +519,13 @@ export async function generateOmniVideo(
  * music entirely, while a stray match only costs one extra generation call.
  */
 function explainLyriaFailure(error: unknown): Error | undefined {
+  if (
+    error instanceof GoogleMediaInteractionError &&
+    error.providerCode &&
+    GOOGLE_CONTENT_REFUSAL_CODES.has(error.providerCode)
+  ) {
+    return new LyriaPromptRefusedError(error.reason)
+  }
   return /not found/i.test(getErrorMessage(error))
     ? new LyriaModelUnavailableError(error)
     : undefined
