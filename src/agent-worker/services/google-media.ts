@@ -137,7 +137,10 @@ export class LyriaModelUnavailableError extends Error {
   }
 }
 
-/** Google's prompt filter refused the brief; nothing was generated or billed. */
+/**
+ * Google's filter refused the brief: `prohibited_content` on the input within
+ * a second, or `content_blocked` on the output after a full generation.
+ */
 export class LyriaPromptRefusedError extends Error {
   constructor(readonly reason: string) {
     super(`Google refused the music prompt: ${reason}`)
