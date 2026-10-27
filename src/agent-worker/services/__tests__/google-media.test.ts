@@ -13,6 +13,7 @@ import {
   getLyriaRetryTimeoutMs,
   LYRIA_CLIP_MODEL,
   LyriaModelUnavailableError,
+  LyriaPromptRefusedError,
   OMNI_VIDEO_MODEL,
   prepareLyriaMedia,
   prepareOmniMedia,
@@ -75,6 +76,19 @@ function generatedMusic(value: string) {
     },
     text: undefined,
   }
+}
+
+/** What the AI SDK throws for an Interactions error: its parser only knows the
+ * Gemini shape, so the message is the bare status text. */
+function interactionsApiCallError(
+  statusCode: number,
+  statusText: string,
+  error: Record<string, string>,
+) {
+  return Object.assign(new Error(statusText), {
+    statusCode,
+    responseBody: JSON.stringify({ error }),
+  })
 }
 
 const mockFetch = jest.fn<
@@ -373,9 +387,11 @@ describe('Google media through the AI SDK', () => {
 
   test('flags a Lyria id Google has not enabled on this project', async () => {
     mockGenerateText.mockRejectedValue(
-      new Error(
-        "Model 'lyria-3.5-clip-preview' not found. Did you mean 'lyria-3-clip-preview'?",
-      ),
+      interactionsApiCallError(404, 'Not Found', {
+        message:
+          "Model 'lyria-3.5-clip-preview' not found. Did you mean 'lyria-3-clip-preview'?",
+        code: 'not_found',
+      }),
     )
 
     await expect(
@@ -396,8 +412,48 @@ describe('Google media through the AI SDK', () => {
     expect(getLyriaRetryTimeoutMs(165_000)).toBeLessThanOrEqual(0)
   })
 
-  test('keeps other Lyria failures generic and unretried', async () => {
-    mockGenerateText.mockRejectedValue(new Error('Input blocked'))
+  test('flags a Lyria prompt that Google filter refused', async () => {
+    mockGenerateText.mockRejectedValue(
+      interactionsApiCallError(400, 'Bad Request', {
+        message:
+          'Input blocked: The prompt could not be submitted. The prompt contains sensitive words.',
+        code: 'prohibited_content',
+      }),
+    )
+
+    const error = await generateLyriaMusic({
+      prompt: 'Битбокс «Вадя терминатор»',
+      model: LYRIA_CLIP_MODEL,
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(LyriaPromptRefusedError)
+    expect((error as LyriaPromptRefusedError).reason).toBe(
+      'Input blocked: The prompt could not be submitted. The prompt contains sensitive words.',
+    )
+    expect(mockGenerateText).toHaveBeenCalledTimes(1)
+  })
+
+  test('keeps the provider reason of other Lyria failures, unretried', async () => {
+    mockGenerateText.mockRejectedValue(
+      interactionsApiCallError(400, 'Bad Request', {
+        message: 'Unable to process input image.',
+        code: 'invalid_request',
+      }),
+    )
+
+    await expect(
+      generateLyriaMusic({
+        prompt: 'Cheerful synth pop',
+        model: LYRIA_CLIP_MODEL,
+      }),
+    ).rejects.toThrow(
+      'Google media generation failed (HTTP 400, invalid_request): Unable to process input image.',
+    )
+    expect(mockGenerateText).toHaveBeenCalledTimes(1)
+  })
+
+  test('keeps non-HTTP Lyria failures generic', async () => {
+    mockGenerateText.mockRejectedValue(new Error('socket hang up'))
 
     await expect(
       generateLyriaMusic({
@@ -405,7 +461,6 @@ describe('Google media through the AI SDK', () => {
         model: LYRIA_CLIP_MODEL,
       }),
     ).rejects.toThrow('Google media generation failed')
-    expect(mockGenerateText).toHaveBeenCalledTimes(1)
   })
 
   test('strictly validates explicitly selected Lyria media', () => {

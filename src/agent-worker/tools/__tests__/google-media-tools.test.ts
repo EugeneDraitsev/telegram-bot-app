@@ -422,6 +422,68 @@ describe('Google media agent tools', () => {
     expect(mockGenerateLyriaMusic).toHaveBeenCalledTimes(1)
   })
 
+  test('hands a refused prompt back for a rewrite and frees the result slot', async () => {
+    mockGenerateLyriaMusic.mockRejectedValueOnce(
+      new googleMedia.LyriaPromptRefusedError(
+        'Input blocked: The prompt contains sensitive words.',
+      ),
+    )
+
+    const responses = await runWithToolContext(message, [], async () => {
+      const refusal = generateMusicTool.execute({
+        prompt: 'Битбокс с хуком «Вадя терминатор»',
+        title: 'Вадя терминатор',
+        caption: 'Убойный битбокс.',
+      })
+      await expect(refusal).rejects.toThrow(
+        "Google's content filter refused this music prompt, so nothing was generated: Input blocked: The prompt contains sensitive words.",
+      )
+      await expect(refusal).rejects.toThrow(
+        'call generate_music_with_lyria again now',
+      )
+      expect(getCollectedResponses()).toEqual([])
+
+      await expect(
+        generateMusicTool.execute({
+          prompt: 'Битбокс с хуком «Вадя железный боец»',
+          title: 'Вадя железный боец',
+          caption:
+            'Убойный битбокс. «Терминатора» фильтр не пропустил, сделал «железного бойца».',
+        }),
+      ).resolves.toBe('Generated track: Вадя железный боец')
+      return getCollectedResponses()
+    })
+
+    expect(mockGenerateLyriaMusic).toHaveBeenCalledTimes(2)
+    expect(responses).toEqual([
+      expect.objectContaining({
+        type: 'audio',
+        delivery: 'voice',
+        caption:
+          'Убойный битбокс. «Терминатора» фильтр не пропустил, сделал «железного бойца».',
+      }),
+    ])
+  })
+
+  test('keeps the result slot after a failure that is not a prompt refusal', async () => {
+    mockGenerateLyriaMusic.mockRejectedValueOnce(
+      new Error('Google media generation failed (HTTP 500): Internal error'),
+    )
+
+    await runWithToolContext(message, [], async () => {
+      await expect(
+        generateMusicTool.execute({ prompt: 'A synth-pop song' }),
+      ).rejects.toThrow('Internal error')
+      await expect(
+        generateMusicTool.execute({ prompt: 'A synth-pop song' }),
+      ).rejects.toThrow(
+        'Only one generated media result can be created per request',
+      )
+    })
+
+    expect(mockGenerateLyriaMusic).toHaveBeenCalledTimes(1)
+  })
+
   test('uses exact history media only when the model selects its media_id', async () => {
     await runWithToolContext(message, [requestImage, historyImage], () =>
       generateVideoTool.execute({

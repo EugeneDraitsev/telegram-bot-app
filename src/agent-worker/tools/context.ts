@@ -133,6 +133,11 @@ export function claimGeneratedMedia(): void {
   context.generatedMediaClaimed = true
 }
 
+/** Hand the slot back after a refusal that produced and billed nothing. */
+export function releaseGeneratedMedia(): void {
+  requireToolContext().generatedMediaClaimed = false
+}
+
 function getToolCommandName(): string | undefined {
   return contextStorage.getStore()?.commandName
 }

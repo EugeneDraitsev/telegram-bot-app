@@ -8,12 +8,14 @@ import {
   LYRIA_PRO_MODEL,
   type LyriaModel,
   LyriaModelUnavailableError,
+  LyriaPromptRefusedError,
   prepareLyriaMedia,
 } from '../services/google-media'
 import type { AgentTool } from '../types'
 import {
   addResponse,
   claimGeneratedMedia,
+  releaseGeneratedMedia,
   requireToolContext,
   trackToolModelCall,
 } from './context'
@@ -23,6 +25,19 @@ import { getMediaCaption, getTrackTitle } from './media-text'
 // A generation observed at 20-40s; below this a retry only burns a paid call
 // whose result the tool timeout would discard anyway.
 const MIN_LYRIA_RETRY_MS = 45_000
+
+/**
+ * The filter rejects a brief within a second and bills nothing, so the caller
+ * model gets to rewrite it; the tool loop's iteration cap bounds the attempts.
+ */
+function getRefusalInstruction(reason: string): string {
+  return [
+    `Google's content filter refused this music prompt, so nothing was generated: ${reason}`,
+    "If the user's idea itself is what the policy forbids, do not retry; tell the user.",
+    "Otherwise rewrite the prompt yourself, keeping the user's idea but replacing whatever likely tripped the filter (brand, film, game or character names, real people, artists, copyrighted lyrics, graphic or sexual wording) with original descriptions, and call generate_music_with_lyria again now.",
+    "End that call's caption with one short sentence in the user's language saying what you changed and why.",
+  ].join(' ')
+}
 
 /** Each attempt is its own metric, so a fallback is never billed to the id
  * that refused the request. */
@@ -41,6 +56,32 @@ function generateTrack(
     },
     () => generateLyriaMusic({ prompt, model, media, timeoutMs }),
   )
+}
+
+async function generateWithFallback(
+  model: LyriaModel,
+  prompt: string,
+  media: MediaBuffer[],
+) {
+  const startedAt = Date.now()
+  try {
+    return await generateTrack(model, prompt, media)
+  } catch (error) {
+    if (!(error instanceof LyriaModelUnavailableError)) throw error
+    const retryTimeoutMs = getLyriaRetryTimeoutMs(Date.now() - startedAt)
+    if (retryTimeoutMs < MIN_LYRIA_RETRY_MS) throw error
+    logger.warn(
+      { model, fallback: LYRIA_FALLBACK_MODEL, retryTimeoutMs },
+      'lyria.model_unavailable_fallback',
+    )
+    return generateTrack(
+      LYRIA_FALLBACK_MODEL,
+      prompt,
+      media,
+      model,
+      retryTimeoutMs,
+    )
+  }
 }
 
 export const generateMusicTool: AgentTool = {
@@ -67,7 +108,7 @@ export const generateMusicTool: AgentTool = {
         caption: {
           type: 'string',
           description:
-            'A short natural caption for the track in the user language. Describe its story, mood, or sound in one sentence. Do not mention model names, providers, duration, generation status, or technical details.',
+            'A short natural caption for the track in the user language. Describe its story, mood, or sound in one sentence. Do not mention model names, providers, duration, generation status, or technical details, apart from the rewrite note a refused prompt asks for.',
         },
         includeLyrics: {
           type: 'boolean',
@@ -98,25 +139,13 @@ export const generateMusicTool: AgentTool = {
         mediaSelection.explicit,
       )
       claimGeneratedMedia()
-      const startedAt = Date.now()
       let result: Awaited<ReturnType<typeof generateTrack>>
       try {
-        result = await generateTrack(model, prompt, selectedMedia)
+        result = await generateWithFallback(model, prompt, selectedMedia)
       } catch (error) {
-        if (!(error instanceof LyriaModelUnavailableError)) throw error
-        const retryTimeoutMs = getLyriaRetryTimeoutMs(Date.now() - startedAt)
-        if (retryTimeoutMs < MIN_LYRIA_RETRY_MS) throw error
-        logger.warn(
-          { model, fallback: LYRIA_FALLBACK_MODEL, retryTimeoutMs },
-          'lyria.model_unavailable_fallback',
-        )
-        result = await generateTrack(
-          LYRIA_FALLBACK_MODEL,
-          prompt,
-          selectedMedia,
-          model,
-          retryTimeoutMs,
-        )
+        if (!(error instanceof LyriaPromptRefusedError)) throw error
+        releaseGeneratedMedia()
+        throw new Error(getRefusalInstruction(error.reason))
       }
 
       addResponse({
