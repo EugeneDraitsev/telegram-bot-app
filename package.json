@@ -33,7 +33,7 @@
     "@biomejs/biome": "^2.5.15",
     "@types/aws-lambda": "^8.10.164",
     "@types/jest": "^30.0.0",
-    "serverless": "^4.43.0",
+    "serverless": "^4.45.0",
     "serverless-offline": "^14.8.2",
     "serverless-offline-sqs": "^9.0.1",
     "typescript": "^7.0.2"
