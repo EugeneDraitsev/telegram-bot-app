@@ -133,7 +133,7 @@ export function claimGeneratedMedia(): void {
   context.generatedMediaClaimed = true
 }
 
-/** Hand the slot back after a refusal that produced and billed nothing. */
+/** Hand the slot back after a refusal that delivered nothing. */
 export function releaseGeneratedMedia(): void {
   requireToolContext().generatedMediaClaimed = false
 }

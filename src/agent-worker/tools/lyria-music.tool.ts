@@ -27,16 +27,17 @@ import { getMediaCaption, getTrackTitle } from './media-text'
 const MIN_LYRIA_RETRY_MS = 45_000
 
 /**
- * The filter rejects a brief within a second and bills nothing, so the caller
- * model gets to rewrite it; the tool loop's iteration cap bounds the attempts.
+ * The filter is noisy: the same brief can pass on one call and be refused on
+ * the next, and a rewrite usually gets through. So the caller model gets to
+ * rewrite it, and the tool loop's iteration cap bounds the attempts.
  */
 function getRefusalInstruction(reason: string): string {
   return [
-    `Google's content filter refused this music prompt, so nothing was generated: ${reason}`,
+    `Google's content filter refused this music prompt, so no track was delivered: ${reason}`,
     "If the user's idea itself is what the policy forbids, do not retry; tell the user.",
     "Otherwise rewrite the prompt yourself, keeping the user's idea, and call generate_music_with_lyria again now.",
-    'The filter matches words, not intent: the usual trigger is a well-known title or name (film, game, brand, character, celebrity, artist) or copyrighted lyrics, even inside a hook or lyric the user asked for word for word, so replace those with original wording first. Ordinary first names are fine, and toning down mood words rarely helps.',
-    "End that call's caption with one short sentence in the user's language saying which words you changed and why.",
+    'The filter matches wording, not intent. Its usual triggers are personal names in the lyrics or hook, even an ordinary first name of a friend; well-known titles or names (film, game, brand, character, celebrity, artist); copyrighted lyrics; and phrasing that can read as sexual or violent out of context (for beatbox, write "vocal percussion", not "with the mouth"). They count even inside a hook the user asked for word for word. Take them out of the prompt and lyrics, and keep the person or reference in the title and caption instead.',
+    "End that call's caption with one short sentence in the user's language saying what you changed and why.",
   ].join(' ')
 }
 

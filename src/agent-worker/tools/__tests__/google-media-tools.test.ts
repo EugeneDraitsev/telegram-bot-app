@@ -436,7 +436,7 @@ describe('Google media agent tools', () => {
         caption: 'Убойный битбокс.',
       })
       await expect(refusal).rejects.toThrow(
-        "Google's content filter refused this music prompt, so nothing was generated: Input blocked: The prompt contains sensitive words.",
+        "Google's content filter refused this music prompt, so no track was delivered: Input blocked: The prompt contains sensitive words.",
       )
       await expect(refusal).rejects.toThrow(
         'call generate_music_with_lyria again now',
