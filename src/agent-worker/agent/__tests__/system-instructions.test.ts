@@ -51,6 +51,11 @@ describe('agentSystemInstructions', () => {
     expect(agentSystemInstructions).toContain(
       "always provide a short natural caption in the user's language",
     )
+    // The one-media rule otherwise makes the model explain a filter refusal
+    // instead of retrying with the rewrite the Lyria tool asks for.
+    expect(agentSystemInstructions).toContain(
+      'call generate_music_with_lyria again in this request with the rewritten prompt',
+    )
     expect(agentSystemInstructions).toContain('call render_latex')
     expect(agentSystemInstructions).toContain('call render_svg_to_png')
     expect(agentSystemInstructions).toContain('Search exact names first')

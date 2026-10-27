@@ -34,8 +34,9 @@ function getRefusalInstruction(reason: string): string {
   return [
     `Google's content filter refused this music prompt, so nothing was generated: ${reason}`,
     "If the user's idea itself is what the policy forbids, do not retry; tell the user.",
-    "Otherwise rewrite the prompt yourself, keeping the user's idea but replacing whatever likely tripped the filter (brand, film, game or character names, real people, artists, copyrighted lyrics, graphic or sexual wording) with original descriptions, and call generate_music_with_lyria again now.",
-    "End that call's caption with one short sentence in the user's language saying what you changed and why.",
+    "Otherwise rewrite the prompt yourself, keeping the user's idea, and call generate_music_with_lyria again now.",
+    'The filter matches words, not intent: the usual trigger is a well-known title or name (film, game, brand, character, celebrity, artist) or copyrighted lyrics, even inside a hook or lyric the user asked for word for word, so replace those with original wording first. Ordinary first names are fine, and toning down mood words rarely helps.',
+    "End that call's caption with one short sentence in the user's language saying which words you changed and why.",
   ].join(' ')
 }
 
