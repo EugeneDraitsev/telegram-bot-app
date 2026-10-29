@@ -16,7 +16,7 @@ import {
   TOOL_CALL_TIMEOUT_MS,
 } from './config'
 import { generateModelWithRetry, type ModelCallResult } from './model-call'
-import { CHAT_ROLE, type ModelChoice } from './models'
+import type { ModelChoice, ModelRole } from './models'
 import { extractErrorInfo, withTimeout } from './utils'
 
 const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
@@ -266,14 +266,14 @@ export async function runToolLoop(
   tools: ToolSet,
   toolByName: Map<string, AgentTool>,
   chatId: number,
-  initialChoice: ModelChoice,
+  role: ModelRole,
 ): Promise<{ finalText: string; toolResults: ToolExecutionResult[] }> {
   let finalText = ''
   const toolResults: ToolExecutionResult[] = []
-  let activeChoice = initialChoice
+  let activeChoice = role.primary
   // Once the loop has switched to the fallback there is nothing left to fall
   // back to, so later iterations retry the fallback itself.
-  let fallback: ModelChoice | undefined = CHAT_ROLE.fallback
+  let fallback: ModelChoice | undefined = role.fallback
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     let modelResult: ModelCallResult<ToolSet>
@@ -290,7 +290,7 @@ export async function runToolLoop(
           metricName: iteration === 0 ? 'routing' : `iteration_${iteration}`,
           choice: activeChoice,
           fallback,
-          timeoutMs: CHAT_ROLE.timeoutMs,
+          timeoutMs: role.timeoutMs,
           attribution: getToolMetricAttribution(),
         },
       )
@@ -449,7 +449,7 @@ export async function runToolLoop(
           metricName: 'finalize',
           choice: activeChoice,
           fallback,
-          timeoutMs: CHAT_ROLE.timeoutMs,
+          timeoutMs: role.timeoutMs,
           attribution: getToolMetricAttribution(),
         },
       )

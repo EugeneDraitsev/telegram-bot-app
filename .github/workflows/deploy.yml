@@ -49,6 +49,7 @@ jobs:
           FIXER_API_KEY: ${{secrets.FIXER_API_KEY}}
           EXCHANGE_RATE_API_KEY: ${{secrets.EXCHANGE_RATE_API_KEY}}
           OPENAI_API_KEY: ${{secrets.OPENAI_API_KEY}}
+          ANTHROPIC_API_KEY: ${{secrets.ANTHROPIC_API_KEY}}
           AGENTIC_BOT_ENABLED: ${{vars.AGENTIC_BOT_ENABLED || 'true'}}
           BOT_OWNER_ID: ${{vars.BOT_OWNER_ID}}
           TELEGRAM_OIDC_CLIENT_ID: ${{vars.TELEGRAM_OIDC_CLIENT_ID}}

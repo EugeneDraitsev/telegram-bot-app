@@ -186,7 +186,9 @@ the report.
 ### Model selection
 
 Language models, reasoning effort and fallbacks are configured in
-`src/agent-worker/agent/models.ts`. Media models belong to their services;
+`src/agent-worker/agent/models.ts`. `/o` runs Claude Opus 5.5 at `xhigh`
+effort (`ANTHROPIC_API_KEY`) and falls back to GPT-6 Astra at medium reasoning.
+Media models belong to their services;
 the shared Gemini image model is defined in `src/common/utils/gemini-image.utils.ts`.
 
 Image routing and quality are configured in

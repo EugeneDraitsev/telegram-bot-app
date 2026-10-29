@@ -41,6 +41,7 @@ jobs:
           FIXER_API_KEY: ci-placeholder
           EXCHANGE_RATE_API_KEY: ci-placeholder
           OPENAI_API_KEY: ci-placeholder
+          ANTHROPIC_API_KEY: ci-placeholder
           GEMINI_API_KEY: ci-placeholder
           AGENTIC_BOT_ENABLED: "false"
           BOT_OWNER_ID: "1"

@@ -11,7 +11,7 @@ import { runAgenticLoop } from '../agentic-loop'
 import * as commandSafety from '../command-safety'
 import * as delivery from '../delivery'
 import * as modelCall from '../model-call'
-import { CHAT_ROLE } from '../models'
+import { CHAT_ROLE, DEEP_CHAT_ROLE } from '../models'
 import * as replyGate from '../reply-gate'
 
 const stopThinking = jest.fn()
@@ -259,7 +259,7 @@ describe('runAgenticLoop integration', () => {
   )
 
   test.each(['q', 'o'])(
-    'preserves the normal Astra model and reasoning for safe /%s',
+    'runs the command chat role for safe /%s',
     async (commandName) => {
       const modelSpy = jest
         .spyOn(modelCall, 'generateModelWithRetry')
@@ -276,9 +276,11 @@ describe('runAgenticLoop integration', () => {
       )
       expect(commandSafety.checkCommandSafety).toHaveBeenCalledTimes(1)
       expect(replyGate.shouldEngageWithMessage).not.toHaveBeenCalled()
-      expect(modelSpy.mock.calls[0]?.[1].choice).toEqual({
-        ...CHAT_ROLE.primary,
-        reasoningEffort: commandName === 'o' ? 'medium' : 'low',
+      const role = commandName === 'o' ? DEEP_CHAT_ROLE : CHAT_ROLE
+      expect(modelSpy.mock.calls[0]?.[1]).toMatchObject({
+        choice: role.primary,
+        fallback: role.fallback,
+        timeoutMs: role.timeoutMs,
       })
     },
   )

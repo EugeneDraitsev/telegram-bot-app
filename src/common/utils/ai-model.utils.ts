@@ -1,4 +1,4 @@
-export type AiProvider = 'google' | 'openai'
+export type AiProvider = 'anthropic' | 'google' | 'openai'
 
 export type AiReasoningEffort =
   | 'none'
