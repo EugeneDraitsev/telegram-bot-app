@@ -188,6 +188,10 @@ the report.
 Language models, reasoning effort and fallbacks are configured in
 `src/agent-worker/agent/models.ts`. `/o` runs Claude Opus 5.5 at `xhigh`
 effort (`ANTHROPIC_API_KEY`) and falls back to GPT-6 Astra at medium reasoning.
+Chat roles also cap the tool loop: `/o` may run eight tool rounds, other
+messages four, and no new round starts after 150s or 90s respectively. A loop
+that stops before the model reads its last tool results gets a final answer
+pass without tools.
 Media models belong to their services;
 the shared Gemini image model is defined in `src/common/utils/gemini-image.utils.ts`.
 

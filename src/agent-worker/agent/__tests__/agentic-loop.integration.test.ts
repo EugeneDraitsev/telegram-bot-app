@@ -546,6 +546,88 @@ describe('runAgenticLoop integration', () => {
     )
   })
 
+  test('stops starting tool rounds after the role budget and answers from the results', async () => {
+    let now = Date.now()
+    jest.spyOn(Date, 'now').mockImplementation(() => now)
+    const execute = jest.fn(async () => {
+      now += CHAT_ROLE.toolLoopBudgetMs
+      return 'slow result'
+    })
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([
+      {
+        declaration: { type: 'function', name: 'lookup', description: 'Look' },
+        execute,
+      },
+    ])
+    const lookupCall = {
+      toolCallId: 'call-1',
+      toolName: 'lookup',
+      input: { query: 'value' },
+    }
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(createModelResult({ toolCalls: [lookupCall] }))
+      .mockResolvedValueOnce(createModelResult({ text: 'From the results' }))
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+    })
+
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(
+      modelSpy.mock.calls.map(([params, options]) => [
+        options.metricName,
+        params.toolChoice,
+      ]),
+    ).toEqual([
+      ['routing', 'auto'],
+      ['finalize', 'none'],
+    ])
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [{ type: 'text', text: 'From the results' }],
+      }),
+    )
+  })
+
+  test('replaces interim text when the iteration limit leaves tool results unread', async () => {
+    const execute = jest.fn().mockResolvedValue('result')
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([
+      {
+        declaration: { type: 'function', name: 'lookup', description: 'Look' },
+        execute,
+      },
+    ])
+    const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
+    for (let round = 0; round < CHAT_ROLE.maxToolIterations; round++) {
+      modelSpy.mockResolvedValueOnce(
+        createModelResult({
+          text: 'Checking one more source',
+          toolCalls: [
+            {
+              toolCallId: `call-${round}`,
+              toolName: 'lookup',
+              input: { round },
+            },
+          ],
+        }),
+      )
+    }
+    modelSpy.mockResolvedValueOnce(createModelResult({ text: 'Final answer' }))
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+    })
+
+    expect(execute).toHaveBeenCalledTimes(CHAT_ROLE.maxToolIterations)
+    expect(modelSpy.mock.calls.at(-1)?.[1].metricName).toBe('finalize')
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [{ type: 'text', text: 'Final answer' }],
+      }),
+    )
+  })
+
   test('shows only an explicitly loaded history image in the next model round', async () => {
     const historyImage = {
       buffer: Buffer.from('selected-history-image'),

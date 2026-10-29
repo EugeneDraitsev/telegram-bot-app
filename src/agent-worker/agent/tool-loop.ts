@@ -10,13 +10,9 @@ import {
   takePendingModelInspectionImages,
 } from '../tools'
 import type { AgentTool, AgentToolExecutionPolicy } from '../types'
-import {
-  MAX_SERIAL_TOOL_CALLS_PER_ROUND,
-  MAX_TOOL_ITERATIONS,
-  TOOL_CALL_TIMEOUT_MS,
-} from './config'
+import { MAX_SERIAL_TOOL_CALLS_PER_ROUND, TOOL_CALL_TIMEOUT_MS } from './config'
 import { generateModelWithRetry, type ModelCallResult } from './model-call'
-import type { ModelChoice, ModelRole } from './models'
+import type { ChatRole, ModelChoice } from './models'
 import { extractErrorInfo, withTimeout } from './utils'
 
 const TOOL_RESULT_FALLBACK_MAX_CHARS = 3_500
@@ -266,16 +262,27 @@ export async function runToolLoop(
   tools: ToolSet,
   toolByName: Map<string, AgentTool>,
   chatId: number,
-  role: ModelRole,
+  role: ChatRole,
 ): Promise<{ finalText: string; toolResults: ToolExecutionResult[] }> {
   let finalText = ''
   const toolResults: ToolExecutionResult[] = []
+  const deadline = Date.now() + role.toolLoopBudgetMs
+  // Set when the loop stops before the model has read the latest tool results.
+  let toolResultsUnread = false
   let activeChoice = role.primary
   // Once the loop has switched to the fallback there is nothing left to fall
   // back to, so later iterations retry the fallback itself.
   let fallback: ModelChoice | undefined = role.fallback
 
-  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+  for (let iteration = 0; iteration < role.maxToolIterations; iteration++) {
+    if (iteration > 0 && Date.now() >= deadline) {
+      logger.warn(
+        { chatId, model: activeChoice.label, iteration },
+        'loop.budget_exhausted',
+      )
+      break
+    }
+
     let modelResult: ModelCallResult<ToolSet>
     try {
       modelResult = await generateModelWithRetry(
@@ -308,12 +315,15 @@ export async function runToolLoop(
           },
           'loop.model_iteration_failed_after_tools',
         )
+        // Every model just failed, so the final answer gets a single attempt.
+        fallback = undefined
         break
       }
 
       throw error
     }
     activeChoice = modelResult.choice
+    toolResultsUnread = false
     if (modelResult.fallbackFrom) fallback = undefined
     const { response } = modelResult
 
@@ -407,6 +417,7 @@ export async function runToolLoop(
     }
 
     input.push({ role: 'tool', content: functionResponses })
+    toolResultsUnread = true
 
     const inspectionImages = takePendingModelInspectionImages()
     const inspectionMessage = buildModelInspectionMessage(inspectionImages)
@@ -423,9 +434,13 @@ export async function runToolLoop(
     }
   }
 
-  // If no user-facing response came out of the loop, force a final synthesis
-  // pass without tools. Terminal tools already collected their own response.
-  if (!finalText.trim() && getCollectedResponses().length === 0) {
+  // If no user-facing response came out of the loop, or the loop stopped before
+  // the model read its last tool results, force a final synthesis pass without
+  // tools. Terminal tools already collected their own response.
+  if (
+    (!finalText.trim() || toolResultsUnread) &&
+    getCollectedResponses().length === 0
+  ) {
     try {
       const finalizeResult = await generateModelWithRetry(
         {
