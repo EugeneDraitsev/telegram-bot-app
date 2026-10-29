@@ -938,6 +938,44 @@ describe('sendResponses', () => {
     )
   })
 
+  test('rethrows a GIF file_id failure when there is no fallback text', async () => {
+    const api = createApi()
+    api.sendAnimation.mockRejectedValueOnce(new Error('bad animation'))
+
+    await expect(
+      sendResponses({
+        api,
+        chatId: 123,
+        responses: [{ type: 'animation', url: 'gif-file-id' }],
+      }),
+    ).rejects.toThrow('bad animation')
+    expect(api.sendMessage).not.toHaveBeenCalled()
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+  })
+
+  test('resends a GIF without a missing reply target', async () => {
+    const api = createApi()
+    api.sendAnimation.mockRejectedValueOnce(createMissingReplyError())
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        { type: 'text', text: 'hello there' },
+        { type: 'animation', url: 'gif-file-id' },
+      ],
+    })
+
+    expect(api.sendAnimation).toHaveBeenCalledTimes(2)
+    expect(api.sendAnimation).toHaveBeenLastCalledWith(
+      123,
+      'gif-file-id',
+      expect.not.objectContaining({ reply_parameters: expect.anything() }),
+    )
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+  })
+
   test('falls back to plain text when rich and MarkdownV2 delivery fail', async () => {
     const api = createApi()
     api.sendRichMessage.mockRejectedValue(new Error('rich unavailable'))

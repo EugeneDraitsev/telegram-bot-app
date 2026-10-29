@@ -575,15 +575,16 @@ async function sendAnimation(
       options,
     )
     params.onDelivered?.()
-  } catch {
+  } catch (error) {
     // A file_id means nothing to readers, so only links join the fallback.
     const link = /^https?:\/\//i.test(params.animation.url)
       ? params.animation.url
       : ''
-    await sendText({
-      ...params,
-      text: [rawCaption, link].filter(Boolean).join('\n\n'),
-    })
+    const fallbackText = [rawCaption, link].filter(Boolean).join('\n\n')
+    if (!fallbackText.trim() || isTelegramReplyTargetMissingError(error)) {
+      throw error
+    }
+    await sendText({ ...params, text: fallbackText })
     return
   }
 

@@ -34,19 +34,23 @@ const defaultDynamicToolDependencies: DynamicToolDependencies = {
   searchWeb: searchWebWithFallback,
 }
 
-export const dynamicToolDefinitionSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .regex(/^[a-z][a-z0-9_]{1,63}$/),
-  description: z.string().trim().min(8).max(500),
-  action: z.enum(['send_text', 'web_search', 'get_weather']),
-  template: z.string().trim().min(1).max(2000),
-  searchFormat: z.enum(['brief', 'detailed', 'list']).optional(),
-  stickerFileId: z.string().trim().min(1).max(512).optional(),
-  animationFileId: z.string().trim().min(1).max(512).optional(),
-  enabled: z.boolean().optional(),
-})
+export const dynamicToolDefinitionSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .regex(/^[a-z][a-z0-9_]{1,63}$/),
+    description: z.string().trim().min(8).max(500),
+    action: z.enum(['send_text', 'web_search', 'get_weather']),
+    template: z.string().trim().min(1).max(2000),
+    searchFormat: z.enum(['brief', 'detailed', 'list']).optional(),
+    stickerFileId: z.string().trim().min(1).max(512).optional(),
+    animationFileId: z.string().trim().min(1).max(512).optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine((tool) => !(tool.stickerFileId && tool.animationFileId), {
+    message: 'Use either stickerFileId or animationFileId, not both',
+  })
 
 export type DynamicToolDefinition = z.infer<typeof dynamicToolDefinitionSchema>
 export interface DynamicCommandExecutionResult {

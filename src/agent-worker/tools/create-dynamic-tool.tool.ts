@@ -153,8 +153,16 @@ export const createDynamicToolTool: AgentTool = {
           ? existingTools.find((tool) => tool.name === normalizedArgs.name)
           : undefined
 
+      // A command sends one media: a new sticker or GIF replaces the stored one.
+      const replacesMedia = Boolean(
+        normalizedArgs.stickerFileId || normalizedArgs.animationFileId,
+      )
       const parsed = dynamicToolDefinitionSchema.safeParse({
         ...existingTool,
+        ...(replacesMedia && {
+          stickerFileId: undefined,
+          animationFileId: undefined,
+        }),
         ...normalizedArgs,
       })
       if (!parsed.success) {

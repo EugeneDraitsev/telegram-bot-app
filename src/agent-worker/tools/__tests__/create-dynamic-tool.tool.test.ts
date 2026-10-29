@@ -136,6 +136,73 @@ describe('createDynamicToolTool', () => {
     )
   })
 
+  test('replaces a stored sticker when a GIF is attached', async () => {
+    mockedGetDynamicToolsRawByScope.mockResolvedValue([
+      {
+        name: 'val',
+        description: 'Command for Valorant party',
+        action: 'send_text',
+        template: 'VALORANT',
+        stickerFileId: 'sticker-123',
+        enabled: true,
+      },
+    ])
+    mockedSaveDynamicToolsRaw.mockResolvedValue(true)
+
+    await runWithToolContext(
+      {
+        message_id: 1,
+        chat: { id: 777, type: 'private' },
+        from: { id: 777 },
+      } as Message,
+      undefined,
+      () =>
+        createDynamicToolTool.execute({
+          name: 'val',
+          description: 'Command for Valorant party',
+          action: 'send_text',
+          animationFileId: 'gif-123',
+        }),
+    )
+
+    const [savedTools] = mockedSaveDynamicToolsRaw.mock.calls[0] ?? []
+    expect(JSON.parse(JSON.stringify(savedTools))).toEqual([
+      {
+        name: 'val',
+        description: 'Command for Valorant party',
+        action: 'send_text',
+        template: 'VALORANT',
+        animationFileId: 'gif-123',
+        enabled: true,
+      },
+    ])
+  })
+
+  test('rejects a command with both a sticker and a GIF', async () => {
+    mockedGetDynamicToolsRawByScope.mockResolvedValue([])
+
+    await expect(
+      runWithToolContext(
+        {
+          message_id: 1,
+          chat: { id: 777, type: 'private' },
+          from: { id: 777 },
+        } as Message,
+        undefined,
+        () =>
+          createDynamicToolTool.execute({
+            name: 'val',
+            description: 'Command for Valorant party',
+            action: 'send_text',
+            template: 'VALORANT',
+            stickerFileId: 'sticker-123',
+            animationFileId: 'gif-123',
+          }),
+      ),
+    ).rejects.toThrow('Use either stickerFileId or animationFileId, not both')
+    expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
+  })
+
   test('rejects new send_text command without template', async () => {
     mockedGetDynamicToolsRawByScope.mockResolvedValue([])
 
