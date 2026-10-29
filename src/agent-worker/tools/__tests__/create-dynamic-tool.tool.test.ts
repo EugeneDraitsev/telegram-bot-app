@@ -55,6 +55,43 @@ describe('createDynamicToolTool', () => {
     )
   })
 
+  test('saves animationFileId for a two-letter command', async () => {
+    mockedGetDynamicToolsRawByScope.mockResolvedValue([])
+    mockedSaveDynamicToolsRaw.mockResolvedValue(true)
+
+    const result = await runWithToolContext(
+      {
+        message_id: 1,
+        chat: { id: 777, type: 'private' },
+        from: { id: 777 },
+      } as Message,
+      undefined,
+      () =>
+        createDynamicToolTool.execute({
+          name: '/ov',
+          description: 'Slash command /ov',
+          action: 'send_text',
+          template: 'Go to overwatch',
+          animationFileId: ' gif-123 ',
+        }),
+    )
+
+    expect(result).toBe('Dynamic tool "/ov" saved to chat scope')
+    expect(mockedSaveDynamicToolsRaw).toHaveBeenCalledWith(
+      [
+        {
+          name: 'ov',
+          description: 'Slash command /ov',
+          action: 'send_text',
+          template: 'Go to overwatch',
+          animationFileId: 'gif-123',
+          enabled: true,
+        },
+      ],
+      777,
+    )
+  })
+
   test('preserves existing template when updating only stickerFileId', async () => {
     mockedGetDynamicToolsRawByScope.mockResolvedValue([
       {

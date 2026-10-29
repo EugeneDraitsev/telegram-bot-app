@@ -41,6 +41,7 @@ DYNAMIC COMMANDS:
 - For send_text dynamic commands, the final saved object must contain template. Do not drop template on updates.
 - For web_search dynamic commands, template is the exact search query text that will be passed into web_search. If the command accepts extra user arguments, use {{input}} inside template.
 - stickerFileId must be copied exactly from sticker.file_id in raw chat history. Never invent, shorten, paraphrase, or transform it.
+- To attach a GIF to a command, set animationFileId copied exactly from animation.file_id of that GIF in raw chat history (or of reply_to_message when the user replied to the GIF).
 - If you cannot find the needed file_id, say so briefly instead of pretending the command was updated.
 
 For fresh or uncertain real-world facts, never guess. Use web_search before answering about latest/current info, prices, releases, availability, shopping/comparisons, or if a named thing may be new, ambiguous, or misspelled.

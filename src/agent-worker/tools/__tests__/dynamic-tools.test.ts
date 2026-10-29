@@ -54,6 +54,34 @@ describe('executeDynamicCommandFromMessage', () => {
     ])
   })
 
+  test('attaches a stored GIF to a two-letter command', async () => {
+    mockedGetDynamicToolsRaw.mockResolvedValue([
+      {
+        name: 'ov',
+        description: 'Slash command /ov',
+        action: 'send_text',
+        template: 'Go @user01',
+        animationFileId: 'gif-123',
+      },
+    ])
+
+    const message = {
+      message_id: 1,
+      text: '/ov@draiBot',
+      chat: { id: 777, type: 'group' },
+    } as Message
+
+    const responses = await runWithToolContext(message, undefined, async () => {
+      await executeDynamicCommandFromMessage(message)
+      return getCollectedResponses()
+    })
+
+    expect(responses).toEqual([
+      { type: 'text', text: 'Go @user01' },
+      { type: 'animation', url: 'gif-123' },
+    ])
+  })
+
   test('returns web_search result as tool output without collecting duplicate text', async () => {
     mockedGetDynamicToolsRaw.mockResolvedValue([
       {
