@@ -5,7 +5,6 @@ export const MAX_CAPTION_LENGTH = 1024
 export const MAX_TEXT_LENGTH = 4096
 
 // Tool execution
-export const MAX_TOOL_ITERATIONS = 3
 export const MAX_SERIAL_TOOL_CALLS_PER_ROUND = 2
 export const TOOL_CALL_TIMEOUT_MS = 25_000
 

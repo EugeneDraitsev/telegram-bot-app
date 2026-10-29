@@ -29,6 +29,14 @@ export interface ModelRole {
   timeoutMs: number
 }
 
+/** A role that drives the agent tool loop. */
+export interface ChatRole extends ModelRole {
+  /** Model rounds that may call tools before the final answer. */
+  maxToolIterations: number
+  /** No new tool round starts once the loop has run this long. */
+  toolLoopBudgetMs: number
+}
+
 const choose = (
   config: AiModelConfig,
   reasoningEffort: AiReasoningEffort,
@@ -60,10 +68,12 @@ export const COMMAND_SAFETY_ROLE: ModelRole = {
 }
 
 /** Routing, tool loop, final synthesis and the code_execution tool. */
-export const CHAT_ROLE: ModelRole = {
+export const CHAT_ROLE: ChatRole = {
   primary: openai('gpt-6-astra', 'low'),
   fallback: google('gemini-3.8-flash'),
   timeoutMs: 25_000,
+  maxToolIterations: 4,
+  toolLoopBudgetMs: 90_000,
 }
 
 /** Web-backed search tools. */
@@ -76,15 +86,20 @@ export const WEB_SEARCH_ROLE: ModelRole = {
 /** Budget for a web search tool call: both attempts plus room between them. */
 export const WEB_SEARCH_TOTAL_TIMEOUT_MS = WEB_SEARCH_ROLE.timeoutMs * 2 + 2_000
 
-/** `/o`: Claude Opus thinking at extra-high effort, which needs a longer budget. */
-export const DEEP_CHAT_ROLE: ModelRole = {
+/**
+ * `/o`: Claude Opus thinking at extra-high effort over more tool rounds. The
+ * call timeout and loop budget keep the worst case inside the worker timeout.
+ */
+export const DEEP_CHAT_ROLE: ChatRole = {
   primary: anthropic('claude-opus-5-5', 'xhigh'),
   fallback: { ...CHAT_ROLE.primary, reasoningEffort: 'medium' },
-  timeoutMs: 120_000,
+  timeoutMs: 90_000,
+  maxToolIterations: 8,
+  toolLoopBudgetMs: 150_000,
 }
 
 /** `/o` runs on the deep chat role; every other command uses the default. */
-export function resolveAgentChatRole(commandName?: string): ModelRole {
+export function resolveAgentChatRole(commandName?: string): ChatRole {
   return commandName === 'o' ? DEEP_CHAT_ROLE : CHAT_ROLE
 }
 
