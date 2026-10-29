@@ -865,6 +865,117 @@ describe('sendResponses', () => {
     expect(api.sendRichMessage).not.toHaveBeenCalled()
   })
 
+  test('captions a GIF file_id with short mention text', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        { type: 'text', text: 'Go @user01 @user02' },
+        { type: 'animation', url: 'gif-file-id' },
+      ],
+    })
+
+    expect(api.sendAnimation).toHaveBeenCalledWith(123, 'gif-file-id', {
+      caption: expect.stringContaining('@user01 @user02'),
+      parse_mode: 'MarkdownV2',
+      reply_parameters: { message_id: 456 },
+    })
+    expect(api.sendMessage).not.toHaveBeenCalled()
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+  })
+
+  test('sends mention batches after a GIF instead of in its caption', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        {
+          type: 'text',
+          text: 'Team call @user01 @user02 @user03 @user04 @user05 @user06',
+        },
+        { type: 'animation', url: 'gif-file-id' },
+      ],
+    })
+
+    expect(api.sendAnimation).toHaveBeenCalledWith(123, 'gif-file-id', {
+      caption: undefined,
+      parse_mode: undefined,
+      reply_parameters: { message_id: 456 },
+    })
+    expect(api.sendMessage).toHaveBeenCalledTimes(2)
+    expect(api.sendMessage).toHaveBeenNthCalledWith(
+      1,
+      123,
+      'Team call\n@user01 @user02 @user03 @user04 @user05',
+      { reply_parameters: { message_id: 5 } },
+    )
+  })
+
+  test('does not paste a GIF file_id into fallback text', async () => {
+    const api = createApi()
+    api.sendAnimation.mockRejectedValueOnce(new Error('bad animation'))
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        { type: 'text', text: 'hello there' },
+        { type: 'animation', url: 'gif-file-id' },
+      ],
+    })
+
+    expect(api.sendRichMessage).toHaveBeenCalledWith(
+      123,
+      { markdown: 'hello there' },
+      {},
+      undefined,
+    )
+  })
+
+  test('rethrows a GIF file_id failure when there is no fallback text', async () => {
+    const api = createApi()
+    api.sendAnimation.mockRejectedValueOnce(new Error('bad animation'))
+
+    await expect(
+      sendResponses({
+        api,
+        chatId: 123,
+        responses: [{ type: 'animation', url: 'gif-file-id' }],
+      }),
+    ).rejects.toThrow('bad animation')
+    expect(api.sendMessage).not.toHaveBeenCalled()
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+  })
+
+  test('resends a GIF without a missing reply target', async () => {
+    const api = createApi()
+    api.sendAnimation.mockRejectedValueOnce(createMissingReplyError())
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        { type: 'text', text: 'hello there' },
+        { type: 'animation', url: 'gif-file-id' },
+      ],
+    })
+
+    expect(api.sendAnimation).toHaveBeenCalledTimes(2)
+    expect(api.sendAnimation).toHaveBeenLastCalledWith(
+      123,
+      'gif-file-id',
+      expect.not.objectContaining({ reply_parameters: expect.anything() }),
+    )
+    expect(api.sendRichMessage).not.toHaveBeenCalled()
+  })
+
   test('falls back to plain text when rich and MarkdownV2 delivery fail', async () => {
     const api = createApi()
     api.sendRichMessage.mockRejectedValue(new Error('rich unavailable'))

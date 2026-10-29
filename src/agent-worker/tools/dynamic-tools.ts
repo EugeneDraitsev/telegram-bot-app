@@ -34,18 +34,23 @@ const defaultDynamicToolDependencies: DynamicToolDependencies = {
   searchWeb: searchWebWithFallback,
 }
 
-export const dynamicToolDefinitionSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .regex(/^[a-z][a-z0-9_]{2,63}$/),
-  description: z.string().trim().min(8).max(500),
-  action: z.enum(['send_text', 'web_search', 'get_weather']),
-  template: z.string().trim().min(1).max(2000),
-  searchFormat: z.enum(['brief', 'detailed', 'list']).optional(),
-  stickerFileId: z.string().trim().min(1).max(512).optional(),
-  enabled: z.boolean().optional(),
-})
+export const dynamicToolDefinitionSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .regex(/^[a-z][a-z0-9_]{1,63}$/),
+    description: z.string().trim().min(8).max(500),
+    action: z.enum(['send_text', 'web_search', 'get_weather']),
+    template: z.string().trim().min(1).max(2000),
+    searchFormat: z.enum(['brief', 'detailed', 'list']).optional(),
+    stickerFileId: z.string().trim().min(1).max(512).optional(),
+    animationFileId: z.string().trim().min(1).max(512).optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine((tool) => !(tool.stickerFileId && tool.animationFileId), {
+    message: 'Use either stickerFileId or animationFileId, not both',
+  })
 
 export type DynamicToolDefinition = z.infer<typeof dynamicToolDefinitionSchema>
 export interface DynamicCommandExecutionResult {
@@ -116,11 +121,21 @@ function createDynamicTool(
   definition: DynamicToolDefinition,
   dependencies: DynamicToolDependencies = defaultDynamicToolDependencies,
 ): AgentTool {
-  const { name, description, action, template, stickerFileId } = definition
+  const {
+    name,
+    description,
+    action,
+    template,
+    stickerFileId,
+    animationFileId,
+  } = definition
 
-  function addStickerResponseIfPresent() {
+  function addMediaResponsesIfPresent() {
     if (stickerFileId) {
       addResponse({ type: 'sticker', fileId: stickerFileId })
+    }
+    if (animationFileId) {
+      addResponse({ type: 'animation', url: animationFileId })
     }
   }
 
@@ -144,14 +159,14 @@ function createDynamicTool(
       execute: async (args) => {
         requireToolContext()
         const text = buildPrompt(template, args.input as string)
-        if (!text && !stickerFileId) {
+        if (!text && !stickerFileId && !animationFileId) {
           throw new Error(`Dynamic tool "${name}" produced empty text`)
         }
 
         if (text) {
           addResponse({ type: 'text', text })
         }
-        addStickerResponseIfPresent()
+        addMediaResponsesIfPresent()
         return `Dynamic tool "${name}" added response`
       },
     }
@@ -198,7 +213,7 @@ function createDynamicTool(
             attribution: { source: 'command', command: name },
           },
         )
-        addStickerResponseIfPresent()
+        addMediaResponsesIfPresent()
         return text
       },
     }
@@ -230,7 +245,7 @@ function createDynamicTool(
 
       const weather = await getWeather(preparedLocation)
       const text = formatWeatherText(weather)
-      addStickerResponseIfPresent()
+      addMediaResponsesIfPresent()
       return text
     },
   }

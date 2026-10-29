@@ -556,22 +556,44 @@ async function sendAnimation(
   params: DeliveryParams & { animation: AnimationResponse; text: string },
 ) {
   const rawCaption = params.text || params.animation.caption || ''
-  const caption = formatCaption(rawCaption)
+  // Long or mention-heavy text goes after the GIF so sendText can split it.
+  const fitsCaption =
+    rawCaption.length <= MAX_CAPTION_LENGTH &&
+    splitMentionBatches(rawCaption).length === 1
+  const caption = fitsCaption ? formatCaption(rawCaption) : undefined
   const options = {
     caption,
     parse_mode: caption ? ('MarkdownV2' as const) : undefined,
     ...getReplyOptions(params.replyToMessageId),
   }
 
+  let sentMessage: Awaited<ReturnType<TelegramApi['sendAnimation']>>
   try {
-    await params.api.sendAnimation(params.chatId, params.animation.url, options)
+    sentMessage = await params.api.sendAnimation(
+      params.chatId,
+      params.animation.url,
+      options,
+    )
     params.onDelivered?.()
-  } catch {
+  } catch (error) {
+    // A file_id means nothing to readers, so only links join the fallback.
+    const link = /^https?:\/\//i.test(params.animation.url)
+      ? params.animation.url
+      : ''
+    const fallbackText = [rawCaption, link].filter(Boolean).join('\n\n')
+    if (!fallbackText.trim() || isTelegramReplyTargetMissingError(error)) {
+      throw error
+    }
+    await sendText({ ...params, text: fallbackText })
+    return
+  }
+
+  if (!fitsCaption && rawCaption.trim()) {
     await sendText({
       ...params,
-      text: rawCaption
-        ? `${rawCaption}\n\n${params.animation.url}`
-        : params.animation.url,
+      text: rawCaption,
+      replyToMessageId:
+        getSentMessageId(sentMessage) ?? params.replyToMessageId,
     })
   }
 }

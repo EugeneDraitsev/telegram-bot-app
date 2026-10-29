@@ -84,14 +84,14 @@ export const createDynamicToolTool: AgentTool = {
     type: 'function',
     name: 'create_dynamic_tool',
     description:
-      'Create or update a dynamic command in Redis for the current chat. Persist the final command object, not a partial patch. template is required. For web_search commands, template is the exact query text sent into web_search and may include {{input}}. stickerFileId must be the exact full Telegram sticker.file_id value.',
+      'Create or update a dynamic command in Redis for the current chat. Persist the final command object, not a partial patch. template is required. For web_search commands, template is the exact query text sent into web_search and may include {{input}}. stickerFileId must be the exact full Telegram sticker.file_id value. animationFileId must be the exact full Telegram animation.file_id value of a GIF.',
     parameters: {
       type: 'object',
       properties: {
         name: {
           type: 'string',
           description:
-            'Tool name (lowercase, underscores, 3-64 chars, e.g. "check_btc")',
+            'Tool name (lowercase, underscores, 2-64 chars, e.g. "check_btc")',
         },
         description: {
           type: 'string',
@@ -117,6 +117,11 @@ export const createDynamicToolTool: AgentTool = {
           type: 'string',
           description:
             'Optional Telegram sticker file_id to send together with the command response',
+        },
+        animationFileId: {
+          type: 'string',
+          description:
+            'Optional Telegram GIF animation.file_id to send together with the command response',
         },
         enabled: {
           type: 'boolean',
@@ -148,8 +153,16 @@ export const createDynamicToolTool: AgentTool = {
           ? existingTools.find((tool) => tool.name === normalizedArgs.name)
           : undefined
 
+      // A command sends one media: a new sticker or GIF replaces the stored one.
+      const replacesMedia = Boolean(
+        normalizedArgs.stickerFileId || normalizedArgs.animationFileId,
+      )
       const parsed = dynamicToolDefinitionSchema.safeParse({
         ...existingTool,
+        ...(replacesMedia && {
+          stickerFileId: undefined,
+          animationFileId: undefined,
+        }),
         ...normalizedArgs,
       })
       if (!parsed.success) {
@@ -185,6 +198,7 @@ export const createDynamicToolTool: AgentTool = {
           toolName: definition.name,
           action: definition.action,
           hasSticker: Boolean(definition.stickerFileId),
+          hasAnimation: Boolean(definition.animationFileId),
         },
         'Dynamic tool saved',
       )

@@ -67,6 +67,7 @@ export interface AudioResponse {
 }
 export interface AnimationResponse {
   type: 'animation'
+  /** GIF URL or Telegram animation file_id. */
   url: string
   caption?: string
 }
