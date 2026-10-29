@@ -50,7 +50,7 @@
 - `src/agent-worker/agent/models.ts` is the source of truth for every language
   model the agent calls, with its reasoning effort, fallback and timeout. Do
   not duplicate model names here or hardcode them anywhere else.
-- Reasoning effort reaches OpenAI only; the Google provider drops it.
+- Reasoning effort reaches OpenAI and Anthropic; the Google provider drops it.
 - Media models (image, video, music, speech) are not roles. They live with
   their service, which owns their provider-specific fallbacks.
 

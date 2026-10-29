@@ -12,7 +12,7 @@ import {
   isAgenticChatEnabled,
   logger,
 } from '@tg-bot/common'
-import { REPLY_GATE_ROLE, resolveAgentChatModel, runAgenticLoop } from './agent'
+import { REPLY_GATE_ROLE, resolveAgentChatRole, runAgenticLoop } from './agent'
 import { type AgentWorkerLease, acquireAgentWorkerLease } from './idempotency'
 
 const bot = createBot()
@@ -54,7 +54,7 @@ export const processAgentWorker = async (
 ) => {
   const startedAt = Date.now()
   let lease: AgentWorkerLease | undefined
-  const chatModel = resolveAgentChatModel(event?.commandName)
+  const chatModel = resolveAgentChatRole(event?.commandName).primary
   try {
     const {
       message: incomingMessage,

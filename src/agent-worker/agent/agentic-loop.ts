@@ -36,7 +36,7 @@ import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { isRetryableModelError, ModelCallTimeoutError } from './model-call'
 import { buildModelToolRegistry } from './model-tools'
-import { REPLY_GATE_ROLE, resolveAgentChatModel } from './models'
+import { REPLY_GATE_ROLE, resolveAgentChatRole } from './models'
 import { shouldEngageWithMessage } from './reply-gate'
 import { agentSystemInstructions } from './system-instructions'
 import { extractFallbackTextFromToolResults, runToolLoop } from './tool-loop'
@@ -377,7 +377,8 @@ export async function runAgenticLoop(
     return
   }
 
-  const chatModel = resolveAgentChatModel(options.commandName)
+  const chatRole = resolveAgentChatRole(options.commandName)
+  const chatModel = chatRole.primary
   const attribution = options.commandName
     ? { source: 'command' as const, command: options.commandName }
     : { source: 'agentic' as const }
@@ -594,7 +595,7 @@ export async function runAgenticLoop(
           tools,
           toolByName,
           chatId,
-          chatModel,
+          chatRole,
         )
 
         // Collect any responses produced by tools (media, text drafts, etc.)

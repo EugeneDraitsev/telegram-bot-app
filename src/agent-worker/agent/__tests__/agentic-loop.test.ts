@@ -9,15 +9,16 @@ import {
 import { buildModelToolRegistry } from '../model-tools'
 import {
   CHAT_ROLE,
+  DEEP_CHAT_ROLE,
   getModelProviderOptions,
-  resolveAgentChatModel,
+  resolveAgentChatRole,
 } from '../models'
 import {
   extractFallbackTextFromToolResults,
   getExecutableFunctionCalls,
 } from '../tool-loop'
 
-describe('resolveAgentChatModel', () => {
+describe('resolveAgentChatRole', () => {
   test('runs the chat model on GPT-6 Astra with low reasoning', () => {
     expect(CHAT_ROLE.primary).toEqual({
       config: { provider: 'openai', model: 'gpt-6-astra' },
@@ -27,13 +28,24 @@ describe('resolveAgentChatModel', () => {
     expect(CHAT_ROLE.fallback.label).toBe('google/gemini-3.8-flash')
   })
 
-  test('raises the reasoning effort in API requests for /o only', () => {
+  test('runs /o on Claude Opus at xhigh effort with Astra as fallback', () => {
+    const role = resolveAgentChatRole('o')
+    expect(role).toBe(DEEP_CHAT_ROLE)
+    expect(role.primary.label).toBe('anthropic/claude-opus-5-5')
     expect(
-      getModelProviderOptions(resolveAgentChatModel('o'), { chatId: 123 })
-        .openai?.reasoningEffort,
+      getModelProviderOptions(role.primary, { chatId: 123 }).anthropic,
+    ).toEqual({
+      cacheControl: { type: 'ephemeral' },
+      fallbacks: 'default',
+      effort: 'xhigh',
+      metadata: { userId: '123' },
+    })
+    expect(
+      getModelProviderOptions(role.fallback, { chatId: 123 }).openai
+        ?.reasoningEffort,
     ).toBe('medium')
-    expect(resolveAgentChatModel('q')).toBe(CHAT_ROLE.primary)
-    expect(resolveAgentChatModel()).toBe(CHAT_ROLE.primary)
+    expect(resolveAgentChatRole('q')).toBe(CHAT_ROLE)
+    expect(resolveAgentChatRole()).toBe(CHAT_ROLE)
   })
 })
 

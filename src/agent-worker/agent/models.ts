@@ -1,6 +1,6 @@
 /**
  * Language models, reasoning effort, fallback and timeout for each agent role.
- * Reasoning effort reaches OpenAI only; the Google provider drops it.
+ * Reasoning effort reaches OpenAI and Anthropic; the Google provider drops it.
  * Media model selection belongs to services/image-generation.ts,
  * services/google-media.ts and services/google-tts.ts.
  */
@@ -43,6 +43,9 @@ const openai = (model: string, reasoningEffort: AiReasoningEffort) =>
 
 const google = (model: string) => choose({ provider: 'google', model }, 'none')
 
+const anthropic = (model: string, reasoningEffort: AiReasoningEffort) =>
+  choose({ provider: 'anthropic', model }, reasoningEffort)
+
 /** Engage/ignore decision on every eligible message: the hot path. */
 export const REPLY_GATE_ROLE: ModelRole = {
   primary: openai('gpt-6-luna', 'none'),
@@ -73,11 +76,16 @@ export const WEB_SEARCH_ROLE: ModelRole = {
 /** Budget for a web search tool call: both attempts plus room between them. */
 export const WEB_SEARCH_TOTAL_TIMEOUT_MS = WEB_SEARCH_ROLE.timeoutMs * 2 + 2_000
 
-/** `/o` asks the chat model to think longer; every other command uses the default. */
-export function resolveAgentChatModel(commandName?: string): ModelChoice {
-  return commandName === 'o'
-    ? { ...CHAT_ROLE.primary, reasoningEffort: 'medium' }
-    : CHAT_ROLE.primary
+/** `/o`: Claude Opus thinking at extra-high effort, which needs a longer budget. */
+export const DEEP_CHAT_ROLE: ModelRole = {
+  primary: anthropic('claude-opus-5-5', 'xhigh'),
+  fallback: { ...CHAT_ROLE.primary, reasoningEffort: 'medium' },
+  timeoutMs: 120_000,
+}
+
+/** `/o` runs on the deep chat role; every other command uses the default. */
+export function resolveAgentChatRole(commandName?: string): ModelRole {
+  return commandName === 'o' ? DEEP_CHAT_ROLE : CHAT_ROLE
 }
 
 export function getModelProviderOptions(
