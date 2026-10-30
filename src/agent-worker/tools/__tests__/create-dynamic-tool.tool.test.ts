@@ -4,6 +4,7 @@ import type { Message } from 'grammy/types'
 import * as common from '@tg-bot/common'
 import { runWithToolContext } from '../context'
 import { createDynamicToolTool } from '../create-dynamic-tool.tool'
+import { getBaseAgentTools } from '../index'
 
 const mockedGetDynamicToolsRawByScope = jest.spyOn(
   common,
@@ -54,6 +55,32 @@ describe('createDynamicToolTool', () => {
       777,
     )
   })
+
+  test.each(getBaseAgentTools().map((tool) => String(tool.declaration.name)))(
+    'reserves the built-in tool name %s',
+    async (name) => {
+      mockedGetDynamicToolsRawByScope.mockResolvedValue([])
+
+      await expect(
+        runWithToolContext(
+          {
+            message_id: 1,
+            chat: { id: 777, type: 'private' },
+            from: { id: 777 },
+          } as Message,
+          undefined,
+          () =>
+            createDynamicToolTool.execute({
+              name,
+              description: 'Shadows a built-in tool',
+              action: 'send_text',
+              template: 'text',
+            }),
+        ),
+      ).rejects.toThrow('conflicts with built-in tool name')
+      expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
+    },
+  )
 
   test('does not overwrite saved commands it could not read', async () => {
     mockedGetDynamicToolsRawByScope.mockRejectedValue(new Error('redis down'))

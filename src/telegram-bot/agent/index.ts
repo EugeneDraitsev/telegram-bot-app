@@ -1,5 +1,4 @@
 import type { Message } from 'grammy/types'
-import type { Bot, Context } from 'grammy/web'
 
 import {
   enqueueAgentWorker,
@@ -84,25 +83,4 @@ export async function handleMessageWithAgent(
   }
 
   await enqueueAgentWorker(payload)
-}
-
-export async function handleAgenticCommand(
-  ctx: Context,
-  commandName: AgentCommandName,
-): Promise<void> {
-  if (!ctx.message) {
-    return
-  }
-
-  await handleMessageWithAgent(ctx.message as Message, {
-    bypassReplyGate: true,
-    stripCommand: true,
-    commandName,
-  })
-}
-
-export function setupAgentCommands(bot: Bot): void {
-  for (const commandName of AGENT_COMMANDS) {
-    bot.command(commandName, (ctx) => handleAgenticCommand(ctx, commandName))
-  }
 }

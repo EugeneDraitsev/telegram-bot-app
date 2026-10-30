@@ -25,6 +25,8 @@ const RESERVED_TOOL_NAMES = new Set<string>([
   'magic_8_ball',
   'telegram_dice',
   'search_image',
+  'render_latex',
+  'render_svg_to_png',
   'generate_or_edit_image',
   'generate_video_with_omni',
   'generate_music_with_lyria',

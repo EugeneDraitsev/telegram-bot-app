@@ -73,7 +73,7 @@ export function isCommandAddressedToAnotherBot(
   return Boolean(targetBot && targetBot !== ownBot)
 }
 
-export function installCommandRegistry(bot: Bot): CommandRegistry {
+export function installCommandRegistry(bot: Bot): Set<string> {
   const commands = new Set<string>()
   const originalCommand = bot.command.bind(bot) as Bot['command']
   ;(

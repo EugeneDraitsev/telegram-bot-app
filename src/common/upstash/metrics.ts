@@ -310,7 +310,9 @@ function summarizeGroups(
   for (const entry of entries) {
     const label = getLabel(entry)?.trim()
     if (!label) continue
-    groups.set(label, [...(groups.get(label) ?? []), entry])
+    const group = groups.get(label)
+    if (group) group.push(entry)
+    else groups.set(label, [entry])
   }
 
   return [...groups.entries()]
