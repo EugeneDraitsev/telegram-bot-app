@@ -239,6 +239,15 @@ describe('saveMessage', () => {
     expect(mockExpire).not.toHaveBeenCalled()
   })
 
+  test('throws on a failed allowlist read so the activity worker retries', async () => {
+    const error = new Error('dynamo unavailable')
+    mockIsAiAllowedChat.mockRejectedValue(error)
+
+    await expect(saveMessage(createMessage(1), 777)).rejects.toBe(error)
+    expect(mockIsAiAllowedChat).toHaveBeenCalledWith(777, { strict: true })
+    expect(mockZadd).not.toHaveBeenCalled()
+  })
+
   test('adds every message but runs retention maintenance only once per hour', async () => {
     const dateNowSpy = jest
       .spyOn(Date, 'now')

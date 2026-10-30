@@ -90,8 +90,13 @@ async function readChatConfiguration(
   )
 }
 
+/**
+ * A failed read fails closed as "not configured". `strict` rethrows instead,
+ * for retried async workers that must not treat an outage as a denial.
+ */
 export async function getChatConfiguration(
   chatId?: string | number,
+  { strict = false } = {},
 ): Promise<ChatConfiguration | undefined> {
   if (chatId === undefined || chatId === null || String(chatId).trim() === '') {
     return undefined
@@ -111,6 +116,7 @@ export async function getChatConfiguration(
     return configuration
   } catch (error) {
     logger.error({ chatId, error }, 'chat_configuration.read_failed')
+    if (strict) throw error
     return undefined
   }
 }
@@ -120,12 +126,13 @@ export async function getChatConfiguration(
 // update functions below still use DynamoDB.
 export async function isAiAllowedChat(
   chatId?: string | number,
+  options?: { strict?: boolean },
 ): Promise<boolean> {
   if (isOffline()) {
     return true
   }
 
-  return (await getChatConfiguration(chatId))?.aiAllowed === true
+  return (await getChatConfiguration(chatId, options))?.aiAllowed === true
 }
 
 export async function isAgenticChatEnabled(
