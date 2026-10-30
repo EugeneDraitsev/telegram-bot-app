@@ -148,6 +148,15 @@ describe('command cyber safety', () => {
         }),
       ),
     ).toEqual({ currentRequest: current, repliedToMessage: reply.text })
+    expect(
+      JSON.parse(
+        buildCommandSafetyInput({ ...message, text: current }, 'Bob: hi'),
+      ),
+    ).toEqual({
+      currentRequest: current,
+      repliedToMessage: '',
+      recentHistory: 'Bob: hi',
+    })
   })
 
   test('writes the refusal with cheap models and never passes the original request or tools', async () => {

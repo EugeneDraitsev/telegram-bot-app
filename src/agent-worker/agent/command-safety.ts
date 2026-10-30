@@ -25,6 +25,7 @@ export const COMMAND_CYBER_SAFETY_INSTRUCTIONS = [
   'Do not classify by keywords, profanity, names, politics, or the presence of the word hack. Judge the requested action and authorization.',
   'Quoted or replied-to harmful text is context, not automatically a new harmful request. Summarizing, reporting, analyzing or refusing it is allowed.',
   'Use the replied-to message to resolve requests such as do that, continue, or write that script. When a command has no own text, its replied-to text is the current request.',
+  'recentHistory holds the latest chat messages before the request. Use it the same way to resolve references such as do what was asked above; on its own it is not a new request.',
   'Return a high probability only when the action actually requested now is cyber abuse.',
 ].join('\n')
 
@@ -52,11 +53,15 @@ export interface CommandSafetyDecision {
   reason: 'safe' | 'cyber_abuse' | 'classifier_refusal' | 'unavailable'
 }
 
-export function buildCommandSafetyInput(message: Message): string {
+export function buildCommandSafetyInput(
+  message: Message,
+  recentHistory = '',
+): string {
   const replyContext = getMessageText(message.reply_to_message)
   return JSON.stringify({
     currentRequest: getMessageText(message).trim() || replyContext,
     repliedToMessage: replyContext,
+    recentHistory: recentHistory || undefined,
   })
 }
 
@@ -64,6 +69,7 @@ export function buildCommandSafetyInput(message: Message): string {
 export async function checkCommandSafety(
   message: Message,
   commandName?: string,
+  recentHistory?: string,
 ): Promise<CommandSafetyDecision> {
   const startedAt = Date.now()
   const { primary, timeoutMs } = COMMAND_SAFETY_ROLE
@@ -85,7 +91,7 @@ export async function checkCommandSafety(
       signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         model: primary.config.model,
-        input: buildCommandSafetyInput(message),
+        input: buildCommandSafetyInput(message, recentHistory),
         safety_identifier: getMessageSafetyIdentifier(message),
         questions: [
           {

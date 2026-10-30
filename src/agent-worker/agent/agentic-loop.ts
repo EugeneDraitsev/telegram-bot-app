@@ -53,12 +53,16 @@ function buildSystemInstruction(
   return parts.join('\n\n')
 }
 
+// Enough to resolve "do what was asked above" without bloating the classifier.
+const COMMAND_SAFETY_HISTORY_LIMIT = 10
+
 function getRecentHistoryContext(
   messages: Message[],
   currentMessageId?: number,
+  limit = DEFAULT_AGENT_HISTORY_LIMIT,
 ): string {
   const history = formatHistoryForDisplay(messages, {
-    limit: DEFAULT_AGENT_HISTORY_LIMIT,
+    limit,
     includeHeader: false,
     excludeMessageId: currentMessageId,
   })
@@ -419,11 +423,28 @@ export async function runAgenticLoop(
       const textContent = message.text || message.caption || ''
       const hasMedia =
         !!mediaBuffers?.length || collectMediaFileRefs(message).length > 0
+      // Loaded once, early only for commands that need it for the safety check.
+      let historyLoad: Promise<Message[]> | undefined
+      const loadRecentHistory = () => {
+        historyLoad ??= preloadWithFallback({
+          chatId,
+          name: 'recent_history',
+          load: () =>
+            getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1),
+          fallback: [] as Message[],
+        })
+        return historyLoad
+      }
 
       if (bypassReplyGate) {
         const safety = await checkCommandSafety(
           incomingMessage,
           options.commandName,
+          getRecentHistoryContext(
+            await loadRecentHistory(),
+            message.message_id,
+            COMMAND_SAFETY_HISTORY_LIMIT,
+          ),
         )
         if (!safety.allowed) {
           const text = await createCommandSafetyReply(
@@ -525,13 +546,7 @@ export async function runAgenticLoop(
           load: () => getAgentTools(chatId),
           fallback: getBaseAgentTools(),
         }),
-        preloadWithFallback({
-          chatId,
-          name: 'recent_history',
-          load: () =>
-            getRecentRawHistory(chatId, DEFAULT_AGENT_HISTORY_LIMIT + 1),
-          fallback: [] as Message[],
-        }),
+        loadRecentHistory(),
         mediaBuffers ?? options.loadMedia?.() ?? [],
       ])
       logger.info(
