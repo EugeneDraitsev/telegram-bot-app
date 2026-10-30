@@ -23,6 +23,8 @@ export interface RegisteredToolMedia {
 interface ToolContext {
   message: Message
   api?: ChatAdminApi & Partial<MediaResolverApi>
+  /** The chat memory the model last saw, for update_memory's change check. */
+  chatMemory?: string
   commandName?: string
   generatedMediaClaimed: boolean
   historyMessages: Message[]
@@ -120,6 +122,10 @@ export function takePendingModelInspectionImages(): RegisteredToolMedia[] {
 
 export function setToolHistoryMessages(messages: Message[]): void {
   requireToolContext().historyMessages = messages
+}
+
+export function setToolChatMemory(memory: string): void {
+  requireToolContext().chatMemory = memory
 }
 
 export function claimGeneratedMedia(): void {

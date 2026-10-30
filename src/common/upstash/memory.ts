@@ -32,14 +32,18 @@ export function chatMemoryKey(chatId: string | number): string {
 }
 
 /**
- * Read chat-scoped memory (markdown string or empty).
+ * Read chat-scoped memory (markdown string or empty). `fresh` skips the
+ * per-container cache and throws on Redis errors instead of returning empty.
  */
-export async function getChatMemory(chatId: string | number): Promise<string> {
+export async function getChatMemory(
+  chatId: string | number,
+  { fresh = false } = {},
+): Promise<string> {
   const redis = getRedisClient()
   if (!redis) return ''
 
   const key = chatMemoryKey(chatId)
-  const cached = memoryCache.get(key)
+  const cached = fresh ? undefined : memoryCache.get(key)
   if (cached !== undefined) {
     return cached
   }
@@ -49,6 +53,7 @@ export async function getChatMemory(chatId: string | number): Promise<string> {
     memoryCache.set(key, value)
     return value
   } catch (error) {
+    if (fresh) throw error
     logger.error({ error }, 'Error getting chat memory')
     return ''
   }

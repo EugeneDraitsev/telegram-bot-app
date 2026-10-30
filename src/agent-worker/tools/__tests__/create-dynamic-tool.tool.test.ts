@@ -55,6 +55,32 @@ describe('createDynamicToolTool', () => {
     )
   })
 
+  test('does not overwrite saved commands it could not read', async () => {
+    mockedGetDynamicToolsRawByScope.mockRejectedValue(new Error('redis down'))
+
+    await expect(
+      runWithToolContext(
+        {
+          message_id: 1,
+          chat: { id: 777, type: 'private' },
+          from: { id: 777 },
+        } as Message,
+        undefined,
+        () =>
+          createDynamicToolTool.execute({
+            name: 'val',
+            description: 'Slash command /val',
+            action: 'send_text',
+            template: 'VALORANT',
+          }),
+      ),
+    ).rejects.toThrow('redis down')
+    expect(mockedGetDynamicToolsRawByScope).toHaveBeenCalledWith(777, {
+      fresh: true,
+    })
+    expect(mockedSaveDynamicToolsRaw).not.toHaveBeenCalled()
+  })
+
   test('saves animationFileId for a two-letter command', async () => {
     mockedGetDynamicToolsRawByScope.mockResolvedValue([])
     mockedSaveDynamicToolsRaw.mockResolvedValue(true)

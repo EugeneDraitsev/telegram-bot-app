@@ -44,6 +44,7 @@ export {
   requireToolContext,
   runWithToolCallContext,
   runWithToolContext,
+  setToolChatMemory,
   setToolHistoryMessages,
   takePendingModelInspectionImages,
   trackToolModelCall,
