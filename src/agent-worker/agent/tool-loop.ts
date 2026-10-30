@@ -30,7 +30,7 @@ export type ToolExecutionResult = {
 }
 
 function hasExecutionPolicy(
-  call: ExecutableFunctionCall,
+  call: Pick<ExecutableFunctionCall, 'name'>,
   toolByName: Map<string, AgentTool>,
   policy: AgentToolExecutionPolicy,
 ): boolean {
@@ -68,11 +68,21 @@ export function getExecutableFunctionCalls(
     }))
 }
 
+/**
+ * Salvages an answer when the model wrote none. Only tools whose output is
+ * already user-facing prose qualify; raw history, media ids or memory dumps
+ * must never reach the chat.
+ */
 export function extractFallbackTextFromToolResults(
-  toolResults: Array<Pick<ToolExecutionResult, 'result' | 'status'>>,
+  toolResults: Array<Pick<ToolExecutionResult, 'name' | 'result' | 'status'>>,
+  toolByName: Map<string, AgentTool>,
 ): string {
   const successfulResults = toolResults
-    .filter(({ status }) => status === 'success')
+    .filter(
+      (result) =>
+        result.status === 'success' &&
+        hasExecutionPolicy(result, toolByName, 'presentable'),
+    )
     .map(({ result }) => result.trim())
     .filter(Boolean)
 
@@ -176,28 +186,26 @@ async function executeToolCalls(
       ...result,
     }))
 
-  if (calls.some((call) => hasExecutionPolicy(call, toolByName, 'serial'))) {
-    const results: Array<
-      {
-        call: ExecutableFunctionCall
-      } & ToolExecutionResult
-    > = []
-    for (const [index, call] of calls.entries()) {
-      results.push(
-        index < MAX_SERIAL_TOOL_CALLS_PER_ROUND
-          ? await run(call)
-          : {
-              call,
-              name: call.name,
-              result: `NOT EXECUTED - at most ${MAX_SERIAL_TOOL_CALLS_PER_ROUND} calls can run in a serial round. Combine queries or request this call in the next round if still needed.`,
-              status: 'error',
-            },
-      )
-    }
-    return results
-  }
-
-  return Promise.all(calls.map(run))
+  // Serial (rate-limited) tools queue behind each other and are capped per
+  // round; every other call runs in parallel alongside them.
+  let serialQueue: Promise<unknown> = Promise.resolve()
+  let serialCount = 0
+  return Promise.all(
+    calls.map((call) => {
+      if (!hasExecutionPolicy(call, toolByName, 'serial')) return run(call)
+      if (serialCount++ >= MAX_SERIAL_TOOL_CALLS_PER_ROUND) {
+        return {
+          call,
+          name: call.name,
+          result: `NOT EXECUTED - at most ${MAX_SERIAL_TOOL_CALLS_PER_ROUND} rate-limited calls can run in one round. Combine queries or request this call in the next round if still needed.`,
+          status: 'error' as const,
+        }
+      }
+      const result = serialQueue.then(() => run(call))
+      serialQueue = result
+      return result
+    }),
+  )
 }
 
 function buildFunctionResponsePart(
@@ -401,10 +409,17 @@ export async function runToolLoop(
         : []),
     ]
 
-    const allTerminal = callsToExecute.every((call) =>
-      hasExecutionPolicy(call, toolByName, 'terminal'),
+    // A failed terminal call goes back to the model like any other result.
+    const allTerminalSucceeded = executionResults.every(
+      ({ call, status }) =>
+        status === 'success' &&
+        hasExecutionPolicy(call, toolByName, 'terminal'),
     )
-    if (allTerminal && getCollectedResponses().length > 0 && !hasDeferred) {
+    if (
+      allTerminalSucceeded &&
+      getCollectedResponses().length > 0 &&
+      !hasDeferred
+    ) {
       logger.info(
         {
           chatId,
@@ -434,12 +449,13 @@ export async function runToolLoop(
     }
   }
 
-  // If no user-facing response came out of the loop, or the loop stopped before
-  // the model read its last tool results, force a final synthesis pass without
-  // tools. Terminal tools already collected their own response.
+  // Force a final synthesis pass without tools when the loop stopped before the
+  // model read its last tool results, even if an earlier tool already
+  // collected a response, or when nothing user-facing came out of the loop. A
+  // terminal-tool stop never leaves results unread.
   if (
-    (!finalText.trim() || toolResultsUnread) &&
-    getCollectedResponses().length === 0
+    toolResultsUnread ||
+    (!finalText.trim() && getCollectedResponses().length === 0)
   ) {
     try {
       const finalizeResult = await generateModelWithRetry(

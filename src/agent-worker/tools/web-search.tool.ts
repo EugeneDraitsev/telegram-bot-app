@@ -18,7 +18,7 @@ function getSearchFormat(value: unknown): WebSearchResponseFormat {
 }
 
 export const webSearchTool: AgentTool = {
-  execution: ['serial'],
+  execution: ['serial', 'presentable'],
   declaration: {
     type: 'function',
     name: 'web_search',

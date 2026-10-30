@@ -105,6 +105,7 @@ describe('runAgenticLoop integration', () => {
 
   test('caps serial batches and reports every skipped call to the next model round', async () => {
     const execute = jest.fn().mockResolvedValue('search result')
+    const getTime = jest.fn().mockResolvedValue('12:00')
     const searchTool: AgentTool = {
       declaration: {
         type: 'function',
@@ -114,16 +115,30 @@ describe('runAgenticLoop integration', () => {
       execution: ['serial'],
       execute,
     }
-    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([searchTool])
+    const timeTool: AgentTool = {
+      declaration: { type: 'function', name: 'get_time', description: 'Time' },
+      execute: getTime,
+    }
+    jest
+      .spyOn(agentTools, 'getAgentTools')
+      .mockResolvedValue([searchTool, timeTool])
     const model = jest
       .spyOn(modelCall, 'generateModelWithRetry')
       .mockResolvedValueOnce(
         createModelResult({
-          toolCalls: ['first', 'second', 'third'].map((query) => ({
-            toolCallId: query,
-            toolName: 'web_search',
-            input: { query },
-          })),
+          toolCalls: [
+            ...['first', 'second'].map((query) => ({
+              toolCallId: query,
+              toolName: 'web_search',
+              input: { query },
+            })),
+            { toolCallId: 'time', toolName: 'get_time', input: {} },
+            {
+              toolCallId: 'third',
+              toolName: 'web_search',
+              input: { query: 'third' },
+            },
+          ],
         }),
       )
       .mockResolvedValueOnce(
@@ -146,6 +161,7 @@ describe('runAgenticLoop integration', () => {
       [{ query: 'second' }],
       [{ query: 'third' }],
     ])
+    expect(getTime).toHaveBeenCalledTimes(1)
     const nextInput = model.mock.calls[1]?.[0].messages
     expect(nextInput).toEqual(
       expect.arrayContaining([
@@ -159,6 +175,10 @@ describe('runAgenticLoop integration', () => {
             expect.objectContaining({
               toolCallId: 'second',
               output: expect.objectContaining({ type: 'text' }),
+            }),
+            expect.objectContaining({
+              toolCallId: 'time',
+              output: { type: 'text', value: '12:00' },
             }),
             expect.objectContaining({
               toolCallId: 'third',
@@ -1076,6 +1096,7 @@ describe('runAgenticLoop integration', () => {
         name: 'lookup',
         description: 'Lookup',
       },
+      execution: ['presentable'],
       execute: jest.fn().mockResolvedValue('verified result: 42'),
     }
     jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([lookupTool])
@@ -1101,6 +1122,157 @@ describe('runAgenticLoop integration', () => {
     expect(delivery.sendResponses).toHaveBeenCalledWith(
       expect.objectContaining({
         responses: [{ type: 'text', text: 'verified result: 42' }],
+      }),
+    )
+  })
+
+  test('does not send raw output from tools that are not presentable', async () => {
+    const historyTool: AgentTool = {
+      declaration: {
+        type: 'function',
+        name: 'get_chat_history',
+        description: 'History',
+      },
+      execute: jest.fn().mockResolvedValue('[{"message_id":1}]'),
+    }
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([historyTool])
+    jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            {
+              toolCallId: 'history-1',
+              toolName: 'get_chat_history',
+              input: {},
+            },
+          ],
+        }),
+      )
+      .mockRejectedValue(new Error('model unavailable'))
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+    })
+
+    const [{ responses }] = (delivery.sendResponses as jest.Mock).mock.calls[0]
+    expect(JSON.stringify(responses)).not.toContain('message_id')
+  })
+
+  test('writes a final answer from unread results after an earlier tool collected media', async () => {
+    const tools: AgentTool[] = [
+      {
+        declaration: {
+          type: 'function',
+          name: 'find_image',
+          description: 'Image',
+        },
+        execution: ['terminal'],
+        execute: jest.fn(async () => {
+          agentTools.addResponse({ type: 'voice', buffer: Buffer.from('a') })
+          return 'Voice queued'
+        }),
+      },
+      {
+        declaration: {
+          type: 'function',
+          name: 'lookup',
+          description: 'Lookup',
+        },
+        execute: jest.fn().mockResolvedValue('verified result: 42'),
+      },
+    ]
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue(tools)
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          text: 'Searching now',
+          toolCalls: [
+            { toolCallId: 'image-1', toolName: 'find_image', input: {} },
+            { toolCallId: 'lookup-1', toolName: 'lookup', input: {} },
+          ],
+        }),
+      )
+      .mockRejectedValueOnce(new Error('model unavailable'))
+      .mockResolvedValueOnce(createModelResult({ text: 'The answer is 42' }))
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+    })
+
+    expect(modelSpy.mock.calls.at(-1)?.[1].metricName).toBe('finalize')
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [
+          expect.objectContaining({ type: 'voice' }),
+          { type: 'text', text: 'The answer is 42' },
+        ],
+      }),
+    )
+  })
+
+  test('shows a failed terminal call to the model even after an earlier response', async () => {
+    const generate = jest
+      .fn()
+      .mockImplementationOnce(async () => {
+        agentTools.addResponse({ type: 'voice', buffer: Buffer.from('a') })
+        return 'Voice generated'
+      })
+      .mockRejectedValueOnce(new Error('quota exceeded'))
+    const tools: AgentTool[] = [
+      {
+        declaration: {
+          type: 'function',
+          name: 'make_voice',
+          description: 'Voice',
+        },
+        execution: ['terminal'],
+        execute: generate,
+      },
+      {
+        declaration: {
+          type: 'function',
+          name: 'lookup',
+          description: 'Lookup',
+        },
+        execute: jest.fn().mockResolvedValue('data'),
+      },
+    ]
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue(tools)
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            { toolCallId: 'voice-1', toolName: 'make_voice', input: {} },
+            { toolCallId: 'lookup-1', toolName: 'lookup', input: {} },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createModelResult({
+          text: 'Making the second one',
+          toolCalls: [
+            { toolCallId: 'voice-2', toolName: 'make_voice', input: {} },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createModelResult({ text: 'The second voice hit a quota limit' }),
+      )
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+    })
+
+    expect(modelSpy).toHaveBeenCalledTimes(3)
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [
+          expect.objectContaining({ type: 'voice' }),
+          { type: 'text', text: 'The second voice hit a quota limit' },
+        ],
       }),
     )
   })
