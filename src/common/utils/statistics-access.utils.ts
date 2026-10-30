@@ -1,15 +1,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 import { FRONTEND_BASE_URL } from '../constants'
-import { getOptionalEnv, getRequiredEnv } from './env.utils'
+import { getRequiredEnv } from './env.utils'
 
 const TOKEN_VERSION = 'v1'
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30
 const SIGNING_CONTEXT = 'telegram-statistics-access'
 
-const getAccessSecret = () =>
-  getOptionalEnv('STATISTICS_ACCESS_SECRET') ??
-  getRequiredEnv('TELEGRAM_WEBHOOK_SECRET')
+const getAccessSecret = () => getRequiredEnv('STATISTICS_ACCESS_SECRET')
 
 const sign = (chatId: string, expiresAt: number) =>
   createHmac('sha256', getAccessSecret())

@@ -1,6 +1,6 @@
 import {
-  validateAdminSessionSecret,
   validateBotOwnerId,
+  validateSecret,
   validateTelegramOidcClientId,
 } from './validate-deployment-config.mjs'
 
@@ -24,10 +24,13 @@ describe('deployment configuration validation', () => {
     )
   })
 
-  test('requires a strong admin session secret', () => {
+  test('requires strong signing secrets', () => {
     const secret = 'x'.repeat(32)
-    expect(validateAdminSessionSecret(secret)).toBe(secret)
-    expect(() => validateAdminSessionSecret('too-short')).toThrow(
+    expect(validateSecret('ADMIN_SESSION_SECRET', secret)).toBe(secret)
+    expect(() =>
+      validateSecret('STATISTICS_ACCESS_SECRET', 'too-short'),
+    ).toThrow('STATISTICS_ACCESS_SECRET')
+    expect(() => validateSecret('ADMIN_SESSION_SECRET', undefined)).toThrow(
       'ADMIN_SESSION_SECRET',
     )
   })
