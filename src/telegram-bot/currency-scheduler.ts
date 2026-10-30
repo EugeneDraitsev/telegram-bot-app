@@ -1,6 +1,4 @@
-import type { APIGatewayProxyHandler } from 'aws-lambda'
-
-import { createBot, logger } from '@tg-bot/common'
+import { createBot } from '@tg-bot/common'
 import {
   getCurrencyMessages,
   SCHEDULED_CURRENCY_MESSAGE_OPTIONS,
@@ -34,22 +32,10 @@ export async function sendScheduledCurrencyMessages({
   }
 }
 
-const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
-  try {
-    const bot = createBot()
-
-    await sendScheduledCurrencyMessages({ api: bot.api })
-
-    return { body: '', statusCode: 200 }
-  } catch (e) {
-    logger.error({ error: e }, 'currencySchedulerHandler error')
-    return {
-      body: JSON.stringify({ message: 'Something went wrong' }),
-      // Resolve so Lambda's async retries cannot post twice; the
-      // currency-scheduler-failure alarm reports this log line.
-      statusCode: 200,
-    }
-  }
+// Failures throw: maximumRetryAttempts is 0, so nothing posts twice, and the
+// currency-scheduler-failure alarm watches the function's Errors metric.
+const currencySchedulerHandler = async () => {
+  await sendScheduledCurrencyMessages({ api: createBot().api })
 }
 
 export default currencySchedulerHandler

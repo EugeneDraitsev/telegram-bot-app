@@ -109,6 +109,9 @@ functions:
               - Arn
           batchSize: 1
           functionResponseType: ReportBatchItemFailures
+          # Matches reservedConcurrency, so polling never outruns the function and
+          # throttled receives cannot burn maxReceiveCount.
+          maximumConcurrency: 5
     environment:
       TOKEN: ${env:TOKEN}
       STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
@@ -142,6 +145,7 @@ functions:
               - Arn
           batchSize: 1
           functionResponseType: ReportBatchItemFailures
+          maximumConcurrency: 5
     environment:
       TOKEN: ${env:TOKEN}
       BRAVE_API_KEY: ${env:BRAVE_API_KEY}
@@ -168,6 +172,7 @@ functions:
               - Arn
           batchSize: 1
           functionResponseType: ReportBatchItemFailures
+          maximumConcurrency: 10
     environment:
       UPSTASH_REDIS_URL: ${env:UPSTASH_REDIS_URL}
       UPSTASH_REDIS_TOKEN: ${env:UPSTASH_REDIS_TOKEN}
@@ -181,6 +186,8 @@ functions:
         - Arn
     timeout: 300
     memorySize: 1536
+    # A retry would post the currency rates again.
+    maximumRetryAttempts: 0
     environment:
       TOKEN: ${env:TOKEN}
       FIXER_API_KEY: ${env:FIXER_API_KEY}

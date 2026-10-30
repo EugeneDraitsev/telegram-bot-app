@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs'
 
-import { WorkerLeaseHeldError } from '../../utils/sqs.utils'
+import {
+  WORKER_LEASE_TTL_SECONDS,
+  WorkerLeaseHeldError,
+} from '../../utils/sqs.utils'
 import * as client from '../client'
 import {
   acquireWorkerLease,
   getWorkerIdempotencyKey,
   runIdempotentWorkerTask,
-  WORKER_LEASE_TTL_SECONDS,
 } from '../worker-idempotency'
 
 const mockSet = jest.fn()

@@ -198,24 +198,17 @@ Resources:
       AlarmActions:
         - Ref: WorkerFailureAlertsTopic
 
-  CurrencySchedulerErrorMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName:
-        Ref: CurrencyDashschedulerLogGroup
-      FilterPattern: '"currencySchedulerHandler error"'
-      MetricTransformations:
-        - MetricNamespace: ${self:service}/${sls:stage}/currency-scheduler
-          MetricName: Failures
-          MetricValue: '1'
-
   CurrencySchedulerFailureAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: ${self:service}-${sls:stage}-currency-scheduler-failure
-      AlarmDescription: The scheduled currency post failed.
-      Namespace: ${self:service}/${sls:stage}/currency-scheduler
-      MetricName: Failures
+      AlarmDescription: The scheduled currency post failed, crashed or timed out.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Ref: CurrencyDashschedulerLambdaFunction
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
@@ -229,8 +222,8 @@ Resources:
   TelegramReplyWorkerDlqAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: ${self:service}-${sls:stage}-reply-worker-dlq-over-3
-      AlarmDescription: Reply worker DLQ contains more than 3 visible messages.
+      AlarmName: ${self:service}-${sls:stage}-reply-worker-dlq-not-empty
+      AlarmDescription: Reply worker DLQ contains a message.
       Namespace: AWS/SQS
       MetricName: ApproximateNumberOfMessagesVisible
       Dimensions:
@@ -243,7 +236,7 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       DatapointsToAlarm: 1
-      Threshold: 3
+      Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
       AlarmActions:
@@ -252,8 +245,8 @@ Resources:
   TelegramAgentWorkerDlqAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: ${self:service}-${sls:stage}-agent-worker-dlq-over-3
-      AlarmDescription: Agent worker DLQ contains more than 3 visible messages.
+      AlarmName: ${self:service}-${sls:stage}-agent-worker-dlq-not-empty
+      AlarmDescription: Agent worker DLQ contains a message.
       Namespace: AWS/SQS
       MetricName: ApproximateNumberOfMessagesVisible
       Dimensions:
@@ -266,7 +259,7 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       DatapointsToAlarm: 1
-      Threshold: 3
+      Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
       AlarmActions:
@@ -275,8 +268,8 @@ Resources:
   TelegramActivityWorkerDlqAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: ${self:service}-${sls:stage}-activity-worker-dlq-over-3
-      AlarmDescription: Activity worker DLQ contains more than 3 visible messages.
+      AlarmName: ${self:service}-${sls:stage}-activity-worker-dlq-not-empty
+      AlarmDescription: Activity worker DLQ contains a message.
       Namespace: AWS/SQS
       MetricName: ApproximateNumberOfMessagesVisible
       Dimensions:
@@ -289,7 +282,7 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       DatapointsToAlarm: 1
-      Threshold: 3
+      Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
       AlarmActions:
