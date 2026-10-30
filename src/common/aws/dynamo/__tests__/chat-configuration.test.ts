@@ -155,6 +155,14 @@ describe('chat configuration reads', () => {
     await expect(isAgenticChatEnabled(123)).resolves.toBe(false)
   })
 
+  test('lets retried workers see a failed read instead of a denial', async () => {
+    getSpy.mockRejectedValue(new Error('dynamo unavailable'))
+
+    await expect(isAiAllowedChat(123, { strict: true })).rejects.toThrow(
+      'dynamo unavailable',
+    )
+  })
+
   test('fails closed without reading DynamoDB when globally disabled', async () => {
     process.env.AGENTIC_BOT_ENABLED = 'false'
 

@@ -147,11 +147,12 @@ function getHistoryScore(message: Message): number {
 }
 
 /**
- * Save a message to chat history
+ * Save a message to chat history. A failed allowlist read throws so the
+ * activity worker retries instead of dropping the message for good.
  */
 export const saveMessage = async (message: Message, chatId?: number) => {
   const redis = getRedisClient()
-  if (!redis || !chatId || !(await isAiAllowedChat(chatId))) {
+  if (!redis || !chatId || !(await isAiAllowedChat(chatId, { strict: true }))) {
     return
   }
 
