@@ -105,6 +105,27 @@ describe('getHistoryTool', () => {
     )
   })
 
+  test.each([false, true])(
+    'keeps the newest messages that fit a busy chat (raw: %s)',
+    async (raw) => {
+      mockedGetRawHistory.mockResolvedValue(
+        Array.from({ length: 2_000 }, (_, index) => ({
+          ...createHistoryMessage(index + 1),
+          text: `history-${index + 1} ${'x'.repeat(200)}`,
+        })),
+      )
+
+      const result = await runWithToolContext(TEST_MESSAGE, undefined, () =>
+        getHistoryTool.execute({ all: true, raw }),
+      )
+
+      expect(result.length).toBeLessThan(61_000)
+      expect(result).toMatch(/^\d+ older messages omitted to fit the context\./)
+      expect(result).toContain('history-2000 ')
+      expect(result).not.toContain('history-1 ')
+    },
+  )
+
   test('can return raw message json for exact media metadata', async () => {
     mockedGetRecentRawHistory.mockResolvedValue([
       {
@@ -118,7 +139,7 @@ describe('getHistoryTool', () => {
     )
 
     expect(mockedGetRecentRawHistory).toHaveBeenCalledWith(777, 1)
-    expect(result).toContain('"file_id": "sticker-123"')
+    expect(result).toContain('"file_id":"sticker-123"')
     expect(result).toContain('"sticker"')
   })
 })

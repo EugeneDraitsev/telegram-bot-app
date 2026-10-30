@@ -2,6 +2,8 @@
  * Tool for getting chat history
  */
 
+import type { Message } from 'grammy/types'
+
 import {
   DEFAULT_AGENT_HISTORY_LIMIT,
   formatHistoryForDisplay,
@@ -12,6 +14,28 @@ import {
 } from '@tg-bot/common'
 import type { AgentTool } from '../types'
 import { requireToolContext } from './context'
+
+// A tool result is re-sent in every later model round, and a busy chat keeps
+// thousands of messages a day.
+const MAX_HISTORY_RESULT_CHARS = 60_000
+
+/** Renders the newest messages that fit, noting how many older ones were cut. */
+function renderNewestWithin(
+  messages: Message[],
+  render: (kept: Message[]) => string,
+): string {
+  let kept = messages
+  let result = render(kept)
+  while (result.length > MAX_HISTORY_RESULT_CHARS && kept.length > 1) {
+    kept = kept.slice(Math.ceil(kept.length / 4))
+    result = render(kept)
+  }
+
+  const omitted = messages.length - kept.length
+  return omitted
+    ? `${omitted} older messages omitted to fit the context.\n${result}`
+    : result
+}
 
 export const getHistoryTool: AgentTool = {
   declaration: {
@@ -58,22 +82,20 @@ export const getHistoryTool: AgentTool = {
           )
         : DEFAULT_AGENT_HISTORY_LIMIT
 
-      if (wantsAll) {
-        const rawHistory = await getRawHistory(chatId)
-        if (wantsRaw) {
-          return JSON.stringify(rawHistory, null, 2)
-        }
-        return formatHistoryForDisplay(rawHistory, {
-          limit: rawHistory.length || DEFAULT_AGENT_HISTORY_LIMIT,
-          headerLabel: 'Available history',
-        })
-      }
-
-      const recentHistory = await getRecentRawHistory(chatId, normalizedLimit)
+      const history = wantsAll
+        ? await getRawHistory(chatId)
+        : await getRecentRawHistory(chatId, normalizedLimit)
       if (wantsRaw) {
-        return JSON.stringify(recentHistory, null, 2)
+        return renderNewestWithin(history, (kept) => JSON.stringify(kept))
       }
-      return formatHistoryForDisplay(recentHistory, normalizedLimit)
+      return renderNewestWithin(history, (kept) =>
+        wantsAll
+          ? formatHistoryForDisplay(kept, {
+              limit: kept.length || DEFAULT_AGENT_HISTORY_LIMIT,
+              headerLabel: 'Available history',
+            })
+          : formatHistoryForDisplay(kept, normalizedLimit),
+      )
     } catch (error) {
       throw new Error(`Error getting history: ${getErrorMessage(error)}`)
     }
