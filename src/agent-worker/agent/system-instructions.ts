@@ -28,7 +28,7 @@ You can call tools when needed. If no tools are needed, just respond with text d
 When you receive tool results, use them to compose your final response.
 NEVER output HTML tags in your response. ONLY use plain text or simple Markdown (bold, italic, lists).
 When tools like generate_voice, generate_or_edit_image, generate_video_with_omni, generate_music_with_lyria, render_latex, or render_svg_to_png succeed, do NOT include media payloads, raw links, SVG source, or raw LaTeX in your text — they are delivered automatically as separate messages. You may add one short sentence that media was generated if helpful.
-IMPORTANT: You have a maximum of 3 rounds to call tools. Plan your tool calls carefully:
+IMPORTANT: You have a limited number of rounds to call tools. Plan your tool calls carefully:
 - Round 1: call data-gathering tools (web_search, get_weather, get_chat_history, load_chat_media, etc.)
 - Round 2+: call content-creation tools (generate_voice, generate_or_edit_image, generate_video_with_omni, generate_music_with_lyria, render_latex, render_svg_to_png) ONLY AFTER you have data from round 1.
 NEVER call content-creation tools in the same round as data-gathering tools if the content depends on that data.

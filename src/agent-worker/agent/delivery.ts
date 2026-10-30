@@ -221,6 +221,26 @@ function splitMentionBatches(text: string): string[] {
   return batches
 }
 
+// Below Telegram's 4096 limit so MarkdownV2 escaping still fits.
+const TEXT_CHUNK_LENGTH = 3_500
+
+/** Splits long text at the last paragraph, line or word break that fits. */
+function splitLongText(text: string): string[] {
+  const chunks: string[] = []
+  let rest = text.trim()
+  while (rest.length > TEXT_CHUNK_LENGTH) {
+    const head = rest.slice(0, TEXT_CHUNK_LENGTH)
+    const breakAt =
+      ['\n\n', '\n', ' ']
+        .map((separator) => head.lastIndexOf(separator))
+        .find((index) => index > TEXT_CHUNK_LENGTH / 2) ?? TEXT_CHUNK_LENGTH
+    chunks.push(rest.slice(0, breakAt).trim())
+    rest = rest.slice(breakAt).trim()
+  }
+  if (rest) chunks.push(rest)
+  return chunks
+}
+
 async function sendPlainText(params: DeliveryParams & { text: string }) {
   const sentMessage = await params.api.sendMessage(
     params.chatId,
@@ -290,7 +310,7 @@ async function sendText(params: DeliveryParams & { text: string }) {
   }
 
   let replyToMessageId = params.replyToMessageId
-  for (const chunk of splitMentionBatches(text)) {
+  for (const chunk of splitMentionBatches(text).flatMap(splitLongText)) {
     if (hasTelegramMention(chunk)) {
       const sentMessage = await sendPlainText({
         ...params,
