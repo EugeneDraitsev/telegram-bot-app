@@ -10,6 +10,7 @@ import {
   enqueueAgentWorker,
   enqueueReplyWorker,
   handleSqsWorkerEvent,
+  WORKER_LEASE_TTL_SECONDS,
   WorkerLeaseHeldError,
 } from '..'
 
@@ -273,7 +274,7 @@ describe('handleSqsWorkerEvent', () => {
     ])
   })
 
-  test('waits out the queue timeout while the failed job still holds its lease', async () => {
+  test('retries after the lease TTL while the failed job still holds its lease', async () => {
     const send = mockSqsSend(() => Promise.resolve({}))
 
     await expect(
@@ -286,7 +287,14 @@ describe('handleSqsWorkerEvent', () => {
         },
       ),
     ).resolves.toEqual({ batchItemFailures: [{ itemIdentifier: 'message-1' }] })
-    expect(send).not.toHaveBeenCalled()
+    expect(
+      send.mock.calls.map(
+        ([command]) =>
+          (command as unknown as ChangeMessageVisibilityCommand).input,
+      ),
+    ).toEqual([
+      expect.objectContaining({ VisibilityTimeout: WORKER_LEASE_TTL_SECONDS }),
+    ])
   })
 
   test('still reports the failure when the backoff call fails', async () => {

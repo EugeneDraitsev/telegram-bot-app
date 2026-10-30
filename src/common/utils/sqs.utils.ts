@@ -167,11 +167,17 @@ export const enqueueActivityWorker = <T extends TelegramWorkerPayload>(
   payload: T,
 ) => enqueueWorker('activity', payload)
 
+// The agent worker has the longest Lambda timeout, at 13 minutes. Keeping the
+// processing marker alive for one extra minute means it cannot expire while a
+// healthy invocation is still able to produce Telegram side effects. That
+// removes the need for command-heavy Lua heartbeats.
+export const WORKER_LEASE_TTL_SECONDS = 14 * 60
+
 /**
  * The job failed while its idempotency lease may still be held: the release
  * failed, or a lease SET failed after Redis may have applied it. A retry
  * before the lease expires would be skipped as a duplicate, so such a failure
- * keeps the queue's visibility timeout, which outlasts the lease.
+ * retries after one full lease TTL instead of backing off.
  */
 export class WorkerLeaseHeldError extends Error {
   constructor(cause: unknown) {
@@ -188,7 +194,11 @@ export class WorkerLeaseHeldError extends Error {
  * it. Back off exponentially from 30s instead. Best effort: if this fails, SQS
  * still retries after the queue timeout.
  */
-async function scheduleRetry(record: SQSRecord, worker: WorkerName) {
+async function scheduleRetry(
+  record: SQSRecord,
+  worker: WorkerName,
+  error: unknown,
+) {
   if (isOffline()) {
     return
   }
@@ -201,10 +211,13 @@ async function scheduleRetry(record: SQSRecord, worker: WorkerName) {
       new ChangeMessageVisibilityCommand({
         QueueUrl: `https://sqs.${region}.amazonaws.com/${accountId}/${queueName}`,
         ReceiptHandle: record.receiptHandle,
-        VisibilityTimeout: Math.min(
-          RETRY_BASE_DELAY_SECONDS * 2 ** (receiveCount - 1),
-          RETRY_MAX_DELAY_SECONDS,
-        ),
+        VisibilityTimeout:
+          error instanceof WorkerLeaseHeldError
+            ? WORKER_LEASE_TTL_SECONDS
+            : Math.min(
+                RETRY_BASE_DELAY_SECONDS * 2 ** (receiveCount - 1),
+                RETRY_MAX_DELAY_SECONDS,
+              ),
       }),
       { abortSignal: AbortSignal.timeout(RETRY_VISIBILITY_TIMEOUT_MS) },
     )
@@ -245,9 +258,7 @@ export async function handleSqsWorkerEvent<T, R, TContext>(
         { error, worker, sqsMessageId: record.messageId },
         'sqs.worker_record_failed',
       )
-      if (!(error instanceof WorkerLeaseHeldError)) {
-        await scheduleRetry(record, worker)
-      }
+      await scheduleRetry(record, worker, error)
 
       // Preserve FIFO order if batchSize is ever increased above one.
       batchItemFailures.push(

@@ -172,7 +172,7 @@ describe('agentic chat configuration infrastructure', () => {
   test('alarms when ingress or the scheduled currency post fails', () => {
     const ingress = resources
       .split('  IngressFailureAlarm:')[1]
-      ?.split('  CurrencySchedulerErrorMetricFilter:')[0]
+      ?.split('  CurrencySchedulerFailureAlarm:')[0]
     expect(resources).toContain(`FilterPattern: '"Bot handler error"'`)
     for (const metric of ['HandlerErrors', 'Errors', 'Throttles']) {
       expect(ingress).toContain(`MetricName: ${metric}`)
@@ -182,9 +182,22 @@ describe('agentic chat configuration infrastructure', () => {
     const scheduler = resources
       .split('  CurrencySchedulerFailureAlarm:')[1]
       ?.split('  TelegramReplyWorkerDlqAlarm:')[0]
-    expect(resources).toContain(
-      `FilterPattern: '"currencySchedulerHandler error"'`,
-    )
+    expect(scheduler).toContain('MetricName: Errors')
+    expect(scheduler).toContain('Ref: CurrencyDashschedulerLambdaFunction')
     expect(scheduler).toContain('Ref: WorkerFailureAlertsTopic')
+
+    const schedulerFunction = serverlessConfig
+      .split('  currency-scheduler:')[1]
+      ?.split('  sharp-renderer:')[0]
+    expect(schedulerFunction).toContain('maximumRetryAttempts: 0')
+  })
+
+  test('alarms on the first message in any worker DLQ', () => {
+    for (const worker of ['Reply', 'Agent', 'Activity']) {
+      const alarm = resources
+        .split(`  Telegram${worker}WorkerDlqAlarm:`)[1]
+        ?.split('\n\n')[0]
+      expect(alarm).toContain('Threshold: 0')
+    }
   })
 })
