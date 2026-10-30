@@ -168,8 +168,9 @@ export const enqueueActivityWorker = <T extends TelegramWorkerPayload>(
 ) => enqueueWorker('activity', payload)
 
 /**
- * The job failed and its idempotency lease could not be released, so a retry
- * before the lease expires would be skipped as a duplicate. Such a failure
+ * The job failed while its idempotency lease may still be held: the release
+ * failed, or a lease SET failed after Redis may have applied it. A retry
+ * before the lease expires would be skipped as a duplicate, so such a failure
  * keeps the queue's visibility timeout, which outlasts the lease.
  */
 export class WorkerLeaseHeldError extends Error {

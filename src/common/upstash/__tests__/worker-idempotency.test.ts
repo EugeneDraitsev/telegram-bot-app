@@ -172,6 +172,16 @@ describe('worker idempotency', () => {
     await expect(result).rejects.toMatchObject({ cause: error })
   })
 
+  test('treats a failed lease SET as possibly applied', async () => {
+    const error = new Error('connection reset')
+    mockSet.mockRejectedValueOnce(error)
+
+    const result = acquireWorkerLease('agent-worker', -100, 42, 'request-7')
+
+    await expect(result).rejects.toBeInstanceOf(WorkerLeaseHeldError)
+    await expect(result).rejects.toMatchObject({ cause: error })
+  })
+
   test('fails closed when Redis is unavailable', async () => {
     getRedisClientSpy.mockReturnValue(null)
 

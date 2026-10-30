@@ -71,6 +71,14 @@ test('keeps the queue timeout when the lease could not be released', async () =>
   })
 })
 
+test('keeps the queue timeout when acquiring the lease failed', async () => {
+  const error = new common.WorkerLeaseHeldError(new Error('connection reset'))
+  jest.spyOn(idempotency, 'acquireAgentWorkerLease').mockRejectedValue(error)
+  const payload = JSON.parse(event.Records[0]?.body ?? '{}')
+
+  await expect(worker(payload, context)).rejects.toBe(error)
+})
+
 test('completes skipped or handled work without downloading media', async () => {
   jest.spyOn(agent, 'runAgenticLoop').mockResolvedValue(undefined)
   expect(await worker(event, context)).toEqual({ batchItemFailures: [] })

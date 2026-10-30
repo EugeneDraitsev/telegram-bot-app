@@ -86,8 +86,9 @@ activity writes are independently replay-safe. Worker queues use one-message
 batches, partial batch responses, and separate dead-letter queues. A failed
 record backs off exponentially from 30 seconds instead of waiting out the
 queue's visibility timeout, so one failure does not hold its chat's FIFO group
-for an hour. If its Redis lease could not be released, it keeps the queue
-timeout, which outlasts the lease, so the retry is not skipped as a duplicate. Telegram 400/403 rejections (deleted command, blocked or kicked
+for an hour. If its Redis lease may still be held (a failed release, or a
+lease write whose response was lost), it keeps the queue timeout, which
+outlasts the lease, so the retry is not skipped as a duplicate. Telegram 400/403 rejections (deleted command, blocked or kicked
 bot) are not retried.
 
 The shared Telegram client queues successful outgoing messages for the activity
