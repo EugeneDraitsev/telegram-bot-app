@@ -29,12 +29,15 @@ type MetricsDashboardEvent = {
 type RenderPngOptions = {
   resize?: { width?: number; height?: number }
   backgroundColor?: string
-  allowDataResources?: boolean
-  maxSvgBytes?: number
+  /**
+   * Our own React-rendered SVG. React escapes the user text in it (names,
+   * headlines), which the markup scan would misread: a user named "https://x"
+   * or "Data: fan" broke the daily chart.
+   */
+  trusted?: boolean
 }
 
 const MAX_SVG_BYTES = 250_000
-const MAX_CURRENCY_SVG_BYTES = 6_000_000
 const MAX_RENDER_DIMENSION = 2_000
 const DEFAULT_BACKGROUND_COLOR = '#ffffff'
 const TRANSPARENT_BACKGROUND = 'transparent'
@@ -62,18 +65,14 @@ function normalizeBackgroundColor(value: unknown): string {
     : DEFAULT_BACKGROUND_COLOR
 }
 
-function validateSvg(
-  svg: string,
-  allowDataResources = false,
-  maxSvgBytes = MAX_SVG_BYTES,
-): string {
+function validateSvg(svg: string): string {
   const normalized = svg.trim()
   if (!normalized) {
     throw new Error('SVG cannot be empty')
   }
 
-  if (Buffer.byteLength(normalized, 'utf8') > maxSvgBytes) {
-    throw new Error(`SVG exceeds ${maxSvgBytes} bytes`)
+  if (Buffer.byteLength(normalized, 'utf8') > MAX_SVG_BYTES) {
+    throw new Error(`SVG exceeds ${MAX_SVG_BYTES} bytes`)
   }
 
   if (!/<svg[\s>]/i.test(normalized)) {
@@ -102,7 +101,7 @@ function validateSvg(
     throw new Error('SVG must not reference external resources')
   }
 
-  if (!allowDataResources && resourceScan.includes('data:')) {
+  if (resourceScan.includes('data:')) {
     throw new Error('SVG must not embed data resources')
   }
 
@@ -113,11 +112,7 @@ export async function renderSvgPng(
   svg: string,
   options: RenderPngOptions = {},
 ) {
-  const safeSvg = validateSvg(
-    svg,
-    options.allowDataResources,
-    options.maxSvgBytes,
-  )
+  const safeSvg = options.trusted ? svg : validateSvg(svg)
   let pipeline = sharp(Buffer.from(safeSvg))
   if (options.resize?.width || options.resize?.height) {
     pipeline = pipeline.resize(options.resize.width, options.resize.height, {
@@ -161,7 +156,9 @@ function isMetricsReport(value: unknown): value is MetricsReport {
 const sharpRendererHandler = (async (event) => {
   const metricsReport = (event as MetricsDashboardEvent).metricsReport
   if (isMetricsReport(metricsReport)) {
-    const image = await renderSvgPng(getMetricsDashboardSvg(metricsReport))
+    const image = await renderSvgPng(getMetricsDashboardSvg(metricsReport), {
+      trusted: true,
+    })
     return pngResponse(image)
   }
 
@@ -201,10 +198,7 @@ const sharpRendererHandler = (async (event) => {
         ? currencyBackgroundImage
         : undefined,
     )
-    const image = await renderSvgPng(svg, {
-      allowDataResources: true,
-      maxSvgBytes: MAX_CURRENCY_SVG_BYTES,
-    })
+    const image = await renderSvgPng(svg, { trusted: true })
 
     return pngResponse(image)
   }
@@ -216,6 +210,7 @@ const sharpRendererHandler = (async (event) => {
 
   const image = await renderSvgPng(statsSvg, {
     resize: { width: 1200, height: 400 },
+    trusted: true,
   })
 
   return pngResponse(image)

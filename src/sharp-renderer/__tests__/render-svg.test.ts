@@ -1,5 +1,6 @@
 import sharp from 'sharp'
 
+import * as common from '@tg-bot/common'
 import sharpRendererHandler, { renderSvgPng } from '../index'
 
 const SVG =
@@ -58,12 +59,32 @@ describe('renderSvgPng', () => {
     ).rejects.toThrow('must not reference external resources')
   })
 
-  test('allows a larger explicit limit for trusted internal svg', async () => {
+  test('rejects oversized svg', async () => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><desc>${'x'.repeat(260_000)}</desc><rect width="1" height="1"/></svg>`
 
     await expect(renderSvgPng(svg)).rejects.toThrow('SVG exceeds 250000 bytes')
+  })
+})
 
-    const image = await renderSvgPng(svg, { maxSvgBytes: 300_000 })
-    expect(image.length).toBeGreaterThan(0)
+describe('daily chart', () => {
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test('renders user names that look like links or data URIs', async () => {
+    jest.spyOn(common, 'get24hChatStats').mockResolvedValue([
+      { id: 1, is_bot: false, first_name: 'https://example.com', messages: 3 },
+      { id: 2, is_bot: false, first_name: 'Data: fan', messages: 2 },
+    ])
+
+    const response = await sharpRendererHandler({
+      queryStringParameters: { chatId: '-100' },
+    } as never)
+
+    expect(response.statusCode).toBe(200)
+    const metadata = await sharp(
+      Buffer.from(response.body, 'base64'),
+    ).metadata()
+    expect(metadata.format).toBe('png')
   })
 })
