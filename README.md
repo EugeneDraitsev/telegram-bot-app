@@ -154,7 +154,9 @@ encoded-audio bounds cover the model's full audio output budget, including
 long passages spoken slowly.
 
 The agent worker has a 13-minute deadline to accommodate model fallbacks,
-data-gathering rounds and voice generation before delivery. Its Redis
+data-gathering rounds and voice generation before delivery. Every model and
+tool call in the tool loop is clamped to the Lambda's remaining time minus a
+60-second delivery reserve, and a tool that has no time left is never started. Its Redis
 processing lease lasts 14 minutes; the agent queue's visibility timeout is
 78 minutes (six times the worker deadline), which only applies when the worker
 is killed before it can schedule its own retry. Rate-limited (serial) tools

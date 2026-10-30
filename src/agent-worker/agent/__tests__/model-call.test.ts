@@ -188,6 +188,29 @@ describe('model-call', () => {
     expect(mockGenerateText).toHaveBeenCalledTimes(1)
   })
 
+  test('clamps every attempt, fallback included, to the worker deadline', async () => {
+    mockGenerateText.mockImplementation(() => new Promise(() => {}))
+
+    const startedAt = Date.now()
+    await expect(
+      generate(
+        { prompt: 'slow' },
+        {
+          chatId: 1,
+          metricName: 'routing',
+          choice: CHAT_ROLE.primary,
+          fallback: nano,
+          timeoutMs: CHAT_ROLE.timeoutMs,
+          deadline: Date.now() + 50,
+        },
+      ),
+    ).rejects.toThrow('timed out after 0ms')
+
+    expect(Date.now() - startedAt).toBeLessThan(CHAT_ROLE.timeoutMs)
+    // The primary waited out the deadline; the fallback never started.
+    expect(mockGenerateText).toHaveBeenCalledTimes(1)
+  })
+
   test('records explicit commands separately from agentic traffic', async () => {
     mockGenerateText.mockResolvedValue({ text: 'ok', output: [] })
 

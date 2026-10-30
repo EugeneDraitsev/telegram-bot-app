@@ -37,6 +37,8 @@ export interface ModelCallOptions {
   /** Tried once when the primary model fails; omit to fail instead. */
   fallback?: ModelChoice
   timeoutMs: number
+  /** Epoch ms the worker must stop waiting by; attempts are clamped to it. */
+  deadline?: number
   attribution?: ModelMetricAttribution
   /** OpenAI Responses only: drop oldest context instead of failing on overflow. */
   truncation?: string
@@ -88,11 +90,18 @@ async function generateWithRetry<TOOLS extends ToolSet>(
   choice: ModelChoice,
   options: ModelCallOptions,
 ): Promise<GenerateTextResult<TOOLS>> {
-  const { chatId, timeoutMs } = options
+  const { chatId } = options
   let lastError: unknown
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const timeoutMs = Math.min(
+      options.timeoutMs,
+      (options.deadline ?? Number.POSITIVE_INFINITY) - Date.now(),
+    )
     try {
+      if (timeoutMs <= 0) {
+        throw new ModelCallTimeoutError(choice.label, 0)
+      }
       const request = {
         ...params,
         model: getAiSdkLanguageModel(choice.config),

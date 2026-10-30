@@ -100,6 +100,7 @@ async function executeToolCall(
   toolByName: Map<string, AgentTool>,
   chatId: number,
   model: string,
+  workerDeadline: number,
 ): Promise<ToolExecutionResult> {
   const name = toolCall.name
   const tool = toolByName.get(name)
@@ -124,7 +125,12 @@ async function executeToolCall(
 
   const toolStart = Date.now()
   try {
-    const timeout = tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS
+    const timeout = Math.min(
+      tool.timeoutMs ?? TOOL_CALL_TIMEOUT_MS,
+      workerDeadline - Date.now(),
+    )
+    // Never start a tool (and its paid side effects) that cannot finish.
+    if (timeout <= 0) throw new ToolCallTimeoutError(0)
     const result = await withTimeout(
       runWithToolCallContext(
         { tool: name, toolCallId: toolCall.toolCallId, callerModel: model },
@@ -179,12 +185,15 @@ async function executeToolCalls(
   toolByName: Map<string, AgentTool>,
   chatId: number,
   model: string,
+  workerDeadline: number,
 ): Promise<Array<{ call: ExecutableFunctionCall } & ToolExecutionResult>> {
   const run = (call: ExecutableFunctionCall) =>
-    executeToolCall(call, toolByName, chatId, model).then((result) => ({
-      call,
-      ...result,
-    }))
+    executeToolCall(call, toolByName, chatId, model, workerDeadline).then(
+      (result) => ({
+        call,
+        ...result,
+      }),
+    )
 
   // Serial (rate-limited) tools queue behind each other and are capped per
   // round; every other call runs in parallel alongside them.
@@ -271,6 +280,8 @@ export async function runToolLoop(
   toolByName: Map<string, AgentTool>,
   chatId: number,
   role: ChatRole,
+  /** Epoch ms by which every model and tool call must stop. */
+  workerDeadline = Number.POSITIVE_INFINITY,
 ): Promise<{ finalText: string; toolResults: ToolExecutionResult[] }> {
   let finalText = ''
   const toolResults: ToolExecutionResult[] = []
@@ -306,6 +317,7 @@ export async function runToolLoop(
           choice: activeChoice,
           fallback,
           timeoutMs: role.timeoutMs,
+          deadline: workerDeadline,
           attribution: getToolMetricAttribution(),
         },
       )
@@ -386,6 +398,7 @@ export async function runToolLoop(
       toolByName,
       chatId,
       activeChoice.label,
+      workerDeadline,
     )
     toolResults.push(
       ...executionResults.map(({ name, result, status }) => ({
@@ -481,6 +494,7 @@ export async function runToolLoop(
           choice: activeChoice,
           fallback,
           timeoutMs: role.timeoutMs,
+          deadline: workerDeadline,
           attribution: getToolMetricAttribution(),
         },
       )

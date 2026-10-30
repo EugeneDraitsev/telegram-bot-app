@@ -9,6 +9,7 @@ import { generateVideoTool } from '../../tools/omni-video.tool'
 import type { AgentTool, TelegramApi } from '../../types'
 import { runAgenticLoop } from '../agentic-loop'
 import * as commandSafety from '../command-safety'
+import { DELIVERY_RESERVE_MS } from '../config'
 import * as delivery from '../delivery'
 import * as modelCall from '../model-call'
 import { CHAT_ROLE, DEEP_CHAT_ROLE } from '../models'
@@ -1123,6 +1124,57 @@ describe('runAgenticLoop integration', () => {
       expect.objectContaining({
         responses: [{ type: 'text', text: 'verified result: 42' }],
       }),
+    )
+  })
+
+  test('never starts a tool once the worker deadline has passed', async () => {
+    const execute = jest.fn().mockResolvedValue('generated')
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([
+      {
+        declaration: {
+          type: 'function',
+          name: 'generate_image',
+          description: 'Image',
+        },
+        execute,
+      },
+    ])
+    const model = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          toolCalls: [
+            { toolCallId: 'image-1', toolName: 'generate_image', input: {} },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(createModelResult({ text: 'Ran out of time' }))
+    const invocationDeadline = Date.now() + DELIVERY_RESERVE_MS - 1
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+      invocationDeadline,
+    })
+
+    expect(execute).not.toHaveBeenCalled()
+    expect(model.mock.calls[0]?.[1].deadline).toBe(
+      invocationDeadline - DELIVERY_RESERVE_MS,
+    )
+    expect(model.mock.calls[1]?.[0].messages).toEqual(
+      expect.arrayContaining([
+        {
+          role: 'tool',
+          content: [
+            expect.objectContaining({
+              toolCallId: 'image-1',
+              output: {
+                type: 'error-text',
+                value: 'Tool timed out after 0ms',
+              },
+            }),
+          ],
+        },
+      ]),
     )
   })
 
