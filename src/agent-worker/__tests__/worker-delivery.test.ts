@@ -1,12 +1,14 @@
 import type { Context, SQSEvent } from 'aws-lambda'
 
 import * as common from '@tg-bot/common'
+import * as redisClient from '@tg-bot/common/upstash/client'
 import * as agent from '../agent'
-import * as idempotency from '../idempotency'
 
 let worker: typeof import('../index').default
-const complete = jest.fn()
-const release = jest.fn()
+// Redis behind the shared lease: SET acquires or completes, GETDEL releases.
+const set = jest.fn()
+const getdel = jest.fn()
+const completed = () => set.mock.calls.some((call) => call[1] === 'completed')
 const context = { awsRequestId: 'request-1' } as Context
 const event = {
   Records: [
@@ -30,12 +32,17 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  complete.mockReset().mockResolvedValue(true)
-  release.mockReset().mockResolvedValue(true)
+  set
+    .mockReset()
+    .mockImplementation(async (_key, value) =>
+      value === 'completed' ? 'request-1' : 'OK',
+    )
+  getdel.mockReset().mockResolvedValue('request-1')
+  jest.spyOn(redisClient, 'getRedisClient').mockReturnValue({
+    set,
+    getdel,
+  } as unknown as ReturnType<typeof redisClient.getRedisClient>)
   jest.spyOn(common, 'isAgenticChatEnabled').mockResolvedValue(true)
-  jest
-    .spyOn(idempotency, 'acquireAgentWorkerLease')
-    .mockResolvedValue({ complete, release })
   jest.spyOn(common, 'getMediaGroupMessages').mockResolvedValue([])
   jest.spyOn(common, 'getMultimodalMediaData').mockResolvedValue({
     mediaBuffers: [],
@@ -55,14 +62,14 @@ test('retries an undelivered loop failure and releases the lease without complet
   expect(await worker(event, context)).toEqual({
     batchItemFailures: [{ itemIdentifier: 'sqs-1' }],
   })
-  expect(release).toHaveBeenCalledTimes(1)
-  expect(complete).not.toHaveBeenCalled()
+  expect(getdel).toHaveBeenCalledTimes(1)
+  expect(completed()).toBe(false)
 })
 
 test('keeps the queue timeout when the lease could not be released', async () => {
   const error = new Error('no response delivered')
   jest.spyOn(agent, 'runAgenticLoop').mockRejectedValue(error)
-  release.mockRejectedValue(new Error('redis down'))
+  getdel.mockRejectedValue(new Error('redis down'))
   const payload = JSON.parse(event.Records[0]?.body ?? '{}')
 
   await expect(worker(payload, context)).rejects.toMatchObject({
@@ -72,11 +79,16 @@ test('keeps the queue timeout when the lease could not be released', async () =>
 })
 
 test('keeps the queue timeout when acquiring the lease failed', async () => {
-  const error = new common.WorkerLeaseHeldError(new Error('connection reset'))
-  jest.spyOn(idempotency, 'acquireAgentWorkerLease').mockRejectedValue(error)
+  const error = new Error('connection reset')
+  const run = jest.spyOn(agent, 'runAgenticLoop')
+  set.mockRejectedValue(error)
   const payload = JSON.parse(event.Records[0]?.body ?? '{}')
 
-  await expect(worker(payload, context)).rejects.toBe(error)
+  await expect(worker(payload, context)).rejects.toMatchObject({
+    name: 'WorkerLeaseHeldError',
+    cause: error,
+  })
+  expect(run).not.toHaveBeenCalled()
 })
 
 test('completes skipped or handled work without downloading media', async () => {
@@ -84,8 +96,8 @@ test('completes skipped or handled work without downloading media', async () => 
   expect(await worker(event, context)).toEqual({ batchItemFailures: [] })
   expect(common.getMediaGroupMessages).not.toHaveBeenCalled()
   expect(common.getMultimodalMediaData).not.toHaveBeenCalled()
-  expect(complete).toHaveBeenCalledTimes(1)
-  expect(release).not.toHaveBeenCalled()
+  expect(completed()).toBe(true)
+  expect(getdel).not.toHaveBeenCalled()
 })
 
 test('loads album media only when requested by the engaged loop', async () => {

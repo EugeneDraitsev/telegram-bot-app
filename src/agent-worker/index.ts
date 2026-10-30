@@ -11,10 +11,9 @@ import {
   handleSqsWorkerEvent,
   isAgenticChatEnabled,
   logger,
-  WorkerLeaseHeldError,
+  runIdempotentWorkerTask,
 } from '@tg-bot/common'
 import { REPLY_GATE_ROLE, resolveAgentChatRole, runAgenticLoop } from './agent'
-import { type AgentWorkerLease, acquireAgentWorkerLease } from './idempotency'
 
 const bot = createBot()
 
@@ -54,17 +53,11 @@ export const processAgentWorker = async (
   context: LambdaContext,
 ) => {
   const startedAt = Date.now()
-  let lease: AgentWorkerLease | undefined
   const chatModel = resolveAgentChatRole(event?.commandName).primary
   try {
-    const {
-      message: incomingMessage,
-      botInfo,
-      bypassReplyGate,
-      commandName,
-    } = event
+    const { message, botInfo, bypassReplyGate, commandName } = event
 
-    if (!incomingMessage?.chat?.id) {
+    if (!message?.chat?.id) {
       logger.error(
         {
           reason: 'missing_message_chat_id',
@@ -73,8 +66,6 @@ export const processAgentWorker = async (
       )
       return { statusCode: 200, body: 'Invalid payload' }
     }
-
-    const message = incomingMessage
 
     const messageMeta = getMessageLogMeta(message)
     if (!(await isAgenticChatEnabled(message.chat.id))) {
@@ -88,88 +79,69 @@ export const processAgentWorker = async (
       return { statusCode: 200, body: 'Skipped' }
     }
 
-    lease =
-      (await acquireAgentWorkerLease(
-        message.chat.id,
-        message.message_id,
-        context.awsRequestId,
-      )) ?? undefined
-    if (!lease) {
+    const result = await runIdempotentWorkerTask({
+      namespace: 'agent-worker',
+      chatId: message.chat.id,
+      messageId: message.message_id,
+      ownerToken: context.awsRequestId,
+      task: async () => {
+        logger.info(
+          {
+            ...messageMeta,
+            model: chatModel.label,
+            reasoningEffort: chatModel.reasoningEffort,
+            replyGateModel: REPLY_GATE_ROLE.primary.label,
+            bypassReplyGate: Boolean(bypassReplyGate),
+            commandName,
+          },
+          'worker.start',
+        )
+
+        const effectiveBotInfo = await resolveBotInfo(botInfo)
+
+        const ctx = {
+          message,
+          chat: message.chat,
+          api: bot.api,
+        } as unknown as Context
+        let mediaCount = 0
+
+        // Run the agentic loop with bot API
+        await runAgenticLoop(message, bot.api, undefined, effectiveBotInfo, {
+          bypassReplyGate,
+          commandName,
+          loadMedia: async () => {
+            const extraMessages = await getMediaGroupMessages(ctx)
+            const { mediaBuffers } = await getMultimodalMediaData(
+              ctx,
+              extraMessages,
+            )
+            mediaCount = mediaBuffers.length
+            return mediaBuffers
+          },
+        })
+        logger.info(
+          {
+            ...messageMeta,
+            model: chatModel.label,
+            reasoningEffort: chatModel.reasoningEffort,
+            replyGateModel: REPLY_GATE_ROLE.primary.label,
+            durationMs: Date.now() - startedAt,
+            mediaCount,
+            bypassReplyGate: Boolean(bypassReplyGate),
+            commandName,
+          },
+          'worker.done',
+        )
+      },
+    })
+    if (result.duplicate) {
       logger.info(messageMeta, 'worker.duplicate_skipped')
       return { statusCode: 200, body: 'Duplicate' }
     }
 
-    logger.info(
-      {
-        ...messageMeta,
-        model: chatModel.label,
-        reasoningEffort: chatModel.reasoningEffort,
-        replyGateModel: REPLY_GATE_ROLE.primary.label,
-        bypassReplyGate: Boolean(bypassReplyGate),
-        commandName,
-      },
-      'worker.start',
-    )
-
-    const effectiveBotInfo = await resolveBotInfo(botInfo)
-
-    const ctx = {
-      message,
-      chat: message.chat,
-      api: bot.api,
-    } as unknown as Context
-    let mediaCount = 0
-
-    // Run the agentic loop with bot API
-    await runAgenticLoop(message, bot.api, undefined, effectiveBotInfo, {
-      bypassReplyGate,
-      commandName,
-      loadMedia: async () => {
-        const extraMessages = await getMediaGroupMessages(ctx)
-        const { mediaBuffers } = await getMultimodalMediaData(
-          ctx,
-          extraMessages,
-        )
-        mediaCount = mediaBuffers.length
-        return mediaBuffers
-      },
-    })
-    logger.info(
-      {
-        ...messageMeta,
-        model: chatModel.label,
-        reasoningEffort: chatModel.reasoningEffort,
-        replyGateModel: REPLY_GATE_ROLE.primary.label,
-        durationMs: Date.now() - startedAt,
-        mediaCount,
-        bypassReplyGate: Boolean(bypassReplyGate),
-        commandName,
-      },
-      'worker.done',
-    )
-
-    try {
-      if (!(await lease.complete())) {
-        logger.warn(messageMeta, 'worker.idempotency_completion_failed')
-      }
-    } catch (completionError) {
-      logger.warn(
-        { ...messageMeta, error: completionError },
-        'worker.idempotency_completion_failed',
-      )
-    }
-
     return { statusCode: 200, body: 'OK' }
   } catch (error) {
-    let leaseHeld = false
-    if (lease) {
-      try {
-        await lease.release()
-      } catch (releaseError) {
-        leaseHeld = true
-        logger.warn({ error: releaseError }, 'worker.lease_release_failed')
-      }
-    }
     logger.error(
       {
         ...(event.message ? getMessageLogMeta(event.message) : {}),
@@ -182,7 +154,7 @@ export const processAgentWorker = async (
       },
       'worker.failed',
     )
-    throw leaseHeld ? new WorkerLeaseHeldError(error) : error
+    throw error
   }
 }
 
