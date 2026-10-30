@@ -3,7 +3,14 @@ import type { Context as LambdaContext } from 'aws-lambda'
 import type { Update } from 'grammy/types'
 
 import * as common from '@tg-bot/common'
-import { processTelegramReply } from '../telegram-reply-worker'
+
+let processTelegramReply: typeof import('../telegram-reply-worker').processTelegramReply
+
+beforeAll(async () => {
+  // The module builds its bot on import, and grammY rejects an empty token.
+  process.env.TOKEN ||= 'test-token'
+  ;({ processTelegramReply } = await import('../telegram-reply-worker.js'))
+})
 
 const update = {
   update_id: 1,

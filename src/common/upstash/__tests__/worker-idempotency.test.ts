@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 
+import { WorkerLeaseHeldError } from '../../utils/sqs.utils'
 import * as client from '../client'
 import {
   acquireWorkerLease,
@@ -150,6 +151,25 @@ describe('worker idempotency', () => {
     expect(mockGetdel).toHaveBeenCalledWith(
       'activity-statistics:message:-100:42',
     )
+  })
+
+  test('marks a failure whose lease could not be released', async () => {
+    const error = new Error('write failed')
+    mockSet.mockResolvedValue('OK')
+    mockGetdel.mockRejectedValueOnce(new Error('redis down'))
+
+    const result = runIdempotentWorkerTask({
+      namespace: 'reply-worker',
+      chatId: -100,
+      messageId: 42,
+      ownerToken: 'request-6',
+      task: async () => {
+        throw error
+      },
+    })
+
+    await expect(result).rejects.toBeInstanceOf(WorkerLeaseHeldError)
+    await expect(result).rejects.toMatchObject({ cause: error })
   })
 
   test('fails closed when Redis is unavailable', async () => {

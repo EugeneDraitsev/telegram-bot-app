@@ -1,5 +1,6 @@
 import { logger } from '../logger'
 import { isOffline } from '../utils/env.utils'
+import { WorkerLeaseHeldError } from '../utils/sqs.utils'
 import { getRedisClient } from './client'
 
 // The agent worker has the longest Lambda timeout, at 13 minutes. Keeping the
@@ -146,6 +147,7 @@ export async function runIdempotentWorkerTask<T>({
         { namespace, chatId, messageId, error: releaseError },
         'worker.lease_release_failed',
       )
+      throw new WorkerLeaseHeldError(error)
     }
     throw error
   }

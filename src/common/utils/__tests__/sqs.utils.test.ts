@@ -10,6 +10,7 @@ import {
   enqueueAgentWorker,
   enqueueReplyWorker,
   handleSqsWorkerEvent,
+  WorkerLeaseHeldError,
 } from '..'
 
 type SqsSend = SQSClient['send']
@@ -270,6 +271,22 @@ describe('handleSqsWorkerEvent', () => {
       expect.objectContaining({ VisibilityTimeout: 240 }),
       expect.objectContaining({ VisibilityTimeout: 900 }),
     ])
+  })
+
+  test('waits out the queue timeout while the failed job still holds its lease', async () => {
+    const send = mockSqsSend(() => Promise.resolve({}))
+
+    await expect(
+      handleSqsWorkerEvent(
+        'agent',
+        createSqsEvent(['message-1', {}]),
+        context,
+        async () => {
+          throw new WorkerLeaseHeldError(new Error('worker failed'))
+        },
+      ),
+    ).resolves.toEqual({ batchItemFailures: [{ itemIdentifier: 'message-1' }] })
+    expect(send).not.toHaveBeenCalled()
   })
 
   test('still reports the failure when the backoff call fails', async () => {

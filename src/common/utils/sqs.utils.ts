@@ -168,6 +168,20 @@ export const enqueueActivityWorker = <T extends TelegramWorkerPayload>(
 ) => enqueueWorker('activity', payload)
 
 /**
+ * The job failed and its idempotency lease could not be released, so a retry
+ * before the lease expires would be skipped as a duplicate. Such a failure
+ * keeps the queue's visibility timeout, which outlasts the lease.
+ */
+export class WorkerLeaseHeldError extends Error {
+  constructor(cause: unknown) {
+    super('Worker job failed while its idempotency lease is still held', {
+      cause,
+    })
+    this.name = 'WorkerLeaseHeldError'
+  }
+}
+
+/**
  * A failed record otherwise stays invisible for the queue's whole visibility
  * timeout (six worker timeouts) while FIFO holds the rest of its chat behind
  * it. Back off exponentially from 30s instead. Best effort: if this fails, SQS
@@ -230,7 +244,9 @@ export async function handleSqsWorkerEvent<T, R, TContext>(
         { error, worker, sqsMessageId: record.messageId },
         'sqs.worker_record_failed',
       )
-      await scheduleRetry(record, worker)
+      if (!(error instanceof WorkerLeaseHeldError)) {
+        await scheduleRetry(record, worker)
+      }
 
       // Preserve FIFO order if batchSize is ever increased above one.
       batchItemFailures.push(
