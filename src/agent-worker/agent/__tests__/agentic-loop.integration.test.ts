@@ -648,6 +648,36 @@ describe('runAgenticLoop integration', () => {
     )
   })
 
+  test('does not send an earlier round preamble when the last round is empty', async () => {
+    jest.spyOn(agentTools, 'getAgentTools').mockResolvedValue([
+      {
+        declaration: { type: 'function', name: 'lookup', description: 'Look' },
+        execute: jest.fn().mockResolvedValue('result'),
+      },
+    ])
+    const modelSpy = jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValueOnce(
+        createModelResult({
+          text: 'Searching now',
+          toolCalls: [{ toolCallId: 'call-0', toolName: 'lookup', input: {} }],
+        }),
+      )
+      .mockResolvedValueOnce(createModelResult({ text: '' }))
+      .mockResolvedValueOnce(createModelResult({ text: 'Final answer' }))
+
+    await runAgenticLoop(createMessage(), createApi(), undefined, undefined, {
+      bypassReplyGate: true,
+    })
+
+    expect(modelSpy.mock.calls.at(-1)?.[1].metricName).toBe('finalize')
+    expect(delivery.sendResponses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responses: [{ type: 'text', text: 'Final answer' }],
+      }),
+    )
+  })
+
   test('shows only an explicitly loaded history image in the next model round', async () => {
     const historyImage = {
       buffer: Buffer.from('selected-history-image'),

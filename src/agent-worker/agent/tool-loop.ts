@@ -343,9 +343,9 @@ export async function runToolLoop(
       },
       'loop.model_response',
     )
-    const text = response.text.trim()
-
-    if (text) finalText = text
+    // Only the latest round speaks for the loop: earlier text is interim
+    // ("searching now...") and must not become the answer.
+    finalText = response.text.trim()
     if (functionCalls.length === 0) break
 
     // If a round has both data-gathering and content-creating tools, defer

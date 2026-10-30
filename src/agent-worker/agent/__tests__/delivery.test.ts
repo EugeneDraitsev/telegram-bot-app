@@ -140,6 +140,73 @@ describe('sendResponses', () => {
     expect(api.sendMessage).not.toHaveBeenCalled()
   })
 
+  test('splits long text into chained messages instead of truncating it', async () => {
+    const api = createApi()
+    api.sendRichMessage
+      .mockResolvedValueOnce({ message_id: 11 })
+      .mockResolvedValueOnce({ message_id: 12 })
+      .mockResolvedValueOnce({ message_id: 13 })
+    const paragraph = 'word '.repeat(300).trim()
+    const text = Array.from({ length: 6 }, () => paragraph).join('\n\n')
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [{ type: 'text', text }],
+    })
+
+    const calls = api.sendRichMessage.mock.calls
+    expect(calls).toHaveLength(3)
+    expect(calls.map((call) => call[1].markdown).join('\n\n')).toBe(text)
+    expect(calls.every((call) => call[1].markdown.length <= 4096)).toBe(true)
+    expect(calls.map((call) => call[2])).toEqual([
+      { reply_parameters: { message_id: 456 } },
+      { reply_parameters: { message_id: 11 } },
+      { reply_parameters: { message_id: 12 } },
+    ])
+  })
+
+  test('keeps text within the Telegram limit in one message', async () => {
+    const api = createApi()
+    const text = 'word '.repeat(800).trim()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [{ type: 'text', text }],
+    })
+
+    expect(api.sendRichMessage).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage.mock.calls[0]?.[1].markdown).toBe(text)
+  })
+
+  test('keeps code indentation and emoji intact across split points', async () => {
+    const api = createApi()
+    const code = Array.from({ length: 400 }, (_, i) => `    line ${i}`).join(
+      '\n',
+    )
+    const emoji = `${'a'.repeat(3499)}😀${'b'.repeat(1000)}`
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [{ type: 'text', text: code }],
+    })
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [{ type: 'text', text: emoji }],
+    })
+
+    const parts = api.sendRichMessage.mock.calls.map((call) => call[1].markdown)
+    expect(parts).toHaveLength(4)
+    expect(parts[1]).toMatch(/^ {4}line \d+\n/)
+    expect(`${parts[0]}\n${parts[1]}`).toBe(code.trim())
+    expect(parts[2]).toBe('a'.repeat(3499))
+    expect(parts[3]).toBe(`😀${'b'.repeat(1000)}`)
+  })
+
   test('sends bullet lines as a Markdown list instead of one rich paragraph', async () => {
     const api = createApi()
     await sendResponses({
