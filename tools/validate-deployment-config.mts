@@ -18,9 +18,12 @@ export function validateTelegramOidcClientId(
   return normalized
 }
 
-export function validateAdminSessionSecret(value: string | undefined): string {
+export function validateSecret(
+  name: string,
+  value: string | undefined,
+): string {
   if (!value || value.length < 32) {
-    throw new Error('ADMIN_SESSION_SECRET must contain at least 32 characters')
+    throw new Error(`${name} must contain at least 32 characters`)
   }
   return value
 }
@@ -28,6 +31,10 @@ export function validateAdminSessionSecret(value: string | undefined): string {
 if (import.meta.main) {
   validateBotOwnerId(process.env.BOT_OWNER_ID)
   validateTelegramOidcClientId(process.env.TELEGRAM_OIDC_CLIENT_ID)
-  validateAdminSessionSecret(process.env.ADMIN_SESSION_SECRET)
+  validateSecret('ADMIN_SESSION_SECRET', process.env.ADMIN_SESSION_SECRET)
+  validateSecret(
+    'STATISTICS_ACCESS_SECRET',
+    process.env.STATISTICS_ACCESS_SECRET,
+  )
   process.stdout.write('Deployment configuration is valid.\n')
 }

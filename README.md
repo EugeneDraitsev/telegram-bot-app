@@ -250,6 +250,8 @@ Configure these deployment values:
 
 - repository variable `TELEGRAM_OIDC_CLIENT_ID` from BotFather;
 - repository secret `ADMIN_SESSION_SECRET` with at least 32 random characters;
+- repository secret `STATISTICS_ACCESS_SECRET` with at least 32 random
+  characters, separate from the webhook secret, to sign `/stats` links;
 - the existing repository variable `BOT_OWNER_ID` with the sole allowed
   Telegram user id.
 

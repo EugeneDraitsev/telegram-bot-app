@@ -26,9 +26,11 @@ const isPrettyEnabled =
 const MAX_LOG_STRING_LENGTH = 1_000
 const MAX_LOG_ARRAY_ITEMS = 20
 const MAX_LOG_OBJECT_DEPTH = 4
+// grammY's BotError carries `ctx`, whose `api.token` is the bot token.
 const REDACTED_ERROR_KEYS = new Set([
   'body',
   'contents',
+  'ctx',
   'inlineData',
   'requestBody',
   'requestBodyValues',

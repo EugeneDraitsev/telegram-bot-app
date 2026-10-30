@@ -20,6 +20,7 @@ provider:
   runtime: ${self:custom.runtimeByStage.${sls:stage}, 'nodejs24.x'}
   architecture: arm64
   versionFunctions: false
+  logRetentionInDays: 30
   environment:
     region: eu-central-1
     stage: ${sls:stage}
@@ -71,7 +72,7 @@ functions:
     environment:
       TELEGRAM_OIDC_CLIENT_ID: ${env:TELEGRAM_OIDC_CLIENT_ID}
       ADMIN_SESSION_SECRET: ${env:ADMIN_SESSION_SECRET}
-      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
+      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET}
     events:
       - http:
           path: /session
@@ -111,7 +112,7 @@ functions:
           functionResponseType: ReportBatchItemFailures
     environment:
       TOKEN: ${env:TOKEN}
-      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
+      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET}
       BRAVE_API_KEY: ${env:BRAVE_API_KEY}
       COMMON_GOOGLE_API_KEY: ${env:COMMON_GOOGLE_API_KEY}
       OPEN_WEATHER_MAP_TOKEN: ${env:OPEN_WEATHER_MAP_TOKEN}
@@ -251,7 +252,7 @@ functions:
         - WebsocketStatsRole
         - Arn
     environment:
-      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET, env:TELEGRAM_WEBHOOK_SECRET}
+      STATISTICS_ACCESS_SECRET: ${env:STATISTICS_ACCESS_SECRET}
     events:
       - websocket:
           route: stats
