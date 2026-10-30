@@ -1,15 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import {
+  ChangeMessageVisibilityCommand,
   SendMessageCommand,
   type SendMessageCommandOutput,
   SQSClient,
 } from '@aws-sdk/client-sqs'
-import type { SQSBatchResponse, SQSEvent } from 'aws-lambda'
+import type { SQSBatchResponse, SQSEvent, SQSRecord } from 'aws-lambda'
 
 import { logger } from '../logger'
 import { getOptionalEnv, getRequiredEnv, isOffline } from './env.utils'
 
 const WORKER_ENQUEUE_ACK_TIMEOUT_MS = 3_000
+const RETRY_VISIBILITY_TIMEOUT_MS = 3_000
+const RETRY_BASE_DELAY_SECONDS = 30
+const RETRY_MAX_DELAY_SECONDS = 15 * 60
 const LOCAL_SQS_ENDPOINT = 'http://localhost:9324'
 const LOCAL_SQS_ACCOUNT_ID = '000000000000'
 
@@ -163,6 +167,55 @@ export const enqueueActivityWorker = <T extends TelegramWorkerPayload>(
   payload: T,
 ) => enqueueWorker('activity', payload)
 
+/**
+ * The job failed while its idempotency lease may still be held: the release
+ * failed, or a lease SET failed after Redis may have applied it. A retry
+ * before the lease expires would be skipped as a duplicate, so such a failure
+ * keeps the queue's visibility timeout, which outlasts the lease.
+ */
+export class WorkerLeaseHeldError extends Error {
+  constructor(cause: unknown) {
+    super('Worker job failed while its idempotency lease is still held', {
+      cause,
+    })
+    this.name = 'WorkerLeaseHeldError'
+  }
+}
+
+/**
+ * A failed record otherwise stays invisible for the queue's whole visibility
+ * timeout (six worker timeouts) while FIFO holds the rest of its chat behind
+ * it. Back off exponentially from 30s instead. Best effort: if this fails, SQS
+ * still retries after the queue timeout.
+ */
+async function scheduleRetry(record: SQSRecord, worker: WorkerName) {
+  if (isOffline()) {
+    return
+  }
+
+  try {
+    const [, , , region, accountId, queueName] =
+      record.eventSourceARN.split(':')
+    const receiveCount = Number(record.attributes.ApproximateReceiveCount) || 1
+    await getSqsClient().send(
+      new ChangeMessageVisibilityCommand({
+        QueueUrl: `https://sqs.${region}.amazonaws.com/${accountId}/${queueName}`,
+        ReceiptHandle: record.receiptHandle,
+        VisibilityTimeout: Math.min(
+          RETRY_BASE_DELAY_SECONDS * 2 ** (receiveCount - 1),
+          RETRY_MAX_DELAY_SECONDS,
+        ),
+      }),
+      { abortSignal: AbortSignal.timeout(RETRY_VISIBILITY_TIMEOUT_MS) },
+    )
+  } catch (error) {
+    logger.warn(
+      { error, worker, sqsMessageId: record.messageId },
+      'sqs.retry_backoff_failed',
+    )
+  }
+}
+
 function isSqsEvent<T>(event: T | SQSEvent): event is SQSEvent {
   return (
     typeof event === 'object' &&
@@ -192,6 +245,9 @@ export async function handleSqsWorkerEvent<T, R, TContext>(
         { error, worker, sqsMessageId: record.messageId },
         'sqs.worker_record_failed',
       )
+      if (!(error instanceof WorkerLeaseHeldError)) {
+        await scheduleRetry(record, worker)
+      }
 
       // Preserve FIFO order if batchSize is ever increased above one.
       batchItemFailures.push(

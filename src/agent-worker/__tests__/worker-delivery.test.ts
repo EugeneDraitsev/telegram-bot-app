@@ -59,6 +59,26 @@ test('retries an undelivered loop failure and releases the lease without complet
   expect(complete).not.toHaveBeenCalled()
 })
 
+test('keeps the queue timeout when the lease could not be released', async () => {
+  const error = new Error('no response delivered')
+  jest.spyOn(agent, 'runAgenticLoop').mockRejectedValue(error)
+  release.mockRejectedValue(new Error('redis down'))
+  const payload = JSON.parse(event.Records[0]?.body ?? '{}')
+
+  await expect(worker(payload, context)).rejects.toMatchObject({
+    name: 'WorkerLeaseHeldError',
+    cause: error,
+  })
+})
+
+test('keeps the queue timeout when acquiring the lease failed', async () => {
+  const error = new common.WorkerLeaseHeldError(new Error('connection reset'))
+  jest.spyOn(idempotency, 'acquireAgentWorkerLease').mockRejectedValue(error)
+  const payload = JSON.parse(event.Records[0]?.body ?? '{}')
+
+  await expect(worker(payload, context)).rejects.toBe(error)
+})
+
 test('completes skipped or handled work without downloading media', async () => {
   jest.spyOn(agent, 'runAgenticLoop').mockResolvedValue(undefined)
   expect(await worker(event, context)).toEqual({ batchItemFailures: [] })

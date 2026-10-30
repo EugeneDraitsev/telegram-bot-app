@@ -5,6 +5,7 @@ import type { Update } from 'grammy/types'
 import {
   createBot,
   handleSqsWorkerEvent,
+  isPermanentTelegramError,
   logger,
   runIdempotentWorkerTask,
 } from '@tg-bot/common'
@@ -36,8 +37,21 @@ export const processTelegramReply = async (
       chatId: message.chat.id,
       messageId: message.message_id,
       ownerToken: context.awsRequestId,
-      task: () =>
-        handleUpdate({ body: JSON.stringify(event), headers: {} }, context),
+      task: async () => {
+        try {
+          await handleUpdate(
+            { body: JSON.stringify(event), headers: {} },
+            context,
+          )
+        } catch (error) {
+          // A deleted command or a blocked bot fails the same way every time.
+          if (!isPermanentTelegramError(error)) throw error
+          logger.warn(
+            { chatId: message.chat.id, messageId: message.message_id, error },
+            'reply_worker.permanent_telegram_error',
+          )
+        }
+      },
     })
 
     if (result.duplicate) {

@@ -11,6 +11,7 @@ import {
   handleSqsWorkerEvent,
   isAgenticChatEnabled,
   logger,
+  WorkerLeaseHeldError,
 } from '@tg-bot/common'
 import { REPLY_GATE_ROLE, resolveAgentChatRole, runAgenticLoop } from './agent'
 import { type AgentWorkerLease, acquireAgentWorkerLease } from './idempotency'
@@ -160,10 +161,12 @@ export const processAgentWorker = async (
 
     return { statusCode: 200, body: 'OK' }
   } catch (error) {
+    let leaseHeld = false
     if (lease) {
       try {
         await lease.release()
       } catch (releaseError) {
+        leaseHeld = true
         logger.warn({ error: releaseError }, 'worker.lease_release_failed')
       }
     }
@@ -179,7 +182,7 @@ export const processAgentWorker = async (
       },
       'worker.failed',
     )
-    throw error
+    throw leaseHeld ? new WorkerLeaseHeldError(error) : error
   }
 }
 

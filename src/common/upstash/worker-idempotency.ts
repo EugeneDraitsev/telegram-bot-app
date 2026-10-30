@@ -1,5 +1,6 @@
 import { logger } from '../logger'
 import { isOffline } from '../utils/env.utils'
+import { WorkerLeaseHeldError } from '../utils/sqs.utils'
 import { getRedisClient } from './client'
 
 // The agent worker has the longest Lambda timeout, at 13 minutes. Keeping the
@@ -65,10 +66,16 @@ export async function acquireWorkerLease(
   }
 
   const key = getWorkerIdempotencyKey(namespace, chatId, messageId)
-  const acquired = await redis.set(key, ownerToken, {
-    ex: WORKER_LEASE_TTL_SECONDS,
-    nx: true,
-  })
+  let acquired: string | null
+  try {
+    acquired = await redis.set(key, ownerToken, {
+      ex: WORKER_LEASE_TTL_SECONDS,
+      nx: true,
+    })
+  } catch (error) {
+    // The SET may have applied even though its response was lost.
+    throw new WorkerLeaseHeldError(error)
+  }
   if (acquired !== 'OK') {
     return null
   }
@@ -146,6 +153,7 @@ export async function runIdempotentWorkerTask<T>({
         { namespace, chatId, messageId, error: releaseError },
         'worker.lease_release_failed',
       )
+      throw new WorkerLeaseHeldError(error)
     }
     throw error
   }
