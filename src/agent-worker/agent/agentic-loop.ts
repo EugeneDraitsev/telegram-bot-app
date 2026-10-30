@@ -14,6 +14,7 @@ import {
   getMessageLogMeta,
   getMessageText,
   getRecentRawHistory,
+  isPermanentTelegramError,
   isTelegramReplyTargetMissingError,
   logger,
   startThinkingRichDraftIndicator,
@@ -687,9 +688,11 @@ export async function runAgenticLoop(
     } catch (sendError) {
       logger.error({ chatId, sendError }, 'loop.error_reply_failed')
       // Retry only a completely undelivered request. Replaying a partially
-      // delivered response would duplicate its already acknowledged messages.
-      if (!delivered) throw error
-      logger.warn(messageMeta, 'loop.partial_delivery_not_retried')
+      // delivered response would duplicate its already acknowledged messages,
+      // and a chat that rejects even the notice (bot blocked or kicked) will
+      // reject the retry too.
+      if (!delivered && !isPermanentTelegramError(sendError)) throw error
+      logger.warn(messageMeta, 'loop.failure_not_retried')
     }
   } finally {
     stopThinkingDraft?.()

@@ -442,6 +442,26 @@ describe('runAgenticLoop integration', () => {
     expect(stopTyping).toHaveBeenCalledTimes(1)
   })
 
+  test('does not retry a chat that permanently rejects the failure notice', async () => {
+    jest
+      .spyOn(modelCall, 'generateModelWithRetry')
+      .mockResolvedValue(createModelResult({ text: 'answer' }))
+    jest
+      .spyOn(delivery, 'sendResponses')
+      .mockRejectedValue(new Error('delivery unavailable'))
+    const api = createApi()
+    ;(api.sendMessage as jest.Mock).mockRejectedValue({
+      error_code: 403,
+      description: 'Forbidden: bot was kicked from the group chat',
+    })
+
+    await expect(
+      runAgenticLoop(createMessage(), api, undefined, undefined, {
+        bypassReplyGate: true,
+      }),
+    ).resolves.toBeUndefined()
+  })
+
   test('does not replay acknowledged response parts if the failure notice also fails', async () => {
     jest
       .spyOn(modelCall, 'generateModelWithRetry')

@@ -83,7 +83,11 @@ DynamoDB chat configuration controls AI access. Ingress checks it before
 enqueueing agent work, and the agent worker checks it again before processing.
 Redis leases prevent duplicate Telegram replies when SQS redelivers a message;
 activity writes are independently replay-safe. Worker queues use one-message
-batches, partial batch responses, and separate dead-letter queues.
+batches, partial batch responses, and separate dead-letter queues. A failed
+record backs off exponentially from 30 seconds instead of waiting out the
+queue's visibility timeout, so one failure does not hold its chat's FIFO group
+for an hour. Telegram 400/403 rejections (deleted command, blocked or kicked
+bot) are not retried.
 
 The shared Telegram client queues successful outgoing messages for the activity
 worker, including command media, agent replies and failure notices, and scheduled
@@ -93,9 +97,10 @@ uses the existing AI allowlist and 24-hour retention; raw history exposes full
 messages while recent context contains previews and media markers.
 
 If both an agent response and its failure notice cannot be delivered, the job
-is retried. Once any response part has been acknowledged by Telegram, a later
-delivery failure does not replay the whole job, avoiding duplicate response
-parts. Delivery errors remain in the logs.
+is retried, unless Telegram permanently rejected the notice. Once any response
+part has been acknowledged by Telegram, a later delivery failure does not
+replay the whole job, avoiding duplicate response parts. Delivery errors remain
+in the logs.
 
 Permanent chat events and user statistics are retained on stack deletion or
 resource replacement, with DynamoDB deletion protection and point-in-time
@@ -149,7 +154,8 @@ long passages spoken slowly.
 The agent worker has a 13-minute deadline to accommodate model fallbacks,
 data-gathering rounds and voice generation before delivery. Its Redis
 processing lease lasts 14 minutes; the agent queue's visibility timeout is
-78 minutes (six times the worker deadline). Serial tool batches execute at
+78 minutes (six times the worker deadline), which only applies when the worker
+is killed before it can schedule its own retry. Serial tool batches execute at
 most two calls per round, returning explicit tool results for excess calls
 so the model can combine queries or request them in a later round.
 

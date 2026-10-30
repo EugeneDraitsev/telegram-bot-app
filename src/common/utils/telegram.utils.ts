@@ -28,6 +28,20 @@ export function isTelegramReplyTargetMissingError(error: unknown): boolean {
   )
 }
 
+/**
+ * Telegram rejected the request itself (bad request, bot blocked or kicked).
+ * Retrying cannot succeed, unlike 429, 5xx and network errors. grammY wraps
+ * middleware errors in a BotError, so one `error` level is unwrapped.
+ */
+export function isPermanentTelegramError(error: unknown): boolean {
+  const { error_code: code, error: cause } = (error ?? {}) as {
+    error_code?: unknown
+    error?: { error_code?: unknown }
+  }
+  const errorCode = code ?? cause?.error_code
+  return errorCode === 400 || errorCode === 403
+}
+
 export const findCommand = (text = ''): string =>
   text
     .replace(/(\r\n|\n|\r)/gm, '')

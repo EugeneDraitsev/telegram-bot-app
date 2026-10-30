@@ -1,4 +1,8 @@
-import { type SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs'
+import {
+  ChangeMessageVisibilityCommand,
+  type SendMessageCommand,
+  SQSClient,
+} from '@aws-sdk/client-sqs'
 import type { Context, SQSEvent } from 'aws-lambda'
 
 import {
@@ -17,12 +21,17 @@ const mockSqsSend = (
     .spyOn(SQSClient.prototype, 'send')
     .mockImplementation(implementation as unknown as SqsSend)
 
-const createSqsEvent = (...records: Array<[string, unknown]>) =>
+const createSqsEvent = (
+  ...records: Array<[string, unknown] | [string, unknown, string]>
+) =>
   ({
-    Records: records.map(([messageId, body]) => ({
+    Records: records.map(([messageId, body, receiveCount = '1']) => ({
       messageId,
+      receiptHandle: `receipt-${messageId}`,
       body: JSON.stringify(body),
+      attributes: { ApproximateReceiveCount: receiveCount },
       eventSource: 'aws:sqs',
+      eventSourceARN: 'arn:aws:sqs:eu-central-1:123456789012:agent.fifo',
     })),
   }) as SQSEvent
 
@@ -192,6 +201,7 @@ describe('handleSqsWorkerEvent', () => {
   })
 
   test('marks a failed FIFO record and all following records for retry', async () => {
+    const send = mockSqsSend(() => Promise.resolve({}))
     const processPayload = jest.fn(async () => {
       throw new Error('worker failed')
     })
@@ -213,5 +223,67 @@ describe('handleSqsWorkerEvent', () => {
       ],
     })
     expect(processPayload).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  test('backs off a failed record instead of waiting out the queue timeout', async () => {
+    const commands: unknown[] = []
+    mockSqsSend((command) => {
+      commands.push(command)
+      return Promise.resolve({})
+    })
+    const fail = jest.fn(async () => {
+      throw new Error('worker failed')
+    })
+
+    await handleSqsWorkerEvent(
+      'agent',
+      createSqsEvent(['message-1', {}, '1']),
+      context,
+      fail,
+    )
+    await handleSqsWorkerEvent(
+      'agent',
+      createSqsEvent(['message-2', {}, '4']),
+      context,
+      fail,
+    )
+    await handleSqsWorkerEvent(
+      'agent',
+      createSqsEvent(['message-3', {}, '9']),
+      context,
+      fail,
+    )
+
+    expect(commands[0]).toBeInstanceOf(ChangeMessageVisibilityCommand)
+    expect(
+      commands.map(
+        (command) => (command as ChangeMessageVisibilityCommand).input,
+      ),
+    ).toEqual([
+      {
+        QueueUrl:
+          'https://sqs.eu-central-1.amazonaws.com/123456789012/agent.fifo',
+        ReceiptHandle: 'receipt-message-1',
+        VisibilityTimeout: 30,
+      },
+      expect.objectContaining({ VisibilityTimeout: 240 }),
+      expect.objectContaining({ VisibilityTimeout: 900 }),
+    ])
+  })
+
+  test('still reports the failure when the backoff call fails', async () => {
+    mockSqsSend(() => Promise.reject(new Error('sqs down')))
+
+    await expect(
+      handleSqsWorkerEvent(
+        'reply',
+        createSqsEvent(['message-1', {}]),
+        context,
+        async () => {
+          throw new Error('worker failed')
+        },
+      ),
+    ).resolves.toEqual({ batchItemFailures: [{ itemIdentifier: 'message-1' }] })
   })
 })

@@ -7,6 +7,7 @@ import {
   getCommandMediaRefs,
   getParsedText,
   getUserName,
+  isPermanentTelegramError,
   isTelegramReplyTargetMissingError,
 } from '..'
 
@@ -30,6 +31,18 @@ describe('isTelegramReplyTargetMissingError', () => {
         description: 'message to be replied not found',
       }),
     ).toBe(false)
+  })
+})
+
+describe('isPermanentTelegramError', () => {
+  test('matches rejected requests, including grammY BotError wrappers', () => {
+    expect(isPermanentTelegramError({ error_code: 400 })).toBe(true)
+    expect(isPermanentTelegramError({ error_code: 403 })).toBe(true)
+    expect(isPermanentTelegramError({ error: { error_code: 403 } })).toBe(true)
+    expect(isPermanentTelegramError({ error_code: 429 })).toBe(false)
+    expect(isPermanentTelegramError({ error_code: 502 })).toBe(false)
+    expect(isPermanentTelegramError(new Error('socket hang up'))).toBe(false)
+    expect(isPermanentTelegramError(undefined)).toBe(false)
   })
 })
 
