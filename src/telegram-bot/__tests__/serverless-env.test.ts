@@ -168,4 +168,23 @@ describe('agentic chat configuration infrastructure', () => {
     expect(alarm).toContain('Threshold: 0')
     expect(alarm).toContain('Ref: WorkerFailureAlertsTopic')
   })
+
+  test('alarms when ingress or the scheduled currency post fails', () => {
+    const ingress = resources
+      .split('  IngressFailureAlarm:')[1]
+      ?.split('  CurrencySchedulerErrorMetricFilter:')[0]
+    expect(resources).toContain(`FilterPattern: '"Bot handler error"'`)
+    for (const metric of ['HandlerErrors', 'Errors', 'Throttles']) {
+      expect(ingress).toContain(`MetricName: ${metric}`)
+    }
+    expect(ingress).toContain('Ref: WorkerFailureAlertsTopic')
+
+    const scheduler = resources
+      .split('  CurrencySchedulerFailureAlarm:')[1]
+      ?.split('  TelegramReplyWorkerDlqAlarm:')[0]
+    expect(resources).toContain(
+      `FilterPattern: '"currencySchedulerHandler error"'`,
+    )
+    expect(scheduler).toContain('Ref: WorkerFailureAlertsTopic')
+  })
 })

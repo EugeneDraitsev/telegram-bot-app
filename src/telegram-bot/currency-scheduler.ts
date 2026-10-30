@@ -45,7 +45,8 @@ const currencySchedulerHandler: APIGatewayProxyHandler = async () => {
     logger.error({ error: e }, 'currencySchedulerHandler error')
     return {
       body: JSON.stringify({ message: 'Something went wrong' }),
-      // we need to send 200 here to avoid issue with telegram attempts to resend you a message
+      // Resolve so Lambda's async retries cannot post twice; the
+      // currency-scheduler-failure alarm reports this log line.
       statusCode: 200,
     }
   }
