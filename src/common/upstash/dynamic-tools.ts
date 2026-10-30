@@ -87,8 +87,14 @@ export async function getDynamicToolsRaw(
   return [...globalData, ...chatData]
 }
 
+/**
+ * `fresh` is for read-modify-write: it skips the per-container cache, which can
+ * be a minute behind another container's write, and throws instead of
+ * returning an empty list that would overwrite every saved tool.
+ */
 export async function getDynamicToolsRawByScope(
   scope?: string | number,
+  { fresh = false } = {},
 ): Promise<unknown[]> {
   const redis = getRedisClient()
   if (!redis) {
@@ -96,7 +102,7 @@ export async function getDynamicToolsRawByScope(
   }
 
   const key = getDynamicToolsKey(scope)
-  const cached = dynamicToolsCache.get(key)
+  const cached = fresh ? undefined : dynamicToolsCache.get(key)
   if (cached !== undefined) {
     return [...cached]
   }
@@ -107,6 +113,7 @@ export async function getDynamicToolsRawByScope(
     dynamicToolsCache.set(key, tools)
     return [...tools]
   } catch (error) {
+    if (fresh) throw error
     logger.error({ error }, 'Error getting dynamic tools')
     return []
   }

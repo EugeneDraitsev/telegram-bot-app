@@ -37,6 +37,21 @@ test('caches tools by scope in a warm Lambda instance', async () => {
   expect(mockGet).toHaveBeenCalledWith('agent-dynamic-tools:123')
 })
 
+test('reads fresh tools for an update and fails instead of returning none', async () => {
+  mockGet
+    .mockResolvedValueOnce([{ name: 'stale' }])
+    .mockResolvedValueOnce([{ name: 'stale' }, { name: 'added-elsewhere' }])
+    .mockRejectedValueOnce(new Error('redis down'))
+
+  await getDynamicToolsRawByScope(123)
+  await expect(
+    getDynamicToolsRawByScope(123, { fresh: true }),
+  ).resolves.toEqual([{ name: 'stale' }, { name: 'added-elsewhere' }])
+  await expect(getDynamicToolsRawByScope(123, { fresh: true })).rejects.toThrow(
+    'redis down',
+  )
+})
+
 test('refreshes the local cache after saving tools', async () => {
   mockSet.mockResolvedValue('OK')
   const tools = [{ name: 'search' }]

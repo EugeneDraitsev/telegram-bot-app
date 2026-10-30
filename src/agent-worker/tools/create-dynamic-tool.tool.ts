@@ -146,7 +146,9 @@ export const createDynamicToolTool: AgentTool = {
 
     try {
       const normalizedArgs = normalizeDynamicToolInput(args)
-      const existingRawTools = await getDynamicToolsRawByScope(chatId)
+      const existingRawTools = await getDynamicToolsRawByScope(chatId, {
+        fresh: true,
+      })
       const existingTools = parseDynamicToolList(existingRawTools)
       const existingTool =
         typeof normalizedArgs.name === 'string'

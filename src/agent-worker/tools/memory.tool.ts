@@ -9,7 +9,7 @@ import {
   setChatMemory,
 } from '@tg-bot/common'
 import type { AgentTool } from '../types'
-import { requireToolContext } from './context'
+import { requireToolContext, setToolChatMemory } from './context'
 
 export const getMemoryTool: AgentTool = {
   declaration: {
@@ -36,7 +36,8 @@ export const getMemoryTool: AgentTool = {
       if (args.scope === 'chat') {
         const chatId = message.chat?.id
         if (!chatId) throw new Error('No chat ID available')
-        const memory = await getChatMemory(chatId)
+        const memory = await getChatMemory(chatId, { fresh: true })
+        setToolChatMemory(memory)
         return memory || '(empty — no chat memory saved yet)'
       }
 
@@ -67,13 +68,26 @@ export const updateMemoryTool: AgentTool = {
     },
   },
   execute: async (args) => {
-    const { message } = requireToolContext()
+    const { message, chatMemory: seenMemory } = requireToolContext()
 
     try {
       const chatId = message.chat?.id
       if (!chatId) throw new Error('No chat ID available')
-      const ok = await setChatMemory(chatId, args.content as string)
+      // The content replaces everything, so it must build on the current
+      // memory: the preload may come from a stale cache or have failed.
+      if (seenMemory !== undefined) {
+        const currentMemory = await getChatMemory(chatId, { fresh: true })
+        if (currentMemory !== seenMemory) {
+          setToolChatMemory(currentMemory)
+          throw new Error(
+            `chat memory changed since you read it, so nothing was saved. Current memory:\n${currentMemory || '(empty)'}\nMerge your update into it and call update_memory again.`,
+          )
+        }
+      }
+      const content = String(args.content ?? '')
+      const ok = await setChatMemory(chatId, content)
       if (!ok) throw new Error('Failed to save chat memory')
+      setToolChatMemory(content.trim())
       return 'Chat memory updated successfully.'
     } catch (error) {
       throw new Error(`Error updating memory: ${getErrorMessage(error)}`)

@@ -28,6 +28,7 @@ import {
   getBaseAgentTools,
   getCollectedResponses,
   runWithToolContext,
+  setToolChatMemory,
   setToolHistoryMessages,
   withToolMediaBuffers,
 } from '../tools'
@@ -545,6 +546,7 @@ export async function runAgenticLoop(
         'loop.preload_done',
       )
       setToolHistoryMessages(rawHistory)
+      setToolChatMemory(chatMemory)
 
       const recentHistory = getRecentHistoryContext(
         rawHistory,
