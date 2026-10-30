@@ -129,11 +129,7 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
       await next()
     })
 
-    // /q, /qq, /o, /gemma <text, image> - invoke the agent without reply gate
-    // /e, /ee, /ge, /gp, /de <text, image> - generate or edit an image via the agent
-    // /omni <text, image, video> - generate, animate, edit or extend video with native audio
-    // /lyria, /lyriapro <text, image> - generate music with Lyria 3.5
-    // deferRegisteredCommand routes them, so they only need registering.
+    // deferRegisteredCommand routes AGENT_COMMANDS, so they only need registering.
     for (const commandName of AGENT_COMMANDS) commandRegistry.add(commandName)
   }
 
@@ -174,7 +170,12 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
   // /allowai, /disallowai - bot owner controls the outer AI allowlist
   setupAgenticConfig(bot)
 
-  // Smart agentic responses for non-command messages.
+  if (!deferredCommands) {
+    return commandRegistry
+  }
+
+  // Smart agentic responses for non-command messages. Only ingress can
+  // enqueue to the agent worker; the reply worker only sees commands.
   bot.on('message', async (ctx, next) => {
     await next()
 

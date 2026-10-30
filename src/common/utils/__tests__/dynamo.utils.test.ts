@@ -10,7 +10,6 @@ import {
   dynamoCountAll,
   dynamoDeleteItem,
   dynamoGetItem,
-  dynamoPutItem,
   dynamoQuery,
   dynamoQueryAll,
   dynamoScanAll,
@@ -20,15 +19,6 @@ import {
 describe('dynamo utils', () => {
   afterEach(() => {
     jest.restoreAllMocks()
-  })
-
-  test('dynamoPutItem should call send on dynamo object and return promise with result', async () => {
-    jest
-      .spyOn(DynamoDBDocumentClient.prototype, 'send')
-      .mockImplementation(() => 'put response!!')
-
-    const options = {} as PutCommandInput
-    expect(await dynamoPutItem(options)).toEqual('put response!!')
   })
 
   test('dynamoGetItem should call send on dynamo object and return promise with result', async () => {

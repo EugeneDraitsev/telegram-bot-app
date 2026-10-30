@@ -19,21 +19,13 @@ const bot = createBot()
 
 export interface AgentWorkerPayload {
   message: Message
-  botInfo?: BotIdentity
   bypassReplyGate?: boolean
   commandName?: string
 }
 
 let cachedBotInfo: BotIdentity | undefined
 
-async function resolveBotInfo(
-  incomingBotInfo?: BotIdentity,
-): Promise<BotIdentity | undefined> {
-  if (incomingBotInfo?.id) {
-    cachedBotInfo = incomingBotInfo
-    return incomingBotInfo
-  }
-
+async function resolveBotInfo(): Promise<BotIdentity | undefined> {
   if (cachedBotInfo?.id) {
     return cachedBotInfo
   }
@@ -44,7 +36,7 @@ async function resolveBotInfo(
     return cachedBotInfo
   } catch (error) {
     logger.warn({ error }, 'worker.bot_info_unavailable')
-    return incomingBotInfo
+    return undefined
   }
 }
 
@@ -55,7 +47,7 @@ export const processAgentWorker = async (
   const startedAt = Date.now()
   const chatModel = resolveAgentChatRole(event?.commandName).primary
   try {
-    const { message, botInfo, bypassReplyGate, commandName } = event
+    const { message, bypassReplyGate, commandName } = event
 
     if (!message?.chat?.id) {
       logger.error(
@@ -97,7 +89,7 @@ export const processAgentWorker = async (
           'worker.start',
         )
 
-        const effectiveBotInfo = await resolveBotInfo(botInfo)
+        const effectiveBotInfo = await resolveBotInfo()
 
         const ctx = {
           message,

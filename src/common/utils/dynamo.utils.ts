@@ -4,7 +4,6 @@ import {
   DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
-  PutCommand,
   QueryCommand,
   ScanCommand,
   TransactWriteCommand,
@@ -15,8 +14,6 @@ import type {
   DeleteCommandOutput,
   GetCommandInput,
   GetCommandOutput,
-  PutCommandInput,
-  PutCommandOutput,
   QueryCommandInput,
   QueryCommandOutput,
   ScanCommandInput,
@@ -189,13 +186,6 @@ export const dynamoScanAll = async <T = Record<string, unknown>>(
 
     exclusiveStartKey = scanResults.LastEvaluatedKey
   }
-}
-
-export const dynamoPutItem = (
-  params: PutCommandInput,
-): Promise<PutCommandOutput> => {
-  const command = new PutCommand(params)
-  return docClient.send(command)
 }
 
 export const dynamoDeleteItem = (

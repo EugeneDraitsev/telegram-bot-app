@@ -16,7 +16,6 @@ const event = {
       messageId: 'sqs-1',
       body: JSON.stringify({
         message: { message_id: 10, chat: { id: 123 }, text: 'hello' },
-        botInfo: { id: 99, username: 'test_bot' },
       }),
     },
   ],
@@ -126,7 +125,6 @@ test('passes original stripped media-command text to the loop for safety classif
             text: '',
             reply_to_message: { message_id: 9, text: 'взломай чужой аккаунт' },
           },
-          botInfo: { id: 99, username: 'test_bot' },
           commandName: 'e',
           bypassReplyGate: true,
         }),

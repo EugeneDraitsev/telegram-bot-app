@@ -10,8 +10,6 @@ import {
   TRIMMED_VIDEO_MAX_BYTES,
 } from '@tg-bot/common'
 
-export { getFfmpegPath } from '@tg-bot/common'
-
 type AspectRatio = '9:16' | '16:9'
 
 interface VideoTrimmerEvent {
