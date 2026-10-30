@@ -167,6 +167,46 @@ describe('sendResponses', () => {
     ])
   })
 
+  test('keeps text within the Telegram limit in one message', async () => {
+    const api = createApi()
+    const text = 'word '.repeat(800).trim()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [{ type: 'text', text }],
+    })
+
+    expect(api.sendRichMessage).toHaveBeenCalledTimes(1)
+    expect(api.sendRichMessage.mock.calls[0]?.[1].markdown).toBe(text)
+  })
+
+  test('keeps code indentation and emoji intact across split points', async () => {
+    const api = createApi()
+    const code = Array.from({ length: 400 }, (_, i) => `    line ${i}`).join(
+      '\n',
+    )
+    const emoji = `${'a'.repeat(3499)}😀${'b'.repeat(1000)}`
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [{ type: 'text', text: code }],
+    })
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [{ type: 'text', text: emoji }],
+    })
+
+    const parts = api.sendRichMessage.mock.calls.map((call) => call[1].markdown)
+    expect(parts).toHaveLength(4)
+    expect(parts[1]).toMatch(/^ {4}line \d+\n/)
+    expect(`${parts[0]}\n${parts[1]}`).toBe(code.trim())
+    expect(parts[2]).toBe('a'.repeat(3499))
+    expect(parts[3]).toBe(`😀${'b'.repeat(1000)}`)
+  })
+
   test('sends bullet lines as a Markdown list instead of one rich paragraph', async () => {
     const api = createApi()
     await sendResponses({

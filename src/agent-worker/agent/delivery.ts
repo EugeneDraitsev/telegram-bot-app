@@ -224,20 +224,28 @@ function splitMentionBatches(text: string): string[] {
 // Below Telegram's 4096 limit so MarkdownV2 escaping still fits.
 const TEXT_CHUNK_LENGTH = 3_500
 
-/** Splits long text at the last paragraph, line or word break that fits. */
+/**
+ * Splits text over Telegram's limit at the last paragraph, line or word break
+ * that fits. Only the separator is dropped, so code keeps its indentation.
+ */
 function splitLongText(text: string): string[] {
+  if (text.length <= MAX_TEXT_LENGTH) return [text]
+
   const chunks: string[] = []
-  let rest = text.trim()
+  let rest = text
   while (rest.length > TEXT_CHUNK_LENGTH) {
     const head = rest.slice(0, TEXT_CHUNK_LENGTH)
-    const breakAt =
-      ['\n\n', '\n', ' ']
-        .map((separator) => head.lastIndexOf(separator))
-        .find((index) => index > TEXT_CHUNK_LENGTH / 2) ?? TEXT_CHUNK_LENGTH
-    chunks.push(rest.slice(0, breakAt).trim())
-    rest = rest.slice(breakAt).trim()
+    const separator = ['\n\n', '\n', ' '].find(
+      (candidate) => head.lastIndexOf(candidate) > TEXT_CHUNK_LENGTH / 2,
+    )
+    let breakAt = separator ? head.lastIndexOf(separator) : TEXT_CHUNK_LENGTH
+    // A hard cut must not split an emoji's surrogate pair.
+    const lastCode = rest.charCodeAt(breakAt - 1)
+    if (!separator && lastCode >= 0xd800 && lastCode <= 0xdbff) breakAt -= 1
+    chunks.push(rest.slice(0, breakAt).trimEnd())
+    rest = rest.slice(breakAt + (separator?.length ?? 0))
   }
-  if (rest) chunks.push(rest)
+  if (rest.trim()) chunks.push(rest)
   return chunks
 }
 
