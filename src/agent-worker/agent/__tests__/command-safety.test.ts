@@ -81,6 +81,35 @@ describe('command cyber safety', () => {
     },
   )
 
+  test('retries one transient Decisions error within the same timeout', async () => {
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('busy', { status: 503 }))
+      .mockResolvedValueOnce(answerResponse(0))
+
+    await expect(checkCommandSafety(message, 'o')).resolves.toEqual({
+      allowed: true,
+      cyberRisk: 0,
+      reason: 'safe',
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    expect(fetchSpy.mock.calls[1]?.[1]?.signal).toBe(
+      fetchSpy.mock.calls[0]?.[1]?.signal,
+    )
+  })
+
+  test('does not retry a rejected request', async () => {
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('bad', { status: 400 }))
+
+    await expect(checkCommandSafety(message, 'o')).resolves.toMatchObject({
+      allowed: false,
+      reason: 'unavailable',
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
   test('treats a classifier refusal as blocked without inventing a risk score', async () => {
     jest
       .spyOn(globalThis, 'fetch')
@@ -113,6 +142,7 @@ describe('command cyber safety', () => {
     const fetchSpy = jest
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
       .mockRejectedValueOnce(new DOMException('Timed out', 'TimeoutError'))
     const modelSpy = jest.spyOn(modelCall, 'generateModelWithRetry')
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -120,7 +150,8 @@ describe('command cyber safety', () => {
       expect(result.allowed).toBe(false)
       expect(result.reason).toBe('unavailable')
     }
-    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    // A second 429 fails closed; a timeout is not retried.
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
     expect(modelSpy).not.toHaveBeenCalled()
   })
 
