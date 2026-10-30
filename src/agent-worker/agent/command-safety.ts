@@ -82,26 +82,35 @@ export async function checkCommandSafety(
   try {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) throw new Error('OPENAI_API_KEY is not set')
-    const response = await fetch('https://api.openai.com/v1/decisions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(timeoutMs),
-      body: JSON.stringify({
-        model: primary.config.model,
-        input: buildCommandSafetyInput(message, recentHistory),
-        safety_identifier: getMessageSafetyIdentifier(message),
-        questions: [
-          {
-            type: 'predicate',
-            name: QUESTION_NAME,
-            instructions: COMMAND_CYBER_SAFETY_INSTRUCTIONS,
-          },
-        ],
-      }),
+    const signal = AbortSignal.timeout(timeoutMs)
+    const body = JSON.stringify({
+      model: primary.config.model,
+      input: buildCommandSafetyInput(message, recentHistory),
+      safety_identifier: getMessageSafetyIdentifier(message),
+      questions: [
+        {
+          type: 'predicate',
+          name: QUESTION_NAME,
+          instructions: COMMAND_CYBER_SAFETY_INSTRUCTIONS,
+        },
+      ],
     })
+    const requestDecision = () =>
+      fetch('https://api.openai.com/v1/decisions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal,
+        body,
+      })
+    let response = await requestDecision()
+    // One transient error would block every registered command, so retry once
+    // within the same timeout.
+    if (response.status === 429 || response.status >= 500) {
+      response = await requestDecision()
+    }
     if (!response.ok) {
       throw new Error(`Decisions API returned HTTP ${response.status}`)
     }
