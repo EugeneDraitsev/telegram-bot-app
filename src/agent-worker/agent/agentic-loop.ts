@@ -626,7 +626,10 @@ export async function runAgenticLoop(
         if (finalText.trim()) {
           allTextParts.push(cleanModelMessage(finalText))
         } else if (allTextParts.length === 0 && mediaResponses.length === 0) {
-          const fallbackText = extractFallbackTextFromToolResults(toolResults)
+          const fallbackText = extractFallbackTextFromToolResults(
+            toolResults,
+            toolByName,
+          )
           if (fallbackText) {
             allTextParts.push(fallbackText)
             logger.warn(

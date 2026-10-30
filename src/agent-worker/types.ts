@@ -105,7 +105,12 @@ export interface InteractionFunctionTool {
   parameters?: JSONSchema7
 }
 
-export type AgentToolExecutionPolicy = 'after-data' | 'serial' | 'terminal'
+export type AgentToolExecutionPolicy =
+  | 'after-data'
+  /** A successful result is user-facing prose, safe to send if the model fails. */
+  | 'presentable'
+  | 'serial'
+  | 'terminal'
 
 export interface AgentTool {
   declaration: InteractionFunctionTool

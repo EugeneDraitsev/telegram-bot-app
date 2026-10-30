@@ -157,9 +157,12 @@ The agent worker has a 13-minute deadline to accommodate model fallbacks,
 data-gathering rounds and voice generation before delivery. Its Redis
 processing lease lasts 14 minutes; the agent queue's visibility timeout is
 78 minutes (six times the worker deadline), which only applies when the worker
-is killed before it can schedule its own retry. Serial tool batches execute at
-most two calls per round, returning explicit tool results for excess calls
-so the model can combine queries or request them in a later round.
+is killed before it can schedule its own retry. Rate-limited (serial) tools
+run one at a time, at most two per round, while other calls in the round run
+in parallel. Excess serial calls return explicit tool results so the model can
+combine queries or request them in a later round. If the model cannot write a
+final answer, only tools marked `presentable` (web search) may be sent as-is;
+raw tool output such as history or memory never reaches the chat.
 
 ### Command cyber safety
 

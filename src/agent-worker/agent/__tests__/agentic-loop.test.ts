@@ -97,38 +97,58 @@ describe('tool call normalization', () => {
 })
 
 describe('extractFallbackTextFromToolResults', () => {
-  test('uses successful tool output and ignores tool errors', () => {
+  const toolByName = new Map<string, AgentTool>([
+    ['web_search', { execution: ['presentable'] } as unknown as AgentTool],
+    ['get_chat_history', {} as unknown as AgentTool],
+  ])
+
+  test('uses successful presentable output and ignores tool errors', () => {
     expect(
-      extractFallbackTextFromToolResults([
-        {
-          result: 'search service unavailable',
-          status: 'error',
-        },
-        {
-          result: 'Fresh web result: current value is 42',
-          status: 'success',
-        },
-      ]),
+      extractFallbackTextFromToolResults(
+        [
+          {
+            name: 'web_search',
+            result: 'search service unavailable',
+            status: 'error',
+          },
+          {
+            name: 'web_search',
+            result: 'Fresh web result: current value is 42',
+            status: 'success',
+          },
+        ],
+        toolByName,
+      ),
     ).toBe('Fresh web result: current value is 42')
   })
 
-  test('returns empty text when every tool failed', () => {
+  test('never sends raw output from tools that are not presentable', () => {
     expect(
-      extractFallbackTextFromToolResults([
-        { result: 'search service unavailable', status: 'error' },
-        { result: 'code execution produced no output', status: 'error' },
-      ]),
+      extractFallbackTextFromToolResults(
+        [
+          {
+            name: 'get_chat_history',
+            result: '[{"message_id":1,"text":"raw history"}]',
+            status: 'success',
+          },
+        ],
+        toolByName,
+      ),
     ).toBe('')
   })
 
   test('does not infer status from successful result text', () => {
     expect(
-      extractFallbackTextFromToolResults([
-        {
-          result: 'Error is a valid word in this successful result',
-          status: 'success',
-        },
-      ]),
+      extractFallbackTextFromToolResults(
+        [
+          {
+            name: 'web_search',
+            result: 'Error is a valid word in this successful result',
+            status: 'success',
+          },
+        ],
+        toolByName,
+      ),
     ).toBe('Error is a valid word in this successful result')
   })
 })
