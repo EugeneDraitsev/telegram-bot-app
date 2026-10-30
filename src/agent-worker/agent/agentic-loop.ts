@@ -34,6 +34,7 @@ import {
 } from '../tools'
 import type { AgentResponse, TelegramApi } from '../types'
 import { checkCommandSafety, createCommandSafetyReply } from './command-safety'
+import { DELIVERY_RESERVE_MS } from './config'
 import { buildContextBlock, buildMemoryBlock, splitResponses } from './context'
 import { sendResponses } from './delivery'
 import { isRetryableModelError, ModelCallTimeoutError } from './model-call'
@@ -365,6 +366,8 @@ export async function runAgenticLoop(
     bypassReplyGate?: boolean
     commandName?: string
     loadMedia?: () => Promise<MediaBuffer[]>
+    /** Epoch ms the Lambda dies at; the loop keeps DELIVERY_RESERVE_MS of it. */
+    invocationDeadline?: number
   } = {},
 ): Promise<void> {
   const message = prepareAgentCommandMessage(
@@ -614,6 +617,8 @@ export async function runAgenticLoop(
           toolByName,
           chatId,
           chatRole,
+          (options.invocationDeadline ?? Number.POSITIVE_INFINITY) -
+            DELIVERY_RESERVE_MS,
         )
 
         // Collect any responses produced by tools (media, text drafts, etc.)

@@ -102,6 +102,7 @@ export const processAgentWorker = async (
         await runAgenticLoop(message, bot.api, undefined, effectiveBotInfo, {
           bypassReplyGate,
           commandName,
+          invocationDeadline: Date.now() + context.getRemainingTimeInMillis(),
           loadMedia: async () => {
             const extraMessages = await getMediaGroupMessages(ctx)
             const { mediaBuffers } = await getMultimodalMediaData(

@@ -9,7 +9,10 @@ let worker: typeof import('../index').default
 const set = jest.fn()
 const getdel = jest.fn()
 const completed = () => set.mock.calls.some((call) => call[1] === 'completed')
-const context = { awsRequestId: 'request-1' } as Context
+const context = {
+  awsRequestId: 'request-1',
+  getRemainingTimeInMillis: () => 780_000,
+} as Context
 const event = {
   Records: [
     {
@@ -104,6 +107,7 @@ test('loads album media only when requested by the engaged loop', async () => {
     .spyOn(agent, 'runAgenticLoop')
     .mockImplementation(async (_message, _api, media, _botInfo, options) => {
       expect(media).toBeUndefined()
+      expect(options?.invocationDeadline).toBeGreaterThan(Date.now() + 770_000)
       expect(common.getMediaGroupMessages).not.toHaveBeenCalled()
       await options?.loadMedia?.()
     })
