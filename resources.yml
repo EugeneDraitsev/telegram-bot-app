@@ -137,6 +137,95 @@ Resources:
       AlarmActions:
         - Ref: WorkerFailureAlertsTopic
 
+  # A broken ingress enqueues nothing, so no worker DLQ alarm would ever fire.
+  IngressHandlerErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Ref: TelegramDashbotLogGroup
+      FilterPattern: '"Bot handler error"'
+      MetricTransformations:
+        - MetricNamespace: ${self:service}/${sls:stage}/ingress
+          MetricName: HandlerErrors
+          MetricValue: '1'
+
+  IngressFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${sls:stage}-ingress-failure
+      AlarmDescription: Telegram webhook ingress returned 503, crashed, timed out or was throttled.
+      Metrics:
+        - Id: handlerErrors
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: ${self:service}/${sls:stage}/ingress
+              MetricName: HandlerErrors
+            Period: 300
+            Stat: Sum
+        - Id: lambdaErrors
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value:
+                    Ref: TelegramDashbotLambdaFunction
+            Period: 300
+            Stat: Sum
+        - Id: throttles
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Throttles
+              Dimensions:
+                - Name: FunctionName
+                  Value:
+                    Ref: TelegramDashbotLambdaFunction
+            Period: 300
+            Stat: Sum
+        - Id: failures
+          Expression: FILL(handlerErrors, 0) + FILL(lambdaErrors, 0) + FILL(throttles, 0)
+          ReturnData: true
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: WorkerFailureAlertsTopic
+
+  CurrencySchedulerErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Ref: CurrencyDashschedulerLogGroup
+      FilterPattern: '"currencySchedulerHandler error"'
+      MetricTransformations:
+        - MetricNamespace: ${self:service}/${sls:stage}/currency-scheduler
+          MetricName: Failures
+          MetricValue: '1'
+
+  CurrencySchedulerFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${sls:stage}-currency-scheduler-failure
+      AlarmDescription: The scheduled currency post failed.
+      Namespace: ${self:service}/${sls:stage}/currency-scheduler
+      MetricName: Failures
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: WorkerFailureAlertsTopic
+
   TelegramReplyWorkerDlqAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:

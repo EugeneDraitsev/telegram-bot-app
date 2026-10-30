@@ -242,8 +242,11 @@ functions:
       - websocket:
           route: $disconnect
 
+  # Stats links are posted in chats and run uncached DynamoDB queries; the
+  # caps keep a flood from taking concurrency the webhook ingress needs.
   websocket-stats:
     handler: src/websockets/index.stats
+    reservedConcurrency: 5
     role:
       Fn::GetAtt:
         - WebsocketStatsRole
@@ -256,6 +259,7 @@ functions:
 
   websocket-broadcast-stats:
     handler: src/websockets/index.broadcastStats
+    reservedConcurrency: 5
     role:
       Fn::GetAtt:
         - WebsocketBroadcastStatsRole
