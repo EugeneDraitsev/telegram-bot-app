@@ -2,11 +2,7 @@ import type { Message } from 'grammy/types'
 import type { Bot, Context } from 'grammy/web'
 
 import { enqueueReplyWorker } from '@tg-bot/common'
-import {
-  handleMessageWithAgent,
-  isAgentCommand,
-  setupAgentCommands,
-} from './agent'
+import { AGENT_COMMANDS, handleMessageWithAgent, isAgentCommand } from './agent'
 import {
   type CommandRegistry,
   getRegisteredCommandName,
@@ -137,7 +133,8 @@ export const setupAllCommands = (bot: Bot, deferredCommands: boolean) => {
     // /e, /ee, /ge, /gp, /de <text, image> - generate or edit an image via the agent
     // /omni <text, image, video> - generate, animate, edit or extend video with native audio
     // /lyria, /lyriapro <text, image> - generate music with Lyria 3.5
-    setupAgentCommands(bot)
+    // deferRegisteredCommand routes them, so they only need registering.
+    for (const commandName of AGENT_COMMANDS) commandRegistry.add(commandName)
   }
 
   // /h <text?> - huyator
