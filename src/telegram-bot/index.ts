@@ -55,8 +55,12 @@ bot.use(async (ctx, next) => {
 // Setup all commands with deferred mode (durable SQS jobs)
 commandRegistry = setupAllCommands(bot, true)
 
+// grammY's own cold-start getMe runs before its timeout and retries forever,
+// so the handler initializes the bot first within a bound of its own. Both
+// bounds together stay under the 10s Lambda timeout.
+const BOT_INIT_TIMEOUT_MS = 2_000
 const handleUpdate = webhookCallback(bot, 'aws-lambda-async', {
-  timeoutMilliseconds: 9_000,
+  timeoutMilliseconds: 7_000,
 })
 
 const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
@@ -71,8 +75,18 @@ const telegramBotHandler: APIGatewayProxyHandler = async (event, context) => {
   }
 
   return respondToWebhookDispatch(
-    () =>
-      handleUpdate({ body: event.body ?? '', headers: event.headers }, context),
+    async () => {
+      await bot.init(
+        // grammY types its signal with a Node shim; the runtime one is native.
+        AbortSignal.timeout(BOT_INIT_TIMEOUT_MS) as Parameters<
+          typeof bot.init
+        >[0],
+      )
+      await handleUpdate(
+        { body: event.body ?? '', headers: event.headers },
+        context,
+      )
+    },
     (error) => logger.error({ error }, 'Bot handler error'),
   )
 }
