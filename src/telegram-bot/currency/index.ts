@@ -1,7 +1,11 @@
 import { type Bot, type Context, InputFile } from 'grammy/web'
 import type { Api } from 'grammy'
 
-import { logger, sendRichMessageWithFallback } from '@tg-bot/common'
+import {
+  isAiAllowedChat,
+  logger,
+  sendRichMessageWithFallback,
+} from '@tg-bot/common'
 import {
   buildCurrencyBackgroundDebugCaption,
   getCurrencyBackgroundImage,
@@ -167,7 +171,7 @@ export async function sendCurrencyMessages({
   })
 }
 
-async function sendCurrencyCommand(
+export async function sendCurrencyCommand(
   ctx: Context,
   {
     forceFallback = false,
@@ -181,6 +185,9 @@ async function sendCurrencyCommand(
 ) {
   const chatId = ctx.chat?.id
   if (!chatId) return
+  const withBackground = includeBackgroundImage || debugBackground
+  // The background costs web searches and image generation, like /x.
+  if (withBackground && !(await isAiAllowedChat(chatId))) return
 
   const messageThreadId = ctx.message?.message_thread_id
   const options =
@@ -188,7 +195,7 @@ async function sendCurrencyCommand(
       ? { message_thread_id: messageThreadId }
       : undefined
   const messages = await getCurrencyMessages({
-    includeBackgroundImage: includeBackgroundImage || debugBackground,
+    includeBackgroundImage: withBackground,
   })
   const caption = debugBackground
     ? buildCurrencyBackgroundDebugCaption(messages.background)

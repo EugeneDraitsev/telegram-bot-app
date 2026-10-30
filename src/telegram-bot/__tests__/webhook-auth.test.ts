@@ -18,6 +18,12 @@ describe('Telegram webhook authentication', () => {
         'secret-value',
       ),
     ).toBe(false)
+    expect(
+      hasValidTelegramWebhookSecret(
+        { 'x-telegram-bot-api-secret-token': 'secret' },
+        'secret-value',
+      ),
+    ).toBe(false)
   })
 
   test('fails closed when the expected secret is not configured', () => {

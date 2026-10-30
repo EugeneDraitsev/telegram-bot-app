@@ -32,7 +32,9 @@ export async function fetchGiphyGifs(
   for (const [key, value] of Object.entries(params)) {
     query.set(key, String(value))
   }
-  const response = await fetch(`https://api.giphy.com/v1/${path}?${query}`)
+  const response = await fetch(`https://api.giphy.com/v1/${path}?${query}`, {
+    signal: AbortSignal.timeout(10_000),
+  })
   if (!response.ok) {
     throw new Error(`Giphy API error: ${response.status}`)
   }
