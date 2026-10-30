@@ -8,9 +8,9 @@ jest.mock('node:child_process', () => ({
   spawn: (...args: unknown[]) => mockSpawn(...args),
 }))
 
+import { getFfmpegPath } from '@tg-bot/common'
 import videoTrimmerHandler, {
   getFfmpegArgs,
-  getFfmpegPath,
   getFrameArgs,
   getMaxDurationSeconds,
   getVideoFilters,

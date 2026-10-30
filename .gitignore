@@ -33,7 +33,7 @@ coverage
 .vscode
 package-lock.json
 .env
-scripts
+/scripts
 .output.txt
 .junie
-gen*
+/gen*

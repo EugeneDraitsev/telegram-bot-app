@@ -13,18 +13,15 @@ import {
 const querySpy = jest.spyOn(utils, 'dynamoQuery')
 const queryAllSpy = jest.spyOn(utils, 'dynamoQueryAll')
 const batchGetAllSpy = jest.spyOn(utils, 'dynamoBatchGetAll')
-const putSpy = jest.spyOn(utils, 'dynamoPutItem')
 const updateSpy = jest.spyOn(utils, 'dynamoUpdateItem')
 
 beforeEach(() => {
   querySpy.mockReset()
   queryAllSpy.mockReset()
   batchGetAllSpy.mockReset()
-  putSpy.mockReset()
   updateSpy.mockReset()
   queryAllSpy.mockResolvedValue([])
   batchGetAllSpy.mockResolvedValue([])
-  putSpy.mockResolvedValue({} as never)
   updateSpy.mockResolvedValue({} as never)
 })
 
