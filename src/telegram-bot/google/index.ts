@@ -18,14 +18,14 @@ const setupGoogleCommands = (bot: Bot) => {
             reply_parameters: { message_id: replyId },
           }),
         )
-        .catch(() => {
+        .catch(() =>
           ctx.reply(
             `Can't load ${url} to telegram (thumbnail: ${thumbnailUrl})`,
             {
               reply_parameters: { message_id: replyId },
             },
-          )
-        })
+          ),
+        )
     } catch (e) {
       return ctx.reply(e instanceof Error ? e.message : String(e), {
         reply_parameters: { message_id: replyId },

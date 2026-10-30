@@ -8,7 +8,9 @@ export const searchWiki = async (query = '') => {
   )}`
 
   try {
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      signal: globalThis.AbortSignal.timeout(5_000),
+    })
     const result = await response.json()
     return result[3][0] || `Failed to find article for term: ${query}`
   } catch (_e) {
