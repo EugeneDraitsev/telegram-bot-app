@@ -254,7 +254,7 @@
 
     "@hapi/catbox-memory": ["@hapi/catbox-memory@6.0.2", "", { "dependencies": { "@hapi/boom": "^10.0.1", "@hapi/hoek": "^11.0.2" } }, "sha512-H1l4ugoFW/ZRkqeFrIo8p1rWN0PA4MDTfu4JmcoNDvnY975o29mqoZblqFTotxNHlEkMPpIiIBJTV+Mbi+aF0g=="],
 
-    "@hapi/content": ["@hapi/content@6.0.2", "", { "dependencies": { "@hapi/boom": "^10.0.0" } }, "sha512-OKyCOTjNR1hftwSjk9ueyAQTw8AwapvzBrPIWMGn39vhR5PmqLdYFmLc35bsSBye7gSMnlkXfc679bUdMIcRyQ=="],
+    "@hapi/content": ["@hapi/content@6.0.3", "", { "dependencies": { "@hapi/boom": "^10.0.0" } }, "sha512-ksXemMNZAwPq/mu1a9TZ7LDUSgMR9sexBgpalF3nrP6SM42ARlnBZs58IS5Ay+o4o7y6tFNXL+rMJkQ5ghvCSw=="],
 
     "@hapi/cryptiles": ["@hapi/cryptiles@6.0.3", "", { "dependencies": { "@hapi/boom": "^10.0.1" } }, "sha512-r6VKalpbMHz4ci3gFjFysBmhwCg70RpYZy6OkjEpdXzAYnYFX5XsW7n4YMJvuIYpnMwLxGUjK/cBhA7X3JDvXw=="],
 

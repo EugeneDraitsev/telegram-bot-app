@@ -107,6 +107,7 @@ describe('setupAllCommands', () => {
     expect(commandRegistry.has('omni')).toBe(true)
     expect(commandRegistry.has('lyria')).toBe(true)
     expect(commandRegistry.has('lyriapro')).toBe(true)
+    expect(commandRegistry.has('gif')).toBe(true)
 
     const message = { text: 'hello' }
     const ctx = { message } as unknown as Context

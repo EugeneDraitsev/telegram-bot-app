@@ -49,9 +49,13 @@ const PRIMARY_MEDIA_ORDER = [
   'video',
   'audio',
 ] as const
-const BUFFERED_MEDIA_ORDER = ['video', 'audio', 'image'] as const
+const BUFFERED_MEDIA_ORDER = ['video', 'audio', 'animation', 'image'] as const
 
-type BufferedMediaResponse = ImageResponse | VideoResponse | AudioResponse
+type BufferedMediaResponse =
+  | ImageResponse
+  | VideoResponse
+  | AudioResponse
+  | AnimationResponse
 
 function hasBuffer(response: BufferedMediaResponse | null): boolean {
   return Boolean(response?.buffer)
@@ -287,8 +291,10 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     } else if (r.type === 'audio') {
       if (bundle.audio) bundle.overwrittenMediaTypes.push(r.type)
       bundle.audio = preferBufferedResponse(bundle.audio, r)
-    } else if (r.type === 'animation') bundle.animation = r
-    else if (r.type === 'sticker') bundle.sticker = r
+    } else if (r.type === 'animation') {
+      // A generated GIF wins; otherwise the last GIF link or file_id does.
+      if (!hasBuffer(bundle.animation)) bundle.animation = r
+    } else if (r.type === 'sticker') bundle.sticker = r
     else if (r.type === 'dice') bundle.dice = r
   }
 
@@ -595,19 +601,18 @@ async function sendAnimation(
     ...getReplyOptions(params.replyToMessageId),
   }
 
+  const { buffer, url = '' } = params.animation
   let sentMessage: Awaited<ReturnType<TelegramApi['sendAnimation']>>
   try {
     sentMessage = await params.api.sendAnimation(
       params.chatId,
-      params.animation.url,
+      buffer ? new InputFile(buffer, 'generated.gif') : url,
       options,
     )
     params.onDelivered?.()
   } catch (error) {
     // A file_id means nothing to readers, so only links join the fallback.
-    const link = /^https?:\/\//i.test(params.animation.url)
-      ? params.animation.url
-      : ''
+    const link = !buffer && /^https?:\/\//i.test(url) ? url : ''
     const fallbackText = [rawCaption, link].filter(Boolean).join('\n\n')
     if (!fallbackText.trim() || isTelegramReplyTargetMissingError(error)) {
       throw error
@@ -689,6 +694,8 @@ async function sendResponsesOnce(
       await sendVideo({ ...mediaParams, video: bundle.video })
     } else if (bufferedMediaType === 'audio' && bundle.audio) {
       await sendGeneratedAudio({ ...mediaParams, audio: bundle.audio })
+    } else if (bufferedMediaType === 'animation' && bundle.animation) {
+      await sendAnimation({ ...mediaParams, animation: bundle.animation })
     } else if (bufferedMediaType === 'image' && bundle.image) {
       await sendImage({ ...mediaParams, image: bundle.image })
     } else if (bundle.rich) {

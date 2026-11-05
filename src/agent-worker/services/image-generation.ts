@@ -13,12 +13,12 @@ import { trackToolModelCall } from '../tools/context'
 
 const FLARE = {
   provider: 'openai',
-  model: 'gpt-image-2.5-flare',
+  model: 'gpt-image-2.6-flare',
   quality: 'low',
 } as const
 const SUNBURST = {
   provider: 'openai',
-  model: 'gpt-image-2.5-sunburst',
+  model: 'gpt-image-2.6-sunburst',
   quality: 'medium',
 } as const
 const NANO_BANANA = {
@@ -34,6 +34,9 @@ type ImageModel =
 
 const IMAGE_ATTEMPT_TIMEOUT_MS = 55_000
 export const IMAGE_TOOL_TIMEOUT_MS = IMAGE_ATTEMPT_TIMEOUT_MS * 2 + 10_000
+// Every GIF frame is rendered, so one animation takes longer than a still.
+const GIF_ATTEMPT_TIMEOUT_MS = 160_000
+export const GIF_TOOL_TIMEOUT_MS = GIF_ATTEMPT_TIMEOUT_MS + 10_000
 
 function getImageModels(commandName?: string): [ImageModel, ImageModel?] {
   switch (commandName) {
@@ -124,4 +127,54 @@ export async function generateAgentImage(
       fallbackFrom,
     )
   }
+}
+
+/**
+ * Animated GIFs come only from the Images API generations endpoint. The AI SDK
+ * rejects the `gif` output format, so this request goes to the API directly.
+ * The API's defaults (9 frames, 200 ms each) are kept.
+ */
+export function generateAgentGif(
+  prompt: string,
+  commandName?: string,
+): Promise<Buffer> {
+  const model = commandName === 'gif' ? SUNBURST : FLARE
+  return trackToolModelCall(
+    { name: 'gif_generation', model: formatAiModelConfig(model) },
+    async () => {
+      const apiKey = process.env.OPENAI_API_KEY
+      if (!apiKey) throw new Error('OPENAI_API_KEY is not set')
+      const response = await fetch(
+        'https://api.openai.com/v1/images/generations',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(GIF_ATTEMPT_TIMEOUT_MS),
+          body: JSON.stringify({
+            model: model.model,
+            prompt: buildImageGenerationPrompt(prompt),
+            n: 1,
+            quality: model.quality,
+            output_format: 'gif',
+          }),
+        },
+      )
+      const body = (await response.json().catch(() => undefined)) as
+        | { data?: { b64_json?: string }[]; error?: { message?: string } }
+        | undefined
+      if (!response.ok) {
+        throw new Error(
+          body?.error?.message ?? `Images API returned HTTP ${response.status}`,
+        )
+      }
+      const gif = Buffer.from(body?.data?.[0]?.b64_json ?? '', 'base64')
+      if (!gif.length) {
+        throw new Error(`${formatAiModelConfig(model)} returned no GIF`)
+      }
+      return gif
+    },
+  )
 }

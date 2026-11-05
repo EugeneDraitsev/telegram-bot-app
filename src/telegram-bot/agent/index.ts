@@ -22,6 +22,7 @@ export const AGENT_COMMANDS = [
   'ge',
   'gp',
   'de',
+  'gif',
   'omni',
   'lyria',
   'lyriapro',

@@ -932,6 +932,60 @@ describe('sendResponses', () => {
     expect(api.sendRichMessage).not.toHaveBeenCalled()
   })
 
+  test('uploads a generated GIF ahead of a GIF link or rendered image', async () => {
+    const api = createApi()
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      replyToMessageId: 456,
+      responses: [
+        { type: 'text', text: 'Here it is' },
+        { type: 'animation', buffer: Buffer.from('GIF89a') },
+        { type: 'animation', url: 'https://example.com/other.gif' },
+        { type: 'image', buffer: Buffer.from('png') },
+      ],
+    })
+
+    expect(api.sendAnimation).toHaveBeenCalledTimes(1)
+    expect(api.sendAnimation).toHaveBeenCalledWith(
+      123,
+      expect.objectContaining({ filename: 'generated.gif' }),
+      expect.objectContaining({
+        caption: expect.stringContaining('Here it is'),
+        reply_parameters: { message_id: 456 },
+      }),
+    )
+    expect(api.sendPhoto).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      {
+        chatId: 123,
+        deliveredResponseType: 'animation',
+        droppedResponseTypes: ['image'],
+      },
+      'delivery.media_dropped',
+    )
+  })
+
+  test('does not paste a generated GIF into fallback text', async () => {
+    const api = createApi()
+    api.sendAnimation.mockRejectedValueOnce(new Error('upload failed'))
+
+    await sendResponses({
+      api,
+      chatId: 123,
+      responses: [
+        { type: 'text', text: 'Here it is' },
+        { type: 'animation', buffer: Buffer.from('GIF89a') },
+      ],
+    })
+
+    expect(api.sendRichMessage.mock.calls[0]?.slice(0, 2)).toEqual([
+      123,
+      { markdown: 'Here it is' },
+    ])
+  })
+
   test('captions a GIF file_id with short mention text', async () => {
     const api = createApi()
 
