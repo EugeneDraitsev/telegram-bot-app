@@ -238,6 +238,14 @@ covers that. The AI SDK does not accept the `gif` format yet, so this one call
 goes to the Images API directly. One attempt gets 160 seconds within a
 170-second tool budget, and the GIF is uploaded with `sendAnimation`.
 
+The API caps a GIF request by a total pixel budget it does not publish, and it
+rejected 24 frames left at `size: auto`. The tool therefore asks for the
+largest square frame, in multiples of 16 up to 1024 px, that keeps every frame
+within the documented 4K image maximum: 576 px for 24 frames. If the API still
+rejects the request with HTTP 400, it logs `gif_gen.timing_fallback` with the
+API error and retries once, within the same deadline, with the API's own
+timing (9 frames of 200 ms at `size: auto`).
+
 ## Local development
 
 Docker must be running. Start Serverless Offline and its ElasticMQ container:

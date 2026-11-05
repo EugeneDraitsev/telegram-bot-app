@@ -54,9 +54,11 @@ export const generateGifTool: AgentTool = {
         throw new Error('Prompt cannot be empty')
       }
 
-      const timing = getGifTiming(args.frameCount, args.frameDurationMs)
       claimGeneratedMedia()
-      const gif = await generateAgentGif(prompt, timing)
+      const { gif, timing } = await generateAgentGif(
+        prompt,
+        getGifTiming(args.frameCount, args.frameDurationMs),
+      )
 
       addResponse({ type: 'animation', buffer: gif })
       const fps = Math.round(10_000 / timing.frameDurationMs) / 10
