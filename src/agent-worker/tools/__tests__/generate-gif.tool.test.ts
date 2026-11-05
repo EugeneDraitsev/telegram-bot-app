@@ -31,16 +31,16 @@ describe('generateGifTool', () => {
     )
 
     expect(imageService.generateAgentGif).toHaveBeenCalledWith('a cat waving', {
-      frameCount: 24,
+      frameCount: 16,
       frameDurationMs: 80,
     })
-    expect(result).toContain('24 frames at 12.5 fps')
+    expect(result).toContain('16 frames at 12.5 fps')
     expect(responses).toEqual([
       { type: 'animation', buffer: Buffer.from('GIF89a') },
     ])
   })
 
-  test('passes requested frame timing within the API limits', async () => {
+  test('clamps requested frame timing to the API limits', async () => {
     const result = await runWithToolContext(message, undefined, () =>
       generateGifTool.execute({
         prompt: 'a cat waving',
@@ -50,10 +50,10 @@ describe('generateGifTool', () => {
     )
 
     expect(imageService.generateAgentGif).toHaveBeenCalledWith('a cat waving', {
-      frameCount: 48,
+      frameCount: 16,
       frameDurationMs: 40,
     })
-    expect(result).toContain('48 frames at 25 fps')
+    expect(result).toContain('16 frames at 25 fps')
   })
 
   test('reports the timing the API actually used', async () => {

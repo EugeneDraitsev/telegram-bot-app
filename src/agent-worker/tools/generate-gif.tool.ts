@@ -30,9 +30,9 @@ export const generateGifTool: AgentTool = {
         frameCount: {
           type: 'integer',
           minimum: 2,
-          maximum: 64,
+          maximum: 16,
           description:
-            'Number of frames, default 24. Loop length = frameCount × frameDurationMs. More frames take longer and cost more.',
+            'Number of frames, default 16. Loop length = frameCount × frameDurationMs. More frames take longer and cost more.',
         },
         frameDurationMs: {
           type: 'integer',

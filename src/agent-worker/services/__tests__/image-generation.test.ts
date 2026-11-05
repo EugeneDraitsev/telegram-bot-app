@@ -236,7 +236,7 @@ describe('agent image generation', () => {
 
 describe('agent GIF generation', () => {
   const gif = Buffer.from('GIF89a')
-  const timing = { frameCount: 24, frameDurationMs: 80 }
+  const timing = { frameCount: 16, frameDurationMs: 80 }
   const gifFetch = jest.fn(async (_url: unknown, _init?: RequestInit) =>
     Response.json({ created: 1, data: [{ b64_json: gif.toString('base64') }] }),
   )
@@ -282,9 +282,9 @@ describe('agent GIF generation', () => {
         n: 1,
         quality: 'medium',
         output_format: 'gif',
-        frame_count: 24,
+        frame_count: 16,
         frame_duration_ms: 80,
-        size: '576x576',
+        size: '720x720',
       })
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -311,7 +311,7 @@ describe('agent GIF generation', () => {
     expect(retry).toEqual(expect.objectContaining({ output_format: 'gif' }))
     expect(common.logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
-        frameCount: 24,
+        frameCount: 16,
         frameDurationMs: 80,
         error: expect.objectContaining({
           message: 'frame_count is too large',
@@ -359,8 +359,7 @@ describe('getGifFrameSize', () => {
   test.each([
     [2, '1024x1024'],
     [9, '960x960'],
-    [24, '576x576'],
-    [64, '352x352'],
+    [16, '720x720'],
   ])('fits %i frames into the pixel budget as %s', (frames, size) => {
     expect(getGifFrameSize(frames)).toBe(size)
     const edge = Number(size.split('x')[0])
@@ -370,17 +369,17 @@ describe('getGifFrameSize', () => {
 })
 
 describe('getGifTiming', () => {
-  test('defaults to a smooth two-second loop', () => {
-    expect(getGifTiming()).toEqual({ frameCount: 24, frameDurationMs: 80 })
+  test('defaults to a smooth 16-frame loop', () => {
+    expect(getGifTiming()).toEqual({ frameCount: 16, frameDurationMs: 80 })
     expect(getGifTiming('48', Number.NaN)).toEqual({
-      frameCount: 24,
+      frameCount: 16,
       frameDurationMs: 80,
     })
   })
 
   test('keeps requested timing on the API grid', () => {
-    expect(getGifTiming(48, 42)).toEqual({
-      frameCount: 48,
+    expect(getGifTiming(16, 42)).toEqual({
+      frameCount: 16,
       frameDurationMs: 40,
     })
     expect(getGifTiming(12.4, 125)).toEqual({
@@ -391,8 +390,8 @@ describe('getGifTiming', () => {
 
   test('clamps timing to the API limits', () => {
     expect(getGifTiming(1, 5)).toEqual({ frameCount: 2, frameDurationMs: 20 })
-    expect(getGifTiming(500, 9000)).toEqual({
-      frameCount: 64,
+    expect(getGifTiming(24, 9000)).toEqual({
+      frameCount: 16,
       frameDurationMs: 2000,
     })
   })

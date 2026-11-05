@@ -229,8 +229,8 @@ model, with `fallbackFrom` and `toolCallId` to connect related calls.
 
 `generate_gif` creates a short looping animated GIF from text with the Images
 API's `gif` output format. The API's own default of 9 frames at 200 ms plays at
-5 fps and looks choppy, so the tool defaults to 24 frames at 80 ms (12.5 fps,
-about two seconds). The agent sets `frameCount` (2-64) and `frameDurationMs`
+5 fps and looks choppy, so the tool defaults to 16 frames at 80 ms (12.5 fps,
+1.28 seconds). The agent sets `frameCount` (2-16) and `frameDurationMs`
 (20-2000, in 10 ms steps) only when a user asks for a frame rate, speed or
 length; out-of-range values are clamped to the API limits. GIF output
 exists only for generations, so it cannot animate an existing photo; Omni
@@ -241,7 +241,7 @@ goes to the Images API directly. One attempt gets 160 seconds within a
 The API caps a GIF request by a total pixel budget it does not publish, and it
 rejected 24 frames left at `size: auto`. The tool therefore asks for the
 largest square frame, in multiples of 16 up to 1024 px, that keeps every frame
-within the documented 4K image maximum: 576 px for 24 frames. If the API still
+within the documented 4K image maximum: 720 px for 16 frames. If the API still
 rejects the request with HTTP 400, it logs `gif_gen.timing_fallback` with the
 API error and retries once, within the same deadline, with the API's own
 timing (9 frames of 200 ms at `size: auto`).

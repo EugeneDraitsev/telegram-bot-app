@@ -147,14 +147,14 @@ function fitToStep(
 /**
  * Fits requested timing into the Images API GIF limits. The API's own default
  * of 9 frames at 200 ms plays at 5 fps and looks choppy, so an unset value
- * falls back to 24 frames at 80 ms: a 12.5 fps loop of about two seconds.
+ * falls back to 16 frames at 80 ms: a 12.5 fps loop of 1.28 seconds.
  */
 export function getGifTiming(
   frameCount?: unknown,
   frameDurationMs?: unknown,
 ): GifTiming {
   return {
-    frameCount: fitToStep(frameCount, [2, 64, 1], 24),
+    frameCount: fitToStep(frameCount, [2, 16, 1], 16),
     // The API rounds each frame to 10 ms.
     frameDurationMs: fitToStep(frameDurationMs, [20, 2000, 10], 80),
   }
