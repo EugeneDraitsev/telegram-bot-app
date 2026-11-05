@@ -7,6 +7,7 @@ import {
   GIF_TOOL_TIMEOUT_MS,
   generateAgentGif,
   generateAgentImage,
+  getGifTiming,
   IMAGE_TOOL_TIMEOUT_MS,
 } from '../image-generation'
 
@@ -234,6 +235,7 @@ describe('agent image generation', () => {
 
 describe('agent GIF generation', () => {
   const gif = Buffer.from('GIF89a')
+  const timing = { frameCount: 24, frameDurationMs: 80 }
   const gifFetch = jest.fn(async (_url: unknown, _init?: RequestInit) =>
     Response.json({ created: 1, data: [{ b64_json: gif.toString('base64') }] }),
   )
@@ -242,7 +244,7 @@ describe('agent GIF generation', () => {
     return runWithToolContext(
       message,
       undefined,
-      () => generateAgentGif('a cat waving', commandName),
+      () => generateAgentGif('a cat waving', timing),
       undefined,
       commandName,
     )
@@ -257,29 +259,30 @@ describe('agent GIF generation', () => {
 
   afterEach(() => jest.restoreAllMocks())
 
-  test.each([
-    [undefined, 'gpt-image-2.6-flare', 'low'],
-    ['q', 'gpt-image-2.6-flare', 'low'],
-    ['gif', 'gpt-image-2.6-sunburst', 'medium'],
-  ])('generates a GIF for %s with %s %s', async (command, model, quality) => {
-    expect(await runGif(command)).toEqual(gif)
-    const [url, init] = gifFetch.mock.calls[0] ?? []
-    expect(String(url)).toBe('https://api.openai.com/v1/images/generations')
-    expect(JSON.parse(String(init?.body))).toEqual({
-      model,
-      prompt: expect.stringContaining('a cat waving'),
-      n: 1,
-      quality,
-      output_format: 'gif',
-    })
-    expect(common.logger.info).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'gif_generation',
-        model: `openai/${model}`,
-      }),
-      'tool.model_call',
-    )
-  })
+  test.each([undefined, 'q', 'gif'])(
+    'generates every GIF with Sunburst medium (%s)',
+    async (command) => {
+      expect(await runGif(command)).toEqual(gif)
+      const [url, init] = gifFetch.mock.calls[0] ?? []
+      expect(String(url)).toBe('https://api.openai.com/v1/images/generations')
+      expect(JSON.parse(String(init?.body))).toEqual({
+        model: 'gpt-image-2.6-sunburst',
+        prompt: expect.stringContaining('a cat waving'),
+        n: 1,
+        quality: 'medium',
+        output_format: 'gif',
+        frame_count: 24,
+        frame_duration_ms: 80,
+      })
+      expect(common.logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'gif_generation',
+          model: 'openai/gpt-image-2.6-sunburst',
+        }),
+        'tool.model_call',
+      )
+    },
+  )
 
   test('surfaces the API error message', async () => {
     gifFetch.mockResolvedValueOnce(
@@ -302,5 +305,34 @@ describe('agent GIF generation', () => {
     const [attemptMs] = timeout.mock.calls[0] ?? []
     expect(attemptMs).toBeLessThan(GIF_TOOL_TIMEOUT_MS)
     expect(gifFetch.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
+describe('getGifTiming', () => {
+  test('defaults to a smooth two-second loop', () => {
+    expect(getGifTiming()).toEqual({ frameCount: 24, frameDurationMs: 80 })
+    expect(getGifTiming('48', Number.NaN)).toEqual({
+      frameCount: 24,
+      frameDurationMs: 80,
+    })
+  })
+
+  test('keeps requested timing on the API grid', () => {
+    expect(getGifTiming(48, 42)).toEqual({
+      frameCount: 48,
+      frameDurationMs: 40,
+    })
+    expect(getGifTiming(12.4, 125)).toEqual({
+      frameCount: 12,
+      frameDurationMs: 130,
+    })
+  })
+
+  test('clamps timing to the API limits', () => {
+    expect(getGifTiming(1, 5)).toEqual({ frameCount: 2, frameDurationMs: 20 })
+    expect(getGifTiming(500, 9000)).toEqual({
+      frameCount: 64,
+      frameDurationMs: 2000,
+    })
   })
 })

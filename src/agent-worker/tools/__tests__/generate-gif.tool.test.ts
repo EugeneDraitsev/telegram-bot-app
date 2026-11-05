@@ -16,24 +16,41 @@ describe('generateGifTool', () => {
   afterEach(() => jest.restoreAllMocks())
 
   test('queues the generated GIF as an animation upload', async () => {
-    const responses = await runWithToolContext(
+    const [result, responses] = await runWithToolContext(
       message,
       undefined,
-      async () => {
-        await generateGifTool.execute({ prompt: ' a cat waving ' })
-        return getCollectedResponses()
-      },
+      async () => [
+        await generateGifTool.execute({ prompt: ' a cat waving ' }),
+        getCollectedResponses(),
+      ],
       undefined,
       'gif',
     )
 
-    expect(imageService.generateAgentGif).toHaveBeenCalledWith(
-      'a cat waving',
-      'gif',
-    )
+    expect(imageService.generateAgentGif).toHaveBeenCalledWith('a cat waving', {
+      frameCount: 24,
+      frameDurationMs: 80,
+    })
+    expect(result).toContain('24 frames at 12.5 fps')
     expect(responses).toEqual([
       { type: 'animation', buffer: Buffer.from('GIF89a') },
     ])
+  })
+
+  test('passes requested frame timing within the API limits', async () => {
+    const result = await runWithToolContext(message, undefined, () =>
+      generateGifTool.execute({
+        prompt: 'a cat waving',
+        frameCount: 48,
+        frameDurationMs: 42,
+      }),
+    )
+
+    expect(imageService.generateAgentGif).toHaveBeenCalledWith('a cat waving', {
+      frameCount: 48,
+      frameDurationMs: 40,
+    })
+    expect(result).toContain('48 frames at 25 fps')
   })
 
   test('shares the one generated media slot per request', async () => {

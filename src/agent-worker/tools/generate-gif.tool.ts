@@ -6,6 +6,7 @@ import { getErrorMessage } from '@tg-bot/common'
 import {
   GIF_TOOL_TIMEOUT_MS,
   generateAgentGif,
+  getGifTiming,
 } from '../services/image-generation'
 import type { AgentTool } from '../types'
 import { addResponse, claimGeneratedMedia, requireToolContext } from './context'
@@ -26,12 +27,26 @@ export const generateGifTool: AgentTool = {
           description:
             'The subject, its motion, and how the loop returns to its starting pose. Include only visual details directly requested now or present in the current reply target/quote.',
         },
+        frameCount: {
+          type: 'integer',
+          minimum: 2,
+          maximum: 64,
+          description:
+            'Number of frames, default 24. Loop length = frameCount × frameDurationMs. More frames take longer and cost more.',
+        },
+        frameDurationMs: {
+          type: 'integer',
+          minimum: 20,
+          maximum: 2000,
+          description:
+            'Milliseconds per frame in steps of 10, default 80 (12.5 fps). fps = 1000 / frameDurationMs, so 24 fps is 40 and 10 fps is 100.',
+        },
       },
       required: ['prompt'],
     },
   },
   execute: async (args) => {
-    const { commandName } = requireToolContext()
+    requireToolContext()
 
     try {
       const prompt = (args.prompt as string).trim()
@@ -39,11 +54,13 @@ export const generateGifTool: AgentTool = {
         throw new Error('Prompt cannot be empty')
       }
 
+      const timing = getGifTiming(args.frameCount, args.frameDurationMs)
       claimGeneratedMedia()
-      const gif = await generateAgentGif(prompt, commandName)
+      const gif = await generateAgentGif(prompt, timing)
 
       addResponse({ type: 'animation', buffer: gif })
-      return `Successfully generated GIF for: "${prompt.slice(0, 50)}..."`
+      const fps = Math.round(10_000 / timing.frameDurationMs) / 10
+      return `Successfully generated GIF (${timing.frameCount} frames at ${fps} fps) for: "${prompt.slice(0, 50)}..."`
     } catch (error) {
       throw new Error(`Error generating GIF: ${getErrorMessage(error)}`)
     }
