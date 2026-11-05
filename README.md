@@ -220,8 +220,7 @@ Image routing and quality are configured in
 | Ordinary image request | Gemini 3.1 Flash Lite Image | Provider default | GPT Image 2.6 Flare (low) |
 | `/e`, `/ee`, `/gp`, `/de` | GPT Image 2.6 Sunburst | medium | None |
 | `/ge` | Gemini 3.1 Flash Lite Image | Provider default | None |
-| Ordinary GIF request | GPT Image 2.6 Flare | low | None |
-| `/gif` | GPT Image 2.6 Sunburst | medium | None |
+| GIF request, including `/gif` | GPT Image 2.6 Sunburst | medium | None |
 
 Each image model is called once. Ordinary requests reserve 55 seconds for
 each provider; explicit commands allow 110 seconds for the selected model.
@@ -229,7 +228,11 @@ The tool has a 120-second total budget. `tool.model_call` records each actual
 model, with `fallbackFrom` and `toolCallId` to connect related calls.
 
 `generate_gif` creates a short looping animated GIF from text with the Images
-API's `gif` output format, keeping its default 9 frames of 200 ms. GIF output
+API's `gif` output format. The API's own default of 9 frames at 200 ms plays at
+5 fps and looks choppy, so the tool defaults to 24 frames at 80 ms (12.5 fps,
+about two seconds). The agent sets `frameCount` (2-64) and `frameDurationMs`
+(20-2000, in 10 ms steps) only when a user asks for a frame rate, speed or
+length; out-of-range values are clamped to the API limits. GIF output
 exists only for generations, so it cannot animate an existing photo; Omni
 covers that. The AI SDK does not accept the `gif` format yet, so this one call
 goes to the Images API directly. One attempt gets 160 seconds within a

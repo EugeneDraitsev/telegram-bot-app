@@ -2,6 +2,7 @@ import { generateImage } from 'ai'
 
 import {
   buildImageGenerationPrompt,
+  clamp,
   formatAiModelConfig,
   GEMINI_FLASH_LITE_IMAGE_MODEL,
   generateGeminiImage,
@@ -129,16 +130,46 @@ export async function generateAgentImage(
   }
 }
 
+export interface GifTiming {
+  frameCount: number
+  frameDurationMs: number
+}
+
+function fitToStep(
+  value: unknown,
+  [min, max, step]: [number, number, number],
+  fallback: number,
+): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return clamp(Math.round(value / step) * step, min, max)
+}
+
+/**
+ * Fits requested timing into the Images API GIF limits. The API's own default
+ * of 9 frames at 200 ms plays at 5 fps and looks choppy, so an unset value
+ * falls back to 24 frames at 80 ms: a 12.5 fps loop of about two seconds.
+ */
+export function getGifTiming(
+  frameCount?: unknown,
+  frameDurationMs?: unknown,
+): GifTiming {
+  return {
+    frameCount: fitToStep(frameCount, [2, 64, 1], 24),
+    // The API rounds each frame to 10 ms.
+    frameDurationMs: fitToStep(frameDurationMs, [20, 2000, 10], 80),
+  }
+}
+
 /**
  * Animated GIFs come only from the Images API generations endpoint. The AI SDK
  * rejects the `gif` output format, so this request goes to the API directly.
- * The API's defaults (9 frames, 200 ms each) are kept.
+ * Every GIF, /gif or not, uses Sunburst for detail that holds across frames.
  */
 export function generateAgentGif(
   prompt: string,
-  commandName?: string,
+  timing: GifTiming,
 ): Promise<Buffer> {
-  const model = commandName === 'gif' ? SUNBURST : FLARE
+  const model = SUNBURST
   return trackToolModelCall(
     { name: 'gif_generation', model: formatAiModelConfig(model) },
     async () => {
@@ -159,6 +190,8 @@ export function generateAgentGif(
             n: 1,
             quality: model.quality,
             output_format: 'gif',
+            frame_count: timing.frameCount,
+            frame_duration_ms: timing.frameDurationMs,
           }),
         },
       )
