@@ -232,11 +232,16 @@ API's `gif` output format. The API's own default of 9 frames at 200 ms plays at
 5 fps and looks choppy, so the tool defaults to 16 frames at 80 ms (12.5 fps,
 1.28 seconds). The agent sets `frameCount` (2-16) and `frameDurationMs`
 (20-2000, in 10 ms steps) only when a user asks for a frame rate, speed or
-length; out-of-range values are clamped to the API limits. GIF output
-exists only for generations, so it cannot animate an existing photo; Omni
-covers that. The AI SDK does not accept the `gif` format yet, so this one call
-goes to the Images API directly. One attempt gets 160 seconds within a
-170-second tool budget, and the GIF is uploaded with `sendAnimation`.
+length; out-of-range values are clamped to the API limits. With selected media,
+the same Sunburst model uses `/images/edits` with `gif` output. Still images
+are passed as references; one selected GIF or Telegram MP4 animation is rebuilt
+from its first and last reference frames through the existing video trimmer.
+This recreates the animation rather than preserving its exact original motion.
+GIF edit requests stay with Sunburst; Omni handles explicitly requested video
+output. The AI SDK does not accept the `gif` format yet, so these calls go to
+the Images API directly. One attempt gets 160 seconds within a 170-second API
+budget; the tool also reserves 60 seconds for frame extraction. The GIF is
+uploaded with `sendAnimation`.
 
 The API caps a GIF request by a total pixel budget it does not publish, and it
 rejected 24 frames left at `size: auto`. The tool therefore asks for the
