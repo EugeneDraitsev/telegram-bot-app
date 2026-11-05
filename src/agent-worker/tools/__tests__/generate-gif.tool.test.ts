@@ -10,7 +10,10 @@ describe('generateGifTool', () => {
   beforeEach(() => {
     jest
       .spyOn(imageService, 'generateAgentGif')
-      .mockResolvedValue(Buffer.from('GIF89a'))
+      .mockImplementation(async (_prompt, timing) => ({
+        gif: Buffer.from('GIF89a'),
+        timing,
+      }))
   })
 
   afterEach(() => jest.restoreAllMocks())
@@ -51,6 +54,18 @@ describe('generateGifTool', () => {
       frameDurationMs: 40,
     })
     expect(result).toContain('48 frames at 25 fps')
+  })
+
+  test('reports the timing the API actually used', async () => {
+    jest.spyOn(imageService, 'generateAgentGif').mockResolvedValueOnce({
+      gif: Buffer.from('GIF89a'),
+      timing: { frameCount: 9, frameDurationMs: 200 },
+    })
+    const result = await runWithToolContext(message, undefined, () =>
+      generateGifTool.execute({ prompt: 'a cat waving' }),
+    )
+
+    expect(result).toContain('9 frames at 5 fps')
   })
 
   test('shares the one generated media slot per request', async () => {

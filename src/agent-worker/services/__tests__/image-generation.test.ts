@@ -7,6 +7,7 @@ import {
   GIF_TOOL_TIMEOUT_MS,
   generateAgentGif,
   generateAgentImage,
+  getGifFrameSize,
   getGifTiming,
   IMAGE_TOOL_TIMEOUT_MS,
 } from '../image-generation'
@@ -239,6 +240,13 @@ describe('agent GIF generation', () => {
   const gifFetch = jest.fn(async (_url: unknown, _init?: RequestInit) =>
     Response.json({ created: 1, data: [{ b64_json: gif.toString('base64') }] }),
   )
+  const rejected = (message: string) =>
+    Response.json(
+      { error: { message, param: 'frame_count', code: 'invalid_value' } },
+      { status: 400 },
+    )
+  const requestBody = (call: number) =>
+    JSON.parse(String(gifFetch.mock.calls[call]?.[1]?.body))
 
   function runGif(commandName?: string) {
     return runWithToolContext(
@@ -255,6 +263,7 @@ describe('agent GIF generation', () => {
     gifFetch.mockClear()
     jest.spyOn(globalThis, 'fetch').mockImplementation(gifFetch as typeof fetch)
     jest.spyOn(common.logger, 'info').mockImplementation(() => {})
+    jest.spyOn(common.logger, 'warn').mockImplementation(() => {})
   })
 
   afterEach(() => jest.restoreAllMocks())
@@ -262,10 +271,12 @@ describe('agent GIF generation', () => {
   test.each([undefined, 'q', 'gif'])(
     'generates every GIF with Sunburst medium (%s)',
     async (command) => {
-      expect(await runGif(command)).toEqual(gif)
-      const [url, init] = gifFetch.mock.calls[0] ?? []
-      expect(String(url)).toBe('https://api.openai.com/v1/images/generations')
-      expect(JSON.parse(String(init?.body))).toEqual({
+      expect(await runGif(command)).toEqual({ gif, timing })
+      expect(gifFetch).toHaveBeenCalledTimes(1)
+      expect(String(gifFetch.mock.calls[0]?.[0])).toBe(
+        'https://api.openai.com/v1/images/generations',
+      )
+      expect(requestBody(0)).toEqual({
         model: 'gpt-image-2.6-sunburst',
         prompt: expect.stringContaining('a cat waving'),
         n: 1,
@@ -273,6 +284,7 @@ describe('agent GIF generation', () => {
         output_format: 'gif',
         frame_count: 24,
         frame_duration_ms: 80,
+        size: '576x576',
       })
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -284,14 +296,46 @@ describe('agent GIF generation', () => {
     },
   )
 
-  test('surfaces the API error message', async () => {
-    gifFetch.mockResolvedValueOnce(
-      Response.json(
-        { error: { message: 'GIF output is not available' } },
-        { status: 400 },
-      ),
+  test('retries a rejected request with the API timing and logs why', async () => {
+    gifFetch.mockResolvedValueOnce(rejected('frame_count is too large'))
+
+    expect(await runGif()).toEqual({
+      gif,
+      timing: { frameCount: 9, frameDurationMs: 200 },
+    })
+    expect(gifFetch).toHaveBeenCalledTimes(2)
+    const retry = requestBody(1)
+    expect(retry).not.toHaveProperty('frame_count')
+    expect(retry).not.toHaveProperty('frame_duration_ms')
+    expect(retry).not.toHaveProperty('size')
+    expect(retry).toEqual(expect.objectContaining({ output_format: 'gif' }))
+    expect(common.logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameCount: 24,
+        frameDurationMs: 80,
+        error: expect.objectContaining({
+          message: 'frame_count is too large',
+          param: 'frame_count',
+        }),
+      }),
+      'gif_gen.timing_fallback',
     )
-    await expect(runGif()).rejects.toThrow('GIF output is not available')
+  })
+
+  test('surfaces the API error when the retry is rejected too', async () => {
+    gifFetch
+      .mockResolvedValueOnce(rejected('frame_count is too large'))
+      .mockResolvedValueOnce(rejected('Your request was rejected'))
+    await expect(runGif()).rejects.toThrow('Your request was rejected')
+    expect(gifFetch).toHaveBeenCalledTimes(2)
+  })
+
+  test('does not retry a server error', async () => {
+    gifFetch.mockResolvedValueOnce(
+      Response.json({ error: { message: 'overloaded' } }, { status: 503 }),
+    )
+    await expect(runGif()).rejects.toThrow('overloaded')
+    expect(gifFetch).toHaveBeenCalledTimes(1)
   })
 
   test('rejects an empty result', async () => {
@@ -299,12 +343,29 @@ describe('agent GIF generation', () => {
     await expect(runGif()).rejects.toThrow('returned no GIF')
   })
 
-  test('bounds the request within the tool budget', async () => {
+  test('bounds both attempts within the tool budget', async () => {
     const timeout = jest.spyOn(AbortSignal, 'timeout')
+    gifFetch.mockResolvedValueOnce(rejected('frame_count is too large'))
     await runGif()
-    const [attemptMs] = timeout.mock.calls[0] ?? []
-    expect(attemptMs).toBeLessThan(GIF_TOOL_TIMEOUT_MS)
-    expect(gifFetch.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+    expect(timeout).toHaveBeenCalledTimes(1)
+    expect(timeout.mock.calls[0]?.[0]).toBeLessThan(GIF_TOOL_TIMEOUT_MS)
+    expect(gifFetch.mock.calls[1]?.[1]?.signal).toBe(
+      gifFetch.mock.calls[0]?.[1]?.signal,
+    )
+  })
+})
+
+describe('getGifFrameSize', () => {
+  test.each([
+    [2, '1024x1024'],
+    [9, '960x960'],
+    [24, '576x576'],
+    [64, '352x352'],
+  ])('fits %i frames into the pixel budget as %s', (frames, size) => {
+    expect(getGifFrameSize(frames)).toBe(size)
+    const edge = Number(size.split('x')[0])
+    expect(edge % 16).toBe(0)
+    expect(frames * edge * edge).toBeLessThanOrEqual(3840 * 2160)
   })
 })
 

@@ -160,54 +160,100 @@ export function getGifTiming(
   }
 }
 
+// The guide caps a GIF request by a total pixel budget without naming it, and
+// the API rejected 24 frames left at `size: auto`. Assume the documented 4K
+// image maximum and size each square frame to keep every frame inside it.
+const GIF_PIXEL_BUDGET = 3840 * 2160
+const MAX_GIF_FRAME_EDGE = 1024
+// The API's own timing, used when it rejects ours.
+const API_DEFAULT_GIF_TIMING: GifTiming = {
+  frameCount: 9,
+  frameDurationMs: 200,
+}
+
+/** The largest square frame, in multiples of 16, that keeps all frames in budget. */
+export function getGifFrameSize(frameCount: number): string {
+  const edge = Math.min(
+    MAX_GIF_FRAME_EDGE,
+    Math.floor(Math.sqrt(GIF_PIXEL_BUDGET / frameCount) / 16) * 16,
+  )
+  return `${edge}x${edge}`
+}
+
+type ImagesApiBody =
+  | {
+      data?: { b64_json?: string }[]
+      error?: { message?: string; param?: string; code?: string }
+    }
+  | undefined
+
 /**
  * Animated GIFs come only from the Images API generations endpoint. The AI SDK
  * rejects the `gif` output format, so this request goes to the API directly.
  * Every GIF, /gif or not, uses Sunburst for detail that holds across frames.
+ * GIF frame limits are only partly documented, so a rejected request is tried
+ * once more with the API's own timing, which is known to work.
  */
 export function generateAgentGif(
   prompt: string,
   timing: GifTiming,
-): Promise<Buffer> {
+): Promise<{ gif: Buffer; timing: GifTiming }> {
   const model = SUNBURST
+  const label = formatAiModelConfig(model)
   return trackToolModelCall(
-    { name: 'gif_generation', model: formatAiModelConfig(model) },
+    { name: 'gif_generation', model: label },
     async () => {
       const apiKey = process.env.OPENAI_API_KEY
       if (!apiKey) throw new Error('OPENAI_API_KEY is not set')
-      const response = await fetch(
-        'https://api.openai.com/v1/images/generations',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
+      const signal = AbortSignal.timeout(GIF_ATTEMPT_TIMEOUT_MS)
+      const request = async (frames?: GifTiming) => {
+        const response = await fetch(
+          'https://api.openai.com/v1/images/generations',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            signal,
+            body: JSON.stringify({
+              model: model.model,
+              prompt: buildImageGenerationPrompt(prompt),
+              n: 1,
+              quality: model.quality,
+              output_format: 'gif',
+              ...(frames && {
+                frame_count: frames.frameCount,
+                frame_duration_ms: frames.frameDurationMs,
+                size: getGifFrameSize(frames.frameCount),
+              }),
+            }),
           },
-          signal: AbortSignal.timeout(GIF_ATTEMPT_TIMEOUT_MS),
-          body: JSON.stringify({
-            model: model.model,
-            prompt: buildImageGenerationPrompt(prompt),
-            n: 1,
-            quality: model.quality,
-            output_format: 'gif',
-            frame_count: timing.frameCount,
-            frame_duration_ms: timing.frameDurationMs,
-          }),
-        },
-      )
-      const body = (await response.json().catch(() => undefined)) as
-        | { data?: { b64_json?: string }[]; error?: { message?: string } }
-        | undefined
+        )
+        const body = (await response
+          .json()
+          .catch(() => undefined)) as ImagesApiBody
+        return { response, body }
+      }
+
+      let usedTiming = timing
+      let { response, body } = await request(timing)
+      if (response.status === 400) {
+        logger.warn(
+          { model: label, ...timing, error: body?.error },
+          'gif_gen.timing_fallback',
+        )
+        usedTiming = API_DEFAULT_GIF_TIMING
+        ;({ response, body } = await request())
+      }
       if (!response.ok) {
         throw new Error(
           body?.error?.message ?? `Images API returned HTTP ${response.status}`,
         )
       }
       const gif = Buffer.from(body?.data?.[0]?.b64_json ?? '', 'base64')
-      if (!gif.length) {
-        throw new Error(`${formatAiModelConfig(model)} returned no GIF`)
-      }
-      return gif
+      if (!gif.length) throw new Error(`${label} returned no GIF`)
+      return { gif, timing: usedTiming }
     },
   )
 }
