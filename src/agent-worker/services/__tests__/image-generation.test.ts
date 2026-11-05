@@ -248,11 +248,14 @@ describe('agent GIF generation', () => {
   const requestBody = (call: number) =>
     JSON.parse(String(gifFetch.mock.calls[call]?.[1]?.body))
 
-  function runGif(commandName?: string) {
+  function runGif(
+    commandName?: string,
+    inputImages?: { buffer: Buffer; mimeType: string }[],
+  ) {
     return runWithToolContext(
       message,
       undefined,
-      () => generateAgentGif('a cat waving', timing),
+      () => generateAgentGif('a cat waving', timing, inputImages),
       undefined,
       commandName,
     )
@@ -320,6 +323,46 @@ describe('agent GIF generation', () => {
       }),
       'gif_gen.timing_fallback',
     )
+  })
+
+  test('edits image references with Sunburst and GIF output', async () => {
+    const inputImages = [{ buffer: png, mimeType: 'image/png' }]
+    expect(await runGif('gif', inputImages)).toEqual({ gif, timing })
+
+    expect(gifFetch).toHaveBeenCalledTimes(1)
+    expect(String(gifFetch.mock.calls[0]?.[0])).toBe(
+      'https://api.openai.com/v1/images/edits',
+    )
+    expect(requestBody(0)).toEqual({
+      model: 'gpt-image-2.6-sunburst',
+      prompt: expect.stringContaining('a cat waving'),
+      n: 1,
+      quality: 'medium',
+      output_format: 'gif',
+      images: [
+        { image_url: `data:image/png;base64,${png.toString('base64')}` },
+      ],
+      frame_count: 16,
+      frame_duration_ms: 80,
+      size: '720x720',
+    })
+  })
+
+  test('retains edit references and endpoint when retrying rejected timing', async () => {
+    gifFetch.mockResolvedValueOnce(rejected('frame timing rejected'))
+    const inputImages = [{ buffer: png, mimeType: 'image/jpeg' }]
+    expect(await runGif('gif', inputImages)).toEqual({
+      gif,
+      timing: { frameCount: 9, frameDurationMs: 200 },
+    })
+
+    expect(gifFetch).toHaveBeenCalledTimes(2)
+    expect(String(gifFetch.mock.calls[1]?.[0])).toBe(
+      'https://api.openai.com/v1/images/edits',
+    )
+    expect(requestBody(1).images).toEqual(requestBody(0).images)
+    expect(requestBody(1)).not.toHaveProperty('frame_count')
+    expect(requestBody(1)).not.toHaveProperty('frame_duration_ms')
   })
 
   test('surfaces the API error when the retry is rejected too', async () => {

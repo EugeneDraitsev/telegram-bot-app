@@ -188,8 +188,8 @@ type ImagesApiBody =
   | undefined
 
 /**
- * Animated GIFs come only from the Images API generations endpoint. The AI SDK
- * rejects the `gif` output format, so this request goes to the API directly.
+ * Generate GIFs from text, or edit image references into a GIF. The AI SDK
+ * rejects the `gif` output format, so both requests go to the API directly.
  * Every GIF, /gif or not, uses Sunburst for detail that holds across frames.
  * GIF frame limits are only partly documented, so a rejected request is tried
  * once more with the API's own timing, which is known to work.
@@ -197,6 +197,7 @@ type ImagesApiBody =
 export function generateAgentGif(
   prompt: string,
   timing: GifTiming,
+  inputImages?: { buffer: Buffer; mimeType: string }[],
 ): Promise<{ gif: Buffer; timing: GifTiming }> {
   const model = SUNBURST
   const label = formatAiModelConfig(model)
@@ -208,7 +209,7 @@ export function generateAgentGif(
       const signal = AbortSignal.timeout(GIF_ATTEMPT_TIMEOUT_MS)
       const request = async (frames?: GifTiming) => {
         const response = await fetch(
-          'https://api.openai.com/v1/images/generations',
+          `https://api.openai.com/v1/images/${inputImages?.length ? 'edits' : 'generations'}`,
           {
             method: 'POST',
             headers: {
@@ -222,6 +223,11 @@ export function generateAgentGif(
               n: 1,
               quality: model.quality,
               output_format: 'gif',
+              ...(inputImages?.length && {
+                images: inputImages.map(({ buffer, mimeType }) => ({
+                  image_url: `data:${mimeType};base64,${buffer.toString('base64')}`,
+                })),
+              }),
               ...(frames && {
                 frame_count: frames.frameCount,
                 frame_duration_ms: frames.frameDurationMs,
