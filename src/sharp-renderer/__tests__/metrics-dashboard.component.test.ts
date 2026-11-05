@@ -29,7 +29,7 @@ describe('getMetricsDashboardSvg', () => {
       ...Array.from({ length: 10 }, (_, index) => `openai/test-model-${index}`),
       'google/gemini-3.1-flash-lite-image',
       'google/gemini-nano-banana-2.1',
-      'openai/gpt-image-2.5-sunburst',
+      'openai/gpt-image-2.6-sunburst',
     ]
     const report = buildMetricsReport(
       models.flatMap((model, index) =>
@@ -46,7 +46,7 @@ describe('getMetricsDashboardSvg', () => {
 
     expect(report.models.map(({ label }) => label)).toEqual(models)
     for (const model of models) expect(svg).toContain(model)
-    expect(formatMetricsReport(report)).toContain('gpt-image-2.5-sunburst')
+    expect(formatMetricsReport(report)).toContain('gpt-image-2.6-sunburst')
     expect(metadata.width).toBe(1200)
     expect(metadata.height).toBeGreaterThan(980)
     // The final row and footer must both stay inside the expanded canvas.

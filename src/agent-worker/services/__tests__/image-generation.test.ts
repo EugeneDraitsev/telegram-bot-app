@@ -3,7 +3,12 @@ import type { Message } from 'grammy/types'
 
 import * as common from '@tg-bot/common'
 import { runWithToolContext } from '../../tools/context'
-import { generateAgentImage, IMAGE_TOOL_TIMEOUT_MS } from '../image-generation'
+import {
+  GIF_TOOL_TIMEOUT_MS,
+  generateAgentGif,
+  generateAgentImage,
+  IMAGE_TOOL_TIMEOUT_MS,
+} from '../image-generation'
 
 const message = { chat: { id: 123 }, message_id: 55 } as Message
 const png = Buffer.from(
@@ -89,7 +94,7 @@ describe('agent image generation', () => {
       expect(await run(command)).toEqual(png)
       expect(jsonRequest()).toEqual(
         expect.objectContaining({
-          model: 'gpt-image-2.5-sunburst',
+          model: 'gpt-image-2.6-sunburst',
           quality: 'medium',
         }),
       )
@@ -124,7 +129,7 @@ describe('agent image generation', () => {
       const form = fetchMock.mock.calls[0]?.[1]?.body as FormData
       expect(String(fetchMock.mock.calls[0]?.[0])).toMatch(/\/images\/edits$/)
       expect(form.get('model')).toBe(
-        command ? 'gpt-image-2.5-sunburst' : 'gpt-image-2.5-flare',
+        command ? 'gpt-image-2.6-sunburst' : 'gpt-image-2.6-flare',
       )
       expect(form.get('quality')).toBe(command ? 'medium' : 'low')
       const file = [...form.values()].find(
@@ -159,13 +164,13 @@ describe('agent image generation', () => {
         },
       )
       const form = fetchMock.mock.calls[0]?.[1]?.body as FormData
-      expect(form.get('model')).toBe('gpt-image-2.5-flare')
+      expect(form.get('model')).toBe('gpt-image-2.6-flare')
       expect(form.get('quality')).toBe('low')
       expect(common.generateGeminiImage).toHaveBeenCalledTimes(1)
       expect(geminiMock.mock.calls[0]?.[0]).toBe(form.get('prompt'))
       expect(common.logger.info).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'openai/gpt-image-2.5-flare',
+          model: 'openai/gpt-image-2.6-flare',
           fallbackFrom: 'google/gemini-3.1-flash-lite-image',
         }),
         'tool.model_call',
@@ -224,5 +229,78 @@ describe('agent image generation', () => {
     } finally {
       timeout.mockRestore()
     }
+  })
+})
+
+describe('agent GIF generation', () => {
+  const gif = Buffer.from('GIF89a')
+  const gifFetch = jest.fn(async (_url: unknown, _init?: RequestInit) =>
+    Response.json({ created: 1, data: [{ b64_json: gif.toString('base64') }] }),
+  )
+
+  function runGif(commandName?: string) {
+    return runWithToolContext(
+      message,
+      undefined,
+      () => generateAgentGif('a cat waving', commandName),
+      undefined,
+      commandName,
+    )
+  }
+
+  beforeEach(() => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    gifFetch.mockClear()
+    jest.spyOn(globalThis, 'fetch').mockImplementation(gifFetch as typeof fetch)
+    jest.spyOn(common.logger, 'info').mockImplementation(() => {})
+  })
+
+  afterEach(() => jest.restoreAllMocks())
+
+  test.each([
+    [undefined, 'gpt-image-2.6-flare', 'low'],
+    ['q', 'gpt-image-2.6-flare', 'low'],
+    ['gif', 'gpt-image-2.6-sunburst', 'medium'],
+  ])('generates a GIF for %s with %s %s', async (command, model, quality) => {
+    expect(await runGif(command)).toEqual(gif)
+    const [url, init] = gifFetch.mock.calls[0] ?? []
+    expect(String(url)).toBe('https://api.openai.com/v1/images/generations')
+    expect(JSON.parse(String(init?.body))).toEqual({
+      model,
+      prompt: expect.stringContaining('a cat waving'),
+      n: 1,
+      quality,
+      output_format: 'gif',
+    })
+    expect(common.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'gif_generation',
+        model: `openai/${model}`,
+      }),
+      'tool.model_call',
+    )
+  })
+
+  test('surfaces the API error message', async () => {
+    gifFetch.mockResolvedValueOnce(
+      Response.json(
+        { error: { message: 'GIF output is not available' } },
+        { status: 400 },
+      ),
+    )
+    await expect(runGif()).rejects.toThrow('GIF output is not available')
+  })
+
+  test('rejects an empty result', async () => {
+    gifFetch.mockResolvedValueOnce(Response.json({ created: 1, data: [] }))
+    await expect(runGif()).rejects.toThrow('returned no GIF')
+  })
+
+  test('bounds the request within the tool budget', async () => {
+    const timeout = jest.spyOn(AbortSignal, 'timeout')
+    await runGif()
+    const [attemptMs] = timeout.mock.calls[0] ?? []
+    expect(attemptMs).toBeLessThan(GIF_TOOL_TIMEOUT_MS)
+    expect(gifFetch.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
   })
 })

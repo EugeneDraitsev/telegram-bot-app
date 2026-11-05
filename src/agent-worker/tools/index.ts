@@ -15,6 +15,7 @@ import {
   executeDynamicCommandFromMessage,
   loadDynamicTools,
 } from './dynamic-tools'
+import { generateGifTool } from './generate-gif.tool'
 import { generateImageTool } from './generate-image.tool'
 import { generateVoiceTool } from './generate-voice.tool'
 import { getHistoryTool } from './get-history.tool'
@@ -64,6 +65,7 @@ const baseAgentTools: AgentTool[] = [
   renderLatexTool,
   renderSvgTool,
   generateImageTool,
+  generateGifTool,
   generateVideoTool,
   generateMusicTool,
   searchVideoTool,

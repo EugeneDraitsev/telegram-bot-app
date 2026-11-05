@@ -28,6 +28,7 @@ const RESERVED_TOOL_NAMES = new Set<string>([
   'render_latex',
   'render_svg_to_png',
   'generate_or_edit_image',
+  'generate_gif',
   'generate_video_with_omni',
   'generate_music_with_lyria',
   'search_video',
