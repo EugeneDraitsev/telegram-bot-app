@@ -13,7 +13,7 @@ const COMMAND_INSTRUCTIONS = new Map<string, string>([
   ],
   [
     'omni',
-    'Generate, animate, edit, or continue a video for this request with the generate_video_with_omni tool. Default to an 8-second vertical video with native audio unless the user specifies another 3-10 second duration or another aspect ratio',
+    'Generate, animate, edit, or continue a video for this request with the generate_video_with_omni tool. Default to an 8-second vertical video with native audio unless the user specifies another 3-15 second duration or another aspect ratio',
   ],
   [
     'lyria',

@@ -123,7 +123,7 @@ describe('Google media agent tools', () => {
 
     expect(mockGenerateOmniVideo).toHaveBeenCalledWith({
       prompt: 'Make it anime. Keep everything else the same.',
-      durationSeconds: 10,
+      durationSeconds: 15,
       aspectRatio: '9:16',
       media: [requestVideo],
     })

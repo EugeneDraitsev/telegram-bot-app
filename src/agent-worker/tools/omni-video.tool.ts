@@ -78,7 +78,7 @@ export const generateVideoTool: AgentTool = {
           type: 'integer',
           minimum: MIN_OMNI_VIDEO_SECONDS,
           maximum: MAX_OMNI_VIDEO_SECONDS,
-          description: `Requested output duration in seconds, ${MIN_OMNI_VIDEO_SECONDS}-${MAX_OMNI_VIDEO_SECONDS}. Default: ${DEFAULT_DURATION_SECONDS}.`,
+          description: `Requested output duration in seconds, ${MIN_OMNI_VIDEO_SECONDS}-${MAX_OMNI_VIDEO_SECONDS}. First-to-last-frame interpolation and video extension support at most 10 seconds. Default: ${DEFAULT_DURATION_SECONDS}.`,
         },
         aspectRatio: {
           type: 'string',

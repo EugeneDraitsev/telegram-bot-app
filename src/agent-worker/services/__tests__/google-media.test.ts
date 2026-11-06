@@ -131,6 +131,8 @@ describe('Google media through the AI SDK', () => {
   test('generates a 360p image-to-video Omni clip with native audio', async () => {
     mockFetch.mockResolvedValue(omniResponse('generated-video'))
 
+    expect(OMNI_VIDEO_MODEL).toBe('gemini-omni-1.2-flash')
+
     const result = await generateOmniVideo({
       prompt: ' A fox runs through neon snow ',
       aspectRatio: '9:16',
@@ -175,7 +177,7 @@ describe('Google media through the AI SDK', () => {
     await generateOmniVideo({
       prompt: 'Make it anime. Keep everything else the same.',
       aspectRatio: '16:9',
-      durationSeconds: 10,
+      durationSeconds: 15,
       media: [
         {
           buffer: Buffer.from('clip'),
@@ -194,7 +196,7 @@ describe('Google media through the AI SDK', () => {
       type: 'video',
       aspect_ratio: '16:9',
       resolution: '360p',
-      duration: '10s',
+      duration: '15s',
     })
   })
 
@@ -270,12 +272,12 @@ describe('Google media through the AI SDK', () => {
       buffer: Buffer.from('clip'),
       mimeType: 'video/mp4',
       mediaType: 'video',
-      durationSeconds: 10,
+      durationSeconds: 15,
     }
 
     for (const explicit of [true, false]) {
       expect(() => prepareOmniMedia([longVideo], explicit)).toThrow(
-        'can only edit or extend videos up to 10 seconds; the selected video is 63 seconds',
+        'can only edit or extend videos up to 15 seconds; the selected video is 63 seconds',
       )
       expect(() => prepareOmniMedia([gif], explicit)).toThrow(
         'does not accept image/gif media',
@@ -658,7 +660,7 @@ describe('Google media through the AI SDK', () => {
     const result = await generateOmniVideo({
       prompt: 'Make the car drive at night',
       aspectRatio: '9:16',
-      durationSeconds: 5,
+      durationSeconds: 15,
       media: [video],
     })
 
@@ -674,6 +676,7 @@ describe('Google media through the AI SDK', () => {
       'image',
       'text',
     ])
+    expect(retry.response_format.duration).toBe('10s')
     jest.restoreAllMocks()
     delete process.env.VIDEO_TRIMMER_FUNCTION_NAME
   })
@@ -768,7 +771,7 @@ describe('Omni input video trimming', () => {
     let command: InvokeCommand | undefined
     mockTrimmer((invoke) => {
       command = invoke
-      return Promise.resolve(trimmerReply('ten-seconds'))
+      return Promise.resolve(trimmerReply('fifteen-seconds'))
     })
 
     const image: MediaBuffer = {
@@ -781,8 +784,8 @@ describe('Omni input video trimming', () => {
       image,
       {
         ...longVideoNote,
-        buffer: Buffer.from('ten-seconds'),
-        durationSeconds: 10,
+        buffer: Buffer.from('fifteen-seconds'),
+        durationSeconds: 15,
         width: undefined,
         height: undefined,
       },
@@ -791,7 +794,7 @@ describe('Omni input video trimming', () => {
     // Omni only outputs 9:16 or 16:9, so the input is cropped to the same frame.
     expect(JSON.parse(String(command?.input.Payload))).toEqual({
       fileId: 'file-1',
-      maxDurationSeconds: 10,
+      maxDurationSeconds: 15,
       aspectRatio: '9:16',
     })
   })
@@ -823,7 +826,7 @@ describe('Omni input video trimming', () => {
     )
 
     await expect(shortenOmniVideos([longVideoNote], '9:16')).rejects.toThrow(
-      'Could not shorten the selected video to 10 seconds',
+      'Could not shorten the selected video to 15 seconds',
     )
   })
 })

@@ -16,7 +16,7 @@ describe('agentSystemInstructions', () => {
     )
     // The trimmer shortens long inputs, so the model must not refuse them.
     expect(agentSystemInstructions).toContain(
-      'is cut to its first 10 seconds automatically, so never refuse one for its length',
+      'is cut to its first 15 seconds automatically, so never refuse one for its length',
     )
     expect(agentSystemInstructions).toContain(
       'choose the exact Telegram message_id semantically',

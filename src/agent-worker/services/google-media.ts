@@ -30,7 +30,7 @@ export const GOOGLE_MEDIA_TOOL_TIMEOUT_MS = 170_000
 export const OMNI_VIDEO_TOOL_TIMEOUT_MS =
   GOOGLE_MEDIA_TOOL_TIMEOUT_MS + VIDEO_TRIM_TIMEOUT_MS
 
-export const OMNI_VIDEO_MODEL = 'gemini-omni-1.1-flash'
+export const OMNI_VIDEO_MODEL = 'gemini-omni-1.2-flash'
 export const LYRIA_CLIP_MODEL = 'lyria-3.5-clip-preview'
 export const LYRIA_PRO_MODEL = 'lyria-3.5-pro-preview'
 // Both 3.5 ids shipped on 2026-09-03 as the documented replacements for
@@ -42,9 +42,10 @@ export const LYRIA_FALLBACK_MODEL = 'lyria-3.5'
 // 360p keeps generation fast and costs a third of 720p.
 const OMNI_VIDEO_RESOLUTION = '360p'
 export const MIN_OMNI_VIDEO_SECONDS = 3
-export const MAX_OMNI_VIDEO_SECONDS = 10
-// Uploaded videos can only be edited or extended when they are this short.
-const MAX_OMNI_INPUT_VIDEO_SECONDS = 10
+export const MAX_OMNI_VIDEO_SECONDS = 15
+const MAX_OMNI_FRAME_VIDEO_SECONDS = 10
+// Keep uploaded videos within the editing limit and the inline input budget.
+const MAX_OMNI_INPUT_VIDEO_SECONDS = 15
 // Omni documents jpeg and png image inputs; animation must arrive as video.
 const UNSUPPORTED_OMNI_MIME_TYPES = new Set(['image/gif'])
 
@@ -508,7 +509,13 @@ export async function generateOmniVideo(
     }))
     const alsoSelected = media.filter((item) => item.mediaType === 'image')
     const result = await requestOmniVideo(
-      options,
+      {
+        ...options,
+        durationSeconds: Math.min(
+          options.durationSeconds,
+          MAX_OMNI_FRAME_VIDEO_SECONDS,
+        ),
+      },
       [...stills, ...alsoSelected].slice(0, MAX_OMNI_MEDIA_ITEMS),
     )
 
