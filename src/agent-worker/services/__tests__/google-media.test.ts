@@ -200,6 +200,26 @@ describe('Google media through the AI SDK', () => {
     })
   })
 
+  test('caps two-image requests at the 10-second interpolation limit', async () => {
+    mockFetch.mockResolvedValue(omniResponse('generated-video'))
+    const image: MediaBuffer = {
+      buffer: Buffer.from('image'),
+      mimeType: 'image/png',
+      mediaType: 'image',
+    }
+
+    await generateOmniVideo({
+      prompt: 'Morph the first frame into the last',
+      aspectRatio: '9:16',
+      durationSeconds: 15,
+      media: [image, image],
+    })
+
+    expect(lastInteractionRequest().body.response_format).toMatchObject({
+      duration: '10s',
+    })
+  })
+
   test('reports failed Omni interactions', async () => {
     mockFetch.mockResolvedValue(
       new Response('{"error":{"message":"unsupported region"}}', {

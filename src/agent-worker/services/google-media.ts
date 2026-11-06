@@ -449,6 +449,13 @@ async function requestOmniVideo(
   media: MediaBuffer[],
 ): Promise<GeneratedMedia> {
   const hasVideoInput = media.some((item) => item.mediaType === 'video')
+  // Omni can read two images as a first and last frame, and it rejects that
+  // interpolation above 10 seconds.
+  const isFramePair =
+    media.filter((item) => item.mediaType === 'image').length === 2
+  const durationSeconds = isFramePair
+    ? Math.min(options.durationSeconds, MAX_OMNI_FRAME_VIDEO_SECONDS)
+    : options.durationSeconds
   const body = await runGoogleInteraction(
     () =>
       postGoogleInteraction({
@@ -465,7 +472,7 @@ async function requestOmniVideo(
           type: 'video',
           aspect_ratio: options.aspectRatio,
           resolution: OMNI_VIDEO_RESOLUTION,
-          duration: `${options.durationSeconds}s`,
+          duration: `${durationSeconds}s`,
         },
         store: false,
       }),
