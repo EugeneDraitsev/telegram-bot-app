@@ -28,10 +28,10 @@ describe('resolveAgentChatRole', () => {
     expect(CHAT_ROLE.fallback.label).toBe('google/gemini-3.8-flash')
   })
 
-  test('runs /o on Claude Opus at xhigh effort with Astra as fallback', () => {
+  test('runs /o on Claude Fable at xhigh effort with Astra as fallback', () => {
     const role = resolveAgentChatRole('o')
     expect(role).toBe(DEEP_CHAT_ROLE)
-    expect(role.primary.label).toBe('anthropic/claude-opus-5-5')
+    expect(role.primary.label).toBe('anthropic/claude-fable-5-2')
     expect(
       getModelProviderOptions(role.primary, { chatId: 123 }).anthropic,
     ).toEqual({

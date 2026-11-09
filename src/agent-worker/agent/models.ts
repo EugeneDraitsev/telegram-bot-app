@@ -87,12 +87,12 @@ export const WEB_SEARCH_ROLE: ModelRole = {
 export const WEB_SEARCH_TOTAL_TIMEOUT_MS = WEB_SEARCH_ROLE.timeoutMs * 2 + 2_000
 
 /**
- * `/o`: Claude Opus thinking at extra-high effort over more tool rounds.
+ * `/o`: Claude Fable thinking at extra-high effort over more tool rounds.
  * Retries and fallbacks can outlast the loop budget, so the tool loop also
  * clamps every call to the Lambda's remaining time.
  */
 export const DEEP_CHAT_ROLE: ChatRole = {
-  primary: anthropic('claude-opus-5-5', 'xhigh'),
+  primary: anthropic('claude-fable-5-2', 'xhigh'),
   fallback: { ...CHAT_ROLE.primary, reasoningEffort: 'medium' },
   timeoutMs: 90_000,
   maxToolIterations: 8,

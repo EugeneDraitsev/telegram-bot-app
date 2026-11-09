@@ -203,7 +203,7 @@ the report.
 ### Model selection
 
 Language models, reasoning effort and fallbacks are configured in
-`src/agent-worker/agent/models.ts`. `/o` runs Claude Opus 5.5 at `xhigh`
+`src/agent-worker/agent/models.ts`. `/o` runs Claude Fable 5.2 at `xhigh`
 effort (`ANTHROPIC_API_KEY`) and falls back to GPT-6 Astra at medium reasoning.
 Chat roles also cap the tool loop: `/o` may run eight tool rounds, other
 messages four, and no new round starts after 150s or 90s respectively. A loop
