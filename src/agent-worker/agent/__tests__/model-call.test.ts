@@ -90,7 +90,7 @@ describe('model-call', () => {
     )
   })
 
-  test('falls back from the chat model to its Gemini fallback', async () => {
+  test('falls back from Fable to Astra with each model provider options', async () => {
     const overloadedError = Object.assign(new Error('model overloaded'), {
       status: 503,
     })
@@ -122,7 +122,7 @@ describe('model-call', () => {
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        model: 'openai/gpt-6-astra',
+        model: 'anthropic/claude-fable-5-2',
         providerOptions: getModelProviderOptions(CHAT_ROLE.primary, {
           chatId: 1305082,
         }),
@@ -130,12 +130,12 @@ describe('model-call', () => {
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ model: 'openai/gpt-6-astra' }),
+      expect.objectContaining({ model: 'anthropic/claude-fable-5-2' }),
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({
-        model: 'google/gemini-3.8-flash',
+        model: 'openai/gpt-6-astra',
         providerOptions: getModelProviderOptions(CHAT_ROLE.fallback, {
           chatId: 1305082,
         }),
@@ -143,20 +143,20 @@ describe('model-call', () => {
     )
     expect(mockGenerateText).toHaveBeenNthCalledWith(
       4,
-      expect.objectContaining({ model: 'google/gemini-3.8-flash' }),
+      expect.objectContaining({ model: 'openai/gpt-6-astra' }),
     )
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'openai/gpt-6-astra',
+        model: 'anthropic/claude-fable-5-2',
         success: false,
       }),
     )
     expect(mockRecordMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'routing',
-        model: 'google/gemini-3.8-flash',
-        fallbackFrom: 'openai/gpt-6-astra',
+        model: 'openai/gpt-6-astra',
+        fallbackFrom: 'anthropic/claude-fable-5-2',
         success: true,
       }),
     )

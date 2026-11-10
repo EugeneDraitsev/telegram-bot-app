@@ -67,13 +67,20 @@ export const COMMAND_SAFETY_ROLE: ModelRole = {
   timeoutMs: 8_000,
 }
 
-/** Routing, tool loop, final synthesis and the code_execution tool. */
+/** Routing, tool loop and final synthesis. */
 export const CHAT_ROLE: ChatRole = {
-  primary: openai('gpt-6-astra', 'low'),
-  fallback: google('gemini-3.8-flash'),
+  primary: anthropic('claude-fable-5-2', 'medium'),
+  fallback: openai('gpt-6-astra', 'low'),
   timeoutMs: 25_000,
   maxToolIterations: 4,
   toolLoopBudgetMs: 90_000,
+}
+
+/** Hosted code runtimes supported by the code_execution tool. */
+export const CODE_EXECUTION_ROLE: ModelRole = {
+  primary: CHAT_ROLE.fallback,
+  fallback: google('gemini-3.8-flash'),
+  timeoutMs: CHAT_ROLE.timeoutMs,
 }
 
 /** Web-backed search tools. */
@@ -92,8 +99,8 @@ export const WEB_SEARCH_TOTAL_TIMEOUT_MS = WEB_SEARCH_ROLE.timeoutMs * 2 + 2_000
  * clamps every call to the Lambda's remaining time.
  */
 export const DEEP_CHAT_ROLE: ChatRole = {
-  primary: anthropic('claude-fable-5-2', 'xhigh'),
-  fallback: { ...CHAT_ROLE.primary, reasoningEffort: 'medium' },
+  primary: { ...CHAT_ROLE.primary, reasoningEffort: 'xhigh' },
+  fallback: { ...CHAT_ROLE.fallback, reasoningEffort: 'medium' },
   timeoutMs: 90_000,
   maxToolIterations: 8,
   toolLoopBudgetMs: 150_000,

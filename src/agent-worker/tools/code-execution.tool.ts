@@ -12,7 +12,7 @@ import {
   getErrorMessage,
 } from '@tg-bot/common'
 import {
-  CHAT_ROLE,
+  CODE_EXECUTION_ROLE,
   getModelProviderOptions,
   type ModelChoice,
 } from '../agent/models'
@@ -21,7 +21,7 @@ import { requireToolContext, trackToolModelCall } from './context'
 
 // The tool budget has to cover both attempts, otherwise the generic per-tool
 // timeout expires together with the primary attempt and the fallback never runs.
-const CODE_EXECUTION_TOOL_TIMEOUT_MS = CHAT_ROLE.timeoutMs * 2 + 1_000
+const CODE_EXECUTION_TOOL_TIMEOUT_MS = CODE_EXECUTION_ROLE.timeoutMs * 2 + 1_000
 
 function getCodeExecutionTools(choice: ModelChoice): ToolSet {
   if (choice.config.provider === 'google') {
@@ -52,7 +52,7 @@ async function executeCodeWithModel(
         tools: getCodeExecutionTools(choice),
         toolChoice: 'auto',
         maxRetries: 0,
-        timeout: CHAT_ROLE.timeoutMs,
+        timeout: CODE_EXECUTION_ROLE.timeoutMs,
         providerOptions: getModelProviderOptions(choice, { chatId }),
       }),
   )
@@ -90,14 +90,14 @@ export const codeExecutionTool: AgentTool = {
         result = await executeCodeWithModel(
           task,
           message.chat.id,
-          CHAT_ROLE.primary,
+          CODE_EXECUTION_ROLE.primary,
         )
       } catch {
         result = await executeCodeWithModel(
           task,
           message.chat.id,
-          CHAT_ROLE.fallback,
-          CHAT_ROLE.primary.label,
+          CODE_EXECUTION_ROLE.fallback,
+          CODE_EXECUTION_ROLE.primary.label,
         )
       }
 

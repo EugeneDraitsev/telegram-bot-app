@@ -19,13 +19,17 @@ import {
 } from '../tool-loop'
 
 describe('resolveAgentChatRole', () => {
-  test('runs the chat model on GPT-6 Astra with low reasoning', () => {
+  test('runs the chat model on Claude Fable 5.2 at medium effort with Astra low as fallback', () => {
     expect(CHAT_ROLE.primary).toEqual({
+      config: { provider: 'anthropic', model: 'claude-fable-5-2' },
+      label: 'anthropic/claude-fable-5-2',
+      reasoningEffort: 'medium',
+    })
+    expect(CHAT_ROLE.fallback).toEqual({
       config: { provider: 'openai', model: 'gpt-6-astra' },
       label: 'openai/gpt-6-astra',
       reasoningEffort: 'low',
     })
-    expect(CHAT_ROLE.fallback.label).toBe('google/gemini-3.8-flash')
   })
 
   test('runs /o on Claude Fable at xhigh effort with Astra as fallback', () => {
