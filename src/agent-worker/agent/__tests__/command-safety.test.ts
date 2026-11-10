@@ -11,7 +11,9 @@ import {
 import * as modelCall from '../model-call'
 import {
   CHAT_ROLE,
+  CODE_EXECUTION_ROLE,
   COMMAND_SAFETY_ROLE,
+  DEEP_CHAT_ROLE,
   getModelProviderOptions,
   REPLY_GATE_ROLE,
   WEB_SEARCH_ROLE,
@@ -237,13 +239,18 @@ describe('command cyber safety', () => {
     await runWithToolContext(message, undefined, async () => {
       await Promise.resolve()
       const identifier = common.getMessageSafetyIdentifier(message)
-      for (const role of [
+      const openAiChoices = [
         COMMAND_SAFETY_ROLE,
         REPLY_GATE_ROLE,
         CHAT_ROLE,
+        DEEP_CHAT_ROLE,
+        CODE_EXECUTION_ROLE,
         WEB_SEARCH_ROLE,
-      ]) {
-        const providerIdentifier = getModelProviderOptions(role.primary, {
+      ]
+        .flatMap((role) => [role.primary, role.fallback])
+        .filter((choice) => choice.config.provider === 'openai')
+      for (const choice of openAiChoices) {
+        const providerIdentifier = getModelProviderOptions(choice, {
           chatId: 123,
         }).openai?.safetyIdentifier
         expect(providerIdentifier).toBe(identifier)
