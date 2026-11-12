@@ -20,8 +20,9 @@ function mockSources() {
   return jest.spyOn(globalThis, 'fetch').mockImplementation((async (
     input: unknown,
   ) => {
-    const url = String(input)
-    if (url.includes('exchangerate-api')) {
+    // The host is compared whole: a substring of the URL could sit anywhere.
+    const { hostname } = new URL(String(input))
+    if (hostname === 'v6.exchangerate-api.com') {
       return respond({
         conversion_rates: {
           USD: 1.1,
@@ -33,17 +34,17 @@ function mockSources() {
         },
       })
     }
-    if (url.includes('okx.com')) {
+    if (hostname === 'www.okx.com') {
       return respond({
         data: [{ instId: 'BTC-USDT', last: '73000', open24h: '72000' }],
       })
     }
-    if (url.includes('quote.cnbc.com')) {
+    if (hostname === 'quote.cnbc.com') {
       return respond({
         FormattedQuoteResult: { FormattedQuote: [{ last: '93.2' }] },
       })
     }
-    if (url.includes('ts-api.cnbc.com')) {
+    if (hostname === 'ts-api.cnbc.com') {
       return respond({
         barData: {
           priceBars: [{ close: '92.5', tradeTime: '20200101000000' }],
@@ -124,8 +125,8 @@ describe('currency commands', () => {
     expect(sendWidget).not.toHaveBeenCalled()
     expect(sendPhoto).toHaveBeenCalled()
     expect(
-      fetchSpy.mock.calls.some(([input]) =>
-        String(input).includes('currency-api'),
+      fetchSpy.mock.calls.some(
+        ([input]) => new URL(String(input)).hostname === 'cdn.jsdelivr.net',
       ),
     ).toBe(false)
   })

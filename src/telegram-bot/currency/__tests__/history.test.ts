@@ -13,7 +13,7 @@ function mockSources(brentBars: unknown[] | undefined, missingDate?: string) {
     input: unknown,
   ) => {
     const url = String(input)
-    if (url.includes('cnbc.com')) {
+    if (new URL(url).hostname === 'ts-api.cnbc.com') {
       return brentBars
         ? respond({ barData: { priceBars: brentBars } })
         : respond({}, false)
