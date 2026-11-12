@@ -1,5 +1,5 @@
 import { logger, round } from '@tg-bot/common'
-import type { CurrencyRateRow, CurrencyRateSection } from './types'
+import type { CurrencyRateSection } from './types'
 
 export interface OkxResponse {
   code: string
@@ -35,13 +35,24 @@ interface PoloniexCurrency {
 }
 
 const timeout = 15000
+/** Coins the bot quotes, with the fraction digits each price is shown with. */
 const symbols = { BTC: 2, ETH: 2, ADA: 3 }
 
 type Symbol = keyof typeof symbols
 
+export const CRYPTO_SYMBOLS = Object.keys(symbols) as Symbol[]
+
+export interface CryptoQuote {
+  readonly symbol: Symbol
+  /** Price in USD. */
+  readonly price: number
+  /** Change over the last 24 hours, in percent. */
+  readonly changePercent: number
+}
+
 /* Helpers */
-const formatCurrency = (value: string | number, fractionDigits = 2) =>
-  Number.parseFloat(value as string)
+const formatCurrency = (value: number, fractionDigits = 2) =>
+  value
     .toLocaleString('en', {
       maximumFractionDigits: fractionDigits,
     })
@@ -52,39 +63,30 @@ const formatPercent = (value: number) =>
 
 /* Main Functions */
 
-const getPoloniexData = async (): Promise<CurrencyRateSection> => {
+const getPoloniexQuotes = async (): Promise<CryptoQuote[]> => {
   const url = 'https://api.poloniex.com/markets/price'
   const currencyRates: PoloniexCurrency[] = await fetch(url, {
     signal: globalThis.AbortSignal.timeout(timeout),
   }).then((res) => res.json())
 
-  const rows = Object.keys(symbols).reduce((acc, key) => {
-    const currencyData = currencyRates?.find((x) => x.symbol === `${key}_USDT`)
+  return CRYPTO_SYMBOLS.flatMap((symbol) => {
+    const currencyData = currencyRates?.find(
+      (x) => x.symbol === `${symbol}_USDT`,
+    )
 
-    if (currencyData) {
-      const formattedPrice = formatCurrency(
-        currencyData.price,
-        symbols[key as Symbol],
-      )
-      const priceChange = Number.parseFloat(currencyData.dailyChange) * 100
-      acc.push({
-        label: key,
-        value: `$${formattedPrice} (${formatPercent(priceChange)})`,
-      })
-    }
-
-    return acc
-  }, [] as CurrencyRateRow[])
-
-  return {
-    title: 'Крипта',
-    provider: 'Poloniex',
-    columns: ['Монета', 'Цена / 24ч'],
-    rows,
-  }
+    return currencyData
+      ? [
+          {
+            symbol,
+            price: Number.parseFloat(currencyData.price),
+            changePercent: Number.parseFloat(currencyData.dailyChange) * 100,
+          },
+        ]
+      : []
+  })
 }
 
-const getOkxData = async (): Promise<CurrencyRateSection> => {
+const getOkxQuotes = async (): Promise<CryptoQuote[]> => {
   const url = new URL('https://www.okx.com/api/v5/market/tickers')
   url.searchParams.append('instType', 'SPOT')
 
@@ -98,43 +100,45 @@ const getOkxData = async (): Promise<CurrencyRateSection> => {
 
   const { data }: OkxResponse = await response.json()
 
-  const rows = Object.keys(symbols).reduce((acc, key) => {
-    const currencyData = data?.find((x) => x.instId === `${key}-USDT`)
+  return CRYPTO_SYMBOLS.flatMap((symbol) => {
+    const currencyData = data?.find((x) => x.instId === `${symbol}-USDT`)
+    if (!currencyData) return []
 
-    if (currencyData) {
-      const formattedPrice = formatCurrency(
-        currencyData.last,
-        symbols[key as Symbol],
-      )
+    const price = Number.parseFloat(currencyData.last)
+    return [
+      {
+        symbol,
+        price,
+        changePercent:
+          (price / Number.parseFloat(currencyData.open24h) - 1) * 100,
+      },
+    ]
+  })
+}
 
-      const priceChangePercent =
-        (Number.parseFloat(currencyData.last) /
-          Number.parseFloat(currencyData.open24h) -
-          1) *
-        100
-      acc.push({
-        label: key,
-        value: `$${formattedPrice} (${formatPercent(priceChangePercent)})`,
-      })
-    }
-
-    return acc
-  }, [] as CurrencyRateRow[])
-
-  return {
-    title: 'Крипта',
-    provider: 'OKX',
-    columns: ['Монета', 'Цена / 24ч'],
-    rows,
+export const getCryptoQuotes = async (): Promise<{
+  provider: string
+  quotes: CryptoQuote[]
+}> => {
+  try {
+    return { provider: 'OKX', quotes: await getOkxQuotes() }
+  } catch (e) {
+    logger.error({ error: e }, 'OKX error')
+    return { provider: 'Poloniex', quotes: await getPoloniexQuotes() }
   }
 }
 
 export const getCryptoCurrencySection =
   async (): Promise<CurrencyRateSection> => {
-    try {
-      return await getOkxData()
-    } catch (e) {
-      logger.error({ error: e }, 'OKX error')
-      return getPoloniexData()
+    const { provider, quotes } = await getCryptoQuotes()
+
+    return {
+      title: 'Крипта',
+      provider,
+      columns: ['Монета', 'Цена / 24ч'],
+      rows: quotes.map(({ symbol, price, changePercent }) => ({
+        label: symbol,
+        value: `$${formatCurrency(price, symbols[symbol])} (${formatPercent(changePercent)})`,
+      })),
     }
   }

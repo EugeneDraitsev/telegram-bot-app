@@ -38,6 +38,40 @@ const fetchCnbc = async () => {
   return price ? Number(price) : undefined
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+const formatCnbcTime = (time: number) =>
+  `${new Date(time).toISOString().slice(0, 10).replaceAll('-', '')}000000`
+
+/**
+ * Daily Brent closes of the last `days` days, oldest first, from the source
+ * of the live price. Resolves to an empty list when CNBC fails.
+ */
+export const fetchBrentHistory = async (
+  days: number,
+): Promise<Array<{ date: string; close: number }>> => {
+  try {
+    const now = Date.now()
+    const res = await fetch(
+      `https://ts-api.cnbc.com/harmony/app/bars/@LCO.1/1D/${formatCnbcTime(now - days * DAY_MS)}/${formatCnbcTime(now + DAY_MS)}/adjusted/EST5EDT.json`,
+      { headers, signal: globalThis.AbortSignal.timeout(timeout) },
+    )
+
+    if (!res.ok) throw new Error(`CNBC HTTP Error: ${res.status}`)
+
+    const bars: Array<{ close: string; tradeTime: string }> =
+      (await res.json())?.barData?.priceBars ?? []
+
+    return bars.map(({ close, tradeTime }) => ({
+      // tradeTime looks like 20261105000000.
+      date: `${tradeTime.slice(0, 4)}-${tradeTime.slice(4, 6)}-${tradeTime.slice(6, 8)}`,
+      close: Number(close),
+    }))
+  } catch (e) {
+    logger.warn({ error: getErrorMessage(e) }, 'CNBC Brent history failed')
+    return []
+  }
+}
+
 export const fetchBrentPrice = async () => {
   try {
     const priceCnbc = await fetchCnbc()
