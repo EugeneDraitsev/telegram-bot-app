@@ -7,6 +7,7 @@ import {
   logger,
   normalizeTelegramMarkdown,
   sendRichMessageWithFallback,
+  trySendWidget,
 } from '@tg-bot/common'
 import type {
   AgentResponse,
@@ -18,6 +19,7 @@ import type {
   StickerResponse,
   TelegramApi,
   VideoResponse,
+  WidgetResponse,
 } from '../types'
 import { MAX_CAPTION_LENGTH, MAX_TEXT_LENGTH } from './config'
 
@@ -38,6 +40,7 @@ interface DeliveryBundle {
   sticker: StickerResponse | null
   dice: DiceResponse | null
   rich: RichResponse | null
+  widget: WidgetResponse | null
   overwrittenMediaTypes: string[]
 }
 
@@ -274,6 +277,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     sticker: null,
     dice: null,
     rich: null,
+    widget: null,
     overwrittenMediaTypes: [],
   }
   const textParts: string[] = []
@@ -296,6 +300,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
       if (!hasBuffer(bundle.animation)) bundle.animation = r
     } else if (r.type === 'sticker') bundle.sticker = r
     else if (r.type === 'dice') bundle.dice = r
+    else if (r.type === 'widget') bundle.widget = r
   }
 
   bundle.text = textParts.join('\n\n').trim()
@@ -315,6 +320,42 @@ async function sendRichResponse(
   })
   params.onDelivered?.()
   return sentMessage
+}
+
+async function sendWidgetResponse(
+  params: DeliveryParams & { widget: WidgetResponse; text: string },
+) {
+  const text = params.text || params.widget.caption || ''
+  // A short text rides as the caption; a longer one follows as its own message.
+  const caption =
+    text.length <= MAX_CAPTION_LENGTH ? formatCaption(text) : undefined
+  const sentMessage =
+    params.api.raw &&
+    (await trySendWidget({
+      api: { raw: params.api.raw },
+      // Only tools running in a private chat queue a widget.
+      chat: { id: params.chatId, type: 'private' },
+      html: params.widget.html,
+      caption,
+      replyId: params.replyToMessageId,
+    }))
+
+  if (!sentMessage) {
+    await sendText({
+      ...params,
+      text: [text, params.widget.fallbackText].filter(Boolean).join('\n\n'),
+    })
+    return
+  }
+
+  params.onDelivered?.()
+  if (text && !caption) {
+    await sendText({
+      ...params,
+      text,
+      replyToMessageId: sentMessage.message_id,
+    })
+  }
 }
 
 async function sendText(params: DeliveryParams & { text: string }) {
@@ -698,6 +739,9 @@ async function sendResponsesOnce(
       await sendAnimation({ ...mediaParams, animation: bundle.animation })
     } else if (bufferedMediaType === 'image' && bundle.image) {
       await sendImage({ ...mediaParams, image: bundle.image })
+    } else if (bundle.widget) {
+      await sendWidgetResponse({ ...mediaParams, widget: bundle.widget })
+      return
     } else if (bundle.rich) {
       const sentMessage = await sendRichResponse({
         ...base,

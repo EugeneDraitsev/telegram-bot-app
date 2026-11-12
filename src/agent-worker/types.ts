@@ -29,6 +29,8 @@ type TelegramApiMethods = Pick<
 
 export type TelegramApi = Omit<TelegramApiMethods, 'setMessageReaction'> & {
   setMessageReaction?: TelegramApiMethods['setMessageReaction']
+  /** Reaches Bot API methods grammY has no wrapper for yet, such as sendWidget. */
+  raw?: Api['raw']
 }
 
 // ── Responses ────────────────────────────────────────────────
@@ -85,6 +87,15 @@ export interface DiceResponse {
   type: 'dice'
   emoji: string
 }
+/** An HTML widget. Only tools running in a private chat may queue one. */
+export interface WidgetResponse {
+  type: 'widget'
+  /** The complete widget document. */
+  html: string
+  caption?: string
+  /** Sent instead when Telegram does not deliver the widget. */
+  fallbackText: string
+}
 
 export type AgentResponse =
   | TextResponse
@@ -96,6 +107,7 @@ export type AgentResponse =
   | VoiceResponse
   | StickerResponse
   | DiceResponse
+  | WidgetResponse
 
 // ── Tool Declarations (Interactions API format) ──────────────
 
@@ -123,4 +135,6 @@ export interface AgentTool {
   timeoutMs?: number
   /** Internal tools can be executable without being exposed to the main model. */
   exposeToModel?: boolean
+  /** Offered only in the private chat with the bot, where widgets are delivered. */
+  privateChatOnly?: boolean
 }

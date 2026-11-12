@@ -3,6 +3,7 @@
  */
 
 import { formatWeatherText, getErrorMessage, getWeather } from '@tg-bot/common'
+import { buildWeatherWidgetHtml } from '../../telegram-bot/external-apis/weather-widget'
 import type { AgentTool } from '../types'
 import { addResponse, requireToolContext } from './context'
 
@@ -25,7 +26,7 @@ export const weatherTool: AgentTool = {
     },
   },
   execute: async (args) => {
-    requireToolContext()
+    const { message } = requireToolContext()
 
     try {
       const location = (args.location as string).trim()
@@ -36,7 +37,16 @@ export const weatherTool: AgentTool = {
       const weather = await getWeather(location)
       const text = formatWeatherText(weather)
 
-      addResponse({ type: 'text', text })
+      // The private chat gets the same widget as /f, with the text as fallback.
+      addResponse(
+        message.chat.type === 'private'
+          ? {
+              type: 'widget',
+              html: buildWeatherWidgetHtml(weather),
+              fallbackText: text,
+            }
+          : { type: 'text', text },
+      )
 
       return `Got weather for ${weather.city}: ${weather.temperature}°C, ${weather.description}`
     } catch (error) {
