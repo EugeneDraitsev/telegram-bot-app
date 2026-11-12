@@ -2,6 +2,7 @@ import { InputFile } from 'grammy/web'
 import type { Bot } from 'grammy/web'
 
 import {
+  formatMetricsCaption,
   formatMetricsReport,
   getChatName,
   getCommandData,
@@ -253,7 +254,7 @@ const setupUsersCommands = (bot: Bot) => {
           new InputFile(image, 'ai-operations.png'),
           {
             reply_parameters: { message_id: replyId },
-            caption: `AI operations · last ${report.hours}h · ${Math.round(report.successRate * 100)}% healthy · ${report.totalOperations} ops`,
+            caption: formatMetricsCaption(report),
           },
         )
       } catch (error) {

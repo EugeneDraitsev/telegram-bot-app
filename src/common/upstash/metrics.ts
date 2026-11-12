@@ -440,6 +440,16 @@ function formatGroup(title: string, groups: MetricGroupSummary[]): string[] {
   return ['', `<b>${title}</b>`, `<pre>${escapeHtml(rows.join('\n'))}</pre>`]
 }
 
+/** Floor so a single failure never rounds up to a perfect 100%. */
+export function formatHealthPercent(report: MetricsReport): string {
+  return `${Math.floor(report.successRate * 1000) / 10}%`
+}
+
+/** One-line summary for media captions on /x replies. */
+export function formatMetricsCaption(report: MetricsReport): string {
+  return `AI operations · last ${report.hours}h · ${formatHealthPercent(report)} healthy · ${report.totalOperations} ops`
+}
+
 export function formatMetricsReport(report: MetricsReport): string {
   if (!report.totalOperations) {
     return `📊 No v2 metrics in the last ${report.hours}h`

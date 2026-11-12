@@ -1,6 +1,10 @@
 import { deflateSync } from 'node:zlib'
 
-import { buildMetricsReport, type MetricEntry } from '@tg-bot/common'
+import {
+  buildMetricsReport,
+  formatMetricsCaption,
+  type MetricEntry,
+} from '@tg-bot/common'
 import { buildMetricsWidgetHtml, sendMetricsWidget } from '../metrics-widget'
 
 const NOW = Date.UTC(2026, 10, 12, 12)
@@ -77,8 +81,22 @@ describe('metrics widget', () => {
     expect(sendWidget).toHaveBeenCalledWith({
       chat_id: 42,
       html: buildMetricsWidgetHtml(worstCaseReport),
+      caption: formatMetricsCaption(worstCaseReport),
       reply_parameters: { message_id: 7 },
       message_thread_id: 9,
     })
+    expect(formatMetricsCaption(worstCaseReport)).toMatch(
+      /^AI operations · last 720h · \d+(\.\d)?% healthy · \d+ ops$/,
+    )
+  })
+
+  test.each([
+    [24, 'ops per hour'],
+    [35, 'ops per 87.5 min'],
+    [168, 'ops per 7h'],
+  ])('labels %ih buckets with their real duration', (hours, unit) => {
+    const report = buildMetricsReport([entry(0)], hours, NOW)
+
+    expect(buildMetricsWidgetHtml(report)).toContain(`<small>${unit}</small>`)
   })
 })

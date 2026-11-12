@@ -4,6 +4,8 @@ import type { Api } from 'grammy/web'
 import {
   escapeHtml,
   fmtMs,
+  formatHealthPercent,
+  formatMetricsCaption,
   type MetricGroupSummary,
   type MetricsReport,
   shortModelName,
@@ -14,12 +16,13 @@ const ROW_HEIGHT = 34
 const OK = '#34c759'
 const TIMEOUT = '#ff9f0a'
 const ERROR = '#ff3b30'
-const HOUR_MS = 60 * 60 * 1000
+const MINUTE_MS = 60 * 1000
 const AXIS_STEPS = [1, 2, 3, 4, 5, 6, 8, 10]
 
 interface SendWidgetParams {
   chat_id: number
   html: string
+  caption: string
   message_thread_id?: number
   reply_parameters?: { message_id: number }
 }
@@ -60,22 +63,25 @@ function renderHero(report: MetricsReport) {
   const { timeout, error } = report.outcomes
   const [okEnd, timeoutEnd] = ringStops(report)
   const ring = `conic-gradient(${OK} 0 ${okEnd}deg,${TIMEOUT} ${okEnd}deg ${timeoutEnd}deg,${ERROR} ${timeoutEnd}deg)`
-  // Floor so a single failure never rounds up to a perfect 100%.
-  const health = Math.floor(report.successRate * 1000) / 10
   const stat = (value: string, label: string, dot = '') =>
     `<div><b>${value}</b><small>${dot ? `<i class="d ${dot}"></i>` : ''}${label}</small></div>`
 
-  return `<div class="card hero"><div class="ring" id="ring" style="background:${ring}"><div class="hole"><b>${health}%</b><small>healthy</small></div></div>
+  return `<div class="card hero"><div class="ring" id="ring" style="background:${ring}"><div class="hole"><b>${formatHealthPercent(report)}</b><small>healthy</small></div></div>
 <div class="hs"><div class="ttl">AI operations · ${report.hours}h</div><div class="big"><b id="tot">${report.totalOperations}</b>ops</div>
 <div class="kp">${stat(fmtMs(report.medianMs), 'median')}${stat(String(timeout), 'timeouts', timeout ? 'to' : '')}${stat(String(error), 'errors', error ? 'er' : '')}</div></div></div>`
 }
 
 function renderChart(report: MetricsReport) {
   const max = chartMax(report)
-  const bucketHours = Math.round(
-    (report.toMs - report.fromMs) / report.timeline.length / HOUR_MS,
-  )
-  const unit = bucketHours === 1 ? 'ops per hour' : `ops per ${bucketHours}h`
+  // Windows over 24h split into 24 buckets, so a bucket can be 87.5 minutes.
+  const bucketMinutes =
+    (report.toMs - report.fromMs) / report.timeline.length / MINUTE_MS
+  const unit =
+    bucketMinutes === 60
+      ? 'ops per hour'
+      : bucketMinutes % 60
+        ? `ops per ${Number(bucketMinutes.toFixed(1))} min`
+        : `ops per ${bucketMinutes / 60}h`
 
   return `<div class="card"><div class="hd"><span>Activity <small>${unit}</small></span><span id="tip"></span></div>
 <div class="plot"><i class="gl" style="top:0"></i><i class="gl" style="top:50%"></i><i class="gl" style="bottom:0;border-top-style:solid"></i>
@@ -234,6 +240,8 @@ export function sendMetricsWidget(
   return (api.raw as unknown as WidgetRawApi).sendWidget({
     chat_id: chatId,
     html: buildMetricsWidgetHtml(report),
+    // Clients without widget support show only the caption.
+    caption: formatMetricsCaption(report),
     ...(replyId ? { reply_parameters: { message_id: replyId } } : {}),
     ...(typeof messageThreadId === 'number'
       ? { message_thread_id: messageThreadId }
