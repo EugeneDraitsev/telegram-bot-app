@@ -81,6 +81,29 @@ describe('sendResponses with a widget', () => {
     expect(sendWidget).toHaveBeenCalledWith({ chat_id: 42, html: widget.html })
   })
 
+  test('delivers every queued widget, with the text on the last one', async () => {
+    const sendWidget = jest.fn().mockResolvedValue({ message_id: 5 })
+    const second = { ...widget, html: '<!doctype html><p>second</p>' }
+
+    await sendResponses({
+      api: createApi(sendWidget),
+      chatId: 42,
+      responses: [widget, second, { type: 'text', text: 'Two cities' }],
+    })
+
+    expect(sendWidget.mock.calls).toEqual([
+      [{ chat_id: 42, html: widget.html }],
+      [
+        {
+          chat_id: 42,
+          html: second.html,
+          caption: common.formatTelegramMarkdownV2('Two cities'),
+          parse_mode: 'MarkdownV2',
+        },
+      ],
+    ])
+  })
+
   test('sends a text too long for a caption as a reply to the widget', async () => {
     const sendWidget = jest.fn().mockResolvedValue({ message_id: 5 })
     const api = createApi(sendWidget)

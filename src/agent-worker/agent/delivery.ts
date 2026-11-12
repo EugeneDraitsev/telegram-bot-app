@@ -40,7 +40,7 @@ interface DeliveryBundle {
   sticker: StickerResponse | null
   dice: DiceResponse | null
   rich: RichResponse | null
-  widget: WidgetResponse | null
+  widgets: WidgetResponse[]
   overwrittenMediaTypes: string[]
 }
 
@@ -277,7 +277,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
     sticker: null,
     dice: null,
     rich: null,
-    widget: null,
+    widgets: [],
     overwrittenMediaTypes: [],
   }
   const textParts: string[] = []
@@ -300,7 +300,7 @@ function collectBundle(responses: AgentResponse[]): DeliveryBundle {
       if (!hasBuffer(bundle.animation)) bundle.animation = r
     } else if (r.type === 'sticker') bundle.sticker = r
     else if (r.type === 'dice') bundle.dice = r
-    else if (r.type === 'widget') bundle.widget = r
+    else if (r.type === 'widget') bundle.widgets.push(r)
   }
 
   bundle.text = textParts.join('\n\n').trim()
@@ -739,8 +739,17 @@ async function sendResponsesOnce(
       await sendAnimation({ ...mediaParams, animation: bundle.animation })
     } else if (bufferedMediaType === 'image' && bundle.image) {
       await sendImage({ ...mediaParams, image: bundle.image })
-    } else if (bundle.widget) {
-      await sendWidgetResponse({ ...mediaParams, widget: bundle.widget })
+    } else if (bundle.widgets.length) {
+      // Several calls in one round, such as weather for two cities, each
+      // queue a widget. The model's text goes with the last one.
+      for (const [index, widget] of bundle.widgets.entries()) {
+        const isLast = index === bundle.widgets.length - 1
+        await sendWidgetResponse({
+          ...base,
+          widget,
+          text: isLast ? bundle.text : '',
+        })
+      }
       return
     } else if (bundle.rich) {
       const sentMessage = await sendRichResponse({

@@ -68,6 +68,8 @@ const STYLE = `
 // U holds [name, count] from fourth place on, N the total message count, M
 // the leader's count and C the number of users in the chat. Rows are drawn
 // here so a long list costs only its data against the 4 KB compressed limit.
+// A line that starts with "[" or "(" continues the previous statement, so the
+// statement before it must end with ";".
 const SCRIPT = `
 const P=${ROWS_PER_PAGE},last=Math.ceil(U.length/P)-1,box=$('rows');let page=0
 const esc=(s)=>s.replace(/[&<>]/g,(c)=>'&#'+c.charCodeAt(0)+';')
@@ -79,7 +81,7 @@ if(dir)rows.forEach((_,i)=>{A($('r'+i),[{transform:'translateX('+dir*24+'px)'},{
 const turn=(dir)=>{if(page+dir<0||page+dir>last)return;page+=dir;draw(dir);tick()}
 if(last>0){$('pv').addEventListener('click',()=>turn(-1));$('nx').addEventListener('click',()=>turn(1))}
 if(box)draw(0)
-onShow(()=>{const t=$('tot');tween(1200,(p)=>{t.textContent=Math.round(N*p).toLocaleString('en-US')})
+onShow(()=>{const t=$('tot');tween(1200,(p)=>{t.textContent=Math.round(N*p).toLocaleString('en-US')});
 [2,1,0].forEach((k,i)=>{const el=$('s'+k);if(el)grow(el,'Y',i*250)})
 U.slice(0,P).forEach((_,i)=>grow($('g'+i),'X',700+i*50))})
 `
