@@ -5,6 +5,8 @@
  * services/google-media.ts and services/google-tts.ts.
  */
 
+import type { Chat } from 'grammy/types'
+
 import {
   type AiModelConfig,
   type AiReasoningEffort,
@@ -106,9 +108,20 @@ export const DEEP_CHAT_ROLE: ChatRole = {
   toolLoopBudgetMs: 150_000,
 }
 
-/** `/o` runs on the deep chat role; every other command uses the default. */
-export function resolveAgentChatRole(commandName?: string): ChatRole {
-  return commandName === 'o' ? DEEP_CHAT_ROLE : CHAT_ROLE
+/**
+ * Private chats can call send_widget, and a widget is a long answer: the
+ * primary model needs more than the default budget to finish one. Groups keep
+ * the short budget, so a stuck call still falls back quickly there.
+ */
+export const PRIVATE_CHAT_ROLE: ChatRole = { ...CHAT_ROLE, timeoutMs: 60_000 }
+
+/** `/o` runs on the deep chat role; a private chat gets the widget budget. */
+export function resolveAgentChatRole(
+  commandName?: string,
+  chatType?: Chat['type'],
+): ChatRole {
+  if (commandName === 'o') return DEEP_CHAT_ROLE
+  return chatType === 'private' ? PRIVATE_CHAT_ROLE : CHAT_ROLE
 }
 
 export function getModelProviderOptions(

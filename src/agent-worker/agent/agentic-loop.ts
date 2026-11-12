@@ -387,7 +387,7 @@ export async function runAgenticLoop(
     return
   }
 
-  const chatRole = resolveAgentChatRole(options.commandName)
+  const chatRole = resolveAgentChatRole(options.commandName, message.chat.type)
   const chatModel = chatRole.primary
   const attribution = options.commandName
     ? { source: 'command' as const, command: options.commandName }

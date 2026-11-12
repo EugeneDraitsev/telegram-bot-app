@@ -51,6 +51,14 @@ describe('resolveAgentChatRole', () => {
     expect(resolveAgentChatRole('q')).toBe(CHAT_ROLE)
     expect(resolveAgentChatRole()).toBe(CHAT_ROLE)
   })
+
+  test('gives private chats a longer attempt, enough to write a widget', () => {
+    const role = resolveAgentChatRole(undefined, 'private')
+
+    expect(role).toEqual({ ...CHAT_ROLE, timeoutMs: 60_000 })
+    expect(resolveAgentChatRole(undefined, 'supergroup')).toBe(CHAT_ROLE)
+    expect(resolveAgentChatRole('o', 'private')).toBe(DEEP_CHAT_ROLE)
+  })
 })
 
 describe('buildModelToolRegistry', () => {
