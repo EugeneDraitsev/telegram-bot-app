@@ -13,10 +13,12 @@ import {
   logger,
   sendRichMessageWithFallback,
   setUserOptOut,
+  trySendWidget,
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 import { getMetricsDashboardImage } from './metrics-dashboard'
-import { sendMetricsWidget } from './metrics-widget'
+import { buildMetricsWidgetHtml } from './metrics-widget'
+import { buildStatisticsWidgetHtml } from './statistics-widget'
 
 const USERNAME_REGEX = /^[A-Za-z0-9_]+$/
 const TELEGRAM_USERNAME_MIN_LENGTH = 5
@@ -119,6 +121,16 @@ const setupUsersCommands = (bot: Bot) => {
 
     const messageThreadId = ctx.message?.message_thread_id
     const statistics = await getFormattedChatStatisticsMessages(chatId)
+    const widget =
+      statistics.users.length &&
+      (await trySendWidget({
+        api: ctx.api,
+        chat: ctx.chat,
+        html: buildStatisticsWidgetHtml(statistics.users),
+        messageThreadId,
+      }))
+    if (widget) return widget
+
     const options =
       typeof messageThreadId === 'number'
         ? { message_thread_id: messageThreadId }
@@ -225,23 +237,16 @@ const setupUsersCommands = (bot: Bot) => {
     const hours = Number.isFinite(parsedHours) ? Math.trunc(parsedHours) : 24
     const report = await getMetricsReport(hours)
 
-    // Production Telegram delivers widgets only in the private chat with the bot.
-    if (report.totalOperations && ctx.chat.type === 'private') {
-      try {
-        return await sendMetricsWidget(
-          ctx.api,
-          ctx.chat.id,
-          report,
-          replyId,
-          ctx.message?.message_thread_id,
-        )
-      } catch (error) {
-        logger.warn(
-          { chatId: ctx.chat.id, error },
-          'metrics.widget_send_failed',
-        )
-      }
-    }
+    const widget =
+      report.totalOperations &&
+      (await trySendWidget({
+        api: ctx.api,
+        chat: ctx.chat,
+        html: buildMetricsWidgetHtml(report),
+        replyId,
+        messageThreadId: ctx.message?.message_thread_id,
+      }))
+    if (widget) return widget
 
     const fallbackText = formatMetricsReport(report)
     const image = report.totalOperations

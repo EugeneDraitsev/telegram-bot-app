@@ -2,6 +2,7 @@ import {
   formatWeatherText,
   getErrorMessage,
   getWeather as getWeatherData,
+  type WeatherData,
 } from '@tg-bot/common'
 
 const getWeatherErrorMessage = (error: unknown): string => {
@@ -31,16 +32,21 @@ const getWeatherErrorMessage = (error: unknown): string => {
   return 'Something went wrong while fetching weather data.'
 }
 
-export const getWeather = async (location: string) => {
+/** The text reply for /f, plus the weather behind it when the lookup worked. */
+export const getWeather = async (
+  location: string,
+): Promise<{ text: string; weather?: WeatherData }> => {
   const targetLocation = location?.trim()
   if (!targetLocation) {
-    return 'Please provide a valid location to get the weather information.'
+    return {
+      text: 'Please provide a valid location to get the weather information.',
+    }
   }
 
   try {
     const weather = await getWeatherData(targetLocation)
-    return formatWeatherText(weather, 'html')
+    return { text: formatWeatherText(weather, 'html'), weather }
   } catch (error) {
-    return getWeatherErrorMessage(error)
+    return { text: getWeatherErrorMessage(error) }
   }
 }

@@ -5,6 +5,8 @@
  * Telegram messages directly.
  */
 
+import type { Chat } from 'grammy/types'
+
 import type { AgentTool } from '../types'
 import { animateGifTool } from './animate-gif.tool'
 import { codeExecutionTool } from './code-execution.tool'
@@ -30,6 +32,7 @@ import { renderSvgTool } from './render-svg.tool'
 import { searchGifTool } from './search-gif.tool'
 import { searchImageTool } from './search-image.tool'
 import { searchVideoTool } from './search-video.tool'
+import { sendWidgetTool } from './send-widget.tool'
 import { weatherTool } from './weather.tool'
 import { webSearchTool } from './web-search.tool'
 
@@ -64,6 +67,7 @@ const baseAgentTools: AgentTool[] = [
   searchImageTool,
   renderLatexTool,
   renderSvgTool,
+  sendWidgetTool,
   generateImageTool,
   generateGifTool,
   generateVideoTool,
@@ -85,6 +89,14 @@ const baseToolNames = new Set<string>(
     .map((tool) => tool.declaration.name)
     .filter((name): name is string => name != null),
 )
+
+/** Widgets reach only the private chat with the bot, so their tools stay there. */
+export function isToolAvailableInChat(
+  tool: AgentTool,
+  chat: Pick<Chat, 'type'>,
+): boolean {
+  return !tool.privateChatOnly || chat.type === 'private'
+}
 
 export function getBaseAgentTools(): AgentTool[] {
   return [...baseAgentTools]

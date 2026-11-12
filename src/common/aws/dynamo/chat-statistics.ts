@@ -21,6 +21,8 @@ export interface ChatStat {
 }
 
 export interface FormattedChatStatistics {
+  /** Users ranked by message count, most active first. */
+  users: UserStat[]
   text: string
   richMarkdown: string
 }
@@ -335,6 +337,7 @@ export function buildFormattedChatStatisticsMessages(
   }
 
   return {
+    users: stats,
     text: dedent`Users Statistic:
             All messages: ${allMessagesCount.toLocaleString()}
             ${formattedUsers.join('\n')}`,
@@ -351,6 +354,7 @@ export const getFormattedChatStatisticsMessages = async (
   } catch (e) {
     logger.error({ error: e }, 'Error while fetching statistic')
     return {
+      users: [],
       text: 'Error while fetching statistic',
       richMarkdown: 'Error while fetching statistic',
     }

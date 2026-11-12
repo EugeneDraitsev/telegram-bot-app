@@ -27,6 +27,7 @@ const RESERVED_TOOL_NAMES = new Set<string>([
   'search_image',
   'render_latex',
   'render_svg_to_png',
+  'send_widget',
   'generate_or_edit_image',
   'generate_gif',
   'generate_video_with_omni',

@@ -27,6 +27,7 @@ import {
   getAgentTools,
   getBaseAgentTools,
   getCollectedResponses,
+  isToolAvailableInChat,
   runWithToolContext,
   setToolChatMemory,
   setToolHistoryMessages,
@@ -386,7 +387,7 @@ export async function runAgenticLoop(
     return
   }
 
-  const chatRole = resolveAgentChatRole(options.commandName)
+  const chatRole = resolveAgentChatRole(options.commandName, message.chat.type)
   const chatModel = chatRole.primary
   const attribution = options.commandName
     ? { source: 'command' as const, command: options.commandName }
@@ -544,7 +545,7 @@ export async function runAgenticLoop(
       // Load tools + history in parallel (only after gate confirms we'll respond)
       const preloadStartedAt = Date.now()
       logger.info({ ...messageMeta }, 'loop.preload_start')
-      const [agentTools, rawHistory, loadedMedia] = await Promise.all([
+      const [loadedTools, rawHistory, loadedMedia] = await Promise.all([
         preloadWithFallback({
           chatId,
           name: 'agent_tools',
@@ -554,6 +555,9 @@ export async function runAgenticLoop(
         loadRecentHistory(),
         mediaBuffers ?? options.loadMedia?.() ?? [],
       ])
+      const agentTools = loadedTools.filter((tool) =>
+        isToolAvailableInChat(tool, message.chat),
+      )
       logger.info(
         {
           ...messageMeta,

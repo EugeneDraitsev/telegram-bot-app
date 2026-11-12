@@ -1,7 +1,8 @@
-import type { ForecastDay, WeatherData } from '../types'
+import type { ForecastDay, HourlyForecast, WeatherData } from '../types'
 
 const WEATHER_TOKEN = process.env.OPEN_WEATHER_MAP_TOKEN || ''
 const TIMEOUT_MS = 5000
+const HOURLY_SLOTS = 8
 
 const WIND_DIRECTIONS = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ']
 
@@ -12,8 +13,8 @@ const WEATHER_ICONS: Record<string, string> = {
   '02n': '⛅️',
   '03d': '☁️',
   '03n': '☁️',
-  '04d': '🌩',
-  '04n': '🌩',
+  '04d': '☁️',
+  '04n': '☁️',
   '09d': '🌧',
   '09n': '🌧',
   '10d': '🌦',
@@ -29,15 +30,17 @@ const WEATHER_ICONS: Record<string, string> = {
 interface OpenWeatherCurrentResponse {
   name: string
   sys: { country: string }
-  main: { temp: number; humidity: number }
+  main: { temp: number; feels_like: number; humidity: number }
   wind: { speed: number; deg?: number }
   weather: Array<{ description: string; icon: string }>
 }
 
 export interface OpenWeatherForecastItem {
   dt: number
-  main: { temp_min: number; temp_max: number }
+  main: { temp: number; temp_min: number; temp_max: number }
   weather: Array<{ description: string; icon: string }>
+  /** Probability of precipitation, 0-1. */
+  pop?: number
 }
 
 interface OpenWeatherForecastResponse {
@@ -133,6 +136,22 @@ export function buildThreeDayForecast(
     }))
 }
 
+export function buildHourlyForecast(
+  forecastItems: OpenWeatherForecastItem[],
+  timezoneOffsetSeconds = 0,
+): HourlyForecast[] {
+  return forecastItems.slice(0, HOURLY_SLOTS).map((item) => {
+    const weather = item.weather?.[0]
+    return {
+      hour: new Date((item.dt + timezoneOffsetSeconds) * 1000).getUTCHours(),
+      temperature: Math.round(item.main.temp),
+      description: weather?.description || 'нет данных',
+      icon: getWeatherIcon(weather?.icon || '01d'),
+      precipitationChance: Math.round((item.pop ?? 0) * 100),
+    }
+  })
+}
+
 export async function getWeather(location: string): Promise<WeatherData> {
   if (!location?.trim()) {
     throw new Error('Location cannot be empty')
@@ -160,10 +179,8 @@ export async function getWeather(location: string): Promise<WeatherData> {
     currentResponse.json(),
   ])) as [OpenWeatherForecastResponse, OpenWeatherCurrentResponse]
 
-  const forecast = buildThreeDayForecast(
-    forecastData.list ?? [],
-    forecastData.city?.timezone ?? 0,
-  )
+  const forecastItems = forecastData.list ?? []
+  const timezoneOffsetSeconds = forecastData.city?.timezone ?? 0
 
   const country = currentData.sys?.country || forecastData.city?.country || ''
   const city = currentData.name || forecastData.city?.name || location
@@ -173,12 +190,14 @@ export async function getWeather(location: string): Promise<WeatherData> {
     country,
     countryFlag: getCountryFlag(country),
     temperature: Math.round(currentData.main.temp),
+    feelsLike: Math.round(currentData.main.feels_like),
     humidity: currentData.main.humidity,
     windSpeed: Math.round(currentData.wind.speed),
     windDirection: getWindDirection(currentData.wind.deg || 0),
     description: currentData.weather?.[0]?.description || 'нет данных',
     icon: getWeatherIcon(currentData.weather?.[0]?.icon || '01d'),
-    forecast,
+    hourly: buildHourlyForecast(forecastItems, timezoneOffsetSeconds),
+    forecast: buildThreeDayForecast(forecastItems, timezoneOffsetSeconds),
   }
 }
 

@@ -1,36 +1,21 @@
-import type { Message } from 'grammy/types'
-import type { Api } from 'grammy/web'
-
 import {
+  buildWidgetHtml,
   escapeHtml,
   fmtMs,
   formatHealthPercent,
-  formatMetricsCaption,
   type MetricGroupSummary,
   type MetricsReport,
   shortModelName,
+  WIDGET_ROW_HEIGHT,
+  WIDGET_ROW_STYLE,
 } from '@tg-bot/common'
 
 const MAX_ROWS = 4
-const ROW_HEIGHT = 34
 const OK = '#34c759'
 const TIMEOUT = '#ff9f0a'
 const ERROR = '#ff3b30'
 const MINUTE_MS = 60 * 1000
 const AXIS_STEPS = [1, 2, 3, 4, 5, 6, 8, 10]
-
-interface SendWidgetParams {
-  chat_id: number
-  html: string
-  caption: string
-  message_thread_id?: number
-  reply_parameters?: { message_id: number }
-}
-
-/** grammY 1.46 predates Bot API 10.4; its raw API proxy forwards any method. */
-type WidgetRawApi = {
-  sendWidget(params: SendWidgetParams): Promise<Message>
-}
 
 /** Whole units keep the HTML low-entropy for the 4 KB compressed limit. */
 const share = (part: number, total: number, scale = 100) =>
@@ -135,28 +120,22 @@ function renderTabs(report: MetricsReport) {
     .join('')
 
   return {
-    html: `<div class="card"><div class="tabs" style="--n:${tabs.length}"><b id="ind"></b>${buttons}</div><div class="pns" style="height:${rows * ROW_HEIGHT}px">${panels}</div></div>`,
+    html: `<div class="card"><div class="tabs" style="--n:${tabs.length}"><b id="ind"></b>${buttons}</div><div class="pns" style="height:${rows * WIDGET_ROW_HEIGHT}px">${panels}</div></div>`,
     keys: tabs.map((tab) => tab.key),
   }
 }
 
 const STYLE = `
-:root{--bg:var(--tg-theme-bg-color,#fff);--tx:var(--tg-theme-text-color,#111);--ht:var(--tg-theme-hint-color,#8e8e93);--ac:var(--tg-theme-button-color,#3390ec);--sf:var(--tg-theme-secondary-bg-color,#f1f1f4);--ln:var(--tg-theme-section-separator-color,#e2e2e6);--spring:cubic-bezier(.34,1.56,.64,1);--ease:cubic-bezier(.2,.9,.3,1)}
-body{margin:0;padding:8px 8px calc(8px + var(--tg-content-safe-area-inset-bottom,0px));background:var(--bg);color:var(--tx);font:14px/1.3 system-ui,sans-serif;font-variant-numeric:tabular-nums}
-.hero{display:flex;gap:16px;align-items:center;margin-top:0;padding:14px}
+.hero{display:flex;gap:16px;align-items:center;padding:14px}
 .ring{position:relative;flex:none;width:88px;height:88px;border-radius:50%}
 .hole{position:absolute;top:8px;left:8px;right:8px;bottom:8px;border-radius:50%;background:var(--sf);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .hole b{font-size:20px;line-height:1;font-weight:800}.hole small{margin-top:3px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ht)}
-.hs{flex:1;min-width:0}.ttl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ht)}
+.hs{flex:1;min-width:0}
 .big{font-size:15px;color:var(--ht);margin:0 0 8px}.big b{font-size:34px;line-height:1.1;font-weight:800;margin-right:5px;color:var(--tx)}
 .kp{display:flex;gap:14px}.kp b{display:block;font-size:17px;font-weight:700}
 .kp small{display:block;font-size:11px;white-space:nowrap;color:var(--ht)}
 .d{display:inline-block;width:7px;height:7px;margin-right:4px;border-radius:50%;background:currentColor}
 .d.to{color:${TIMEOUT}}.d.er{color:${ERROR}}
-.card{margin-top:8px;padding:12px;border-radius:16px;background:var(--sf);overflow:hidden}
-.hd{display:flex;gap:8px;justify-content:space-between;align-items:baseline;margin-bottom:10px;font-size:15px;font-weight:700}
-.hd small{font-size:12px;font-weight:400;color:var(--ht)}
-#tip{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;color:var(--ac)}
 .plot{position:relative;height:88px;margin-left:30px}
 .gl{position:absolute;left:0;right:0;height:0;border-top:1px dashed var(--ln)}
 .yl{position:absolute;left:-30px;width:24px;margin-top:-7px;text-align:right;font-size:11px;line-height:14px;color:var(--ht)}
@@ -174,23 +153,19 @@ body{margin:0;padding:8px 8px calc(8px + var(--tg-content-safe-area-inset-bottom
 .pns{position:relative}
 .pn{position:absolute;top:0;left:0;right:0;visibility:hidden;opacity:0;transform:translateX(28px);transition:opacity .25s,transform .45s var(--ease),visibility .25s}
 .pn.l{transform:translateX(-28px)}.pn.on{visibility:visible;opacity:1;transform:none}
-.r{position:relative;display:flex;gap:8px;align-items:center;box-sizing:border-box;height:${ROW_HEIGHT}px;padding-bottom:5px;transform:translateX(18px);transition:transform .5s var(--spring)}
+.r{transform:translateX(18px);transition:transform .5s var(--spring)}
 .pn.on .r{transform:none}.r:nth-child(2){transition-delay:.05s}.r:nth-child(3){transition-delay:.1s}.r:nth-child(4){transition-delay:.15s}
-.r i{position:absolute;left:0;bottom:2px;height:3px;border-radius:2px;background:var(--ac);transform:scaleX(0);transform-origin:left;transition:transform .6s var(--ease) .15s;animation-name:grow;animation-duration:.6s}
+.r i{transform:scaleX(0);transition:transform .6s var(--ease) .15s;animation-name:grow;animation-duration:.6s}
 .pn.on .r i{transform:none}
-.l{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
-.v{color:var(--ht);font-size:12px;white-space:nowrap}.p{width:40px;text-align:right;font-weight:700}
 .ok{color:${OK}}.to{color:${TIMEOUT}}.er{color:${ERROR}}
 @keyframes grow{from{transform:scaleX(0)}}
 @keyframes ping{from{box-shadow:0 0 0 0 rgba(52,199,89,.7)}70%{box-shadow:0 0 0 6px rgba(52,199,89,0)}to{box-shadow:0 0 0 0 rgba(52,199,89,0)}}
 @media (prefers-reduced-motion:reduce){.r i,.lv{animation-name:none}}
 `
 
-// Bars are drawn from B to keep the 4 KB compressed budget. The intro plays
-// once, when the widget is actually on screen.
+// Bars are drawn from B to keep the 4 KB compressed budget.
 const SCRIPT = `
-const T=window.TelegramWidget,$=(i)=>document.getElementById(i),A=(el,k,o)=>{try{el.animate(k,o)}catch(e){}}
-const tick=()=>T&&T.HapticFeedback.selectionChanged(),pc=(v,t)=>Math.round(v/t*100)
+const pc=(v,t)=>Math.round(v/t*100)
 const at=(t,o)=>new Date(t).toLocaleString([],o),hm={hour:'2-digit',minute:'2-digit'},day={month:'short',day:'numeric'},ax=H>24?day:{hour:'numeric'}
 $('x0').textContent=at(S,ax);$('x1').textContent=at(S+(N-S)/2,ax)
 $('bars').innerHTML=B.map(([n,t,e],i)=>{const o=pc(n-t-e,n),w=pc(n-e,n)
@@ -200,17 +175,12 @@ K.forEach((x,i)=>$('b'+x).addEventListener('click',()=>{show(i);tick()}))
 let sel
 $('bars').addEventListener('click',(ev)=>{const i=ev.target.dataset.i;if(i==null)return
 if(sel)sel.className='';(sel=ev.target).className='on'
-const [n,t,e]=B[i],tip=$('tip')
-tip.textContent=at(S+i*D,H>24?{...day,...hm}:hm)+' · '+n+' ops'+(t?' · ⏱ '+t:'')+(e?' · ❌ '+e:'')
-A($('c'+i),[{transform:'none'},{transform:'scaleY(1.15)'},{transform:'none'}],{duration:400,easing:'cubic-bezier(.34,1.56,.64,1)'})
-A(tip,[{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:260});tick()})
+const [n,t,e]=B[i]
+bounce($('c'+i));say(at(S+i*D,H>24?{...day,...hm}:hm)+' · '+n+' ops'+(t?' · ⏱ '+t:'')+(e?' · ❌ '+e:''))})
 const tot=$('tot'),n=+tot.textContent
-let go=0
-const start=()=>{if(go++||matchMedia('(prefers-reduced-motion: reduce)').matches)return
-const t0=Date.now(),f=()=>{const p=1-Math.pow(1-Math.min(1,(Date.now()-t0)/1200),3),a=R[0]*p,b=R[1]*p,c=360*p
-$('ring').style.background='conic-gradient(${OK} 0 '+a+'deg,${TIMEOUT} '+a+'deg '+b+'deg,${ERROR} '+b+'deg '+c+'deg,var(--ln) '+c+'deg)';tot.textContent=Math.round(n*p);if(p<1)requestAnimationFrame(f)};f()
-B.forEach((_,i)=>A($('c'+i),[{transform:'scaleY(0)'},{transform:'scaleY(1.12)',offset:.6},{transform:'none'}],{duration:800,delay:150+i*35,easing:'cubic-bezier(.2,.8,.2,1)',fill:'backwards'}))}
-if(!T||T.isActive)start();else T.onEvent('activated',start)
+onShow(()=>{tween(1200,(p)=>{const a=R[0]*p,b=R[1]*p,c=360*p
+$('ring').style.background='conic-gradient(${OK} 0 '+a+'deg,${TIMEOUT} '+a+'deg '+b+'deg,${ERROR} '+b+'deg '+c+'deg,var(--ln) '+c+'deg)';tot.textContent=Math.round(n*p)})
+B.forEach((_,i)=>grow($('c'+i),'Y',150+i*35))})
 `
 
 export function buildMetricsWidgetHtml(report: MetricsReport): string {
@@ -222,29 +192,10 @@ export function buildMetricsWidgetHtml(report: MetricsReport): string {
   ])
   const bucketMs = (report.toMs - report.fromMs) / report.timeline.length
 
-  return `<!doctype html><html><head><style>${STYLE}</style></head><body>
-${renderHero(report)}
-${renderChart(report)}
-${tabs.html}
-<script>const K=${JSON.stringify(tabs.keys)},B=${JSON.stringify(buckets)},R=${JSON.stringify(ringStops(report))},M=${chartMax(report)},H=${report.hours},S=${report.fromMs},D=${bucketMs},N=${report.toMs}
-${SCRIPT}</script></body></html>`
-}
-
-export function sendMetricsWidget(
-  api: Pick<Api, 'raw'>,
-  chatId: number,
-  report: MetricsReport,
-  replyId?: number,
-  messageThreadId?: number,
-): Promise<Message> {
-  return (api.raw as unknown as WidgetRawApi).sendWidget({
-    chat_id: chatId,
-    html: buildMetricsWidgetHtml(report),
-    // Clients without widget support show only the caption.
-    caption: formatMetricsCaption(report),
-    ...(replyId ? { reply_parameters: { message_id: replyId } } : {}),
-    ...(typeof messageThreadId === 'number'
-      ? { message_thread_id: messageThreadId }
-      : {}),
+  return buildWidgetHtml({
+    style: WIDGET_ROW_STYLE + STYLE,
+    body: renderHero(report) + renderChart(report) + tabs.html,
+    script: `const K=${JSON.stringify(tabs.keys)},B=${JSON.stringify(buckets)},R=${JSON.stringify(ringStops(report))},M=${chartMax(report)},H=${report.hours},S=${report.fromMs},D=${bucketMs},N=${report.toMs}
+${SCRIPT}`,
   })
 }
