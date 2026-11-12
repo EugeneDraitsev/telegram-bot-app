@@ -1,5 +1,10 @@
 import type { WeatherData } from '../../types'
-import { buildThreeDayForecast, formatWeatherText, getWindDirection } from '..'
+import {
+  buildHourlyForecast,
+  buildThreeDayForecast,
+  formatWeatherText,
+  getWindDirection,
+} from '..'
 import type { OpenWeatherForecastItem } from '../weather.utils'
 
 const makeWeatherData = (
@@ -9,11 +14,13 @@ const makeWeatherData = (
   country: 'BY',
   countryFlag: '🇧🇾',
   temperature: 22,
+  feelsLike: 21,
   humidity: 65,
   windSpeed: 4,
   windDirection: 'СВ',
   description: 'ясно',
   icon: '☀️',
+  hourly: [],
   forecast: [
     { tempHigh: 24, tempLow: 16, description: 'ясно', icon: '☀️' },
     { tempHigh: 20, tempLow: 14, description: 'облачно', icon: '☁️' },
@@ -81,6 +88,33 @@ describe('formatWeatherText', () => {
   })
 })
 
+describe('buildHourlyForecast', () => {
+  test('keeps the next 8 slots with local hours and rounded values', () => {
+    const items: OpenWeatherForecastItem[] = Array.from(
+      { length: 10 },
+      (_, index) => ({
+        dt: 1705316400 + index * 3 * 3600, // 2024-01-15 11:00 UTC, 3h steps
+        main: { temp: -2.6 + index, temp_min: -5, temp_max: 5 },
+        weather: [{ description: 'снег', icon: '13d' }],
+        pop: index ? 0.456 : undefined,
+      }),
+    )
+
+    const hourly = buildHourlyForecast(items, 3 * 3600)
+
+    expect(hourly).toHaveLength(8)
+    expect(hourly[0]).toEqual({
+      hour: 14,
+      temperature: -3,
+      description: 'снег',
+      icon: '🌨',
+      precipitationChance: 0,
+    })
+    expect(hourly[1]).toMatchObject({ hour: 17, precipitationChance: 46 })
+    expect(hourly[4].hour).toBe(2)
+  })
+})
+
 describe('buildThreeDayForecast', () => {
   function makeItem(
     dt: number,
@@ -91,7 +125,7 @@ describe('buildThreeDayForecast', () => {
   ): OpenWeatherForecastItem {
     return {
       dt,
-      main: { temp_min: tempMin, temp_max: tempMax },
+      main: { temp: tempMax, temp_min: tempMin, temp_max: tempMax },
       weather: [{ description, icon }],
     }
   }

@@ -1,11 +1,10 @@
-import { deflateSync } from 'node:zlib'
-
 import {
   buildMetricsReport,
+  fitsWidgetLimits,
   formatMetricsCaption,
   type MetricEntry,
 } from '@tg-bot/common'
-import { buildMetricsWidgetHtml, sendMetricsWidget } from '../metrics-widget'
+import { buildMetricsWidgetHtml } from '../metrics-widget'
 
 const NOW = Date.UTC(2026, 10, 12, 12)
 const HOUR = 60 * 60 * 1000
@@ -39,8 +38,7 @@ describe('metrics widget', () => {
   test('stays within the Telegram widget size limits for a busy month', () => {
     const html = buildMetricsWidgetHtml(worstCaseReport)
 
-    expect(Buffer.byteLength(html)).toBeLessThanOrEqual(32_768)
-    expect(deflateSync(html, { level: 9 }).length).toBeLessThanOrEqual(4_096)
+    expect(fitsWidgetLimits(html)).toBe(true)
     expect(html).not.toContain('\0')
   })
 
@@ -67,24 +65,7 @@ describe('metrics widget', () => {
     expect(html).toContain('const K=["t"]')
   })
 
-  test('sends the widget through the raw Bot API with reply context', async () => {
-    const sendWidget = jest.fn(() => Promise.resolve({ message_id: 2 }))
-
-    await sendMetricsWidget(
-      { raw: { sendWidget } } as never,
-      42,
-      worstCaseReport,
-      7,
-      9,
-    )
-
-    expect(sendWidget).toHaveBeenCalledWith({
-      chat_id: 42,
-      html: buildMetricsWidgetHtml(worstCaseReport),
-      caption: formatMetricsCaption(worstCaseReport),
-      reply_parameters: { message_id: 7 },
-      message_thread_id: 9,
-    })
+  test('summarizes the report in one line for the PNG caption', () => {
     expect(formatMetricsCaption(worstCaseReport)).toMatch(
       /^AI operations · last 720h · \d+(\.\d)?% healthy · \d+ ops$/,
     )
