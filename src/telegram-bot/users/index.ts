@@ -2,6 +2,7 @@ import { InputFile } from 'grammy/web'
 import type { Bot } from 'grammy/web'
 
 import {
+  formatMetricsCaption,
   formatMetricsReport,
   getChatName,
   getCommandData,
@@ -15,6 +16,7 @@ import {
 } from '@tg-bot/common'
 import { getDailyStatistics } from './daily-statistics'
 import { getMetricsDashboardImage } from './metrics-dashboard'
+import { sendMetricsWidget } from './metrics-widget'
 
 const USERNAME_REGEX = /^[A-Za-z0-9_]+$/
 const TELEGRAM_USERNAME_MIN_LENGTH = 5
@@ -222,6 +224,25 @@ const setupUsersCommands = (bot: Bot) => {
     const parsedHours = rawHours ? Number(rawHours) : Number.NaN
     const hours = Number.isFinite(parsedHours) ? Math.trunc(parsedHours) : 24
     const report = await getMetricsReport(hours)
+
+    // Production Telegram delivers widgets only in the private chat with the bot.
+    if (report.totalOperations && ctx.chat.type === 'private') {
+      try {
+        return await sendMetricsWidget(
+          ctx.api,
+          ctx.chat.id,
+          report,
+          replyId,
+          ctx.message?.message_thread_id,
+        )
+      } catch (error) {
+        logger.warn(
+          { chatId: ctx.chat.id, error },
+          'metrics.widget_send_failed',
+        )
+      }
+    }
+
     const fallbackText = formatMetricsReport(report)
     const image = report.totalOperations
       ? await getMetricsDashboardImage(report)
@@ -233,7 +254,7 @@ const setupUsersCommands = (bot: Bot) => {
           new InputFile(image, 'ai-operations.png'),
           {
             reply_parameters: { message_id: replyId },
-            caption: `AI operations · last ${report.hours}h · ${Math.round(report.successRate * 100)}% healthy · ${report.totalOperations} ops`,
+            caption: formatMetricsCaption(report),
           },
         )
       } catch (error) {

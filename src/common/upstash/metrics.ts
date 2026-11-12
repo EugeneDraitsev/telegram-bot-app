@@ -406,7 +406,7 @@ export async function getMetricsReport(hoursBack = 24): Promise<MetricsReport> {
   return buildMetricsReport(await getMetrics(fromMs, toMs), hours, toMs)
 }
 
-function fmtMs(ms: number): string {
+export function fmtMs(ms: number): string {
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`
   return `${Math.round(ms)}ms`
 }
@@ -416,9 +416,9 @@ function progressBar(ratio: number, length = 12): string {
   return '▰'.repeat(filled) + '▱'.repeat(length - filled)
 }
 
-function shortModelName(model: string): string {
+export function shortModelName(model: string): string {
   return model
-    .replace(/^(?:google|openai)\//, '')
+    .replace(/^(?:google|openai|anthropic)\//, '')
     .replace(/^gemini-/, '')
     .replace(/-preview$/, '')
 }
@@ -438,6 +438,16 @@ function formatGroup(title: string, groups: MetricGroupSummary[]): string[] {
       `${group.label}  ${group.count}× ~${fmtMs(group.medianMs)} (${formatOutcomeSummary(group)})`,
   )
   return ['', `<b>${title}</b>`, `<pre>${escapeHtml(rows.join('\n'))}</pre>`]
+}
+
+/** Floor so a single failure never rounds up to a perfect 100%. */
+export function formatHealthPercent(report: MetricsReport): string {
+  return `${Math.floor(report.successRate * 1000) / 10}%`
+}
+
+/** One-line summary for media captions on /x replies. */
+export function formatMetricsCaption(report: MetricsReport): string {
+  return `AI operations · last ${report.hours}h · ${formatHealthPercent(report)} healthy · ${report.totalOperations} ops`
 }
 
 export function formatMetricsReport(report: MetricsReport): string {
