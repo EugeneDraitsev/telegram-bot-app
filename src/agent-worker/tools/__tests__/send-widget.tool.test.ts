@@ -60,7 +60,7 @@ describe('sendWidgetTool', () => {
     expect(response.html).not.toContain('\0')
     expect(response.html).toContain('p{margin:0}><b></style>')
     expect(response.html).toContain("const s='<\\/script>'")
-    expect(response.html.match(/<\/script>/g)).toHaveLength(1)
+    expect(response.html.split('</script>')).toHaveLength(2)
     expect(response.caption).toBeUndefined()
   })
 

@@ -730,7 +730,27 @@ async function sendResponsesOnce(
     hasBuffer(bundle[type]),
   )
 
+  // Widgets are messages of their own, so media or a rich reply queued beside
+  // them is still delivered below. Alone, the last widget carries the text.
+  const widgetsOnly =
+    !bufferedMediaType &&
+    !PRIMARY_MEDIA_ORDER.some((type) => bundle[type]) &&
+    !bundle.rich &&
+    !bundle.voice
+
   try {
+    // Several calls in one round, such as weather for two cities, each queue
+    // a widget.
+    for (const [index, widget] of bundle.widgets.entries()) {
+      const takesText = widgetsOnly && index === bundle.widgets.length - 1
+      await sendWidgetResponse({
+        ...base,
+        widget,
+        text: takesText ? bundle.text : '',
+      })
+    }
+    if (bundle.widgets.length && widgetsOnly) return
+
     if (bufferedMediaType === 'video' && bundle.video) {
       await sendVideo({ ...mediaParams, video: bundle.video })
     } else if (bufferedMediaType === 'audio' && bundle.audio) {
@@ -739,18 +759,6 @@ async function sendResponsesOnce(
       await sendAnimation({ ...mediaParams, animation: bundle.animation })
     } else if (bufferedMediaType === 'image' && bundle.image) {
       await sendImage({ ...mediaParams, image: bundle.image })
-    } else if (bundle.widgets.length) {
-      // Several calls in one round, such as weather for two cities, each
-      // queue a widget. The model's text goes with the last one.
-      for (const [index, widget] of bundle.widgets.entries()) {
-        const isLast = index === bundle.widgets.length - 1
-        await sendWidgetResponse({
-          ...base,
-          widget,
-          text: isLast ? bundle.text : '',
-        })
-      }
-      return
     } else if (bundle.rich) {
       const sentMessage = await sendRichResponse({
         ...base,

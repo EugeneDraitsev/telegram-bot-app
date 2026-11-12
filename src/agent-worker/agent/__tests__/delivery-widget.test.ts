@@ -18,6 +18,8 @@ function createApi(sendWidget: jest.Mock) {
   const api = {
     sendRichMessage: jest.fn().mockResolvedValue({ message_id: 8 }),
     sendMessage: jest.fn().mockResolvedValue({ message_id: 1 }),
+    sendPhoto: jest.fn().mockResolvedValue({ message_id: 2 }),
+    sendVoice: jest.fn().mockResolvedValue({ message_id: 3 }),
     raw: { sendWidget },
   }
   return api as typeof api & TelegramApi
@@ -102,6 +104,45 @@ describe('sendResponses with a widget', () => {
         },
       ],
     ])
+  })
+
+  test('sends a widget and a generated image as separate messages', async () => {
+    const sendWidget = jest.fn().mockResolvedValue({ message_id: 5 })
+    const api = createApi(sendWidget)
+
+    await sendResponses({
+      api,
+      chatId: 42,
+      responses: [
+        widget,
+        { type: 'image', buffer: Buffer.from('png') },
+        { type: 'text', text: 'Weather and a picture' },
+      ],
+    })
+
+    // The text stays with the image, as it does without a widget.
+    expect(sendWidget).toHaveBeenCalledWith({ chat_id: 42, html: widget.html })
+    expect(api.sendPhoto).toHaveBeenCalledWith(
+      42,
+      expect.anything(),
+      expect.objectContaining({
+        caption: common.formatTelegramMarkdownV2('Weather and a picture'),
+      }),
+    )
+  })
+
+  test('still sends a voice message queued beside a widget', async () => {
+    const sendWidget = jest.fn().mockResolvedValue({ message_id: 5 })
+    const api = createApi(sendWidget)
+
+    await sendResponses({
+      api,
+      chatId: 42,
+      responses: [widget, { type: 'voice', buffer: Buffer.from('ogg') }],
+    })
+
+    expect(sendWidget).toHaveBeenCalledTimes(1)
+    expect(api.sendVoice).toHaveBeenCalledTimes(1)
   })
 
   test('sends a text too long for a caption as a reply to the widget', async () => {

@@ -28,7 +28,10 @@ interface FakeElement {
  * Returns the ids of the elements the script animated.
  */
 function runWidgetScript(html: string): string[] {
-  const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1] ?? ''
+  const script = html.slice(
+    html.indexOf('<script>') + '<script>'.length,
+    html.lastIndexOf('</script>'),
+  )
   const elements = new Map<string, FakeElement>()
   const listeners: Array<{ id: string; listener: (event: unknown) => void }> =
     []
