@@ -406,7 +406,7 @@ export async function getMetricsReport(hoursBack = 24): Promise<MetricsReport> {
   return buildMetricsReport(await getMetrics(fromMs, toMs), hours, toMs)
 }
 
-function fmtMs(ms: number): string {
+export function fmtMs(ms: number): string {
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`
   return `${Math.round(ms)}ms`
 }
@@ -416,9 +416,9 @@ function progressBar(ratio: number, length = 12): string {
   return '▰'.repeat(filled) + '▱'.repeat(length - filled)
 }
 
-function shortModelName(model: string): string {
+export function shortModelName(model: string): string {
   return model
-    .replace(/^(?:google|openai)\//, '')
+    .replace(/^(?:google|openai|anthropic)\//, '')
     .replace(/^gemini-/, '')
     .replace(/-preview$/, '')
 }
