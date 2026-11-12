@@ -5,13 +5,16 @@ import {
   isAiAllowedChat,
   logger,
   sendRichMessageWithFallback,
+  trySendWidget,
 } from '@tg-bot/common'
 import {
   buildCurrencyBackgroundDebugCaption,
   getCurrencyBackgroundImage,
 } from './background-image'
-import { getCryptoCurrencySection } from './crypto-currency'
+import { fetchBrentPrice } from './brent'
+import { getCryptoCurrencySection, getCryptoQuotes } from './crypto-currency'
 import { buildCurrencyMessages } from './format'
+import { getCurrencyHistory } from './history'
 import { getCurrencyImage } from './image'
 import { getMainCurrencySection } from './main-currency'
 import { getRussianCurrencySection } from './russian-currency'
@@ -20,6 +23,7 @@ import type {
   CurrencyMessages,
   CurrencyRateSection,
 } from './types'
+import { buildCurrencyWidgetHtml } from './widget'
 
 export type { CurrenciesResponse, CurrencyMessages, CurrencyRateSection }
 
@@ -108,6 +112,31 @@ export const getCurrencyMessages = async ({
   }
 }
 
+/**
+ * The rates as a widget with a week of history. Resolves to undefined when it
+ * cannot be built, so the caller falls back to the image.
+ */
+export const getCurrencyWidgetHtml = async (): Promise<string | undefined> => {
+  try {
+    const [{ rates }, crypto, brent, history] = await Promise.all([
+      getCurrenciesRates(),
+      // The widget still has the fiat tabs to show without the coins.
+      getCryptoQuotes().catch(() => undefined),
+      fetchBrentPrice(),
+      getCurrencyHistory(),
+    ])
+    const prices: Record<string, number | undefined> = { BRENT: brent }
+    for (const quote of crypto?.quotes ?? []) {
+      prices[quote.symbol] = quote.price
+    }
+
+    return buildCurrencyWidgetHtml({ rates, prices }, history)
+  } catch (error) {
+    logger.warn({ error }, 'currency.widget_failed')
+    return undefined
+  }
+}
+
 type SendRichMessageParams = Parameters<typeof sendRichMessageWithFallback>[0]
 type SendPhotoOptions = Parameters<Api['sendPhoto']>[2]
 type CurrencySendOptions = SendRichMessageParams['richOptions'] &
@@ -177,10 +206,13 @@ export async function sendCurrencyCommand(
     forceFallback = false,
     includeBackgroundImage = false,
     debugBackground = false,
+    widget = false,
   }: {
     readonly forceFallback?: boolean
     readonly includeBackgroundImage?: boolean
     readonly debugBackground?: boolean
+    /** Reply with the widget where Telegram can show one. */
+    readonly widget?: boolean
   } = {},
 ) {
   const chatId = ctx.chat?.id
@@ -190,6 +222,20 @@ export async function sendCurrencyCommand(
   if (withBackground && !(await isAiAllowedChat(chatId))) return
 
   const messageThreadId = ctx.message?.message_thread_id
+  // Widgets reach private chats only, so other chats skip the history fetch.
+  if (widget && ctx.chat.type === 'private') {
+    const html = await getCurrencyWidgetHtml()
+    const sent =
+      html &&
+      (await trySendWidget({
+        api: ctx.api,
+        chat: ctx.chat,
+        html,
+        messageThreadId,
+      }))
+    if (sent) return sent
+  }
+
   const options =
     typeof messageThreadId === 'number'
       ? { message_thread_id: messageThreadId }
@@ -211,7 +257,7 @@ export async function sendCurrencyCommand(
 }
 
 const setupCurrencyCommands = (bot: Bot) => {
-  bot.command('c', (ctx) => sendCurrencyCommand(ctx))
+  bot.command('c', (ctx) => sendCurrencyCommand(ctx, { widget: true }))
   bot.command('cf', (ctx) => sendCurrencyCommand(ctx, { forceFallback: true }))
   bot.command('cs', (ctx) =>
     sendCurrencyCommand(ctx, SCHEDULED_CURRENCY_MESSAGE_OPTIONS),
