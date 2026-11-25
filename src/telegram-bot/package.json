@@ -9,6 +9,6 @@
   "license": "MIT",
   "dependencies": {
     "@tg-bot/common": "workspace:*",
-    "grammy": "^1.46.0"
+    "grammy": "^1.48.0"
   }
 }

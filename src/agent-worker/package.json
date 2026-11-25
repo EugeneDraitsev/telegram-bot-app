@@ -5,9 +5,9 @@
   "sideEffects": false,
   "dependencies": {
     "@tg-bot/common": "workspace:*",
-    "@upstash/redis": "^1.39.0",
-    "ai": "^7.0.156",
-    "grammy": "^1.46.0",
-    "zod": "^4.6.5"
+    "@upstash/redis": "^1.41.1",
+    "ai": "^7.0.181",
+    "grammy": "^1.48.0",
+    "zod": "^4.6.7"
   }
 }

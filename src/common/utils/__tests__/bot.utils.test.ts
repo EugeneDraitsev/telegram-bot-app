@@ -1,4 +1,4 @@
-import type { Message, Update, UserFromGetMe } from 'grammy/types'
+import type { BotFullInfo, Message, Update } from 'grammy/types'
 import type { Context } from 'grammy/web'
 
 import { logger } from '../../logger'
@@ -6,18 +6,21 @@ import { formatHistoryForDisplay } from '../../upstash'
 import { createBot } from '../bot.utils'
 import * as queue from '../sqs.utils'
 
-const botInfo: UserFromGetMe = {
+const botInfo: BotFullInfo = {
   id: 99,
   is_bot: true,
   first_name: 'Test bot',
   username: 'test_bot',
   can_join_groups: true,
   can_read_all_group_messages: true,
+  supports_guest_queries: false,
   supports_inline_queries: false,
+  needs_inline_query_location: false,
   can_connect_to_business: false,
   has_main_web_app: false,
   has_topics_enabled: false,
   allows_users_to_create_topics: false,
+  has_topic_sidebar: false,
   can_manage_bots: false,
   supports_join_request_queries: false,
 }

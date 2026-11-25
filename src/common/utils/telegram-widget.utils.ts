@@ -4,20 +4,6 @@ import type { Chat, Message } from 'grammy/types'
 
 import { logger } from '../logger'
 
-interface SendWidgetParams {
-  chat_id: number
-  html: string
-  caption?: string
-  parse_mode?: 'MarkdownV2'
-  message_thread_id?: number
-  reply_parameters?: { message_id: number }
-}
-
-/** grammY 1.46 predates Bot API 10.4; its raw API proxy forwards any method. */
-type WidgetRawApi = {
-  sendWidget(params: SendWidgetParams): Promise<Message>
-}
-
 // Telegram theme colors with light fallbacks, and the card every widget uses.
 const BASE_STYLE = `
 :root{--bg:var(--tg-theme-bg-color,#fff);--tx:var(--tg-theme-text-color,#111);--ht:var(--tg-theme-hint-color,#8e8e93);--ac:var(--tg-theme-button-color,#3390ec);--sf:var(--tg-theme-secondary-bg-color,#f1f1f4);--ln:var(--tg-theme-section-separator-color,#e2e2e6);--spring:cubic-bezier(.34,1.56,.64,1);--ease:cubic-bezier(.2,.9,.3,1)}
@@ -90,14 +76,14 @@ export async function trySendWidget(params: {
   messageThreadId?: number
 }): Promise<Message | undefined> {
   const { api, chat, html, caption, replyId, messageThreadId } = params
-  // Production Telegram delivers widgets only in the private chat with the bot.
+  // Telegram limits production widgets to eligible bots in private chats.
   if (chat.type !== 'private') return undefined
 
   try {
-    return await (api.raw as unknown as WidgetRawApi).sendWidget({
+    return await api.raw.sendWidget({
       chat_id: chat.id,
       html,
-      ...(caption ? { caption, parse_mode: 'MarkdownV2' as const } : {}),
+      ...(caption ? { caption, parse_mode: 'MarkdownV2' } : {}),
       ...(replyId ? { reply_parameters: { message_id: replyId } } : {}),
       ...(typeof messageThreadId === 'number'
         ? { message_thread_id: messageThreadId }
