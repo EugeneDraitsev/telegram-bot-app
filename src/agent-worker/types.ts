@@ -29,7 +29,7 @@ type TelegramApiMethods = Pick<
 
 export type TelegramApi = Omit<TelegramApiMethods, 'setMessageReaction'> & {
   setMessageReaction?: TelegramApiMethods['setMessageReaction']
-  /** Reaches Bot API methods grammY has no wrapper for yet, such as sendWidget. */
+  /** Used by the shared widget sender. */
   raw?: Api['raw']
 }
 

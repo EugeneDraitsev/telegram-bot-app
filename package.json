@@ -30,12 +30,12 @@
     "prepare:ffmpeg-layer": "bun tools/prepare-ffmpeg-layer.mts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
+    "@biomejs/biome": "^2.6.9",
     "@types/aws-lambda": "^8.10.164",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.19.2",
-    "serverless": "^4.45.0",
-    "serverless-offline": "^14.8.2",
+    "@types/node": "^26.6.10",
+    "serverless": "^4.47.0",
+    "serverless-offline": "^14.8.5",
     "serverless-offline-sqs": "^9.0.1",
     "typescript": "^7.0.2"
   },

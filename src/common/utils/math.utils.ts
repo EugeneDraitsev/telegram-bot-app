@@ -8,8 +8,8 @@
  * @returns A random number between lower and upper.
  */
 export function random(lower: number, upper: number) {
-  const low = lower > upper ? upper : lower
-  const high = lower > upper ? lower : upper
+  const low = Math.min(lower, upper)
+  const high = Math.max(lower, upper)
 
   // Determine if a floating number should be returned
   const isFloating = !Number.isInteger(low) || !Number.isInteger(high)
