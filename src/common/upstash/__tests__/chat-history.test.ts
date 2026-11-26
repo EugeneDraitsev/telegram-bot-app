@@ -80,6 +80,15 @@ describe('formatHistoryForDisplay', () => {
     expect(history).toContain(`Bot: ${'x'.repeat(200)}… [media: photo]`)
   })
 
+  test('does not split an emoji at the truncation boundary', () => {
+    const history = formatHistoryForDisplay([
+      createMessage(1, { text: `${'x'.repeat(199)}🔥 and more text` }),
+    ])
+
+    expect(history).toContain(`User 1: ${'x'.repeat(199)}…`)
+    expect(history.isWellFormed()).toBe(true)
+  })
+
   test('shows the bot dice result instead of an empty message', () => {
     const history = formatHistoryForDisplay([
       createMessage(1, { text: undefined, dice: { emoji: '🎲', value: 6 } }),
