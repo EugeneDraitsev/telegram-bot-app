@@ -4,6 +4,14 @@ export function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/**
+ * Cut text without splitting an emoji's surrogate pair. A lone surrogate
+ * serializes to invalid JSON for model APIs, which then reject every request
+ * that includes it.
+ */
+export const sliceText = (text: string, maxLength: number) =>
+  text.slice(0, maxLength).replace(/[\uD800-\uDBFF]$/, '')
+
 export const hasRussiansLetters = (text: string) =>
   Boolean(
     text

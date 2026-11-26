@@ -9,6 +9,7 @@ import { isAiAllowedChat } from '../aws/dynamo'
 import { logger } from '../logger'
 import { TtlCache } from '../ttl-cache'
 import { getMessageText } from '../utils/message-text.utils'
+import { sliceText } from '../utils/text.utils'
 import { getRedisClient } from './client'
 
 const ONE_HOUR = 60 * 60 * 1000
@@ -110,7 +111,7 @@ function getHistoryLineText(message: Message): string {
   }
   const { labels: mediaLabels, hasNonImageMedia } = getMediaLabels(message)
   const fullText = getMessageText(message)
-  const text = fullText.length > 200 ? `${fullText.slice(0, 200)}…` : fullText
+  const text = fullText.length > 200 ? `${sliceText(fullText, 200)}…` : fullText
   const mediaMarker = `[media: ${mediaLabels.join(', ')}${
     hasNonImageMedia ? '; load_chat_media: images only' : ''
   }]`

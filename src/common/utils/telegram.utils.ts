@@ -4,6 +4,7 @@ import type { Context } from 'grammy/web'
 
 import { logger } from '../logger'
 import { getMessageText } from './message-text.utils'
+import { sliceText } from './text.utils'
 
 export function isTelegramReplyTargetMissingError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -111,7 +112,7 @@ export const getLargestPhoto = (m?: Message) =>
   (m?.photo ?? []).slice().sort((a, b) => b.width - a.width)[0]
 
 function getShortMessageText(message: Message | undefined): string {
-  return getMessageText(message).trim().slice(0, 180)
+  return sliceText(getMessageText(message).trim(), 180)
 }
 
 function getMessageLabel(message: Message | undefined): string {
